@@ -3519,6 +3519,102 @@ positive application-level acknowledgment that a transfer completed"
   ESP-NOW half is spec-ready but dormant until that binding is
   implemented.
 
+## RFC-055 — Admission control: a hub that cannot serve you must SAY SO
+
+- **Status:** PROPOSED (operator-ordered 2026-07-31, SlopDrive-32 bench).
+- **Origin — a live failure, with receipts.** SlopDrive-32 fw 2.2.1,
+  2026-07-31. FIVE half-open TCP connections (socket opens, partial HTTP
+  request, never completed) took the hub from serving to `reset_reason
+  TASK_WDT` **every single attempt**. `heap_min` at the crash was 40 619 B —
+  this was NOT resource exhaustion, the hub had memory to spare. Control
+  experiment: EIGHT *complete* keep-alive requests at the same connection
+  count survived untouched, so the trigger is incomplete requests, not load.
+  This is textbook **slowloris** (known since 2009), and the industry answer
+  is not novel — see Prior art below.
+  The protocol's part in it: SlopSync today has **no way for a hub to say
+  "I am full, come back in N ms."** A hub at capacity can drop, close, or
+  die, and all three look identical to a client, which then immediately
+  retries and makes it worse.
+- **Problem — three things the spec never said.**
+  1. **Capacity is invisible.** A hub advertises transports, tiers and
+     channels, but never how many concurrent sessions it can actually back.
+     `kSlots` is an implementation detail no client can read, so no client
+     can behave well.
+  2. **Refusal is indistinguishable from failure.** A refused connection, a
+     crashed hub, and a flaky radio all present as "connection went away."
+     A client cannot tell "not now" from "not ever" and has no basis to pick
+     a retry delay, so every client picks *immediately* — a thundering herd
+     aimed at a device that is already struggling.
+  3. **Nothing protects incumbents.** An arriving client can degrade or
+     evict an established one. **Operator ruling (2026-07-31), verbatim in
+     intent:** *"the hub should keep itself alive at any cost"*; priority
+     order is (1) hub stays alive AND STAYS HOMED, (2) existing sessions
+     survive — the first two or three, (3) further clients wait or are
+     deferred. Rehoming is not a neutral recovery on this class of machine:
+     it drives the rail to a limit, which is at best disruptive and at worst
+     unsafe for a user who is physically engaged with it. **Session
+     admission MUST NEVER be able to cost the machine its home reference.**
+- **Prior art (deliberately not reinvented).** Every layer of this is solved:
+  - **CoAP [RFC 8516](https://www.rfc-editor.org/rfc/rfc8516.html)** — `4.29
+    Too Many Requests` carries `Max-Age`: the rejection itself states when to
+    come back. This is the closest match to what we want and it is already
+    the constrained-device standard.
+  - **WebSocket close `1013` "Try Again Later"** (IANA) — the exact semantic
+    for "temporary, retry", distinct from `1011` internal error.
+  - **MQTT 5 CONNACK reason codes** — `0x97 Quota Exceeded`, `0x89 Server
+    Busy`: a refusal that names its own cause, plus `Server Reference` for
+    redirect.
+  - **HTTP `503` + `Retry-After`** — the same idea, oldest form.
+  - **Apache `mod_reqtimeout`** — `RequestReadTimeout header=5-10,MinRate=500`:
+    a short header deadline that EXTENDS while the client keeps making
+    progress at a minimum byte rate. This is the answer to "harden without
+    trading off performance": a slow-but-real client on bad WiFi keeps its
+    connection precisely because it is still delivering; a stalled one is cut
+    fast. A flat timeout cannot tell those apart.
+  - **Structural note:** slow-request attacks are ineffective against
+    *event-driven* servers (nginx, lighttpd) and lethal against
+    thread/slot-per-connection ones.
+    **Scope correction, recorded because the first draft of this RFC got it
+    wrong:** the SlopDrive-32 failure above was on its **sync HTTP sideband
+    (:80 — static page, `/api/*`, OTA, uitoken)**, NOT on the SlopSync
+    transport, which is event-driven ESPAsyncWebServer on :82 and was never
+    touched by that test. The hub plane is not the structurally exposed one.
+    What the incident proves for SlopSync is narrower and still worth a
+    normative answer: **a hub is only as available as the whole process it
+    lives in**, so admission control has to be stated in-protocol rather
+    than inferred from a connection that vanished for reasons the client
+    cannot see.
+- **Proposed change.**
+  1. **Advertise capacity.** WELCOME gains `max_sessions` and
+     `sessions_in_use`. A client that can see the ceiling can decide whether
+     to queue, degrade, or not connect at all.
+  2. **A REFUSED terminal with a reason and a delay.** New NACK/close codes
+     in the existing space (`0x0103 PAIRING_REQUIRED` … `0x0105
+     SESSION_EVICTED` are precedent): `HUB_AT_CAPACITY` and `HUB_SHEDDING`,
+     each REQUIRED to carry `retry_after_ms`. A hub MUST NOT refuse silently
+     and MUST NOT close bare when it knows the reason.
+  3. **`retry_after_ms` is normative for clients.** A client MUST NOT retry
+     sooner, and MUST apply jitter. Without this, (1) and (2) just
+     synchronize the herd.
+  4. **Incumbency is a right.** Admitting a session MUST NOT degrade an
+     already-ADOPTED one. Hubs SHOULD reserve capacity for established
+     sessions and refuse new ones instead of accepting-then-evicting.
+     `SESSION_EVICTED` stays for genuine policy eviction (admin, pairing),
+     never for capacity.
+  5. **Progress deadlines, not flat timeouts** (the mod_reqtimeout lesson):
+     a hub SHOULD cancel a connection that has not COMPLETED a handshake
+     within a short deadline, where the deadline extends while the peer is
+     still delivering bytes at a minimum rate. Applies to any transport with
+     a multi-part handshake.
+  6. **Safety ops are not subject to admission.** ESTOP and its
+     connectionless forms (RFC-053) MUST remain reachable when the hub is at
+     capacity. Admission control that can refuse a stop is a safety defect.
+- **Compatibility:** additive. New WELCOME fields are ignorable by older
+  clients; new codes land in an existing code space and degrade to "closed"
+  for clients that do not decode them — which is exactly today's behavior,
+  so nothing regresses. `retry_after_ms` is the only new client obligation
+  and only binds clients that decode the new codes.
+
 *Add new entries below. Keep the shape: Status / Origin / Problem / Proposed
 change / Compatibility — and if it was found by a probe or a live failure,
 say exactly which, future-us will want the receipts.*
