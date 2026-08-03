@@ -1,8 +1,35 @@
-# Project Instructions for AI Agents
+# SlopSync -- THE SPEC REPO
 
-This file provides instructions and context for AI coding agents working on this project.
+Protocol truth is RATIFIED here, never discovered here. Discovery happens in
+the reference implementation (SlopDrive-32, sibling checkout) and arrives as
+RFCs in `spec/RFC-QUEUE.md`, ruled by the operator: approve / deny / modify.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->
+Law of the land:
+
+- `spec/SPEC.md` is normative. `spec/registry/registry.yaml` wins any numeric
+  conflict (SPEC §5.7). Appendices A/B/G and everything under `generated/` are
+  generated views: regenerated via `python tools/gen_registry_header.py`,
+  never hand-edited.
+- Normative changes require an accepted RFC, never a direct edit. The
+  RFC-gate hook enforces this; `.claude/rules/spec-editing.md` explains the
+  lifecycle. Never edit the spec to match code.
+- Wire numbers come only from the registry. Never invent one; when unsure,
+  read.
+- American English (British spellings get nuked on sight). No em dashes; use
+  "--" or restructure. Comments state constraints, not stories.
+- Skills: `slopsync-canon` (distilled spec, citation-anchored),
+  `registry-workflow` (allocation/regen/tagging), `advisor` (read-only design
+  counsel). Beads board here is the RFC BOARD (`rfc-` prefix): RFC lifecycle
+  tracking only, no implementation dev work (that lives on SlopDrive-32's
+  dev board).
+
+## Compact Instructions
+
+When compacting this session, always preserve: operator decisions and their
+rationale, files modified, open RFC ids and their current statuses, registry
+numbers touched or allocated, and any pending operator rulings.
+
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -46,6 +73,7 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
    # Team-maintainer opt-in only, unless current instructions forbid it:
    git pull --rebase
+   bd dolt push
    git push
    git status
    ```
@@ -56,22 +84,3 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - Do not commit or push without clear authority from the active profile or the current user request.
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
-
-
-## Build & Test
-
-_Add your build and test commands here_
-
-```bash
-# Example:
-# npm install
-# npm test
-```
-
-## Architecture Overview
-
-_Add a brief overview of your project architecture_
-
-## Conventions & Patterns
-
-_Add your project-specific conventions here_

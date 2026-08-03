@@ -35,3 +35,7 @@ compile_commands.json
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Claude Code local-only state
+.claude/settings.local.json
+.claude/.rfc-ticket
