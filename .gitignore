@@ -29,3 +29,9 @@ site/
 .clangd
 .cache/
 compile_commands.json
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
