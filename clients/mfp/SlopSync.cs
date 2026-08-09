@@ -1,5 +1,5 @@
 #:name SlopSync
-#:version 0.4.0
+#:version 0.4.7
 #:author SlopDrive
 #:description Streams a MultiFunPlayer axis to a SlopDrive-32 machine over the native SlopSync protocol (device-shadow + capability negotiation, WebSocket + CBOR).
 #:url https://github.com/AtlanticTM
@@ -80,6 +80,13 @@ using Stylet;
 
 public class SlopSync : PluginBase
 {
+    // Bumped on EVERY edit and LOGGED on connect. MFP compiles the plugin at
+    // load, so "is my change live?" is otherwise unanswerable from the log --
+    // it cost two misread test runs before this existed. Keep in sync with the
+    // #:version directive at the top of the file; MFP parses that one for its
+    // UI and cannot see this one.
+    public const string PluginVersion = "0.4.7";
+
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     // ---- Persisted settings (MFP saves/loads any [JsonProperty]) ------------
@@ -103,8 +110,18 @@ public class SlopSync : PluginBase
     public StreamMode Mode
     {
         get => _mode;
-        set { if (SetAndNotify(ref _mode, value)) NotifyOfPropertyChange(nameof(IsSegmentsMode)); }
+        set
+        {
+            if (!SetAndNotify(ref _mode, value)) return;
+            NotifyOfPropertyChange(nameof(IsSegmentsMode));
+            NotifyOfPropertyChange(nameof(ModeText));
+        }
     }
+
+    /// <summary>Toolbar label for the mode toggle. Names the mode that is ACTIVE,
+    /// not the one the button would switch to — a control that labels its own
+    /// side effect reads as state to everyone who did not write it.</summary>
+    public string ModeText => _mode == StreamMode.Segments ? "SEG" : "SMP";
 
     // Bound as the mode ComboBox's ItemsSource (Enum.GetValues gives the members).
     public Array Modes => Enum.GetValues(typeof(StreamMode));
@@ -137,6 +154,7 @@ public class SlopSync : PluginBase
             NotifyOfPropertyChange(nameof(IsEditable));
             NotifyOfPropertyChange(nameof(IsConnected));
             NotifyOfPropertyChange(nameof(IsWindowEditable));
+            NotifyOfPropertyChange(nameof(HasAxisOverlay));
         }
     }
     public string StatusText { get => _statusText; set => SetAndNotify(ref _statusText, value); }
@@ -149,7 +167,11 @@ public class SlopSync : PluginBase
     public long NackCount { get => _nackCount; set => SetAndNotify(ref _nackCount, value); }
     public long RateLimitedCount { get => _rateLimitedCount; set => SetAndNotify(ref _rateLimitedCount, value); }
     public long StatesReceived { get => _statesReceived; set => SetAndNotify(ref _statesReceived, value); }
-    public double LastTarget { get => _lastTarget; set => SetAndNotify(ref _lastTarget, value); }
+    public double LastTarget
+    {
+        get => _lastTarget;
+        set { if (SetAndNotify(ref _lastTarget, value)) NotifyOfPropertyChange(nameof(RailAxisPx)); }
+    }
     public string Uptime { get => _uptime; set => SetAndNotify(ref _uptime, value); }
     public long SegmentsSent { get => _segmentsSent; set => SetAndNotify(ref _segmentsSent, value); }
     public string DivergenceWarning { get => _divergenceWarning; set => SetAndNotify(ref _divergenceWarning, value); }
@@ -167,24 +189,62 @@ public class SlopSync : PluginBase
     public double WindowMinMm
     {
         get => _windowMinMm;
-        set { if (SetAndNotify(ref _windowMinMm, value)) NotifyOfPropertyChange(nameof(WindowText)); }
+        set
+        {
+            if (!SetAndNotify(ref _windowMinMm, value)) return;
+            NotifyOfPropertyChange(nameof(WindowText));
+            NotifyRail();
+        }
     }
     public double WindowMaxMm
     {
         get => _windowMaxMm;
-        set { if (SetAndNotify(ref _windowMaxMm, value)) NotifyOfPropertyChange(nameof(WindowText)); }
+        set
+        {
+            if (!SetAndNotify(ref _windowMaxMm, value)) return;
+            NotifyOfPropertyChange(nameof(WindowText));
+            NotifyRail();
+        }
     }
 
     /// <summary>The operator's DRAFT values — never displayed as device truth.</summary>
     public double WindowMinEdit
     {
         get => _windowMinEdit;
-        set { if (SetAndNotify(ref _windowMinEdit, value)) _windowDirty = true; }
+        set { if (SetAndNotify(ref _windowMinEdit, value)) { _windowDirty = true; NotifyDraft(); } }
     }
     public double WindowMaxEdit
     {
         get => _windowMaxEdit;
-        set { if (SetAndNotify(ref _windowMaxEdit, value)) _windowDirty = true; }
+        set { if (SetAndNotify(ref _windowMaxEdit, value)) { _windowDirty = true; NotifyDraft(); } }
+    }
+
+    private void NotifyDraft()
+    {
+        NotifyOfPropertyChange(nameof(IsWindowDirty));
+        NotifyOfPropertyChange(nameof(RailDraftLeftPx));
+        NotifyOfPropertyChange(nameof(RailDraftWidthPx));
+        NotifyOfPropertyChange(nameof(WindowMinFrac));
+        NotifyOfPropertyChange(nameof(WindowMaxFrac));
+    }
+
+    /// <summary>Re-seed both drafts from DEVICE truth and clear the dirty flag.
+    /// Every non-operator write of the drafts goes through here.
+    ///
+    /// It writes the FIELDS, not the properties, and that is the whole point:
+    /// the property setters exist to record "a human touched this", so a seed
+    /// that went through them marked itself dirty. That had two live
+    /// consequences — the first STATE after connect set dirty while seeding min,
+    /// which made the very next line skip max; and from then on `!_windowDirty`
+    /// was never true again, so the boxes silently stopped tracking a window
+    /// changed by any other client. Revert had the same shape, and left the
+    /// draft it had just discarded still marked dirty.</summary>
+    private void SeedWindowDrafts(double min, double max)
+    {
+        SetAndNotify(ref _windowMinEdit, min, nameof(WindowMinEdit));
+        SetAndNotify(ref _windowMaxEdit, max, nameof(WindowMaxEdit));
+        _windowDirty = false;
+        NotifyDraft();
     }
 
     public string WindowStatus { get => _windowStatus; set => SetAndNotify(ref _windowStatus, value); }
@@ -238,6 +298,188 @@ public class SlopSync : PluginBase
 
     public bool IsWindowEditable => IsConnected && HasWindowControl && !_windowPending;
 
+    // =========================================================================
+    // THE RAIL — live carriage telemetry drawn on the machine's own travel.
+    //
+    // GEOMETRY IS COMPUTED HERE, IN PIXELS, AGAINST A FIXED TRACK WIDTH. That is
+    // deliberate: the alternative (proportional Grid columns or a value
+    // converter) needs types the view can only reach through an xmlns mapping
+    // into the plugin's own runtime-compiled assembly, which is exactly the kind
+    // of coupling a single-file plugin cannot rely on. A fixed track is one
+    // number the view and this class agree on, and nothing else.
+    //
+    // GROUND-TRUTH DOCTRINE applies unchanged and is the reason there are THREE
+    // markers, not one:
+    //   position — where the carriage measurably IS (telemetry.position)
+    //   target   — where the machine is COMMANDING it (telemetry.target)
+    //   axis     — where MFP last ASKED for (LastTarget, mapped through the
+    //              DEVICE's window exactly as the machine's own mapper does)
+    // The gap between the last two is what the machine's planner and clamps did
+    // to the request, which is the whole reason to overlay them.
+    // =========================================================================
+
+    /// <summary>Logical width of the rail track, device-independent pixels. The
+    /// view sizes the track to this same number.</summary>
+    public const double RailTrackPx = 372.0;
+
+    private double _devicePosMm = double.NaN, _deviceTargetMm = double.NaN, _deviceVelMmS = double.NaN;
+    private double _maxTravelMm = double.NaN, _measuredTravelMm = double.NaN;
+
+    public double DevicePositionMm
+    {
+        get => _devicePosMm;
+        set { if (SetAndNotify(ref _devicePosMm, value)) NotifyRail(); }
+    }
+    public double DeviceTargetMm
+    {
+        get => _deviceTargetMm;
+        set { if (SetAndNotify(ref _deviceTargetMm, value)) NotifyRail(); }
+    }
+    public double DeviceVelocityMmS
+    {
+        get => _deviceVelMmS;
+        set { if (SetAndNotify(ref _deviceVelMmS, value)) NotifyOfPropertyChange(nameof(VelocityText)); }
+    }
+    public double MaxTravelMm
+    {
+        get => _maxTravelMm;
+        set { if (SetAndNotify(ref _maxTravelMm, value)) NotifyRail(); }
+    }
+    public double MeasuredTravelMm
+    {
+        get => _measuredTravelMm;
+        set { if (SetAndNotify(ref _measuredTravelMm, value)) NotifyRail(); }
+    }
+
+    /// <summary>The rail's full extent in mm. Prefers what a home MEASURED over
+    /// what is configured, because that is the travel the carriage actually has.
+    /// Zero measured travel means "no successful home yet" (registry note on
+    /// geometry.measured_travel) and is never taken as a measurement.</summary>
+    public double RailMaxMm
+    {
+        get
+        {
+            if (!double.IsNaN(_measuredTravelMm) && _measuredTravelMm > 0.0) return _measuredTravelMm;
+            if (!double.IsNaN(_maxTravelMm) && _maxTravelMm > 0.0) return _maxTravelMm;
+            // Last resort so the track still draws something honest on a hub
+            // that advertises neither: the window itself IS travel we know exists.
+            if (!double.IsNaN(_windowMaxMm) && _windowMaxMm > 0.0) return _windowMaxMm;
+            return double.NaN;
+        }
+    }
+
+    /// <summary>The rail draws only when the machine told us how long it is AND
+    /// where the carriage is. Anything less and the widget would be inventing a
+    /// scale, which on a position readout is the one unforgivable lie.</summary>
+    public bool HasRail => !double.IsNaN(RailMaxMm) && RailMaxMm > 0.0;
+    public bool HasRailPosition => HasRail && !double.IsNaN(_devicePosMm);
+    public bool HasRailTarget => HasRail && !double.IsNaN(_deviceTargetMm);
+
+    // mm -> track pixels, clamped to the track. Clamping rather than hiding: a
+    // carriage reported outside the rail is a real condition worth SEEING pinned
+    // at the end, not a marker that silently vanishes.
+    private double Px(double mm)
+    {
+        double max = RailMaxMm;
+        if (double.IsNaN(mm) || double.IsNaN(max) || max <= 0.0) return 0.0;
+        double f = mm / max;
+        if (f < 0.0) f = 0.0;
+        if (f > 1.0) f = 1.0;
+        return f * RailTrackPx;
+    }
+
+    public double RailPositionPx => Px(_devicePosMm);
+    public double RailTargetPx => Px(_deviceTargetMm);
+    public double RailWindowLeftPx => Px(_windowMinMm);
+    public double RailWindowWidthPx
+    {
+        get
+        {
+            double w = Px(_windowMaxMm) - Px(_windowMinMm);
+            return w > 0.0 ? w : 0.0;
+        }
+    }
+
+    /// <summary>Where MFP last ASKED the axis to be, mapped onto the rail through
+    /// the DEVICE's window — the same normalized-to-mm mapping the machine's own
+    /// range mapper applies. Without the window there is no mapping and no marker.</summary>
+    public bool HasAxisOverlay =>
+        HasRail && IsConnected && !double.IsNaN(_windowMinMm) && !double.IsNaN(_windowMaxMm);
+    public double RailAxisPx => Px(_windowMinMm + _lastTarget * (_windowMaxMm - _windowMinMm));
+
+    // ---- Drag-handle positions, as FRACTIONS of the rail ---------------------
+    // THE SLIDERS BIND TO FRACTIONS, NOT MILLIMETRES, AND THAT IS A BUG FIX.
+    //
+    // A Slider COERCES Value into [Minimum, Maximum], and a TwoWay binding
+    // writes the coerced value straight back to the source. Binding Maximum to
+    // the rail length looked natural and was wrong: between "view loaded" and
+    // "the machine told us how long its rail is" there is no rail length, so
+    // Maximum sat at a placeholder 1.0 — and a 150 mm draft was coerced to 1,
+    // then written back over the draft. Permanently. The operator got a stroke
+    // window that would only travel 0-1 mm.
+    //
+    // A FIXED 0..1 DOMAIN CANNOT DO THAT: Maximum never changes, so no coercion
+    // is ever destructive, and the mm conversion happens here where the rail
+    // being unknown is expressible as "ignore this write" instead of "clamp it".
+    //
+    // Rounded to whole millimetres because that is the device's own declared
+    // step for the window fields; handing it fractions it will only round anyway
+    // would put a value in the box that the machine never agreed to.
+    public double WindowMinFrac
+    {
+        get => HasRail ? _windowMinEdit / RailMaxMm : 0.0;
+        set { if (HasRail) WindowMinEdit = Math.Round(value * RailMaxMm); }
+    }
+    public double WindowMaxFrac
+    {
+        get => HasRail ? _windowMaxEdit / RailMaxMm : 0.0;
+        set { if (HasRail) WindowMaxEdit = Math.Round(value * RailMaxMm); }
+    }
+
+    // The DRAFT band — where the operator has dragged to, drawn as an outline
+    // over the solid device band. Two shapes because they are two different
+    // claims: the fill is what the machine HAS, the outline is what it has been
+    // ASKED for and has not answered yet. Collapsing them into one moving band
+    // is exactly the optimistic-UI lie the window editor was built to avoid.
+    public bool IsWindowDirty => _windowDirty;
+    public double RailDraftLeftPx => Px(_windowMinEdit);
+    public double RailDraftWidthPx
+    {
+        get
+        {
+            double w = Px(_windowMaxEdit) - Px(_windowMinEdit);
+            return w > 0.0 ? w : 0.0;
+        }
+    }
+
+    public string PositionText => double.IsNaN(_devicePosMm) ? "—" : $"{_devicePosMm:F1} mm";
+    public string VelocityText => double.IsNaN(_deviceVelMmS) ? "—" : $"{_deviceVelMmS:N0} mm/s";
+    public string RailMaxText => HasRail ? $"{RailMaxMm:F0}" : "?";
+
+    /// <summary>Every rail-derived readout in one notify. Called from each setter
+    /// that feeds the geometry, so no marker can lag a value it is drawn from.</summary>
+    private void NotifyRail()
+    {
+        NotifyOfPropertyChange(nameof(RailMaxMm));
+        NotifyOfPropertyChange(nameof(RailMaxText));
+        NotifyOfPropertyChange(nameof(HasRail));
+        NotifyOfPropertyChange(nameof(HasRailPosition));
+        NotifyOfPropertyChange(nameof(HasRailTarget));
+        NotifyOfPropertyChange(nameof(HasAxisOverlay));
+        NotifyOfPropertyChange(nameof(RailPositionPx));
+        NotifyOfPropertyChange(nameof(RailTargetPx));
+        NotifyOfPropertyChange(nameof(RailWindowLeftPx));
+        NotifyOfPropertyChange(nameof(RailWindowWidthPx));
+        NotifyOfPropertyChange(nameof(RailAxisPx));
+        NotifyOfPropertyChange(nameof(PositionText));
+        // The handles are a FRACTION of the rail, so a rail-length change moves
+        // them even when the draft millimetres did not.
+        NotifyOfPropertyChange(nameof(WindowMinFrac));
+        NotifyOfPropertyChange(nameof(WindowMaxFrac));
+        NotifyOfPropertyChange(nameof(RailDraftLeftPx));
+        NotifyOfPropertyChange(nameof(RailDraftWidthPx));
+    }
+
     public bool IsConnected => Status == ConnectionStatus.Connected;
 
     // True only while fully disconnected — the view binds edit boxes' IsEnabled here.
@@ -290,6 +532,45 @@ public class SlopSync : PluginBase
     private double _segLastAxisPos;                         // discontinuity detector: axis script position last tick
     private bool _segHaveAxisPos;
     private double _segFrozenMs;                            // ms the media clock has not moved (the liveness gate)
+    // SCRIPT-TIME -> HUB-TIME MAPPING. Established once per re-anchor and used
+    // for EVERY span's anchor after that. Anchoring each span against a freshly
+    // sampled (axisPos, HubNowUs) pair instead made consecutive spans stop
+    // tiling: the media clock and the wall clock do not advance at the same
+    // rate (MFP nudges its internal clock backwards by a few ms -- see the
+    // discontinuity thresholds below), so span i's declared end and span i+1's
+    // anchor were computed against mappings that had drifted apart. The hub
+    // reads that as segments OVERLAPPING in scheduled time. Measured on-device
+    // as gap=[-1060,+899] us, and re-anchoring (a settings change, pause and
+    // resume -- ANY of them, regardless of the value) is what made it smooth
+    // again, which is the tell that the mapping and not the value was stale.
+    // Same disease as the firmware's own T18: reconstruct the SOURCE timeline,
+    // never re-derive it from per-sample arrival times.
+    private double _segMapScript;                           // script seconds at the anchor
+    // CLIENT time, never hub time. Hub time is re-based by the ~10 s CLOCK
+    // resync, so an anchor cached in hub time belongs to whichever offset was
+    // live when it was taken -- every later anchor is then wrong by the offset
+    // delta, growing until drift policing rebuilds it, and the cycle repeats.
+    // Observed as ~50 s smooth, drift, snap back, drift again. Client time is
+    // monotonic and the offset is applied fresh at send.
+    private uint _segMapClientUs;
+    private bool _segHaveMap;
+    private long _segMapDriftUs;                            // last measured drift, for the beat
+    private long _segMapResets;                             // times drift forced a re-establish
+    private double _segMapRebaseHoldMs;                     // countdown gating small re-bases
+    // Moving spans still owed a handoff-less send after a mapping move: a
+    // declared tangent right after a re-anchor is a claim spanning two clock
+    // bases, and the engine's own estimate is the honest fallback.
+    private int _segSuppressHandoff;
+    // CLIENT-us end of the furthest span/hold actually SCHEDULED on the hub.
+    // The seam hold gates on THIS, never on the cursor: a trailing gap span is
+    // already one long scheduled hold, and keying on the cursor stacked
+    // overlapping holds onto it (-686 ms dues, n=13 seam bursts, 2026-08-09).
+    private uint _segChainEndUs;
+    private bool _segHaveChainEnd;
+    // Ticks left in the post-re-anchor gentle window: one span per tick, so a
+    // re-found lookahead drains to the hub at the rate its planner actually
+    // commits instead of clumping into >50 ms-late anchored commits.
+    private int _segGentleTicks;
 
     // ---- Emitter diagnostics ------------------------------------------------
     // A silent early return in the emitter is indistinguishable from a broken
@@ -460,6 +741,68 @@ public class SlopSync : PluginBase
         }
     }
 
+    // ---- Toolbar mode toggle -------------------------------------------------
+    // STREAM MODE IS NEGOTIATED, NOT SWITCHED. The two modes wish for different
+    // channels at different rates, and Segments additionally declares a
+    // curve_family (RFC-030) — all of it settled in HELLO. There is no frame
+    // that re-negotiates a live session's publishes, so changing mode means a
+    // new session, and this button is honest about doing that rather than
+    // pretending the change is free.
+    //
+    // The machine stops receiving for the length of the reconnect and finishes
+    // whatever it had in flight; its deadman (§11.3) covers the gap. That is the
+    // safe direction, but it IS a visible interruption mid-scene.
+    public void OnToggleModeClick()
+    {
+        Mode = _mode == StreamMode.Segments ? StreamMode.Samples : StreamMode.Segments;
+        if (_task == null) return;   // disconnected: the new mode applies on the next connect
+        _ = RestartSessionAsync();
+    }
+
+    /// <summary>Cancel the live session, WAIT for it to finish unwinding, then
+    /// reconnect. The await is the whole point: starting the next session before
+    /// the old one has sent GOODBYE and released source ownership would put two
+    /// sessions with the SAME instance id on the hub at once.</summary>
+    private async Task RestartSessionAsync()
+    {
+        var old = _task;
+        OnDispose();
+        if (old != null)
+        {
+            try { await old; }
+            catch { /* a canceled session is the expected outcome here */ }
+        }
+        Ui(() => { if (_task == null) OnConnectClick(); });
+    }
+
+    // ---- Panel popups --------------------------------------------------------
+    // Setup and the limits readback are set-once / read-rarely, so they live
+    // behind toolbar buttons instead of costing permanent panel height.
+    private bool _setupOpen, _limitsOpen;
+    public bool SetupOpen
+    {
+        get => _setupOpen;
+        set { if (SetAndNotify(ref _setupOpen, value)) NotifyOfPropertyChange(nameof(DialogOpen)); }
+    }
+    public bool LimitsOpen
+    {
+        get => _limitsOpen;
+        set { if (SetAndNotify(ref _limitsOpen, value)) NotifyOfPropertyChange(nameof(DialogOpen)); }
+    }
+
+    /// <summary>The single DialogHost's open state. Writable so the host can
+    /// CLOSE it — clicking the scrim or pressing Esc sets this false, and that
+    /// has to reach the two flags the content is chosen by, or the dialog
+    /// reopens itself the next time anything else notifies.</summary>
+    public bool DialogOpen
+    {
+        get => _setupOpen || _limitsOpen;
+        set { if (!value) { SetupOpen = false; LimitsOpen = false; } }
+    }
+
+    public void OnToggleSetupClick() { LimitsOpen = false; SetupOpen = !SetupOpen; }
+    public void OnToggleLimitsClick() { SetupOpen = false; LimitsOpen = !LimitsOpen; }
+
     // =========================================================================
     // Connection state machine — connect, HELLO/WELCOME, SUBSCRIBE, CLOCK sync,
     // stream loop; auto-reconnect with backoff on unexpected drops.
@@ -534,9 +877,19 @@ public class SlopSync : PluginBase
 
         using var ws = new ClientWebSocket();
         ws.Options.AddSubProtocol(SlopWire.WsSubprotocol);
+        // OFF, deliberately. .NET defaults KeepAliveInterval to 30 s and then
+        // emits an UNSOLICITED PONG on that cadence. It is legal (RFC 6455
+        // §5.5.3) but it is pure transport-layer duplication here: SlopSync
+        // carries its own liveness in-band — PING/PONG frames plus the §11.3
+        // deadman — so nothing about this session depends on a socket
+        // heartbeat. Leaving it on cost us a full evening: a hub that mishandled
+        // the unsolicited PONG reset the connection, and this plugin
+        // reconnected on a perfect 30.0 s cycle. That hub is fixed, but the
+        // redundant heartbeat should not come back.
+        ws.Options.KeepAliveInterval = TimeSpan.Zero;
         var uri = new Uri($"ws://{Address}:{Port}/");
         await ws.ConnectAsync(uri, token);
-        Logger.Info("WS connected to {0} (subprotocol {1})", uri, SlopWire.WsSubprotocol);
+        Logger.Info("SlopSync plugin v{0} — WS connected to {1} (subprotocol {2})", PluginVersion, uri, SlopWire.WsSubprotocol);
 
         var client = new HubClient(ws, _instanceId, Logger);
 
@@ -801,8 +1154,7 @@ public class SlopSync : PluginBase
                 { WindowMaxMm = vMax; applied = (applied == null ? "" : applied + " / ") + $"max {vMax:F1}"; }
                 // Re-seed the drafts from what actually applied, so the boxes
                 // can never sit showing a value the machine refused to take.
-                WindowMinEdit = WindowMinMm;
-                WindowMaxEdit = WindowMaxMm;
+                SeedWindowDrafts(WindowMinMm, WindowMaxMm);
                 WindowStatus = applied == null ? "applied" : $"applied: {applied} mm";
                 NotifyOfPropertyChange(nameof(IsWindowEditable));
             }
@@ -841,6 +1193,8 @@ public class SlopSync : PluginBase
     private SlopCatalog _catalog;
     private SlopCatalog.RoleLocator _roleWindowMin, _roleWindowMax;
     private SlopCatalog.RoleLocator _roleInputSpeed, _roleInputAccel, _roleInputJerk;
+    private SlopCatalog.RoleLocator _rolePosition, _roleTarget, _roleVelocity;
+    private SlopCatalog.RoleLocator _roleMaxTravel, _roleMeasuredTravel;
 
     private static CachedCatalog LoadCachedCatalog(string key)
     {
@@ -865,6 +1219,8 @@ public class SlopSync : PluginBase
         _catalog = null;
         _roleWindowMin = _roleWindowMax = null;
         _roleInputSpeed = _roleInputAccel = _roleInputJerk = null;
+        _rolePosition = _roleTarget = _roleVelocity = null;
+        _roleMaxTravel = _roleMeasuredTravel = null;
 
         byte[] hubEtag = welcome.CatalogEtag;
         if (hubEtag == null || hubEtag.Length != SlopWire.EtagBytes)
@@ -935,12 +1291,21 @@ public class SlopSync : PluginBase
         _roleInputSpeed = cat.LocateRole(SlopWire.RoleLimitInputSpeed);
         _roleInputAccel = cat.LocateRole(SlopWire.RoleLimitInputAccel);
         _roleInputJerk = cat.LocateRole(SlopWire.RoleLimitInputJerk);
+        _rolePosition = cat.LocateRole(SlopWire.RoleTelemetryPosition);
+        _roleTarget = cat.LocateRole(SlopWire.RoleTelemetryTarget);
+        _roleVelocity = cat.LocateRole(SlopWire.RoleTelemetryVelocity);
+        _roleMaxTravel = cat.LocateRole(SlopWire.RoleGeometryMaxTravel);
+        _roleMeasuredTravel = cat.LocateRole(SlopWire.RoleGeometryMeasuredTravel);
 
         Logger.Info("catalog adopted ({0}, etag {1}): window.min={2} window.max={3} " +
-                    "limit.input.speed={4} .accel={5} .jerk={6}",
+                    "limit.input.speed={4} .accel={5} .jerk={6} " +
+                    "telemetry.position={7} .target={8} .velocity={9} " +
+                    "geometry.max_travel={10} .measured_travel={11}",
             cachedPath ? "cached, zero-frame path" : "fetched + verified", SlopCatalog.Hex(etag),
             Describe(_roleWindowMin), Describe(_roleWindowMax),
-            Describe(_roleInputSpeed), Describe(_roleInputAccel), Describe(_roleInputJerk));
+            Describe(_roleInputSpeed), Describe(_roleInputAccel), Describe(_roleInputJerk),
+            Describe(_rolePosition), Describe(_roleTarget), Describe(_roleVelocity),
+            Describe(_roleMaxTravel), Describe(_roleMeasuredTravel));
 
         Ui(() =>
         {
@@ -949,6 +1314,7 @@ public class SlopSync : PluginBase
             NotifyOfPropertyChange(nameof(HasWindowControl));
             NotifyOfPropertyChange(nameof(HasLimitsReadback));
             NotifyOfPropertyChange(nameof(IsWindowEditable));
+            NotifyRail();
         });
 
         static string Describe(SlopCatalog.RoleLocator r) =>
@@ -969,6 +1335,12 @@ public class SlopSync : PluginBase
         }
         Add(_roleWindowMin); Add(_roleWindowMax);
         Add(_roleInputSpeed); Add(_roleInputAccel); Add(_roleInputJerk);
+        // The rail's roles. On this firmware position/target/velocity live on
+        // `motion` (0x0080), which HELLO already wished — Add() skips it — so
+        // the rail costs no extra subscription. The travel roles usually share
+        // the limits channel for the same reason.
+        Add(_rolePosition); Add(_roleTarget); Add(_roleVelocity);
+        Add(_roleMaxTravel); Add(_roleMeasuredTravel);
         return set;
     }
 
@@ -980,15 +1352,28 @@ public class SlopSync : PluginBase
 
         double? wMin = Read(_roleWindowMin), wMax = Read(_roleWindowMax);
         double? spd = Read(_roleInputSpeed), acc = Read(_roleInputAccel), jrk = Read(_roleInputJerk);
-        if (wMin == null && wMax == null && spd == null && acc == null && jrk == null) return;
+        double? pos = Read(_rolePosition), tgt = Read(_roleTarget), vel = Read(_roleVelocity);
+        double? maxT = Read(_roleMaxTravel), measT = Read(_roleMeasuredTravel);
+        if (wMin == null && wMax == null && spd == null && acc == null && jrk == null &&
+            pos == null && tgt == null && vel == null && maxT == null && measT == null) return;
 
         Ui(() =>
         {
-            if (wMin.HasValue) { WindowMinMm = wMin.Value; if (!_windowPending && !_windowDirty) WindowMinEdit = wMin.Value; }
-            if (wMax.HasValue) { WindowMaxMm = wMax.Value; if (!_windowPending && !_windowDirty) WindowMaxEdit = wMax.Value; }
+            if (wMin.HasValue) WindowMinMm = wMin.Value;
+            if (wMax.HasValue) WindowMaxMm = wMax.Value;
+            // Seeded as a PAIR, after both device values have landed — seeding
+            // them one at a time is what let the first one's side effect suppress
+            // the second (see SeedWindowDrafts).
+            if ((wMin.HasValue || wMax.HasValue) && !_windowPending && !_windowDirty)
+                SeedWindowDrafts(WindowMinMm, WindowMaxMm);
             if (spd.HasValue) InputSpeed = spd.Value;
             if (acc.HasValue) InputAccel = acc.Value;
             if (jrk.HasValue) InputJerk = jrk.Value;
+            if (pos.HasValue) DevicePositionMm = pos.Value;
+            if (tgt.HasValue) DeviceTargetMm = tgt.Value;
+            if (vel.HasValue) DeviceVelocityMmS = vel.Value;
+            if (maxT.HasValue) MaxTravelMm = maxT.Value;
+            if (measT.HasValue) MeasuredTravelMm = measT.Value;
             NotifyOfPropertyChange(nameof(HasLimitsReadback));
         });
 
@@ -1005,10 +1390,16 @@ public class SlopSync : PluginBase
         CatalogInfo = null;
         WindowMinMm = WindowMaxMm = double.NaN;
         InputSpeed = InputAccel = InputJerk = double.NaN;
+        // The rail goes blank on disconnect rather than holding its last frame.
+        // A stale position marker is indistinguishable from a live one, and this
+        // widget's whole job is to say where the carriage IS.
+        DevicePositionMm = DeviceTargetMm = DeviceVelocityMmS = double.NaN;
+        MaxTravelMm = MeasuredTravelMm = double.NaN;
         WindowStatus = null;
         HomeStatus = null;
         _windowPending = _homePending = false;
         _windowDirty = false;
+        NotifyDraft();
         NotifyOfPropertyChange(nameof(HasWindowControl));
         NotifyOfPropertyChange(nameof(HasLimitsReadback));
         NotifyOfPropertyChange(nameof(IsWindowEditable));
@@ -1120,9 +1511,7 @@ public class SlopSync : PluginBase
     /// <summary>Discard the draft and re-seed both boxes from device truth.</summary>
     public void OnRevertWindowClick()
     {
-        _windowDirty = false;
-        WindowMinEdit = WindowMinMm;
-        WindowMaxEdit = WindowMaxMm;
+        SeedWindowDrafts(WindowMinMm, WindowMaxMm);
         WindowStatus = null;
     }
 
@@ -1334,6 +1723,27 @@ public class SlopSync : PluginBase
     // would have to slam. We never generate one now (a span is only emitted
     // while its end is still in the future), so this is a backstop.
     private const int SegMinDurationMs = 10;
+    // How far the script<->hub mapping may decay before it is rebuilt. Wide
+    // enough that ordinary media-clock jitter never rebuilds (a rebuild costs
+    // one span's tiling), tight enough that the machine cannot visibly lead or
+    // trail the media.
+    private const long SegMapDriftLimitUs = 8_000;
+    // Above this, the drift is not decay but a STEP (pause/seek/pipeline
+    // restart): acting on a mid-transient mapping is how one resume produced
+    // nine re-bases and ±100 ms schedule steps on the hub (2026-08-09). A step
+    // triggers a full re-anchor instead of a silent re-base.
+    private const long SegMapHardStepUs = 100_000;
+    // Small re-bases are rate-limited: each one moves every subsequent due
+    // time, so a storm of them IS the jitter it exists to remove.
+    private const double SegMapRebaseMinMs = 1000.0;
+
+    // Loop-seam hold: past the last keyframe with the media clock still alive,
+    // the chain would starve for exactly the player's loop-wrap latency
+    // (~110 ms measured, once per lap) and settle-brake mid-motion. Rolling
+    // holds at the final value keep the chain fed through the seam, so the
+    // next lap's first span plans from a held chain instead of a brake+sweep.
+    private const int SegTailHoldMs = 100;
+    private const long SegTailHoldRefreshUs = 50_000;
 
     // End-velocity handoff limiter (see ScriptSlopeAtSpanEnd for the full
     // derivation and the measured numbers). A knot tangent is capped at
@@ -1370,7 +1780,7 @@ public class SlopSync : PluginBase
     // ~120 ms and not for longer ones. Raising SegLookaheadMs (the wire allows
     // scheduling up to 250 ms ahead before the hub clamps t_off) widens the
     // guard's coverage and is the obvious knob to sweep in the same session.
-    private const bool SegHandoffLimiterEnabled = true;
+    private const bool SegHandoffLimiterEnabled = false;
 
     private async Task SegmentLoopAsync(HubClient client, double sampleRate, double segRate,
                                         double segBurst, CancellationToken token)
@@ -1566,6 +1976,7 @@ public class SlopSync : PluginBase
         if (_segAxis == null) return SegStop("source axis '" + SourceAxis + "' did not parse");
         _segCacheAgeMs += Math.Max(0, dtMs);
         _segThrottleLogAgeMs += Math.Max(0, dtMs);
+        if (_segMapRebaseHoldMs > 0) _segMapRebaseHoldMs -= Math.Max(0, dtMs);
 
         // Axis::Position is the axis-local SCRIPT time in seconds (media position
         // through the axis' own offset) — the same value MFP indexes its own
@@ -1621,6 +2032,7 @@ public class SlopSync : PluginBase
             _segNeedsResync = false;
             _segEmittedSpan = -1;   // -1 = "find me from the position again"
             _segCacheAgeMs = 0;
+            _segGentleTicks = 25;   // ~250 ms of one-span-per-tick pacing
             RefreshTransformCache();
 
             var fresh = ReadKeyframes(_segAxis);
@@ -1661,10 +2073,63 @@ public class SlopSync : PluginBase
         int i = _segEmittedSpan >= 0 ? _segEmittedSpan + 1 : kf.SearchForIndexBefore(axisPos);
         if (i < 0) i = 0;   // before the script starts: wait at span 0 until it comes due
 
+        // ONE clock base for the whole batch. HubNowUs() used to be sampled
+        // inside SendSegmentAsync, i.e. once per segment, while axisPos and
+        // speed are snapshotted once per tick above — and the emit loop awaits
+        // a network send between segments. So every segment after the first was
+        // anchored to a base that had moved forward by the send latency, while
+        // its offset was computed against the older snapshot. Consecutive spans
+        // then no longer tile: the declared duration of span N stopped reaching
+        // span N+1's anchor, which the hub reads as segments that OVERLAP in
+        // scheduled time. Measured on-device as gap=[-936,+924] us with the
+        // schedule's own contiguity broken. The offsets are exact relative to
+        // one base; keep them that way.
+        uint segBaseClientUs = HubClient.ClientNowUs();
+
+        // (Re-)establish the mapping on a re-anchor, then POLICE it: script time
+        // and hub time are independent clocks, so the mapping decays. Left
+        // uncorrected the machine would slowly lead or trail the media. Rebuild
+        // on drift rather than per span -- rebuilding per span is precisely the
+        // bug this replaces.
+        if (!_segHaveMap || _segEmittedSpan < 0)
+        {
+            _segMapScript = axisPos;
+            _segMapClientUs = segBaseClientUs;
+            _segHaveMap = true;
+            _segMapDriftUs = 0;
+            _segSuppressHandoff = 1;
+        }
+        else
+        {
+            long elapsedClientUs = unchecked((long)(uint)(segBaseClientUs - _segMapClientUs));
+            long elapsedScriptUs = (long)Math.Round((axisPos - _segMapScript) / speed * 1_000_000.0);
+            _segMapDriftUs = elapsedClientUs - elapsedScriptUs;
+            if (Math.Abs(_segMapDriftUs) > SegMapHardStepUs)
+            {
+                // A clock STEP, not decay -- re-anchor fully next tick (fresh
+                // cursor and keyframes) rather than re-basing into a moving
+                // transient. See SegMapHardStepUs.
+                _segNeedsResync = true;
+                _segMapResets++;
+                return SegIdle("clock step, re-anchoring");
+            }
+            if (Math.Abs(_segMapDriftUs) > SegMapDriftLimitUs && _segMapRebaseHoldMs <= 0)
+            {
+                _segMapScript = axisPos;
+                _segMapClientUs = segBaseClientUs;
+                _segMapResets++;
+                _segMapDriftUs = 0;
+                _segMapRebaseHoldMs = SegMapRebaseMinMs;
+                _segSuppressHandoff = 1;
+            }
+        }
+
         int sent = 0;
         int scanned = 0;
+        int emitBudget = SegMaxEmitPerTick;
+        if (_segGentleTicks > 0) { _segGentleTicks--; emitBudget = 1; }
         string outcome = i + 1 < kf.Count ? "waiting for the next action" : "past the end of the script";
-        for (; i + 1 < kf.Count && sent < SegMaxEmitPerTick && scanned < SegMaxScanPerTick; i++, scanned++)
+        for (; i + 1 < kf.Count && sent < emitBudget && scanned < SegMaxScanPerTick; i++, scanned++)
         {
             if (kf[i].Position > horizonScript)                 // not due yet
             {
@@ -1676,7 +2141,22 @@ public class SlopSync : PluginBase
             // previous segment left it (the segment BEFORE a gap is always sent
             // with the sentinel, so the engine settles rather than coasting).
             // A span whose end is already behind the media clock is history.
-            if (!kf.IsGap(i) && kf[i + 1].Position > axisPos)
+            // A GAP IS A HOLD, AND A HOLD IS A SEGMENT. Gap spans used to emit
+            // nothing at all, which left a literal hole in the chain: the span
+            // before a gap carries a sentinel so the engine settles, but nothing
+            // then covered the gap's DURATION, so the only thing deciding when
+            // motion resumed on the far side was the next segment's absolute
+            // anchor -- the one quantity that cannot be trusted to a millisecond.
+            // Measured on-device as a fixed gap=+110.4 ms, reproducing to within
+            // 15 us across separate runs, which is a script gap and not jitter.
+            // Emitting the hold makes the chain contiguous by construction.
+            if (kf.IsGap(i) && kf[i + 1].Position > axisPos && _segTokens >= 1.0)
+            {
+                _segTokens -= 1.0;
+                await SendHoldAsync(client, kf, i, axisPos, speed, segBaseClientUs, token);
+                sent++;
+            }
+            else if (!kf.IsGap(i) && kf[i + 1].Position > axisPos)
             {
                 if (_segTokens < 1.0)
                 {
@@ -1699,11 +2179,43 @@ public class SlopSync : PluginBase
                     break;
                 }
                 _segTokens -= 1.0;
-                await SendSegmentAsync(client, kf, i, axisPos, speed, token);
+                await SendSegmentAsync(client, kf, i, axisPos, speed, segBaseClientUs, token);
                 sent++;
             }
 
             _segEmittedSpan = i;
+        }
+
+        // ---- loop-seam hold (see SegTailHoldMs) -----------------------------
+        // Engages only past the LAST keyframe while the media clock is alive:
+        // exactly the window where the player's loop wrap leaves the chain
+        // unfed. Gated on SCHEDULED COVERAGE (_segChainEndUs), never the
+        // cursor: a trailing gap span is already one long scheduled hold, and
+        // stacking onto it is where the -686 ms seam bursts came from. The
+        // held value is whatever the chain actually ends on (a trailing gap
+        // holds ITS OWN start value, not the next move's).
+        if (sent == 0 && i + 1 >= kf.Count && _segFrozenMs < SegFrozenIdleMs
+            && kf.Count >= 2 && _segTokens >= 1.0)
+        {
+            uint cov = (_segHaveChainEnd
+                        && unchecked((long)(uint)(_segChainEndUs - segBaseClientUs)) > 0)
+                       ? _segChainEndUs : segBaseClientUs;
+            if (unchecked((long)(uint)(cov - segBaseClientUs)) < SegTailHoldRefreshUs)
+            {
+                _segTokens -= 1.0;
+                double tailRaw = kf.IsGap(kf.Count - 2) ? kf[kf.Count - 2].Value
+                                                        : kf[kf.Count - 1].Value;
+                double tail = TransformValue(_segAxis, tailRaw);
+                await client.SendSegmentSampleAsync(
+                    client.HubUsFromClientUs(cov),
+                    new SegmentSample(tail, SegTailHoldMs, 0.0, false), token);
+                ExtendChain(cov, SegTailHoldMs);
+                sent++;
+            }
+            else
+            {
+                outcome = "holding through the loop seam";
+            }
         }
 
         if (sent > 0)
@@ -1757,7 +2269,8 @@ public class SlopSync : PluginBase
         string mfpIdx; try { mfpIdx = ReadProperty<DeviceAxis, int>("Axis::Index", _segAxis).ToString(); } catch { mfpIdx = "?"; }
 
         string beat = $"play={(play ? 1 : 0)} pos={_segBeatPos:F2}s kf={_segBeatKfCount} " +
-                      $"span={_segEmittedSpan}/{mfpIdx} tok={_segTokens:F0} sent={delta}/s why={_segStop ?? "-"}";
+                      $"span={_segEmittedSpan}/{mfpIdx} tok={_segTokens:F0} sent={delta}/s " +
+                      $"drift={_segMapDriftUs}us maprst={_segMapResets} why={_segStop ?? "-"}";
 
         if (delta == 0 || infoTick) Logger.Info("segbeat {0}", beat);
         else Logger.Debug("segbeat {0}", beat);
@@ -1777,24 +2290,116 @@ public class SlopSync : PluginBase
     //     late) is planned from NOW to its unchanged end. Shortening the duration
     //     rather than shifting the endpoint keeps the machine in phase with the
     //     media instead of accumulating lag.
-    private Task SendSegmentAsync(HubClient client, KeyframeCollection kf, int i,
-                                  double axisPos, double speed, CancellationToken token)
+    // Script seconds -> hub microseconds through the current anchor. Unchecked
+    // and 32-bit by contract: the hub clock wraps, and every consumer of these
+    // stamps already does modular comparison.
+    private uint ClientUsForScript(double scriptSec, double speed)
+    {
+        long deltaUs = (long)Math.Round((scriptSec - _segMapScript) / speed * 1_000_000.0);
+        return unchecked(_segMapClientUs + (uint)deltaUs);
+    }
+
+    // Record the furthest scheduled end (CLIENT us). Every sender calls this;
+    // the seam hold and its overlap protection read it.
+    private void ExtendChain(uint dueClientUs, int durMs)
+    {
+        uint end = unchecked(dueClientUs + (uint)(durMs * 1000));
+        if (!_segHaveChainEnd || unchecked((long)(uint)(end - _segChainEndUs)) > 0)
+        {
+            _segChainEndUs = end;
+            _segHaveChainEnd = true;
+        }
+    }
+
+    // A gap span rendered as an explicit hold: stay where the previous span
+    // left us, for exactly the gap's duration, arriving at rest. Same anchoring
+    // rule as a moving span -- from the mapping, so it tiles with its neighbours.
+    private Task SendHoldAsync(HubClient client, KeyframeCollection kf, int i,
+                               double axisPos, double speed, uint baseClientUs,
+                               CancellationToken token)
     {
         double startScript = kf[i].Position;
         double endScript = kf[i + 1].Position;
 
-        double aheadSec = (startScript - axisPos) / speed;
-        double durSec = aheadSec > 0 ? (endScript - startScript) / speed
-                                     : (endScript - axisPos) / speed;
+        uint dueClientUs;
+        double durSec;
+        if (startScript > axisPos)
+        {
+            dueClientUs = ClientUsForScript(startScript, speed);
+            durSec = (endScript - startScript) / speed;
+        }
+        else
+        {
+            dueClientUs = baseClientUs;
+            durSec = (endScript - axisPos) / speed;
+        }
+
+        long offSigned = unchecked((long)(uint)(dueClientUs - baseClientUs));
+        if (offSigned < 0) offSigned = 0;
+        if (offSigned > (long)(SegLookaheadMs * 1000.0)) offSigned = (long)(SegLookaheadMs * 1000.0);
 
         int durMs = (int)Math.Clamp(Math.Round(durSec * 1000.0), SegMinDurationMs, 65535);
-        uint offUs = (uint)Math.Clamp(Math.Round(Math.Max(0, aheadSec) * 1_000_000.0), 0, SegLookaheadMs * 1000.0);
+        // Hold the value the gap STARTS at -- kf[i], not kf[i+1]: a gap's far
+        // keyframe is the next move's start, and moving to it early is the
+        // motion the gap exists to NOT have.
+        double target = TransformValue(_segAxis, kf[i].Value);
+
+        uint due = unchecked(baseClientUs + (uint)offSigned);
+        ExtendChain(due, durMs);
+        return client.SendSegmentSampleAsync(client.HubUsFromClientUs(due),
+                                             new SegmentSample(target, durMs, 0.0, false), token);
+    }
+
+    private Task SendSegmentAsync(HubClient client, KeyframeCollection kf, int i,
+                                  double axisPos, double speed, uint baseClientUs,
+                                  CancellationToken token)
+    {
+        double startScript = kf[i].Position;
+        double endScript = kf[i + 1].Position;
+
+        // ANCHOR FROM THE MAPPING, NOT FROM A FRESH SAMPLE. A span that has not
+        // started yet is placed at its own SCRIPT time, so span i's end
+        // (anchor + duration) lands exactly on span i+1's anchor -- consecutive
+        // spans tile by construction instead of by two clocks agreeing. A span
+        // we are already INSIDE (only right after a re-anchor) still starts now
+        // and keeps its unchanged endpoint, shortening rather than shifting.
+        uint dueClientUs;
+        double durSec;
+        if (startScript > axisPos)
+        {
+            dueClientUs = ClientUsForScript(startScript, speed);
+            durSec = (endScript - startScript) / speed;
+        }
+        else
+        {
+            dueClientUs = baseClientUs;
+            durSec = (endScript - axisPos) / speed;
+        }
+
+        // Never schedule behind the sample this batch was built from, and never
+        // past the lookahead the hub grants us.
+        long offSigned = unchecked((long)(uint)(dueClientUs - baseClientUs));
+        if (offSigned < 0) offSigned = 0;
+        if (offSigned > (long)(SegLookaheadMs * 1000.0)) offSigned = (long)(SegLookaheadMs * 1000.0);
+
+        int durMs = (int)Math.Clamp(Math.Round(durSec * 1000.0), SegMinDurationMs, 65535);
+        uint offUs = (uint)offSigned;
 
         double target = TransformValue(_segAxis, kf[i + 1].Value);
         var (endVel, sentinel) = ComputeEndVel(kf, i, speed);
+        if (_segSuppressHandoff > 0)
+        {
+            // First moving span after a mapping move: a declared tangent here
+            // is a claim spanning two clock bases. The sentinel hands
+            // continuity to the engine's own conservative estimate.
+            _segSuppressHandoff--;
+            endVel = 0.0; sentinel = true;
+        }
 
         Ui(() => LastTarget = target);
-        return client.SendSegmentSampleAsync(unchecked(client.HubNowUs() + offUs),
+        uint due = unchecked(baseClientUs + offUs);
+        ExtendChain(due, durMs);
+        return client.SendSegmentSampleAsync(client.HubUsFromClientUs(due),
                                              new SegmentSample(target, durMs, endVel, sentinel), token);
     }
 
@@ -1812,8 +2417,15 @@ public class SlopSync : PluginBase
     private (double endVel, bool sentinel) ComputeEndVel(KeyframeCollection kf, int i, double speed)
     {
         int j = i + 1;   // outgoing span index (span after the target keyframe kf[i+1])
-        if (j + 1 >= kf.Count) return (0, true);      // no kf[i+2] → end of script → SENTINEL
-        if (kf.IsGap(j)) return (0, true);             // outgoing gap → hold → SENTINEL
+        // End-of-script and gap-next are EXPLICIT REST, never the sentinel:
+        // sentinel means "engine, use your own estimate", and that estimate is
+        // a stream-velocity EMA left over from whatever motion preceded the
+        // sparse span -- the machine then arrives at a hold point still
+        // moving, coasts past, settle-brakes beyond it, and darts back on the
+        // next action (the non-deterministic grit, 2026-08-09). Before a hold
+        // the arrival velocity IS zero by definition; say so.
+        if (j + 1 >= kf.Count) return (0, false);     // no kf[i+2] -> end of script -> rest
+        if (kf.IsGap(j)) return (0, false);            // outgoing gap -> hold -> rest
 
         // value / SCRIPT-second → value / WALL-second, then through the same
         // affine transform the targets take. d/dv of Clamp01(def+(v-def)*scale)
@@ -2292,6 +2904,18 @@ public static class SlopWire
     public const string RoleLimitUserAccel = "limit.user.accel";
     public const string RoleWindowMin = "window.min";
     public const string RoleWindowMax = "window.max";
+    // Live carriage telemetry + rail extent, for the rail readout. All already
+    // on `motion` (0x0080) / the limits channel this session subscribes to, so
+    // locating them adds no SUBSCRIBE and no wire traffic.
+    public const string RoleTelemetryPosition = "telemetry.position";
+    public const string RoleTelemetryTarget = "telemetry.target";
+    public const string RoleTelemetryVelocity = "telemetry.velocity";
+    // geometry.max_travel is the CONFIGURED rail ceiling; geometry.measured_travel
+    // is what a real home actually found between the hard stops. The registry is
+    // explicit that measured is meaningless until a successful home, so zero is
+    // never treated as a measurement — see RailMaxMm.
+    public const string RoleGeometryMaxTravel = "geometry.max_travel";
+    public const string RoleGeometryMeasuredTravel = "geometry.measured_travel";
 
     // ---- Device channel ids (include/comms/SlopSyncCatalog.h) ---------------
     // NOTE the asymmetry, and it is deliberate: the PUBLISH channels below are
@@ -3234,6 +3858,12 @@ public sealed class HubClient
 
     public void SetClockOffset(long offset) => _clockOffset = (int)offset;
     public uint HubNowUs() => (uint)((ClientNowUs() + (uint)_clockOffset) & 0xFFFFFFFF);
+    // Convert a CLIENT stamp to hub time with the offset CURRENT AT CALL TIME.
+    // Anything that caches a schedule must cache it in client time and convert
+    // here: the ~10 s CLOCK resync re-bases hub time, so a cached hub stamp
+    // silently belongs to a previous frame.
+    public uint HubUsFromClientUs(uint clientUs) =>
+        (uint)((clientUs + (uint)_clockOffset) & 0xFFFFFFFF);
 
     private async Task SendFrameAsync(byte type, ushort channel, byte[] payload, ushort seq, CancellationToken token)
     {

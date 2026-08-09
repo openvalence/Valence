@@ -53,24 +53,47 @@ live device wire test) and must **not** be copied into the Plugins folder.
 
 ### The panel
 
-Laid out by what you actually touch mid-session:
+Laid out by what you actually touch mid-session. Everything set-once lives behind a
+toolbar button, so the panel costs about half the height it used to.
 
-* **LIVE** (always visible) — mode, granted rate, session, uptime, bundles/segments,
-  STATE count, NACK + rate-limited counts, clock offset/RTT, and the Segments-mode
-  divergence warning.
-* **MACHINE** — a **Home** button (also in the toolbar; sends INTENT `0x0103` op 1), a
-  compact **stroke window** min/max editor with Apply/Revert, and a read-only
-  **machine-driven limits** card (speed / accel / jerk).
-  * The window card shows the **device's** current window on its own line. The two boxes
-    are a *draft*: they are re-seeded from the machine after every echo, so a value the
-    machine refused can never sit in the box pretending to be real. Apply sends the
-    config INTENT and the status line reports the **applied, post-clamp** value the
-    device echoed back — or the NACK that refused it, correlated by `intent_seq`.
-  * Both cards gray out entirely on a hub that does not advertise the corresponding
-    field roles, and the limits read "not advertised" rather than guessing.
-* **Setup & discovery** (collapsed) — Address/Port/Discover, the discovered-device list,
+**Toolbar** — connect/disconnect (▶/■), **Home** (INTENT `0x0103` op 1), the **mode
+toggle**, **limits**, and **setup**. The mode button's icon *is* the mode: a **bezier
+curve** for Segments (the machine renders the sender's own continuous waveform per
+stroke) and a **staircase** for Samples (discrete position points at a fixed rate).
+It shows the mode that is *active*; pressing it switches and, if you are connected,
+**re-negotiates the session** —
+stream mode is settled in HELLO (different channels, different rates, and Segments
+declares a `curve_family`) and there is no frame that changes it on a live session. The
+machine stops receiving for the length of the reconnect and its deadman covers the gap,
+so it is safe, but it *is* a visible interruption mid-scene.
+
+* **LIVE** (always visible) — granted rate, session, uptime, bundles/segments, STATE
+  count, NACK + rate-limited counts, clock offset/RTT, and the Segments-mode divergence
+  warning.
+* **THE RAIL** — the machine's travel drawn to scale, with the stroke window on it and
+  three markers. The colors are the machine's own WebUI language:
+  * **blue (`reality`)** — the **measured carriage position**, plus the window band. This
+    is decoded STATE: where the machine actually is.
+  * **purple (`intent`)** — commanded and not-yet-confirmed. Two of these: the machine's
+    own **setpoint**, and a ghosted marker for **where MFP last asked the axis to be**
+    (mapped through the device's window exactly as the machine's range mapper does).
+    Overlaying the request on the result is the whole point — the gap between them is
+    what the planner and the clamps did to what you sent.
+  * **Drag the two purple handles** to set the window, or type in the two boxes under the
+    track. A drag moves a dashed *draft* outline only; the solid band stays where the
+    machine says it is until you press **Apply** — and **Apply/Revert only appear once the
+    draft actually differs**, so there is never a lit button with nothing to do. The status
+    line then reports the **applied, post-clamp** value the device echoed back, or the NACK
+    that refused it, correlated by `intent_seq`. Handles snap to whole millimetres, which
+    is the device's own declared step for these fields.
+  * The rail hides entirely on a hub that advertises no travel roles (drawing it would
+    mean inventing the scale every marker is measured against); the numeric window editor
+    appears on its own in that case.
+* **Limits** (toolbar) — read-only machine-driven speed / accel / jerk. Reads
+  "not advertised" on a hub that declares none of those roles, rather than guessing.
+* **Setup & discovery** (toolbar) — Address/Port/Discover, the discovered-device list,
   Axis/Rate/Mode/PIN, and the adopted catalog's channel count, role count and etag.
-  Everything here is locked while connected, which is why it is folded away.
+  Everything here except Mode is locked while connected.
 
 The machine **must be homed** before it will actually move. If it is not, the firmware
 accepts and counts your samples but drops them at the safety gate (correct behavior) —
@@ -193,10 +216,16 @@ All of this mirrors `tools/slopsync_probe.py` and `spec/SPEC.md`.
 
 ### Machine limits readback — found by field ROLE, not by channel number
 
-The plugin displays the machine's stroke window and its **input** (machine-driven) speed,
-accel and jerk ceilings. It finds them the RFC-006(b) way: by scanning the fetched
-catalog for the registry `field_roles` values `window.min`, `window.max`,
-`limit.input.speed`, `limit.input.accel`, `limit.input.jerk` — and *only* those. The
+The plugin displays the machine's stroke window, its **input** (machine-driven) speed,
+accel and jerk ceilings, and the rail's live position. It finds them the RFC-006(b) way:
+by scanning the fetched catalog for the registry `field_roles` values `window.min`,
+`window.max`, `limit.input.speed`, `limit.input.accel`, `limit.input.jerk`,
+`telemetry.position`, `telemetry.target`, `telemetry.velocity`, `geometry.max_travel`,
+`geometry.measured_travel` — and *only* those. The rail's roles cost **no extra
+subscription**: on this firmware position/target/velocity live on `motion` (`0x0080`),
+which already rides in HELLO. `geometry.measured_travel` is preferred over
+`geometry.max_travel` for the rail's length because it is what a real home measured, and
+a zero there is treated as "no home yet", never as a measurement. The
 channel number appears nowhere in the plugin source. On this firmware they resolve to
 `0x0081` fields at byte offsets 0/4/16/20/28, writable through `0x0101` keys 1/2/5/6/7;
 on a hub that declares those roles elsewhere the same code works unchanged, and on a hub
