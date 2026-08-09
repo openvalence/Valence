@@ -1,4 +1,4 @@
-# SlopSync
+# SlopSync - Pre-Release
 
 SlopSync is a hub-and-spoke **device-shadow protocol** for intimate hardware:
 one hub (a machine's main controller) holds the single canonical machine

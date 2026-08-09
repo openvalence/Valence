@@ -3618,3 +3618,156 @@ positive application-level acknowledgment that a transfer completed"
 *Add new entries below. Keep the shape: Status / Origin / Problem / Proposed
 change / Compatibility — and if it was found by a probe or a live failure,
 say exactly which, future-us will want the receipts.*
+
+## RFC-056 — Modular conformance: a hub is a set of duties, not a chip
+
+- **Status:** PROPOSED (operator-ordered 2026-08-01, SlopDrive-32 bench).
+- **Origin — a shipped split, with receipts.** SlopDrive-32, 2026-08-01. The
+  hub was moved off the motion MCU's radios: an ESP32-C5 terminates WiFi 6 /
+  5 GHz and the SlopSync WebSocket and relays whole frames to the ESP32-S3
+  over UART (§13.5 COBS), while the `slopsync::Hub` itself stays on the S3.
+  `slopsync_probe.py` reports **55 passed, 0 failed** through that split —
+  HELLO, WELCOME, catalog + blob transfer, every subscription, INTENT, STREAM,
+  segments, safety modes — with the S3's own WebSocket **compiled out
+  entirely**. From the client's side nothing changed; only the IP did.
+  The spec never said this was allowed. It never said it was forbidden either,
+  and that silence is the problem: the one implementation that tried it had to
+  reason from first principles about whether it was still conformant.
+  Two costs the split surfaced, both spec-shaped rather than code-shaped, are
+  in *Problem* below.
+- **Problem — three things the spec assumes without saying.**
+  1. **Conformance is written as if a hub were one processor.** §13.1's
+     profiles say "a hub MUST offer binding X", and every existing sentence
+     reads as though the thing offering the binding and the thing owning the
+     catalog, sessions and role layer are the same silicon. Nothing in the
+     wire format requires that. A hub is a set of DUTIES — golden-vector-exact
+     encoding, the §6.3 session lifecycle, the role/trust layer, the catalog
+     contract, the §13.1 declared properties — and where those duties execute
+     is an implementation concern the protocol has no stake in.
+  2. **The hardware-hub profile makes BLE GATT a MUST**, and that MUST is now
+     doing harm. Operator ruling, verbatim in intent: *BLE-only controllers
+     are kinda pointless — the ESP32 is cheap, and SlopSync is meant to be
+     high performance.* BLE's real jobs are discovery and provisioning; RFC-046
+     UDP discovery already covers the first on any WiFi-bearing hub, and a
+     remote a user actually streams to is on WiFi regardless. Forcing a BLE
+     stack onto every hardware hub costs real memory — **~64 KB of NimBLE plus
+     a 16,560 B port object on SlopDrive-32, on a device whose free heap was
+     36 KB** — to satisfy a checkbox its deployment never uses.
+  3. **The credential bootstrap has no stated owner once BLE is optional.**
+     §13.1 leans on BLE as "the infrastructure-free path… the future
+     WiFi-provisioning admin channel"; RFC-054 builds provisioning ON BLE. Drop
+     the BLE MUST and a WiFi-only hardware hub has no spec'd way to receive
+     credentials, which is a hole, not a simplification.
+- **Proposed change.**
+  1. **Add §13.0 "What conformance binds" (normative).** Conformance is
+     defined over the WIRE and the DUTIES, never over topology. Explicitly:
+     a conformant hub MAY be implemented across **multiple processors, cores,
+     or physical devices** in any arrangement, provided the composite satisfies
+     the golden vectors (`spec/vectors/`), the §6.3 session lifecycle, the role
+     and trust layers, and the §13.1 property declarations for whichever
+     bindings it exposes. A client MUST NOT be able to tell the difference, and
+     MUST NOT probe for it. Corollary, worth stating because it is the case
+     that motivated this: **an internal link between hub components is not a
+     SlopSync binding and has no conformance duty of its own** — it may be any
+     transport at all, including a §13.5 serial link carrying SlopSync frames,
+     and it is invisible to conformance.
+  2. **Demote BLE GATT from MUST to SHOULD** in the hardware-hub profile, and
+     say why: it is the infrastructure-free discovery/provisioning path and
+     remains RECOMMENDED wherever the silicon has a radio going spare. A
+     hardware hub that ships WiFi + UDP discovery + a provisioning path (3)
+     and no BLE is fully conformant.
+  3. **New client duty, replacing what the BLE MUST implicitly guaranteed:**
+     a client that can provision a HARDWARE hub **MUST** provide a way for the
+     user to enter WiFi credentials — a form, a QR scan, a BLE handoff
+     (RFC-054), a captive portal, an SD card, whatever suits it. The spec
+     mandates the CAPABILITY, never the mechanism. Without this, dropping the
+     BLE MUST would strand a factory-fresh hub with no route onto a network.
+  4. **Amend §13.1's "Clients SHOULD auto-upgrade BLE→WS"** to be conditional
+     on BLE existing, and add its sibling: where a hub exposes several
+     bindings, clients SHOULD prefer the highest-throughput one its properties
+     declare (§13.1 matrix), not merely WS-over-BLE.
+- **What this deliberately does NOT change.** No wire format, no frame type,
+  no registry id, no golden vector. The §13.1 property matrix and the
+  `min_transport_payload` = 242 floor are untouched. This is a conformance
+  and availability edit; a v1.0 implementation that already conforms still
+  conforms after it, with one exception noted below.
+- **Compatibility.** Strictly loosening, except for (3), which adds a client
+  duty. A hardware hub that shipped BLE remains conformant and RECOMMENDED. A
+  client written against the old text loses nothing — it may simply now meet
+  hubs with no BLE, which it already had to tolerate under the base profile.
+  **Migration note for SlopDrive-32:** BLE was removed there on 2026-08-01,
+  which was a conformance violation from that moment until this RFC lands.
+  Recorded so the gap is a decision in the log, not a discrepancy someone
+  finds later.
+- **Prior art.** The duty-vs-topology distinction is how USB (device *classes*,
+  not device *chips*), Modbus (RTU/TCP gateways are transparent), and MIDI
+  (a merger is not a device) all handle it. The industry answer to
+  "may I split the implementation?" is uniformly yes-if-indistinguishable.
+
+## RFC-057 — The two HTTP escapees are HUB duties, not chip duties
+
+- **Status:** PROPOSED (SlopDrive-32 bench, 2026-08-05).
+- **Depends on:** [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip),
+  whose duty-vs-topology principle this extends to the two HTTP escapees.
+  RFC-056 without this entry is incomplete: it frees the SlopSync bindings
+  from topology and leaves the two non-SlopSync duties silently pinned to
+  whichever chip happens to run the hub.
+- **Origin — a strip that the current text makes unimplementable.** SlopDrive-32
+  is removing WiFi from the ESP32-S3 entirely, so the S3 is hub, planner,
+  arbiter and current sensing with no radio and no IP stack; the ESP32-C5
+  already terminates WiFi and the WebSocket. That is exactly the split RFC-056
+  blesses. But SPEC §1 says: *"On the reference device exactly two HTTP duties
+  are permanently exempt, because SlopSync structurally cannot own them:
+  firmware/asset OTA … and the optional served-page token sideband."* Both
+  are HTTP duties, HTTP needs an IP stack, and after the strip the component
+  being flashed has neither.
+  The reading that "the hub" means "the chip running `slopsync::Hub`" makes
+  the reference device non-conformant the moment the radio leaves, for a
+  change that improves it. That reading cannot be right, but the text does
+  not currently say so.
+- **Why it matters beyond one device.** The OTA carve-out rests on an AUTH
+  argument, not a transport one: OTA rights are never derivable from a
+  SlopSync role, so OTA must not ride a SlopSync channel. That argument is
+  about WHERE AUTHORITY COMES FROM. It says nothing about which processor
+  holds the flash being written, and it must not be read as though it did --
+  otherwise the spec accidentally forbids the safest available arrangement,
+  in which the network-facing component authenticates the upload and the
+  motion component never exposes a network surface at all.
+- **Proposed change.**
+  1. **Restate the two escapees as duties of the COMPOSITE hub.** In §1 item 8,
+     replace "on the reference device" framing with: the two exempt duties
+     belong to the hub as a whole. A multi-component hub MAY serve either duty
+     from any component, and MAY carry the resulting bytes to their destination
+     component over the internal link. Per RFC-056 the internal link is not a
+     SlopSync binding and has no conformance duty, so this is invisible to
+     clients and to the golden vectors.
+  2. **State the OTA carve-out's actual scope, normatively.** OTA MUST NOT be
+     reachable through any SlopSync channel, verb, or role. It MUST have an
+     authority plane of its own. Neither requirement constrains which component
+     terminates the upload, nor how bytes reach the component that writes flash.
+  3. **Add the corollary for the token sideband.** `/uitoken`'s security
+     property is browser same-origin, so it MUST be served by whichever
+     component serves the page. On a split hub that is the network-facing
+     component by construction. A component that serves no page owes no
+     sideband -- which resolves, rather than creates, the awkward case.
+  4. **Non-normative note:** where a split hub's non-network component can be
+     reflashed only over the internal link, implementers SHOULD prove that path
+     before removing the last independent one. Recovery from a broken update
+     path is a bench act. This is guidance, not conformance.
+- **What this deliberately does NOT change.** No wire format, no frame type,
+  no registry id, no golden vector, no role or grant semantics. OTA stays off
+  SlopSync, and stays on its own token plane; the queue's standing ruling
+  ("HTTP has exactly TWO permanent escapees") is preserved verbatim in force.
+  This entry only says WHICH BOX the duty sits in, never whether it exists.
+- **Compatibility.** Strictly loosening. A single-chip hub serving both duties
+  itself is unaffected and remains the common case. No implementation that
+  conforms today stops conforming.
+  **Migration note for SlopDrive-32:** the S3's HTTP surface is being retired
+  in favor of the C5 serving OTA and piping the image over the existing
+  §13.5 serial link's bridge control channel -- link machinery, deliberately
+  NOT a SlopSync channel, so item 2 is satisfied by construction. Recorded so
+  the sequencing is a decision in the log rather than a discrepancy found later.
+- **Prior art.** Same shape as RFC-056's: a USB composite device's firmware
+  -update interface is a duty of the device, not of a particular silicon die;
+  a Modbus gateway authenticates on the side it faces. Nothing in the industry
+  ties "who authenticates the update" to "who holds the flash".
