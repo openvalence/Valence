@@ -32,6 +32,7 @@
 #include "slopsync/wire/messages/pair.hpp"
 #include "slopsync/wire/messages/probe_report.hpp"
 #include "slopsync/wire/messages/welcome.hpp"
+#include "slopsync/wire/raw/blob_done.hpp"
 #include "slopsync/wire/raw/probe.hpp"
 
 namespace slopsync {
@@ -404,6 +405,11 @@ private:
     void handleProbeFrame(std::span<const std::byte> payload);
     void pumpProbe(uint32_t nowMs);
     void sendBlobReq();
+    // §8.4/RFC-050: this client is the RECEIVER of the catalog blob, so it owes
+    // the hub one BLOB_DONE per concluded reassembly. Reports an outcome only;
+    // it never asks for a resend (that would be a fresh BLOB_REQ).
+    void sendBlobDone(BlobDoneStatus status);
+    void pumpBlobAbandon(uint32_t nowMs);                    // §8.4 frag_reassembly_timeout_ms
     void sendCatalogReady(std::span<const std::byte> etag);  // §8.4/RFC-015
     void pumpCatalogReady(uint32_t nowMs);                   // re-declare until STATE flows
     void checkLiveTransition();

@@ -567,6 +567,12 @@ class ScopeSession:
             if count and len(chunks) == count:
                 break
         if not count or len(chunks) != count:
+            # §8.4/RFC-050: say so on the wire before dying. sd-3qu was exactly
+            # this branch -- 132 of 133 chunks, and the only record of it was
+            # this tool's own traceback, so the hub never learned the transfer
+            # it believed it had finished had not arrived.
+            ss.send_frame(self.ws, ss.FRAME["BLOB_DONE"], 0,
+                          ss.build_blob_done(ss.BLOB_DONE_ABORTED))
             raise RuntimeError("catalog BLOB transfer incomplete (%d/%s chunks)"
                                % (len(chunks), count))
         blob = b"".join(chunks[i] for i in range(count))
@@ -574,6 +580,9 @@ class ScopeSession:
         digest = hashlib.sha256(blob).digest()[:8]
         etag = self.welcome.get(ss.K["catalog_etag"])
         verified = isinstance(etag, (bytes, bytearray)) and digest == bytes(etag)
+        ss.send_frame(self.ws, ss.FRAME["BLOB_DONE"], 0,
+                      ss.build_blob_done(ss.BLOB_DONE_VERIFIED_COMPLETE if verified
+                                         else ss.BLOB_DONE_HASH_MISMATCH))
         self.cat = CatalogView(blob)
         self.res = resolve(self.cat, getattr(self.args, "window", None))
         return verified, digest

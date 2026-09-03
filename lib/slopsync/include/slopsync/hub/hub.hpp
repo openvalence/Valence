@@ -45,6 +45,7 @@
 #include "slopsync/wire/messages/probe_report.hpp"
 #include "slopsync/wire/messages/publish.hpp"  // PublishMsg + PublishWish (via hello.hpp)
 #include "slopsync/wire/messages/welcome.hpp"
+#include "slopsync/wire/raw/blob_done.hpp"  // BLOB_DONE -- the receiver's completion report
 
 namespace slopsync {
 
@@ -190,6 +191,17 @@ public:
     virtual std::optional<BlobView> readBlob(uint8_t ns, uint8_t store_id, uint8_t slot) {
         (void)ns; (void)store_id; (void)slot;
         return std::nullopt;
+    }
+
+    // RFC-050: a receiver reported how a transfer ended (BLOB_DONE, §8.4).
+    // OBSERVABILITY ONLY -- nothing in the hub blocks on it, and a receiver is
+    // allowed never to send one, so this must never become a completion gate.
+    // Additive with a no-op default: every existing HubDelegate stays valid.
+    // The hub takes no action on a nonzero status by design; the spec puts
+    // retry policy on the SENDER, and a hub that re-pushed on its own would be
+    // answering a report with a request nobody made.
+    virtual void onBlobDone(uint32_t session_id, const BlobId& id, BlobDoneStatus status) {
+        (void)session_id; (void)id; (void)status;
     }
 };
 
@@ -638,6 +650,28 @@ private:
             uint16_t cursor = 0;      // selective repair: position within `chunks`
             uint16_t count = 0;       // selective repair: how many indices were named
             std::array<uint16_t, kBlobReqMaxChunks> chunks{};
+
+            // ---- RFC-050 §8.4 backpressure table, rows 2-4 ------------------
+            // `inFlight` counts chunks emitted since the last observable
+            // receiver progress. A hub cannot see per-chunk reassembly, so the
+            // ONE progress proxy it has is its own link going uncongested
+            // again: a drained egress queue is the receiver having taken what
+            // was in it. While congested the budget is therefore hard
+            // (limits::blob_chunks_in_flight), and it resets on recovery --
+            // which is exactly row 3's "resume from the held index".
+            //
+            // `holdSinceMs` is row 4's clock and it runs on LACK OF PROGRESS,
+            // not on the congestion flag: it arms the first tick this transfer
+            // emits nothing (budget exhausted OR the transport refused) and is
+            // cleared by any successful chunk. That is deliberately WIDER than
+            // reading the §10.3 signal alone -- a binding whose adapter never
+            // calls setCongestionLevel() would otherwise hold forever, and a
+            // transfer stalled that long has already been abandoned by the
+            // receiver's own frag_reassembly_timeout_ms. TRAPS T32's rule: a
+            // stall timer fires on lack of progress, never on "not yet acked".
+            uint8_t inFlight = 0;
+            bool holding = false;
+            uint32_t holdSinceMs = 0;
         };
         PendingBlob blob{};
     };
@@ -743,6 +777,15 @@ private:
     // peak. A first-connect that takes 60 ms instead of 15 ms is invisible; a
     // 60 KB heap spike on a device with ~70 KB free is not.
     static constexpr size_t kBlobChunksPerTick = 2;
+
+    // §8.4 row 4 / §10.3's sustained-congestion window: a transfer that has
+    // made no progress for this long is ABORTED with one NACK BUSY, never one
+    // per chunk. NOT a registry constant because §10.3 states it as prose and
+    // the registry has no entry for it; if one is ever allocated this reads it
+    // instead. It coincides with limits::frag_reassembly_timeout_ms on purpose
+    // -- past that point the receiver has already given up, so continuing to
+    // hold a cursor for it is bookkeeping for nobody.
+    static constexpr uint32_t kBlobHoldAbortMs = 5000;
 
     const Catalog32& _catalog;
     IClock& _clock;
@@ -889,7 +932,9 @@ private:
     // §8.4/§13.1: emit up to kBlobChunksPerTick chunks of this slot's pending
     // transfer, stopping early and keeping its position the moment the transport
     // refuses a write. Called once per slot per update().
-    void pumpBlobTransfer(Slot& slot);
+    void pumpBlobTransfer(Slot& slot, uint32_t nowMs);
+    // §8.4/RFC-050: a receiver's completion report. Raw plane, never NACKed.
+    void handleBlobDone(Slot& slot, std::span<const std::byte> payload);
     void pumpStatePacing(Slot& slot, uint32_t nowMs);
     PushRecord* findOrCreatePushRecord(Slot& slot, uint16_t channel_id);
     bool sendFrameTo(ITransport& t, FrameType type, uint16_t channel, std::span<const std::byte> payload,

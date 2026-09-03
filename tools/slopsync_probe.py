@@ -241,7 +241,8 @@ FRAME = {
     "ECHO": 0x0E, "EVENT": 0x0F, "NACK": 0x10, "GOODBYE": 0x11, "PROBE": 0x12,
     "PROBE_REPORT": 0x13, "PAIR_REQ": 0x14, "PAIR_GRANT": 0x15, "ACKMASK": 0x16,
     "BEACON": 0x17, "PUBLISH": 0x18, "CATALOG_READY": 0x19, "BLOB_REQ": 0x1A,
-    "BLOB_CHUNK": 0x1B, "AUTH": 0x1C, "HUB_SIG": 0x1D, "ESTOP": 0xE5,
+    "BLOB_CHUNK": 0x1B, "AUTH": 0x1C, "HUB_SIG": 0x1D, "BLOB_DONE": 0x20,
+    "ESTOP": 0xE5,
 }
 FRAME_NAME = {v: k for k, v in FRAME.items()}
 
@@ -300,6 +301,23 @@ def decode_blob_chunk(payload):
         "chunk_index": idx, "chunk_count": count, "total_bytes": total,
         "bytes": payload[BLOB_CHUNK_HEADER_BYTES:],
     }
+
+
+# BLOB_DONE status (§8.4 / RFC-050). Sole home for these numbers is the
+# registry's frame_types 0x20 note; there is no vocabulary table to generate
+# from, so they are named here against it rather than typed at call sites.
+BLOB_DONE_VERIFIED_COMPLETE = 0
+BLOB_DONE_HASH_MISMATCH = 1
+BLOB_DONE_ABORTED = 2
+
+
+def build_blob_done(status, ns=0, store_id=0, slot=0, generation=0):
+    """BLOB_DONE raw payload (7 bytes), §8.4/RFC-050. The first 6 bytes are
+    BLOB_CHUNK's identity prefix VERBATIM, so the two frames describe one
+    vocabulary: ns u8 | store_id u8 | slot u8 | reserved u8 | generation u16 |
+    status u8. Sent by the RECEIVER of a transfer; reports an outcome and never
+    asks for a resend (that would be a fresh BLOB_REQ)."""
+    return struct.pack("<BBBBHB", ns, store_id, slot, 0, generation, status)
 
 
 # CBOR map integer keys — global key space (registry `cbor_keys`).

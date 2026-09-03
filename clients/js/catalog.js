@@ -116,6 +116,34 @@ export function parseBlobChunk(payload) {
   };
 }
 
+/**
+ * BLOB_DONE status (§8.4 / RFC-050). Sole home for these numbers is the
+ * registry's frame_types 0x20 note; there is no vocabulary table to generate
+ * from, so they are named here against it rather than typed at call sites.
+ */
+export const BLOB_DONE_STATUS = { VERIFIED_COMPLETE: 0, HASH_MISMATCH: 1, ABORTED: 2 };
+
+/**
+ * Build a BLOB_DONE raw payload (7 bytes). The first 6 are BLOB_CHUNK's
+ * identity prefix VERBATIM, so the two frames describe one vocabulary:
+ * ns u8 | store_id u8 | slot u8 | reserved u8 | generation u16 | status u8.
+ * Mirrors encodeBlobDone() in wire/raw/blob_done.hpp.
+ * @param {number} status one of BLOB_DONE_STATUS
+ * @param {{ns?:number,storeId?:number,slot?:number,generation?:number}} [id]
+ * @returns {Uint8Array}
+ */
+export function buildBlobDone(status, id = {}) {
+  const out = new Uint8Array(7);
+  const dv = new DataView(out.buffer);
+  dv.setUint8(0, id.ns || 0);
+  dv.setUint8(1, id.storeId || 0);
+  dv.setUint8(2, id.slot || 0);
+  dv.setUint8(3, 0); // reserved
+  dv.setUint16(4, id.generation || 0, true);
+  dv.setUint8(6, status);
+  return out;
+}
+
 /** Do two chunk identities name the same blob? `generation` is deliberately excluded. */
 export function sameBlobTarget(a, b) {
   return a.ns === b.ns && a.storeId === b.storeId && a.slot === b.slot;

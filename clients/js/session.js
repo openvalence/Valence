@@ -83,7 +83,8 @@ import {
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
 } from './frames.js';
 import {
-  buildCatalogRequest, buildCatalogRepair, BlobReassembler, parseBlobChunk,
+  buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
+  BlobReassembler, parseBlobChunk,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody, schemaByKey,
   optionAccessFor, canUseOption,
 } from './catalog.js';
@@ -425,9 +426,24 @@ export function createSession(opts = {}) {
     readyAttempts++;
   }
 
+  /**
+   * §8.4/RFC-050: this client is the RECEIVER of the catalog blob, so it owes
+   * the hub one BLOB_DONE per concluded reassembly. Best-effort and idempotent
+   * by contract -- nothing upstream blocks on it, so a failed send needs no
+   * retry timer. It reports an outcome and never asks for a resend; wanting one
+   * means a fresh BLOB_REQ, which is what requestCatalog() below already does.
+   */
+  function sendBlobDone(status) {
+    try { sendFrame(FRAME.BLOB_DONE, 0, buildBlobDone(status)); } catch (e) { /* gone */ }
+  }
+
   function pumpBlobRepair(nowMs) {
     if (!blob.active || blob.complete()) return;
-    if (blob.timedOut(nowMs)) { requestCatalog(); return; } // abandon → restart from scratch
+    if (blob.timedOut(nowMs)) {
+      sendBlobDone(BLOB_DONE_STATUS.ABORTED); // say so before starting over (sd-3qu)
+      requestCatalog();
+      return; // abandon → restart from scratch
+    }
     if (!blob.gapElapsed(nowMs)) return;
     const missing = blob.missingIndices();
     if (missing.length) {
@@ -495,6 +511,11 @@ export function createSession(opts = {}) {
 
     const digest = catalogEtag(bytes, LIMITS.etag_bytes);
     const verified = !!state.catalogEtag && bytesEqual(digest, state.catalogEtag);
+    // BEFORE adoption, and deliberately: BLOB_DONE closes the TRANSFER ("what
+    // arrived, and did it verify"), CATALOG_READY declares ADOPTION. A decode
+    // failure below returns without a READY, so reporting the transfer here is
+    // also the only way that case is ever reported at all.
+    sendBlobDone(verified ? BLOB_DONE_STATUS.VERIFIED_COMPLETE : BLOB_DONE_STATUS.HASH_MISMATCH);
     try {
       adoptCatalog(bytes, { cached: false, verified, etag: verified ? state.catalogEtag : digest });
     } catch (e) {

@@ -241,7 +241,7 @@ inline void Hub::update(uint32_t nowUs) {
             // tick's link capacity — and it stops the instant the transport
             // pushes back. NOT gated on RFC-015 readiness: the catalog transfer
             // is what a session does BEFORE it can be ready.
-            pumpBlobTransfer(slot);
+            pumpBlobTransfer(slot, nowMs);
             // Liveness (§6.5, M4 minimal): reply is event-driven (PING->PONG,
             // handlePing); the hub does not itself originate PING.
         }
@@ -341,6 +341,11 @@ inline void Hub::dispatchFrame(Slot& slot, const FrameHeader& h, std::span<const
             break;
         case FrameType::BLOB_REQ:
             if (slot.session.occupied()) handleBlobReq(slot, payload);
+            break;
+        case FrameType::BLOB_DONE:
+            // §8.4/RFC-050: raw plane, idempotent, never NACKed -- same
+            // standing as CATALOG_READY above.
+            if (slot.session.occupied()) handleBlobDone(slot, payload);
             break;
         case FrameType::PAIR_REQ:
             if (slot.session.occupied()) handlePairReq(slot, payload, nowMs);
@@ -2135,7 +2140,7 @@ inline void Hub::handleBlobReq(Slot& slot, std::span<const std::byte> payload) {
 
 // §8.4/§13.1: the drain half of a resumable transfer. Bounded work, and the
 // only thing that pauses it is the transport saying "not now".
-inline void Hub::pumpBlobTransfer(Slot& slot) {
+inline void Hub::pumpBlobTransfer(Slot& slot, uint32_t nowMs) {
     Slot::PendingBlob& pb = slot.blob;
     if (!pb.active) return;
     if (slot.transport == nullptr || !slot.session.occupied()) {
@@ -2176,9 +2181,19 @@ inline void Hub::pumpBlobTransfer(Slot& slot) {
         return;
     }
 
+    // §8.4 row 3: the link going clear IS the resume point, and the only
+    // reassembly-progress proxy a hub has (see PendingBlob::inFlight).
+    if (slot.congestionLevel == 0) pb.inFlight = 0;
+
     const size_t cc = chunkCount(encoded.size());
     std::array<std::byte, kBlobChunkHeaderBytes + limits::catalog_chunk_payload> cbuf{};
+    bool sentAny = false;
     for (size_t budget = 0; budget < kBlobChunksPerTick; ++budget) {
+        // §8.4 row 2: congested AND at the advertised in-flight budget means
+        // HOLD at the current index. Not a drop, not an error, and not a
+        // smaller per-tick budget: the cursor simply does not move, so the
+        // exact chunk this stopped on is the first thing tried next tick.
+        if (slot.congestionLevel != 0 && pb.inFlight >= limits::blob_chunks_in_flight) break;
         uint16_t idx = 0;
         if (pb.full) {
             if (size_t(pb.nextIndex) >= cc) break;  // whole blob delivered
@@ -2211,9 +2226,13 @@ inline void Hub::pumpBlobTransfer(Slot& slot) {
             // this hub retries). The cursor does not advance, so this exact chunk
             // is the first thing tried next tick. No NACK, no teardown, no
             // warning-level anything: a full egress queue is the transport doing
-            // its job, and it is the ONLY thing that pauses a transfer.
-            return;
+            // its job. Two things pause a transfer and only two: this, and the
+            // §8.4 row-2 in-flight budget above. Both feed the same row-4 stall
+            // clock below, which is the ONLY path that ends a transfer badly.
+            break;
         }
+        sentAny = true;
+        if (pb.inFlight < 0xFF) ++pb.inFlight;
         if (pb.full) {
             ++pb.nextIndex;
         } else {
@@ -2225,7 +2244,38 @@ inline void Hub::pumpBlobTransfer(Slot& slot) {
     // transfer that exactly fills its last budget retires now rather than
     // costing an extra tick's resolve to discover it has nothing left to do.
     const bool done = pb.full ? (size_t(pb.nextIndex) >= cc) : (pb.cursor >= pb.count);
-    if (done) pb.active = false;
+    if (done) {
+        pb.active = false;
+        return;
+    }
+
+    // §8.4 row 4: the stall clock. Armed on the first tick that moved nothing,
+    // disarmed by any progress at all, and it aborts ONCE for the transfer --
+    // never once per chunk (§8.4's "one NACK answers one BLOB_REQ").
+    if (sentAny) {
+        pb.holding = false;
+        return;
+    }
+    if (!pb.holding) {
+        pb.holding = true;
+        pb.holdSinceMs = nowMs;
+        return;
+    }
+    if (timeReached(nowMs, pb.holdSinceMs + kBlobHoldAbortMs)) {
+        NackMsg n;
+        n.code = NackCode::BUSY;
+        n.has_retry_after_ms = true;
+        n.retry_after_ms = limits::busy_retry_after_default_ms;
+        refuse(n);
+    }
+}
+
+// §8.4/RFC-050: BLOB_DONE. The hub's whole duty is to OBSERVE -- a completion
+// report is not a request, so there is nothing here to answer, gate or retry.
+inline void Hub::handleBlobDone(Slot& slot, std::span<const std::byte> payload) {
+    auto m = decodeBlobDone(payload);
+    if (!m) return;  // wrong length: dropped, per the raw-plane rule
+    _delegate.onBlobDone(slot.session.session_id, m->id, m->status);
 }
 
 // ---- STATE pacing (§9.1) ----------------------------------------------------

@@ -198,6 +198,7 @@ inline void Client::update(uint32_t nowUs) {
     }
 
     pumpEstopRepeat(nowMs);
+    pumpBlobAbandon(nowMs);
     pumpCatalogReady(nowMs);
     pumpProbe(nowMs);
     pumpHubSigTimeout(nowMs);
@@ -552,12 +553,49 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
         // of the received bytes), which is the honest §8.5 "degraded
         // operation" statement and is what lets the hub flag the session
         // rather than be misled.
+        // §8.4/RFC-050, BEFORE the readiness declaration and deliberately: the
+        // two frames answer different questions. BLOB_DONE closes the TRANSFER
+        // ("what arrived, and did it verify"); CATALOG_READY declares ADOPTION
+        // ("which catalog I now operate against"). A hash mismatch makes them
+        // disagree on purpose -- status 1 plus a READY on the assembled digest
+        // is the honest §8.5 degraded-operation statement, and collapsing them
+        // into one frame is what RFC-050 rejected.
+        sendBlobDone(match ? BlobDoneStatus::VerifiedComplete : BlobDoneStatus::HashMismatch);
+
         std::array<std::byte, limits::etag_bytes> declared{};
         for (size_t i = 0; i < declared.size(); ++i) declared[i] = match ? _hubEtag[i] : digest[i];
         sendCatalogReady(std::span<const std::byte>(declared));
 
         checkLiveTransition();
     }
+}
+
+// ---- BLOB_DONE (§8.4 / RFC-050) ---------------------------------------------
+
+inline void Client::sendBlobDone(BlobDoneStatus status) {
+    BlobDoneMsg m{};
+    m.id = _chunkReassembler.target();  // the catalog: ns 0, no store/slot/generation
+    m.status = status;
+    std::array<std::byte, kBlobDoneBytes> buf{};
+    size_t n = encodeBlobDone(m, std::span<std::byte>(buf));
+    if (n == 0) return;
+    // Best-effort by contract: the frame is idempotent and nothing upstream
+    // blocks on it, so a refused write is not worth a retry timer. §8.4 says as
+    // much -- an absent BLOB_DONE degrades observability, never correctness.
+    sendFrame(FrameType::BLOB_DONE, 0, std::span<const std::byte>(buf.data(), n));
+}
+
+// §8.4: frag_reassembly_timeout_ms is the receiver's total-abandon threshold.
+// Reporting it is the whole job here -- restarting the transfer is NOT added
+// with it, because a retry policy the hub cannot see is how one lost chunk
+// becomes an unbounded request loop. The hub's own catalog_ready_timeout_ms
+// still ends a session that never adopts a catalog, exactly as before.
+inline void Client::pumpBlobAbandon(uint32_t nowMs) {
+    if (!_chunkReassembler.active() || _chunkReassembler.complete()) return;
+    if (!_chunkReassembler.timedOut(nowMs)) return;
+    sendBlobDone(BlobDoneStatus::Aborted);
+    _chunkReassembler = ChunkReassembler<64>{};
+    _catalogChunkCount = 0;
 }
 
 // ---- CATALOG_READY (§8.4 / RFC-015) -----------------------------------------
