@@ -3699,6 +3699,14 @@ say exactly which, future-us will want the receipts.*
   which was a conformance violation from that moment until this RFC lands.
   Recorded so the gap is a decision in the log, not a discrepancy someone
   finds later.
+- **Second receipt (2026-09-02).** SlopDrive-32 ratified a THREE-component
+  hub: the ESP32-C5 terminates the network, the ESP32-S3 runs `slopsync::Hub`
+  and owns policy, and an RP2350 runs the motion planner and pulse generation
+  over an internal SPI link, reporting its rendered position as the machine's
+  position truth (SlopDrive-32 `architecture.md` §2, dev board sd-4k1). The
+  motion processor is now a separate component too. Item 1's corollary covers
+  it unchanged: SPI is an internal link, not a binding, and has no
+  conformance duty. Nothing in the proposal changes; the case for it does.
 - **Prior art.** The duty-vs-topology distinction is how USB (device *classes*,
   not device *chips*), Modbus (RTU/TCP gateways are transparent), and MIDI
   (a merger is not a device) all handle it. The industry answer to
@@ -3767,7 +3775,175 @@ say exactly which, future-us will want the receipts.*
   §13.5 serial link's bridge control channel -- link machinery, deliberately
   NOT a SlopSync channel, so item 2 is satisfied by construction. Recorded so
   the sequencing is a decision in the log rather than a discrepancy found later.
+- **Second instance of item 4 (2026-09-02).** The RP2350 motion component of
+  SlopDrive-32's three-component hub is reflashable only over USB today and
+  gains a link-fed A/B update path (dev board sd-4k1.3), sequenced BEFORE the
+  motion port that would make it the most-edited firmware in the product.
+  Item 4's guidance ("prove the path before removing the last independent
+  one") is being followed as written; recorded here so the second case is a
+  decision in the log.
 - **Prior art.** Same shape as RFC-056's: a USB composite device's firmware
   -update interface is a duty of the device, not of a particular silicon die;
   a Modbus gateway authenticates on the side it faces. Nothing in the industry
   ties "who authenticates the update" to "who holds the flash".
+
+## RFC-058 -- End-velocity `unspecified` semantics and the rest-before-hold rule
+
+- **Status:** DRAFT (SlopDrive-32 bench, 2026-09-02). Ruling pending (rfc-zj1).
+- **Receipt 2026-09-03 (SlopDrive-32 fw 2.5.2, after the RP-owns-motion port
+  and the slopmotion refactor of the same day).** What the reference does
+  now, item by item: (1) the sentinel value is unchanged and still lives only
+  in the reference catalog comment and the MFP plugin's hand copy; the
+  registry limit is still the ask. (2) NOT implemented as written: the
+  reference resolves `unspecified` to a stream-velocity estimate whenever
+  the stream reads dense (`slopmotion.hpp`, `commitWaveform`, the
+  `has_end_vel` fallback), with or without a scheduled successor, and to
+  rest only on a sparse stream. The field does not hit it because the
+  reference client sends explicit rest before every hold and gap (MFP
+  v0.4.6), which is exactly the client-side rule this RFC exists to make
+  unnecessary. The machine now holds a queue of scheduled plans, so "a
+  successor is scheduled" is a real, testable state; the fix is small and is
+  tracked on the machine board (sd-4k1.20). (3) Implemented, with one
+  divergence from the proposed text: the dwell rule reports its own anomaly
+  kind (`dwell_zeroed`, kind 10) rather than reusing `HandoffBounded`,
+  because the census was unreadable with the two conflated; the proposal
+  text should follow the code here. (4) Unchanged. Compatibility note
+  stands: no bytes change.
+- **Origin -- two measured drive losses, one spec silence.** SlopDrive-32
+  fw 2.4.105 (dev board sd-ar3) and fw 2.4.108-112 (sd-d77), both on the
+  `segments`-kind channel, both root-caused with the encoder validator and
+  the engine's per-commit census:
+  1. A client re-sent its HOLD point at ~1 Hz during script lulls, each
+     re-send carrying a stale spline tangent as the end velocity (six distinct
+     values, |vf| up to 3.409 norm/s = 916 mm/s, each repeated ~22x). The hub
+     honored them: the plan arrived at the hold point at whip speed, flew
+     through, was re-commanded, and oscillated at ~1 Hz until the drive lost
+     quadrature counts above its follow rate. **54 mm of position gone.**
+  2. A client sent the "no end velocity" sentinel on the last segment before
+     a gap or at end of script. The reference hub resolved the sentinel from
+     its own stream-velocity estimate, stale from the preceding motion
+     (settles logged at -1.343 norm/s on spans that should arrive at rest),
+     coasted past the hold, settle-braked beyond it, and the next action's
+     catch-up darted back at 300-800 mm/s inside gentle content.
+  Both were fixed on the machine (a dwell rule; explicit-rest resolution) AND
+  on the client (MFP plugin v0.4.6, "gap-next and end-of-script handoffs are
+  explicit rest, never the sentinel"). The client half is the tell: a second
+  client would have to rediscover both rules, which is precisely what
+  [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client)'s
+  write-once rule exists to prevent.
+- **Problem -- three things §9.6 assumes without saying.**
+  1. **The sentinel is not in the spec.** §9.6 names the segment as
+     `{target, duration, end_velocity}` and never says end velocity can be
+     absent. The reference encodes "unspecified" as the i16 field's minimum
+     value (`INT16_MIN`, because 0 is a real slope: a reversal ends AT rest),
+     documented only in the reference catalog's source comment. A second
+     hub or client has no authoritative source for the value or its meaning.
+  2. **No rule for `unspecified` with no scheduled successor.** The handoff
+     guard (§9.6, H11) acts only when the successor is in hand. When it is
+     not, the hub must still pick a boundary velocity, and the reference
+     picked an estimate from prior motion. That is wrong by construction:
+     arrival before a hold, a gap, or the end of content is rest by
+     definition, and no estimate of past motion can know that.
+  3. **A re-commanded identical target is a hold, and the spec does not say
+     so.** Honoring a nonzero declared end velocity at a hold point is never
+     what the author meant; it is a tangent the client failed to zero.
+- **Proposed change.**
+  1. **Name the sentinel in the registry** as a packed-layout convention
+     (§5.4): a signed integer layout field carrying an end velocity reserves
+     its type's minimum value as `unspecified`; zero is a real slope. Pin it
+     as `limits.segment_end_vel_unspecified = -32768` (i16) so codegen emits
+     it for every consumer language and the hand copy in the MFP plugin
+     (`SegmentEndVelSentinel`) becomes generated (T20 class).
+  2. **Normative hub resolution of `unspecified`.** With a scheduled
+     successor the hub MAY derive the boundary velocity from the adjoining
+     chords (the existing guard's lookahead). **Without a scheduled successor
+     the hub MUST resolve `unspecified` to rest (0)**, never to an estimate
+     derived from prior motion. Rationale is measured: item 2 above.
+  3. **Dwell rule (SHOULD).** A segment whose target lies within
+     `limits.segment_dwell_span` (registry, normalized units; reference
+     0.02) of the previous accepted segment's target on the same source is a
+     hold. A declared nonzero end velocity on it SHOULD be bounded to zero
+     and surfaced exactly as a handoff bound is today (the existing
+     `HandoffBounded` anomaly kind, no new kind). Tested against the
+     TARGET, never position: each whip displaces position, so a position
+     test never re-arms.
+  4. **State the client's freedom, not a duty.** A client MAY emit explicit
+     hold segments across gaps (the reference client does) and MAY declare
+     rest explicitly; neither is required for good motion. A gap with no
+     segment settles the machine, as §6.6 already says.
+- **Compatibility.** Additive. The sentinel VALUE is what already ships, so
+  no bytes change; the reference hub already implements items 2 and 3
+  (fw 2.4.105+, `slopmotion` dwell rule). One registry table gains two
+  limits. Verify whether any golden vector encodes a 0x2101-shaped
+  end-velocity field before claiming "no vector changes".
+- **Test of the doctrine (RFC-008).** Would every conforming client have to
+  write "send explicit rest before holds"? Yes, so it belongs on the machine.
+  Does resolving `unspecified` depend on which client sent it? No. Passes.
+
+## RFC-059 -- Hub-advertised scheduling latency
+
+- **Status:** DRAFT (SlopDrive-32 bench, 2026-09-02). Ruling pending (rfc-r4v).
+- **Receipt 2026-09-03.** The origin's numbers are gone and the mechanism
+  is still right. The reference deleted its sample-synthesis holdback (the
+  two-knot, 120 ms plus 40 ms pipeline) on 2026-09-03, and after the
+  RP-owns-motion port the hub forwards every `segments`-kind sample to the
+  motion processor on arrival with its anchor; the processor parks up to
+  eight scheduled plans and promotes each at its anchor instant. So for
+  `segments`-kind the reference's execution delay is now the composite's
+  hop latency (sub-millisecond over the internal link) and no longer a
+  planner constant; for `samples`-kind it is replan-at-arrival with no
+  holdback. That is the strongest argument FOR this RFC, not against it:
+  the value moved from 160 ms to under 1 ms across one firmware release,
+  and a client that had learned 160 ms from a human would now lead its
+  media by a sixth of a second. `schedule_latency_us` on the grant is the
+  only place a client can learn the current number. Item 4 (a `plan.latency`
+  role) stays optional.
+- **Origin -- a hub constant living in a client's settings.** SlopDrive-32
+  fw 2.4.120-2.4.122 (dev board sd-2fb, sd-beq, sd-2vp). To survive knot
+  jitter on bare-point (`samples`-kind) streams the reference engine now
+  renders a fixed two knots (~120 ms) plus a 40 ms jitter margin BEHIND the
+  stream head. The commit messages say it plainly: *"pipeline latency is a
+  fixed two knots (120 ms), calibratable in MFP"* and *"constant, absorbed
+  once by MFP's sync offset."* A media player aligning video to motion has to
+  know that number, and today it learns it from a human who read the
+  firmware. That is interop by folklore, the exact shape
+  [RFC-014](#rfc-014--timed-segment-scheduling-contract) already had to fix
+  once for `max_future_schedule_ms`.
+  A second receipt: SlopDrive-32 ratified a three-component hub on
+  2026-09-02 (network C5, hub-and-policy S3, motion planner RP2350 over an
+  internal SPI link). The composite's execution delay is the sum of hops only
+  the hub can see; a client cannot measure it and must not guess it.
+- **Problem.** §5.4 tells a client how far AHEAD it may schedule
+  (`max_future_schedule_ms`) and says nothing about how far BEHIND the
+  schedule the hub will actually execute. For `segments`-kind streams that
+  delay is the hub's pacing and planning depth; for `samples`-kind streams it
+  is a synthesis holdback the client cannot see at all. Either way a client
+  that lip-syncs media to motion is guessing, and a guess that is right for
+  one firmware version is wrong for the next.
+- **Proposed change.**
+  1. **`schedule_latency_us` (new CBOR key) on `granted_publishes` entry
+     maps**, alongside `burst` (42) and `curve_family` (45): the hub's
+     declared fixed delay between a sample's scheduled time (segments:
+     `t_base + t_off`; samples: the sample's own stamp) and the start of its
+     execution, inclusive of every hub-internal hop. Per entry, because it
+     differs by mode.
+  2. **It is a commitment, not an estimate.** The hub keeps the declared
+     value constant for the life of the grant; a change is an unsolicited
+     GRANT (§10.2), never a silent drift. Absent or zero means unspecified,
+     which is today's behavior.
+  3. **Clients SHOULD lead their media by the declared value and MUST NOT
+     hardcode a per-hub constant.** A client MAY still expose a user trim on
+     top; the declared value is the zero of that trim.
+  4. **Optional telemetry twin:** a `plan.latency` field role
+     ([RFC-035](#rfc-035--a-role-vocabulary-for-motion-plan-telemetry)
+     family) so the live value is visible on a STATE channel for diagnostics
+     and generic renderers. Not required for conformance.
+- **What this deliberately does NOT propose.** A client WISH for lower
+  latency. The delay is a property of the hub's planner robustness against
+  the jitter it measures, not a preference; letting a client bid it down is
+  letting the client re-litigate feasibility, which §9.6 forbids. A wish key
+  can come later with evidence.
+- **Compatibility.** Purely additive: one optional CBOR key on an entry map
+  (§4.3 requires decoders to ignore unknown keys) and one optional role. No
+  packed layout, frame type, or vector changes. The reference hub can
+  populate it today from `slopmotion` constants it already owns.
