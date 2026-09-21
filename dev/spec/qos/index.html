@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 10: priorities and the never-shed set, the grant model, per-binding congestion signals, the normative shedding table, and ingress limits.">
+        <meta name="description" content="Valence clause 10: priorities and the never-shed set, the grant model, per-binding congestion signals, the normative shedding table, and ingress limits.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/qos/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/qos/">
       
       
         <link rel="prev" href="../channels/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>QoS and congestion - SlopSync</title>
+        <title>QoS and congestion - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2937,11 +2937,11 @@ against a real subscription mix, showing which row fires and why a
 </blockquote>
 <p>A hub MUST NOT <strong>delay-and-burst</strong>. A stale motion sample is worse than a missing one: timestamps make dropped samples recoverable by interpolation, whereas stale delivery is a lie.</p>
 <p><strong>The segment exception (rows 4–6) is the one place that rationale does not hold.</strong> "Dropped samples are recoverable by interpolation" is true for dense position samples and <strong>false</strong> for timed segments — a shed segment is a permanently lost command. Segment-class channels therefore shed <strong>whole-source or not at all</strong>; they are never decimated. A hub determines segment class from the catalog's <code>stream_kind</code> (<a href="../channels/#s9-2">§9.2</a>), never from a heuristic.</p>
-<p><strong>Slow-consumer eviction.</strong> If the <em>never-shed</em> queue itself cannot drain for <code>never_shed_stall_eviction_ms</code> (2 s), the subscriber is broken: the hub sends GOODBYE <code>SESSION_EVICTED</code> and closes, running the <a href="../session/#s6-9">§6.9</a> teardown. One incurable client MUST NOT be allowed to consume hub RAM or airtime indefinitely.</p>
-<p><strong>ESTOP is exempt from even that queue.</strong> It is written ahead of every queue at the binding layer (<a href="../safety/#s11-2">§11.2</a>) and is 12 bytes — a link that cannot carry 12 bytes is a dead link, and evicting a dead link is not a safety event, because the latch (<a href="../safety/#s11-2">§11.2</a>) does not depend on any one subscriber observing it.</p>
+<p><strong>Slow-consumer stall: park, not kill (RFC-051).</strong> If the <em>never-shed</em> queue itself cannot drain for <code>never_shed_stall_eviction_ms</code> (2 s), the link is broken, not necessarily the session: the hub closes and detaches the transport and marks the session <code>STALE</code> — the identical <a href="../session/#s6-6">§6.6</a> staleness transition a confirmed transport-loss report already produces, not the <a href="../session/#s6-9">§6.9</a> teardown. A vanished client's link reads as <em>congested</em> before it reads as <em>gone</em>, so without this the never-shed clock always won the race against transport-loss detection and destroyed a session that a reconnect would otherwise have resumed. The hub's own self-protection is unchanged — the wedged link is still closed on this same 2 s clock — and a parked session yields only under <a href="../session/#s6-6">§6.6</a>'s slot-pressure reclaim, same as any other stale one. <code>SESSION_EVICTED</code> no longer fires from this path (<a href="../security/#s12-7">§12.7</a>).</p>
+<p><strong>ESTOP is exempt from even that queue.</strong> It is written ahead of every queue at the binding layer (<a href="../safety/#s11-2">§11.2</a>) and is 12 bytes — a link that cannot carry 12 bytes is a dead link, and parking a dead link is not a safety event, because the latch (<a href="../safety/#s11-2">§11.2</a>) does not depend on any one subscriber observing it.</p>
 <h2 id="s10-5">10.5 Ingress rate limiting<a class="headerlink" href="#s10-5" title="Link to this section">#</a></h2>
 <p>The hub bounds client→hub traffic. Intents are limited per <a href="../channels/#s9-3">§9.3</a>. STREAM input is limited per grant.</p>
-<p><strong>STREAM-ingress enforcement is on samples per second, not bundles per second</strong> (a bundle batches up to 32 samples). The hub meters each granted publication with a per-session <strong>token bucket</strong>: refill rate = the granted sample rate, capacity = <code>burst</code> if the wish asked for one, otherwise the granted rate (one second of headroom, the same shape as the intent limiter). Each accepted bundle consumes <code>n</code> tokens. A bundle that would overdraw is dropped <strong>whole</strong>, and the session is sent NACK <code>RATE_LIMITED</code> carrying the offending <code>channel_id</code> — throttled to <code>stream_ingress_overage_nack_per_s</code> (5) per session, because it is back-pressure feedback, not a per-drop echo. Later legal-rate bundles on the same channel continue to be delivered. Persistent overage escalates to slow-consumer eviction through the same never-shed stall path as any other session.</p>
+<p><strong>STREAM-ingress enforcement is on samples per second, not bundles per second</strong> (a bundle batches up to 32 samples). The hub meters each granted publication with a per-session <strong>token bucket</strong>: refill rate = the granted sample rate, capacity = <code>burst</code> if the wish asked for one, otherwise the granted rate (one second of headroom, the same shape as the intent limiter). Each accepted bundle consumes <code>n</code> tokens. A bundle that would overdraw is dropped <strong>whole</strong>, and the session is sent NACK <code>RATE_LIMITED</code> carrying the offending <code>channel_id</code> — throttled to <code>stream_ingress_overage_nack_per_s</code> (5) per session, because it is back-pressure feedback, not a per-drop echo. Later legal-rate bundles on the same channel continue to be delivered. Persistent overage escalates through the same never-shed stall path as any other session — since RFC-051, a park rather than an eviction.</p>
 <p><strong><code>burst</code> is clamped and echoed like every other wish</strong>, into <code>[granted_rate, granted_rate × max_burst_multiple]</code> with <code>max_burst_multiple</code> = 4. It exists because making the granted rate double as bucket depth forced a genuinely sparse-but-bursty sender — a few segments per second with a 25/s peak — to declare a rate it did not want, misrepresenting itself to admission control just to buy headroom. An <strong>unbounded</strong> client-declared burst would reintroduce the very flood the bucket exists to stop, hence the clamp.</p>
 <p>A misbehaving client cannot starve the machine's real-time core by flooding its comms core.</p>
 <h2 id="s10-6">10.6 Broadcast media<a class="headerlink" href="#s10-6" title="Link to this section">#</a></h2>
@@ -3028,7 +3028,7 @@ against a real subscription mix, showing which row fires and why a
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

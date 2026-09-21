@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How to make your firmware a conforming SlopSync hub.">
+        <meta name="description" content="How to make your firmware a conforming Valence hub.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/build/hub/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/build/hub/">
       
       
         <link rel="prev" href="../plugins/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Hub implementer guide - SlopSync</title>
+        <title>Hub implementer guide - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2792,7 +2792,7 @@ material is. It does not fake content.</p>
 describe what shipped, not what was planned.</p>
 </div>
 <h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>The guide a firmware author reads before deciding whether to adopt SlopSync.
+<p>The guide a firmware author reads before deciding whether to adopt Valence.
 It must be honest about cost, or it is useless.</p>
 <ul>
 <li><strong>Author your <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</strong> This is most of the work and most of the value.
@@ -2827,17 +2827,17 @@ real debugging time:</p>
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
 <li><code>spec/SPEC.md</code> §13.1 — the binding contract every transport must satisfy.</li>
-<li><code>lib/slopsync/README.md</code> — the vendorable front door and the layering rules.</li>
-<li><code>hub/slopbench/</code> (this repo) — a working, machine-agnostic composition
+<li><code>lib/valence/README.md</code> — the vendorable front door and the layering rules.</li>
+<li><code>hub/bench/</code> (this repo) — a working, machine-agnostic composition
   root and WebSocket transport adapter, config-file-driven rather than
   wired to real hardware.</li>
-<li>SlopDrive-32's <code>src/comms/SlopSyncHubService.*</code> and <code>SlopSyncWsTransport.*</code>
+<li>Nucleus's <code>src/comms/ValenceHubService.*</code> and <code>ValenceWsTransport.*</code>
   (machine repo) — a working composition root and transport adapter wired
   to real hardware.</li>
 </ul>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../cli/">CLI guide</a> — verify a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr>, before you
+<li><a href="../cli/">CLI guide</a> — verify a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>, before you
   trust it.</li>
 <li><a href="../local-testing/">Local testing</a> — the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, the <abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr>, and
   the back-to-back-<abbr title="The stateful association between one client and the hub.">sessions</abbr> pattern that finds <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr> bugs like the ones
@@ -2925,7 +2925,7 @@ real debugging time:</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

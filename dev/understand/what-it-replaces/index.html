@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An honest account of what SlopSync takes over and what it deliberately leaves alone, including TCode's continued role as compatibility ingest.">
+        <meta name="description" content="An honest account of what Valence takes over and what it deliberately leaves alone, including TCode's continued role as compatibility ingest.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/understand/what-it-replaces/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/understand/what-it-replaces/">
       
       
         <link rel="prev" href="../capabilities/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>What it replaces, and what it does not - SlopSync</title>
+        <title>What it replaces, and what it does not - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -752,10 +752,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-slopsync-deliberately-is-not" class="md-nav__link">
+  <a href="#what-valence-deliberately-is-not" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What SlopSync deliberately is not
+        What Valence deliberately is not
       
     </span>
   </a>
@@ -2896,10 +2896,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-slopsync-deliberately-is-not" class="md-nav__link">
+  <a href="#what-valence-deliberately-is-not" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What SlopSync deliberately is not
+        What Valence deliberately is not
       
     </span>
   </a>
@@ -2963,18 +2963,18 @@
 <p>Both columns on this page are honest. The second one is longer, and it is the
 one that matters more.</p>
 <h2 id="start-here-if-you-use-tcode">Start here if you use TCode<a class="headerlink" href="#start-here-if-you-use-tcode" title="Link to this section">#</a></h2>
-<p><strong>Your setup keeps working.</strong> SlopSync does not deprecate TCode, and there is
+<p><strong>Your setup keeps working.</strong> Valence does not deprecate TCode, and there is
 no flag day.</p>
 <p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> keeps its TCode edges as <strong>compatibility ingest</strong>. It wraps each active
 edge in a <a href="../../reference/dictionary/#synthetic-session"><abbr title="A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.">synthetic session</abbr></a>:
 an internal <abbr title="The stateful association between one client and the hub.">session</abbr> object that appears in the roster, owns its <abbr title="The single component that commands the motor driver for positioning.">arbiter</abbr>
 source, and carries a <a href="../../reference/dictionary/#deadman"><abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr></a> equal to
-that edge's existing quiet timeout. A TCode sender receives no SlopSync
+that edge's existing quiet timeout. A TCode sender receives no Valence
 frames. The wrapping is entirely <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-side bookkeeping.</p>
 <p>That is a safety rule, not a courtesy. There is no unmonitored path to motion.
 A legacy transport that could move the machine outside the safety machinery
 would be a hole in it.</p>
-<p>SlopSync-native motion streaming is the <strong>upgrade path</strong>, not a deadline. A
+<p>Valence-native motion streaming is the <strong>upgrade path</strong>, not a deadline. A
 native stream carries timestamps, a rate
 <a href="../../reference/dictionary/#grant"><abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr></a>,
 <a href="../../reference/dictionary/#source-ownership"><abbr title="The rule that each arbiter source has at most one owning session at a time.">source ownership</abbr></a> and the
@@ -3055,7 +3055,7 @@ position, its acceleration headroom, or which <abbr title="A named group of spee
 instant. A protocol that let <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> plan motion would export a decision to
 the one party that cannot make it correctly.</p>
 <p>The consequence is freeing. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> ships what its author meant, and the
-machine renders it as well as it can. SlopSync carries <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> honestly and
+machine renders it as well as it can. Valence carries <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> honestly and
 refuses to make the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> responsible for feasibility.</p>
 <h3 id="firmware-update">Firmware update<a class="headerlink" href="#firmware-update" title="Link to this section">#</a></h3>
 <p>Update transport lives outside the protocol, on its own credential plane.
@@ -3068,9 +3068,9 @@ inside the system it would replace.</p>
 <p>These are a boundary, not a competition. Where a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> dials out to an
 application protocol, that outbound <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is an adapter the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> owns, and it
 materializes as a <abbr title="A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.">synthetic session</abbr> like any other legacy edge. Exposing
-SlopSync to those stacks directly is out of scope.</p>
+Valence to those stacks directly is out of scope.</p>
 <h3 id="any-firmwares-own-interface-protocol-or-identity">Any firmware's own interface, protocol or identity<a class="headerlink" href="#any-firmwares-own-interface-protocol-or-identity" title="Link to this section">#</a></h3>
-<p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can speak SlopSync <strong>alongside</strong> whatever it already speaks. Nothing
+<p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can speak Valence <strong>alongside</strong> whatever it already speaks. Nothing
 here asks a project to retire its own control surface, its own app or its own
 name. See <a href="../ecosystem/">Ecosystem and compatibility</a>, whose tone rules apply
 to this section too.</p>
@@ -3078,7 +3078,7 @@ to this section too.</p>
 <p>The protocol's <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is a software convenience layered above the hardware
 path. It is fast, role-exempt and <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr>, and it is still software on a
 network. The hardware path remains the guarantee of last resort.</p>
-<h2 id="what-slopsync-deliberately-is-not">What SlopSync deliberately is not<a class="headerlink" href="#what-slopsync-deliberately-is-not" title="Link to this section">#</a></h2>
+<h2 id="what-valence-deliberately-is-not">What Valence deliberately is not<a class="headerlink" href="#what-valence-deliberately-is-not" title="Link to this section">#</a></h2>
 <p>These are non-goals. They were decided, not overlooked.</p>
 <ul>
 <li><strong>No cloud.</strong> Nothing leaves the site. There is no telemetry, no account
@@ -3094,12 +3094,12 @@ network. The hardware path remains the guarantee of last resort.</p>
 </ul>
 <p class="ss-point"><strong>The point.</strong> Every one of those non-goals removes a component that would otherwise have to be running, trusted, updated or paid for. A machine on a bench with no internet connection is the design center, not a degraded mode.</p>
 <h2 id="what-migration-deletes-honestly">What migration deletes, honestly<a class="headerlink" href="#what-migration-deletes-honestly" title="Link to this section">#</a></h2>
-<p>On the machine where SlopSync was written, migration did not only move
+<p>On the machine where Valence was written, migration did not only move
 surfaces. It deleted some. The reasons are worth publishing, because every
 project has a version of this list.</p>
 <ul>
 <li><strong>A transport-mode selector</strong> that chose between competing ingest paths.
-  SlopSync replaced the thing it was selecting between.</li>
+  Valence replaced the thing it was selecting between.</li>
 <li><strong>An endpoint that always answered "not cleared"</strong> — a stub whose only real
   behavior was a side effect available elsewhere.</li>
 <li><strong>A control that posted to a route the firmware never had.</strong> It rendered, it
@@ -3202,7 +3202,7 @@ even if you migrate nothing.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

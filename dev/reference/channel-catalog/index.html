@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What a real SlopSync device catalog looks like, entry by entry, with every field explained.">
+        <meta name="description" content="What a real Valence device catalog looks like, entry by entry, with every field explained.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/reference/channel-catalog/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/reference/channel-catalog/">
       
       
         <link rel="prev" href="../registry/rendering/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Channel catalog reference - SlopSync</title>
+        <title>Channel catalog reference - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2767,12 +2767,12 @@ field, the units and scales, and why it is one <abbr title="A named, numbered, t
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
 <li><a href="../../spec/appendices/#appendix-d">Appendix D</a> of <code>spec/SPEC.md</code>: the initial device <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> sketch.</li>
-<li>SlopDrive-32's <code>include/comms/SlopSyncCatalog.h</code> (machine repo): the
+<li>Nucleus's <code>include/comms/ValenceCatalog.h</code> (machine repo): the
   <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> a real device actually <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr>. Prefer this over the appendix
   where they differ. It is what ships.</li>
 <li><a href="../../spec/schema/"><abbr title="The hub's machine-readable description of every channel it exposes.">Catalog</abbr> schema (CDDL)</a>: the normative <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> encoding,
   published from <code>spec/schema/catalog.cddl</code>.</li>
-<li><code>lib/slopsync/include/slopsync/conformance/catalog_check.hpp</code>: the rules a
+<li><code>lib/valence/include/valence/conformance/catalog_check.hpp</code>: the rules a
   <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is mechanically checked against. Every check there is a rule this
   page should explain.</li>
 </ul>
@@ -2862,7 +2862,7 @@ entry by entry next to this page's worked example, field for field.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

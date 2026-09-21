@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 12: threat model, access tiers, pairing ceremonies, token presentation, hub authenticity, the trust ledger, and the administration surface.">
+        <meta name="description" content="Valence clause 12: threat model, access tiers, pairing ceremonies, token presentation, hub authenticity, the trust ledger, and the administration surface.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/security/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/security/">
       
       
         <link rel="prev" href="../safety/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Security and trust - SlopSync</title>
+        <title>Security and trust - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2928,7 +2928,7 @@
 <li>Individually-targeted attacks by a native process already resident on the LAN (<a href="#s12-8">§12.8</a>).</li>
 </ul>
 <p>The ruling that shapes every choice below: <strong>optimize against automatable mass vectors; accept the ceiling on individually-targeted LAN-resident attackers.</strong></p>
-<p><strong>Deployment commandment (normative):</strong> the SlopSync port MUST NOT be exposed to the wider internet. LAN-first is a security property of this design, not an accident of it.</p>
+<p><strong>Deployment commandment (normative):</strong> the Valence port MUST NOT be exposed to the wider internet. LAN-first is a security property of this design, not an accident of it.</p>
 <h2 id="s12-2">12.2 Access tiers<a class="headerlink" href="#s12-2" title="Link to this section">#</a></h2>
 <p>Three tiers, wire values <code>0/1/2</code>:</p>
 <table>
@@ -3062,7 +3062,7 @@ produced it.</em></p>
 <li><strong>HONESTY CLAUSE (H6):</strong> the version is <strong>self-reported</strong>. This is a <strong>tripwire, not attestation</strong>: it catches an honest update and nothing else. A deliberately malicious update lies about its version and keeps its token. The real bounds on a hostile client are tier scoping, instant revocation, roster visibility, and the role-exempt safety ops. <strong>A UI MUST NOT imply this is attestation.</strong></li>
 <li><strong>HONESTY CLAUSE (H7):</strong> a device that reports <strong>no</strong> version can never trip the wire. This is a real gap, stated rather than hidden.</li>
 </ul>
-<p><strong>The symmetric signal.</strong> A change in the hub's own <code>fw_version</code> (<a href="../session/#s6-3">§6.3</a>) SHOULD be surfaced by clients ("this machine updated to X.Y.Z"), and clients MAY gate <code>configure</code>-tier actions on user acknowledgment afterwards. Hub code changes only through the OTA plane, which is outside SlopSync trust by <a href="#s12-2">§12.2</a> — so a <code>configure</code>-tier compromise cannot flash firmware. A hostile hub's ceiling against a conforming client is <strong>well-formed lies</strong>, which is exactly the bound <a href="../wire-format/#s5-8">§5.8-5</a> sets and the reason it is symmetric.</p>
+<p><strong>The symmetric signal.</strong> A change in the hub's own <code>fw_version</code> (<a href="../session/#s6-3">§6.3</a>) SHOULD be surfaced by clients ("this machine updated to X.Y.Z"), and clients MAY gate <code>configure</code>-tier actions on user acknowledgment afterwards. Hub code changes only through the OTA plane, which is outside Valence trust by <a href="#s12-2">§12.2</a> — so a <code>configure</code>-tier compromise cannot flash firmware. A hostile hub's ceiling against a conforming client is <strong>well-formed lies</strong>, which is exactly the bound <a href="../wire-format/#s5-8">§5.8-5</a> sets and the reason it is symmetric.</p>
 <h2 id="s12-7">12.7 The administration surface<a class="headerlink" href="#s12-7" title="Link to this section">#</a></h2>
 <p>Eviction, pairing approval, re-approval and revocation are <strong>one channel, not three</strong>: they are all "an authorized operator changing who may do what", so they share one access floor (<code>configure</code>), one rate limiter, one idempotency ring, and one place a generic renderer looks. Ops: <code>evict</code>, <code>pair_approve</code>, <code>pair_deny</code>, <code>revoke</code> (registry <code>session_admin_ops</code>).</p>
 <ul>
@@ -3172,7 +3172,7 @@ produced it.</em></p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

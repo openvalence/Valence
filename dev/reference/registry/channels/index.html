@@ -9,10 +9,10 @@
         <meta name="description" content="Generated tables of channel classes, stream kinds, access levels, priority classes, channel id ranges and the spec-core channels.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/reference/registry/channels/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/reference/registry/channels/">
       
       
         <link rel="prev" href="../frames/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Channels - SlopSync</title>
+        <title>Channels - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2980,7 +2980,7 @@ Any <abbr title="The stateful association between one client and the hub.">sessi
 <tr>
 <td><code>0x0080-0x7FFF</code></td>
 <td><code>device-defined</code></td>
-<td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware allocates; described by <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=<abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>/2=<abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr>/3=<abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>/4=<abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr>/5=<abbr title="A channel class declaring a set of numbered slots holding opaque documents.">STORE</abbr>, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each <abbr title="The single authoritative endpoint of one machine.">hub</abbr> documents its own device-range allocations; SlopDrive-32's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</td>
+<td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware allocates; described by <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=<abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>/2=<abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr>/3=<abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>/4=<abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr>/5=<abbr title="A channel class declaring a set of numbered slots holding opaque documents.">STORE</abbr>, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each <abbr title="The single authoritative endpoint of one machine.">hub</abbr> documents its own device-range allocations; Valence Drive's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</td>
 </tr>
 <tr>
 <td><code>0x8000-0xFFFF</code></td>
@@ -3013,7 +3013,7 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>0x0002</code></td>
 <td><code>session-roster</code></td>
 <td><code>STATE</code></td>
-<td>RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). <code>status: reserved</code> is the machine-checkable fact the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> never carried before: a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> can be allocated and described on paper without any conformant <abbr title="The single authoritative endpoint of one machine.">hub</abbr> being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {<abbr title="A random non-zero 32-bit number the hub assigns to one association, unique within a hub boot.">session_id</abbr> u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing <abbr title="The stateful association between one client and the hub.">sessions</abbr>' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the <abbr title="The stateful association between one client and the hub.">session</abbr> lives.</td>
+<td>RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). <code>status: reserved</code> is the machine-checkable fact the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> never carried before: a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> can be allocated and described on paper without any conformant <abbr title="The single authoritative endpoint of one machine.">hub</abbr> being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {<abbr title="A random non-zero 32-bit number the hub assigns to one association, unique within a hub boot.">session_id</abbr> u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing <abbr title="The stateful association between one client and the hub.">sessions</abbr>' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the <abbr title="The stateful association between one client and the hub.">session</abbr> lives.</td>
 </tr>
 <tr>
 <td><code>0x0003</code></td>
@@ -3171,7 +3171,7 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

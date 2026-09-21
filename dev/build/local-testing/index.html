@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The SlopSync simulator, the probe, the golden vectors, the fuzz harnesses, and the back-to-back-sessions pattern that catches what none of them can.">
+        <meta name="description" content="The Valence simulator, the probe, the golden vectors, the fuzz harnesses, and the back-to-back-sessions pattern that catches what none of them can.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/build/local-testing/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/build/local-testing/">
       
       
         <link rel="prev" href="../cli/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Local testing - SlopSync</title>
+        <title>Local testing - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -3009,7 +3009,7 @@
 
 
 <h1 id="local-testing">Local testing<a class="headerlink" href="#local-testing" title="Link to this section">#</a></h1>
-<p>You can test a SlopSync <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> or a SlopSync <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no machine on the bench.
+<p>You can test a Valence <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> or a Valence <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no machine on the bench.
 This page covers the four instruments, and then the one manual pattern that
 catches a class of bug none of them reach.</p>
 <p>Read the last section even if you skip the rest.</p>
@@ -3044,12 +3044,12 @@ catches a class of bug none of them reach.</p>
 </tbody>
 </table>
 <h2 id="the-simulator">The <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr><a class="headerlink" href="#the-simulator" title="Link to this section">#</a></h2>
-<p><code>hub/slopbench</code> (SlopBench) is a desktop binary that behaves like a <abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
+<p><code>hub/bench</code> (Valence Bench) is a desktop binary that behaves like a <abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
 <p>It is not a mock. It embeds the <strong>real</strong> <abbr title="The single authoritative endpoint of one machine.">hub</abbr> library behind a <strong>real</strong>
 WebSocket server speaking the same subprotocol as any conforming hardware
 <abbr title="The single authoritative endpoint of one machine.">hub</abbr>. Point a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> at it and the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> cannot tell the difference: a bug
-you find against SlopBench is a bug in the same code a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> runs.
-Unlike a single machine's own <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, SlopBench has no fixed <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> and
+you find against Valence Bench is a bug in the same code a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> runs.
+Unlike a single machine's own <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, Valence Bench has no fixed <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> and
 no motion engine of its own -- it serves whatever <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> a <code>.bench</code> config
 file describes, which is what makes it useful for testing a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> against
 <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> shapes no single <abbr title="The single authoritative endpoint of one machine.">hub</abbr> happens to produce (extra archetypes, alien
@@ -3059,29 +3059,29 @@ plane at all.</p>
 <h3 id="build-it">Build it<a class="headerlink" href="#build-it" title="Link to this section">#</a></h3>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Any C++20 host toolchain plus CMake and Ninja. On Windows this project</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># uses WinLibs GCC; put your compiler on PATH first.</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>cmake<span class="w"> </span>-S<span class="w"> </span>hub/slopbench<span class="w"> </span>-B<span class="w"> </span>hub/slopbench/build<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>cmake<span class="w"> </span>--build<span class="w"> </span>hub/slopbench/build
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>cmake<span class="w"> </span>-S<span class="w"> </span>hub/bench<span class="w"> </span>-B<span class="w"> </span>hub/bench/build<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>cmake<span class="w"> </span>--build<span class="w"> </span>hub/bench/build
 </span></code></pre></div>
 <p>Dependencies are pinned and fetched by CMake. The binary is statically linked,
 so you can copy it anywhere.</p>
 <h3 id="run-it">Run it<a class="headerlink" href="#run-it" title="Link to this section">#</a></h3>
-<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>slopbench<span class="w"> </span>hub/slopbench/configs/tiny-axis.bench<span class="w">                 </span><span class="c1"># interactive terminal UI</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>slopbench<span class="w"> </span>hub/slopbench/configs/kitchen-sink.bench<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">30</span><span class="w">   </span><span class="c1"># scripted, for CI</span>
+<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>bench<span class="w"> </span>hub/bench/configs/tiny-axis.bench<span class="w">                 </span><span class="c1"># interactive terminal UI</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>bench<span class="w"> </span>hub/bench/configs/kitchen-sink.bench<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">30</span><span class="w">   </span><span class="c1"># scripted, for CI</span>
 </span></code></pre></div>
 <p>Useful flags: <code>--port</code> for the protocol socket, <code>--headless</code> for no
 terminal UI, and <code>--duration</code> to exit after a fixed time. See
-<code>hub/slopbench/README.md</code> for the config file grammar and the three
+<code>hub/bench/README.md</code> for the config file grammar and the three
 example configs.</p>
 <h3 id="a-real-devices-own-simulator">A real device's own <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr><a class="headerlink" href="#a-real-devices-own-simulator" title="Link to this section">#</a></h3>
 <p>A specific <abbr title="The single authoritative endpoint of one machine.">hub</abbr> implementation may also ship its own device-fidelity
 <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, embedding that machine's real motion engine and real device
-<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> behind the same wire protocol. SlopDrive-32's <code>sim/slopsim</code> is that
+<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> behind the same wire protocol. Nucleus's <code>sim/valencesim</code> is that
 project's own instrument (its own repository, not this one) -- reach for it
 when you need to test against one exact machine's behavior rather than the
 protocol in general.</p>
 <h3 id="the-question-only-a-wire-level-simulator-answers">The question only a wire-level <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> answers<a class="headerlink" href="#the-question-only-a-wire-level-simulator-answers" title="Link to this section">#</a></h3>
 <p>A trace tells you whether a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> rendered your motion well. A <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> with
-recording (SlopBench's <abbr title="The stateful association between one client and the hub.">session</abbr> log, or a device-fidelity <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>'s own
+recording (Valence Bench's <abbr title="The stateful association between one client and the hub.">session</abbr> log, or a device-fidelity <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>'s own
 trace) also records <strong>what actually arrived on the wire</strong>, raw values beside
 decoded values, at the point of decoding.</p>
 <p>That is the other half of the question, and it is the half that finds <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
@@ -3090,18 +3090,18 @@ intended while the <abbr title="The single authoritative endpoint of one machine
 where the fault is. Export the recorded stream and compare it against what
 your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> believed it sent.</p>
 <blockquote>
-<p>DEMO-CANDIDATE: an embedded SlopBench terminal a reader can drive from the
+<p>DEMO-CANDIDATE: an embedded Valence Bench terminal a reader can drive from the
 page, with the raw wire trace scrolling beside it.</p>
 </blockquote>
 <h2 id="the-probe">The probe<a class="headerlink" href="#the-probe" title="Link to this section">#</a></h2>
-<p><code>tools/slopsync_probe.py</code> is a standalone Python <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. It runs a scripted
+<p><code>tools/valence_probe.py</code> is a standalone Python <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. It runs a scripted
 <abbr title="The stateful association between one client and the hub.">session</abbr> against a live <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and prints a narrated pass-or-fail transcript.</p>
 <p>It is the fastest conformance smoke test for a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> you are writing. It hand
-rolls its own encoder against the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> rather than importing the library,
+rolls its own encoder against the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> rather than importing the library,
 so a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that passes the probe has agreed with an independent implementation.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/slopsync_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--port<span class="w"> </span>&lt;port&gt;
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>tools/slopsync_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--no-motion<span class="w">      </span><span class="c1"># observe only</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>tools/slopsync_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--pair<span class="w">           </span><span class="c1"># pairing scenario</span>
+<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/valence_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--port<span class="w"> </span>&lt;port&gt;
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>python<span class="w"> </span>tools/valence_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--no-motion<span class="w">      </span><span class="c1"># observe only</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>python<span class="w"> </span>tools/valence_probe.py<span class="w"> </span>--ip<span class="w"> </span>&lt;hub-ip&gt;<span class="w"> </span>--pair<span class="w">           </span><span class="c1"># pairing scenario</span>
 </span></code></pre></div>
 <table>
 <thead>
@@ -3216,13 +3216,13 @@ over the mount; building on the mount is slow enough to matter.</p>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">         </span>fuzz_bundle<span class="w"> </span>fuzz_blob<span class="w"> </span>fuzz_messages<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>clang++<span class="w"> </span>-std<span class="o">=</span>c++2b<span class="w"> </span>-O1<span class="w"> </span>-g<span class="w"> </span>-fno-omit-frame-pointer<span class="w"> </span>-Wall<span class="w"> </span>-Wextra<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span>-Wno-unused-private-field<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span>-I<span class="w"> </span><span class="nv">$R</span>/lib/slopsync/include<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/test/fuzz<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span>-I<span class="w"> </span><span class="nv">$R</span>/lib/valence/include<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/test/fuzz<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span>-fsanitize<span class="o">=</span>fuzzer,address,undefined<span class="w"> </span>-fno-sanitize-recover<span class="o">=</span>undefined<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nv">$R</span>/test/fuzz/<span class="nv">$t</span>.cc<span class="w"> </span>-o<span class="w"> </span>build/<span class="nv">$t</span>
 </span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">done</span>
 </span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># regenerate the seed corpus using the library&#39;s own encoders</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>clang++<span class="w"> </span>-std<span class="o">=</span>c++2b<span class="w"> </span>-O1<span class="w"> </span>-g<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/lib/slopsync/include<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/test/fuzz<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="c1"># regenerate the seed corpus using the library's own encoders</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>clang++<span class="w"> </span>-std<span class="o">=</span>c++2b<span class="w"> </span>-O1<span class="w"> </span>-g<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/lib/valence/include<span class="w"> </span>-I<span class="w"> </span><span class="nv">$R</span>/test/fuzz<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">  </span>-fsanitize<span class="o">=</span>address,undefined<span class="w"> </span>-fno-sanitize-recover<span class="o">=</span>undefined<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">  </span><span class="nv">$R</span>/test/fuzz/gen_seeds.cc<span class="w"> </span>-o<span class="w"> </span>build/gen_seeds
 </span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>./build/gen_seeds<span class="w"> </span>corpus
@@ -3409,7 +3409,7 @@ operation is non-conformant, and it is the failure mode nobody notices.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

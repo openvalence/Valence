@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The SlopSync mental model in seven diagrams: the catalog as a datasheet, the channel classes, connecting, ground truth, where data lives, safety, and a settings screen that builds itself.">
+        <meta name="description" content="The Valence mental model in seven diagrams: the catalog as a datasheet, the channel classes, connecting, ground truth, where data lives, safety, and a settings screen that builds itself.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/understand/how-it-works/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/understand/how-it-works/">
       
       
         <link rel="prev" href="../">
@@ -29,7 +29,7 @@
     
     
       
-        <title>How it works - SlopSync</title>
+        <title>How it works - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2882,7 +2882,7 @@
 
 
 <h1 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Link to this section">#</a></h1>
-<p>A SlopSync machine describes itself. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads that description and builds
+<p>A Valence machine describes itself. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads that description and builds
 its interface from it. Everything on this page follows from those two
 sentences.</p>
 <p>This page is mostly pictures. Read them in order. You need no prior knowledge
@@ -2899,7 +2899,7 @@ of this protocol, of <abbr title="A compact binary encoding of maps, arrays and 
 <span class="ss-key"><b>▶ START</b>Where a flowchart begins. Every flowchart on this site marks it.</span>
 </div>
 
-<p>The two colors are not decoration. They are the two colors the SlopDrive-32
+<p>The two colors are not decoration. They are the two colors the Nucleus
 machine paints on its own screen: blue for what the machine measured or
 applied, purple for what a person asked for. They mean the same thing in a
 diagram, in a table and on the machine. Amber and red are safety, in the
@@ -3185,7 +3185,7 @@ same bytes, three honest interfaces.</p>
 machine says so in its own state, and every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> grays from that one truth.</p>
 <p>The registered vocabularies — every category, role, flag and field type — are
 in the <a href="../../reference/registry/catalog-vocabulary/"><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> vocabulary reference</a>,
-generated from the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>.</p>
+generated from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
 <li><a href="../anatomy/">Anatomy of a frame</a> — the eight bytes every frame starts with,
@@ -3237,7 +3237,7 @@ generated from the <abbr title="The single machine-readable file that decides ev
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Understand SlopSync">
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Understand Valence">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -3247,7 +3247,7 @@ generated from the <abbr title="The single machine-readable file that decides ev
                 Previous
               </span>
               <div class="md-ellipsis">
-                Understand SlopSync
+                Understand Valence
               </div>
             </div>
           </a>
@@ -3277,7 +3277,7 @@ generated from the <abbr title="The single machine-readable file that decides ev
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

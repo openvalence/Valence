@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 9: STATE, STREAM, INTENT/ECHO, EVENT and STORE semantics, and the closed motion input surface.">
+        <meta name="description" content="Valence clause 9: STATE, STREAM, INTENT/ECHO, EVENT and STORE semantics, and the closed motion input surface.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/channels/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/channels/">
       
       
         <link rel="prev" href="../catalog/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Channel classes - SlopSync</title>
+        <title>Channel classes - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2831,7 +2831,7 @@
 <h2 id="s9-1">9.1 STATE — the shadow<a class="headerlink" href="#s9-1" title="Link to this section">#</a></h2>
 <p>STATE channels carry <strong>idempotent full snapshots</strong> of a coherent group of fields.</p>
 <ul>
-<li><strong>Full-snapshot rule:</strong> every STATE frame contains the complete current value of its channel. There are no deltas in <code>slopsync/1</code> — a delta would make frame loss corrupting, destroying the property the whole design leans on.</li>
+<li><strong>Full-snapshot rule:</strong> every STATE frame contains the complete current value of its channel. There are no deltas in <code>valence/1</code> — a delta would make frame loss corrupting, destroying the property the whole design leans on.</li>
 <li><strong>MTU rule:</strong> a STATE payload MUST fit <code>min_transport_payload</code> (242 B) unfragmented. This is a <em>catalog design constraint</em>: a state group that does not fit is split into multiple channels at catalog-design time (and, if they are settings, given the same <code>category</code> so they render as one tab — <a href="../catalog/#s8-8">§8.8</a>). Conformance tooling SHOULD flag violations mechanically, since layout size is statically known.</li>
 <li><strong>Retained value:</strong> the hub keeps the latest value of every STATE channel and MUST push it immediately upon grant — connect, re-subscribe, reconnect — subject only to the readiness gate (<a href="../session/#s6-4">§6.4</a>). This is the device-shadow primitive; it is what "page load adopts device state" compiles to.</li>
 <li><strong>Conflation:</strong> the hub maintains at most a depth-1 queue per (channel, subscriber) — a newer snapshot replaces a queued unsent one. Subscribers therefore see the freshest state their link can carry, never a backlog. Newest-wins by seq on receive (<a href="../time/#s7-3">§7.3</a>).</li>
@@ -2895,7 +2895,7 @@
 <p><strong>Limits discovery is for display and optional pre-adaptation.</strong> A hub SHOULD tag its kinematic ceilings and window bounds with <code>field_roles</code> (<code>limit.*</code>, <code>window.*</code>) so a client can find them on <em>any</em> hub without hardcoding a channel number. But the normative word for a client acting on them is <strong>MAY, never SHOULD</strong>: a client MUST NOT be required to reason about feasibility in order to produce good motion. Limits are shown to the operator; the machine's job is to play back whatever it is fed as well as it possibly can.</p>
 <p>Note in particular that knowing <code>vmax/amax/jmax</code> is <strong>not sufficient</strong> to predict feasibility, because peak-versus-mean depends on the shape the hub plans. A minimum-jerk quintic over a chord <code>d</code> in time <code>T</code> peaks at <code>1.875·d/T</code> in velocity — a client applying the naive <code>d/T ≤ vmax</code> test concludes a stroke is fine when the profile actually needs 1.875× that. This is precisely why clause 4 exists and why clause 2 puts the work on the hub.</p>
 <p><strong>Curve family declaration (segment streams).</strong> A segment-class publish MAY declare a <code>curve_family</code> (key 45; registry <code>curve_families</code>: 0 <code>unspecified</code>, 1 <code>c1_cubic</code>, 2 <code>c2_quintic</code>, 3 <code>step</code>) on its <code>publishes</code>/<code>granted_publishes</code> entry map. The declaration rides HELLO <strong>and</strong> PUBLISH, so a sender switching interpolators mid-session renegotiates without dropping the stream. It exists because <code>{target, duration, end_velocity}</code> uniquely determines a cubic — a segment stream is a <em>complete</em> encoding of the sender's curve — but only if both ends agree on the smoothness class: a C2 quintic cannot reproduce a C1 cubic across a knot, because the script's acceleration genuinely steps there, and smoothing that corner erases something the author put there on purpose. The grant echo carries the <strong>EFFECTIVE</strong> family — the declaration after the machine's own curve policy — and MAY additionally carry <code>requested_curve_family</code> (48), the original wish echoed verbatim, so a client can see the honored-vs-downgraded fact directly instead of inferring it from what it remembers sending (RFC-049b; implementation: Phase D). The machine override outranks the declaration; <code>unspecified</code> MUST behave exactly as pre-declaration behavior, so the key is purely additive; an <strong>unknown</strong> family value is treated as <code>unspecified</code>, never parroted back. <strong>No clamping semantics are implied by the family</strong> — overshoot, feasibility and window legality stay the machine's existing machinery. <strong><code>step</code> (3) is <code>status: reserved</code></strong> (RFC-049a): the number is allocated and never renumbered, but no reference engine has a step renderer, so it is declarable and not yet actionable — <a href="../limitations/#s18">§18-20</a>'s honesty note is now stated machine-checkably by the registry's <code>status</code> field, not only in prose.</p>
-<p><strong>The client onramp (RFC-044, corrected 2026-07-27).</strong> The onramp is ordered by how little an <em>existing</em> ecosystem client must change to reach a SlopSync hub at all, and its easiest rung is a <strong>CLIENT-SIDE adapter, not a hub-side mode</strong>. <strong>TCode passthrough</strong> means a client that already generates TCode pipes it through a small local shim — a reference implementation ships as a SlopDeck kernel module, with a C# helper planned for MFP-class apps — that translates the client's own TCode into native segments (or samples) locally, before anything reaches the wire. <strong>The hub never parses TCode and no SlopSync channel carries it.</strong> From the hub's side the adapted traffic is ordinary native motion, so the gain — a session's identity, deadman bookkeeping, source ownership and the safety taxonomy — comes for free with zero protocol surface. This is unrelated to <a href="../legacy/#s15-1">§15.1</a>'s legacy text-edge synthetic-session mechanism, which stays the only place a hub itself ever sees TCode bytes, and only because those bytes arrive over a transport (serial, BLE-NUS) that was never a SlopSync frame to begin with. <strong>Native segments</strong> is the next rung, trading a small format change for <code>{target, duration, end_velocity}</code>'s deadline-honoring precision. <strong>Native samples</strong> is the dense-streaming rung a client graduates to only when it wants that. The strategy this encodes: SlopSync is meant to win by being the easiest protocol in the room to adopt, never by requiring a client to rewrite its motion pipeline before it is allowed to connect. A hub MUST NOT require a client to skip a rung to participate at all.</p>
+<p><strong>The client onramp (RFC-044, corrected 2026-07-27).</strong> The onramp is ordered by how little an <em>existing</em> ecosystem client must change to reach a Valence hub at all, and its easiest rung is a <strong>CLIENT-SIDE adapter, not a hub-side mode</strong>. <strong>TCode passthrough</strong> means a client that already generates TCode pipes it through a small local shim — a reference implementation ships as a Phosphor kernel module, with a C# helper planned for MFP-class apps — that translates the client's own TCode into native segments (or samples) locally, before anything reaches the wire. <strong>The hub never parses TCode and no Valence channel carries it.</strong> From the hub's side the adapted traffic is ordinary native motion, so the gain — a session's identity, deadman bookkeeping, source ownership and the safety taxonomy — comes for free with zero protocol surface. This is unrelated to <a href="../legacy/#s15-1">§15.1</a>'s legacy text-edge synthetic-session mechanism, which stays the only place a hub itself ever sees TCode bytes, and only because those bytes arrive over a transport (serial, BLE-NUS) that was never a Valence frame to begin with. <strong>Native segments</strong> is the next rung, trading a small format change for <code>{target, duration, end_velocity}</code>'s deadline-honoring precision. <strong>Native samples</strong> is the dense-streaming rung a client graduates to only when it wants that. The strategy this encodes: Valence is meant to win by being the easiest protocol in the room to adopt, never by requiring a client to rewrite its motion pipeline before it is allowed to connect. A hub MUST NOT require a client to skip a rung to participate at all.</p>
 <p><strong>Machine-side handoff sanity.</strong> A hub that accepts an end-velocity with a scheduled successor SHOULD bound it against <strong>both</strong> adjoining chords, not just the current one: a pathological handoff is typically sane relative to its own span and absurd relative to the next. The reference bound is <code>|end_vel| ≤ k · min(|chord_in|, |chord_out|)</code> with <code>k = segment_handoff_k</code> (registry <code>limits</code>, 1.5 — the shape-preserving value, RFC-049c), where <code>chord_in</code> is measured from the machine's <strong>actual</strong> position rather than the sender's geometry. Pinning <code>k</code> in the registry, rather than leaving it reference-implementation-only, is what lets a second implementation match the reference's handoff shape without reverse-engineering it. Every bounded handoff SHOULD be surfaced — a counter, a log line, and an EVENT — so a client can <em>see</em> its content being reshaped. <strong>HONESTY CLAUSE (H11):</strong> this guard is lookahead-bounded. It can only act when the successor is already scheduled, i.e. when the current segment is shorter than the client's scheduling lookahead; a segment with no successor in hand is accepted unchanged, deliberately, because guessing a chord the hub does not have would trim well-behaved senders. The hub's own legality checks remain the backstop. A hub-side per-source scheduling-depth backstop that does not depend on client lookahead discipline is a named future direction (RFC-049c), not yet specified. See <a href="../limitations/#s18">§18</a>.</p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -2979,7 +2979,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

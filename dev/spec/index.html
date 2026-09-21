@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The normative SlopSync v1.0 protocol specification: reading guide, clause map, and the generated clause pages.">
+        <meta name="description" content="The normative Valence v1.0 protocol specification: reading guide, clause map, and the generated clause pages.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/">
       
       
         <link rel="prev" href="../build/local-testing/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Specification - SlopSync</title>
+        <title>Specification - Valence</title>
       
     
     
@@ -79,7 +79,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#slopsync-protocol-specification" class="md-skip">
+        <a href="#valence-protocol-specification" class="md-skip">
           Skip to content
         </a>
       
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href=".." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href=".." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2703,7 +2703,7 @@
      and fail the docs build. Edit the specification instead.
      ========================================================== -->
 
-<h1 id="slopsync-protocol-specification">SlopSync Protocol Specification<a class="headerlink" href="#slopsync-protocol-specification" title="Link to this section">#</a></h1>
+<h1 id="valence-protocol-specification">Valence Protocol Specification<a class="headerlink" href="#valence-protocol-specification" title="Link to this section">#</a></h1>
 <div class="admonition danger">
 <p class="admonition-title">This tier is generated. Edit the specification, not these pages.</p>
 <p>Every page under <strong>Specification</strong> is produced from <code>spec/SPEC.md</code>
@@ -2715,12 +2715,13 @@ site. An implementer trusts a specification absolutely, so a
 specification that can drift from its source is a defect, not a
 convenience.</p>
 </div>
-<p><strong>Protocol:</strong> <code>slopsync/1</code><br />
-<strong>Document version:</strong> v1.0 (public)<br />
-<strong>Status:</strong> Normative.<br />
+<p><strong>Protocol:</strong> <code>valence/1</code><br />
+<strong>Document version:</strong> v1.0-draft (public, <strong>not yet pinned</strong> — see Freeze state)<br />
+<strong>Status:</strong> Normative in content; the numbers are NOT frozen.<br />
 <strong>Registry of record:</strong> <a href="../reference/registry/"><code>registry/registry.yaml</code></a> — Appendices <a href="appendices/#appendix-a">A</a>, <a href="appendices/#appendix-b">B</a> and <a href="appendices/#appendix-g">G</a> are generated <em>views</em> of it. <strong>On any conflict between this document and the registry, the registry wins</strong> (<a href="wire-format/#s5-7">§5.7</a>).<br />
 <strong>Companion normative artifacts:</strong> <a href="schema/"><code>schema/catalog.cddl</code></a> (<a href="appendices/#appendix-c">Appendix C</a>), <code>vectors/manifest.yaml</code> (<a href="appendices/#appendix-f">Appendix F</a>), <code>RENDERING.md</code> (client-rendering conformance, <a href="rendering/#s19">§19</a>).<br />
 <strong>Non-normative companions:</strong> <code>RFC-QUEUE.md</code> (change history and rationale), <code>V1-READINESS.md</code>, <a href="traces/"><code>examples/session-traces.md</code></a> (<a href="appendices/#appendix-e">Appendix E</a>).</p>
+<p><strong>FREEZE STATE — read this before building against any number here.</strong> Clauses throughout this document and RENDERING.md bind "from the v1.0 tag forward": the never-reuse/never-renumber rule (<a href="wire-format/#s5-7">§5.7</a>), the conformance fixture freeze (<a href="errors/#s16">§16</a>), and RENDERING.md's enumerable-vocabulary freeze (<a href="transports/#s14">§14</a>). <strong>That event has not occurred.</strong> It is the <strong>release pin</strong> — one commit the operator locks once the protocol has been put through its paces, after which only documentation, clients, and tools move. Until the pin exists, every one of those clauses describes a future state and binds nothing: numbers, frozen fixtures, and vocabularies MAY still change, and a registry regeneration is explicitly planned to happen <em>at</em> the pin (RFC-QUEUE.md). Implement against this document freely — that is what it is for — but treat no number as stable yet, and pin by <strong>commit sha</strong>, never by this document's version string. This notice is deleted at the pin, and its deletion is the announcement.</p>
 <h2 id="s0">0. Reading this document<a class="headerlink" href="#s0" title="Link to this section">#</a></h2>
 <p>Clause numbering is <code>§&lt;section&gt;.&lt;subsection&gt;</code>. Every section header carries <code>*(normative)*</code> or <code>*(informative)*</code>; where a section is mixed, the exception is named in its header. Numbered lists inside a normative section are normative. Tables are normative unless the section says otherwise.</p>
 <p><strong>Honesty clauses</strong> are normative statements about what this protocol does <strong>not</strong> protect against or does <strong>not</strong> guarantee. They are marked <strong>HONESTY CLAUSE</strong> inline and indexed in <a href="foundations/#s1-5">§1.5</a>. They are requirements, not caveats: an implementation that presents a protected-sounding UI over one of them is non-conformant.</p>
@@ -2977,7 +2978,7 @@ stays one click away.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

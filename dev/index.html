@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync is an open device-shadow and capability-negotiation protocol for motion machines. One app, many firmwares, one truth about what the machine is doing.">
+        <meta name="description" content="Valence is an open device-shadow and capability-negotiation protocol for motion machines. One app, many firmwares, one truth about what the machine is doing.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/">
       
       
       
@@ -27,7 +27,7 @@
     
     
       
-        <title>SlopSync - SlopSync</title>
+        <title>Valence - Valence</title>
       
     
     
@@ -77,7 +77,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#slopsync" class="md-skip">
+        <a href="#valence" class="md-skip">
           Skip to content
         </a>
       
@@ -97,7 +97,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -111,13 +111,13 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SlopSync
+              Valence
             
           </span>
         </div>
@@ -370,13 +370,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2830,10 +2830,10 @@
 
 
 
-<h1 id="slopsync">SlopSync<a class="headerlink" href="#slopsync" title="Link to this section">#</a></h1>
+<h1 id="valence">Valence<a class="headerlink" href="#valence" title="Link to this section">#</a></h1>
 <p><strong>An open protocol for talking to a motion machine, so one app can work with
 many firmwares and never lie about what the machine is doing.</strong></p>
-<p>A machine running SlopSync describes itself. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads that description
+<p>A machine running Valence describes itself. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads that description
 and builds its interface from it. Neither side needs to be compiled against
 the other.</p>
 <div class="ss-doors">
@@ -2890,23 +2890,23 @@ number in generated tables.</p>
 </table>
 </div>
 <h2 id="what-it-is-not">What it is not<a class="headerlink" href="#what-it-is-not" title="Link to this section">#</a></h2>
-<p>SlopSync is not a replacement for the firmware you already like. It is a
+<p>Valence is not a replacement for the firmware you already like. It is a
 compatibility layer those firmwares can adopt, so that one app works across all
 of them. See <a href="understand/ecosystem/">Ecosystem and compatibility</a>.</p>
-<p>SlopSync is not a motion planner. The machine owns motion processing. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
+<p>Valence is not a motion planner. The machine owns motion processing. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
 sends <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>; the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how to execute it safely.</p>
-<p>SlopSync is not a security product. The v1 threat model is casual and drive-by
+<p>Valence is not a security product. The v1 threat model is casual and drive-by
 prevention on a trusted local network, and the specification says so plainly
 wherever a defense is weak. See <a href="understand/security/">Security model</a>.</p>
 <h2 id="governance-briefly">Governance, briefly<a class="headerlink" href="#governance-briefly" title="Link to this section">#</a></h2>
-<p><strong>SlopSync favors no firmware, no vendor and no product. It is provided to
+<p><strong>Valence favors no firmware, no vendor and no product. It is provided to
 the community as a tool.</strong> The full statement is on its own page:
 <a href="community/governance/">Governance</a>.</p>
 <h2 id="where-the-numbers-come-from">Where the numbers come from<a class="headerlink" href="#where-the-numbers-come-from" title="Link to this section">#</a></h2>
 <p>Every frame type, <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> key, NACK code, <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> id and limit on this site is
-generated from one <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> file. No <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> here is typed by a human, and
+generated from one <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> file. No <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> here is typed by a human, and
 a stale table fails the build.</p>
-<p><a class="md-button" href="reference/registry/"><abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">Registry</abbr> reference</a>
+<p><a class="md-button" href="reference/registry/"><abbr title="The single machine-readable file that decides every number Valence puts on the wire.">Registry</abbr> reference</a>
 <a class="md-button" href="reference/dictionary/">The Dictionary</a></p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -2951,13 +2951,13 @@ a stale table fails the build.</p>
         
         
           
-          <a href="understand/" class="md-footer__link md-footer__link--next" aria-label="Next: Understand SlopSync">
+          <a href="understand/" class="md-footer__link md-footer__link--next" aria-label="Next: Understand Valence">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Understand SlopSync
+                Understand Valence
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2974,7 +2974,7 @@ a stale table fails the build.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

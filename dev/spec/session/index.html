@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 6: identity, HELLO and WELCOME, the readiness gate, the network probe, liveness, mid-session subscription management, reconnect and teardown.">
+        <meta name="description" content="Valence clause 6: identity, HELLO and WELCOME, the readiness gate, the network probe, liveness, mid-session subscription management, reconnect and teardown.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/session/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/session/">
       
       
         <link rel="prev" href="../wire-format/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Session layer - SlopSync</title>
+        <title>Session layer - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -1470,7 +1470,7 @@
   <a href="#s6-9" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.9 Teardown: one path, six doors
+        6.9 Teardown: one path, five doors
       
     </span>
   </a>
@@ -2843,7 +2843,7 @@
   <a href="#s6-9" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.9 Teardown: one path, six doors
+        6.9 Teardown: one path, five doors
       
     </span>
   </a>
@@ -2984,12 +2984,13 @@ diagram, lives in <a href="../traces/">examples/session-traces.md</a> E1.</em></
 <li><strong>Transport re-establishment (path B):</strong> if the socket genuinely died, the client opens a new one and sends a fresh HELLO. Where <code>handleHello</code>'s duplicate-<code>instance_id</code> branch (<a href="#s6-3">§6.3</a>) finds the existing session for that <code>instance_id</code> is <code>STALE</code> rather than <code>LIVE</code>, the hub REATTACHES the new transport to it instead of evicting-and-recreating: same <code>session_id</code>, same grants (retained, not renegotiated from the reattaching HELLO's own wishes — resumption re-arms each subscription's first-push-after-grant treatment only, so the client's first frames back are a full resync), role re-derived from the presented token exactly as any HELLO (a revoked credential still downgrades correctly). No <code>BUSY</code> pressure is spent — this is not new capacity. A duplicate HELLO against a <code>LIVE</code> session is unchanged: that is a genuine identity conflict, not a resumption, and still evicts the incumbent.</li>
 </ul>
 <p>An out-of-band transport-loss report (the transport layer telling the hub a connection is confirmed gone, e.g. a socket close callback) is a <strong>third</strong> staleness trigger, immediate rather than timed — the case that matters most for a genuine network blip. Unlike the two silence triggers, the transport is confirmed absent here, so the per-slot state RFC-042 otherwise keeps "while the transport is still attached" (a pending pairing knock, an in-flight AUTH proof, a resumable blob-transfer cursor) is reset rather than retained — it was mid-flight against a socket that no longer exists.</p>
+<p><strong>RFC-051 adds a fourth staleness trigger, converging with the third.</strong> <a href="../qos/#s10-4">§10.4</a> step 4's never-shed queue stall (<code>never_shed_stall_eviction_ms</code>, 2 s) closes and detaches the transport and runs the identical park: same reset of transport-scoped state, same slot retention. Rationale: a vanished client's link looks <em>congested</em> before it looks <em>gone</em>, so this clock used to race the transport-loss report above and always lose, tearing the session down via <a href="#s6-9">§6.9</a> before the transport layer had a chance to report the loss itself. Both triggers now produce one outcome.</p>
 <p><strong>Slot pressure is the only thing that ever reclaims a <code>STALE</code> session.</strong> A HELLO that would otherwise be refused with NACK <code>BUSY</code> (<a href="#s6-3">§6.3</a>, <code>kHubMaxSessions</code> sessions already occupied — a <code>STALE</code> session still occupies its slot, at full cost) instead evicts the lowest-access-tier <code>STALE</code> session first (tie-break: longest continuously stale), sending it a best-effort GOODBYE <code>SLOT_RECLAIMED</code> before freeing its slot for real. A <code>LIVE</code> session is <strong>never</strong> evicted for pressure — only a genuine duplicate-<code>instance_id</code> claim ever displaces one. Staleness itself has <strong>no independent time limit</strong>: a hub MAY run indefinitely with slots parked <code>STALE</code>, by design (any fixed cap is just a slower deadman with the identical browser-throttling failure mode this exists to remove).</p>
 <p>A hub SHOULD implement idle reaping (into <code>STALE</code>, per the above). Without it a watch-tier session that goes dark holds a slot until reboot, and there is no other pressure to release it.</p>
 <p>Note the sparse-sender case this design serves on purpose: a client that emits a few timed segments per second (<a href="../channels/#s9-6">§9.6</a>) holds its session open with <a href="#s6-6">§6.6</a> PINGs and never needs a protocol change to do it. Pausing playback means the segments stop while the PINGs continue: the session survives, the machine settles, and nothing about the deadman needed special-casing.</p>
 <pre class="mermaid"><code>stateDiagram-v2
     [*] --&gt; LIVE: HELLO / WELCOME
-    LIVE --&gt; STALE: silence past deadman_ms (source-owning)\nor idle_reap window (§6.6),\nor an out-of-band transport-loss report
+    LIVE --&gt; STALE: silence past deadman_ms (source-owning)\nor idle_reap window (§6.6),\nor an out-of-band transport-loss report,\nor a never-shed critical-stall past\nnever_shed_stall_eviction_ms (§10.4, RFC-051)
     note right of STALE
       slot, session_id, every grant RETAINED.
       source ownership released unconditionally,
@@ -2998,7 +2999,7 @@ diagram, lives in <a href="../traces/">examples/session-traces.md</a> E1.</em></
     STALE --&gt; LIVE: path A -- any frame on the SAME transport
     STALE --&gt; LIVE: path B -- fresh HELLO, same instance_id,\non a NEW transport (REATTACH, §6.3)
     STALE --&gt; [*]: slot-pressure reclaim ONLY\n(best-effort GOODBYE SLOT_RECLAIMED)
-    LIVE --&gt; [*]: the other five teardown doors (§6.9)
+    LIVE --&gt; [*]: the other four teardown doors (§6.9)
 
     classDef start fill:#2b6cb0,stroke:#1a365d,color:#fff,stroke-width:2px
     class LIVE start</code></pre>
@@ -3021,12 +3022,12 @@ diagram, lives in <a href="../traces/">examples/session-traces.md</a> E1.</em></
 <li><strong>Grant reacquisition is not control reacquisition.</strong> Subscriptions and publications re-grant freely. But if the disconnect triggered the deadman, the source's ownership was released (<a href="../safety/#s11-3">§11.3</a>) — the returning session does NOT silently resume as active source, whether or not anything latched in the meantime; it must issue a fresh control-taking intent (<a href="../safety/#s11-4">§11.4</a>). <strong>Motion never restarts because a socket reopened.</strong></li>
 <li><strong>Trust is re-evaluated.</strong> A token presented after a <code>client_ver</code> change may be admitted at <code>watch</code> with its granted tier suspended (<a href="../security/#s12-6">§12.6</a>).</li>
 </ul>
-<h2 id="s6-9">6.9 Teardown: one path, six doors<a class="headerlink" href="#s6-9" title="Link to this section">#</a></h2>
+<h2 id="s6-9">6.9 Teardown: one path, five doors<a class="headerlink" href="#s6-9" title="Link to this section">#</a></h2>
 <p>GOODBYE (<code>0x11</code>, either direction; CBOR <code>code</code> from <code>nack_codes</code>, optional <code>detail</code>) is a courtesy, not a requirement — transports die rudely and every rule above already tolerates it.</p>
-<p><strong>RFC-042 narrowed which endings this section covers.</strong> Silence (deadman on a source-owning session, idle reaping otherwise, <a href="#s6-6">§6.6</a>/<a href="../safety/#s11-3">§11.3</a>) and an out-of-band transport loss are, since RFC-042, <strong>not</strong> teardown at all — they mark the session <code>STALE</code> (library-internal state; <a href="#s6-3">§6.3</a>'s reattach path) and RETAIN its slot, <code>session_id</code>, and every grant. A stale session is not gone: it is resumed by any frame on its still-attached transport, or by a fresh HELLO on a new one (<a href="#s6-3">§6.3</a>). Genuine teardown remains exactly six doors: voluntary GOODBYE, slow-consumer eviction (<a href="../qos/#s10-4">§10.4</a>), administrative eviction (<a href="../security/#s12-7">§12.7</a>), reuse of a session slot by a duplicate <code>instance_id</code> <strong>belonging to a LIVE session</strong> (<a href="#s6-3">§6.3</a> — excluding both a transport <strong>migration</strong> and an RFC-042 reattach, neither of which is an ending), readiness timeout (<a href="#s6-4">§6.4</a>), and RFC-042 item 5's <strong>slot-pressure reclaim of a <code>STALE</code> session</strong> (best-effort GOODBYE <code>SLOT_RECLAIMED</code>, evicted only under admission pressure, lowest access tier first).</p>
-<p><strong>Normative equivalence rule, restated for the current model.</strong> Every one of the six teardown doors above, AND every RFC-042 staleness transition, MUST be <strong>behaviorally identical with respect to source ownership and safety latching</strong>: the hub releases every source the departing (or newly-stale) session owned, <strong>unconditionally</strong>, and (RFC-045) latches nothing by virtue of that release alone — a command-driven source simply has no owner and settles per <a href="../safety/#s11-3">§11.3</a>; a hub-autonomous source's continuation is governed entirely by its own <code>source.background_run</code> setting, never by an inference from the ending or staleness. An explicit <code>stop</code>/<code>estop</code> is a command, never an inference from a departed or stale session (<a href="../safety/#s11-2">§11.2</a>).</p>
+<p><strong>RFC-042 narrowed which endings this section covers, and RFC-051 narrowed it again.</strong> Silence (deadman on a source-owning session, idle reaping otherwise, <a href="#s6-6">§6.6</a>/<a href="../safety/#s11-3">§11.3</a>), an out-of-band transport loss, and — since RFC-051 — a never-shed critical-stall past <code>never_shed_stall_eviction_ms</code> (<a href="../qos/#s10-4">§10.4</a> step 4) are <strong>not</strong> teardown at all: all four mark the session <code>STALE</code> (library-internal state; <a href="#s6-3">§6.3</a>'s reattach path) and RETAIN its slot, <code>session_id</code>, and every grant. A stale session is not gone: it is resumed by any frame on its still-attached transport, or by a fresh HELLO on a new one (<a href="#s6-3">§6.3</a>). Genuine teardown remains exactly five doors: voluntary GOODBYE, administrative eviction (<a href="../security/#s12-7">§12.7</a>), reuse of a session slot by a duplicate <code>instance_id</code> <strong>belonging to a LIVE session</strong> (<a href="#s6-3">§6.3</a> — excluding both a transport <strong>migration</strong> and an RFC-042 reattach, neither of which is an ending), readiness timeout (<a href="#s6-4">§6.4</a>), and RFC-042 item 5's <strong>slot-pressure reclaim of a <code>STALE</code> session</strong> (best-effort GOODBYE <code>SLOT_RECLAIMED</code>, evicted only under admission pressure, lowest access tier first).</p>
+<p><strong>Normative equivalence rule, restated for the current model.</strong> Every one of the five teardown doors above, AND every RFC-042 staleness transition, MUST be <strong>behaviorally identical with respect to source ownership and safety latching</strong>: the hub releases every source the departing (or newly-stale) session owned, <strong>unconditionally</strong>, and (RFC-045) latches nothing by virtue of that release alone — a command-driven source simply has no owner and settles per <a href="../safety/#s11-3">§11.3</a>; a hub-autonomous source's continuation is governed entirely by its own <code>source.background_run</code> setting, never by an inference from the ending or staleness. An explicit <code>stop</code>/<code>estop</code> is a command, never an inference from a departed or stale session (<a href="../safety/#s11-2">§11.2</a>).</p>
 <p><strong>RFC-045 retired the <code>cause</code> distinction this paragraph used to describe.</strong> Neither staleness nor teardown latches anything any more, so there is no <code>deadman</code>/<code>session_loss</code> safety-word edge left to tell apart on a source-loss path; <code>safety_causes::deadman</code> (1) and <code>session_loss</code> (4) remain registered (a hub whose application-level <code>sourcePolicy()</code> genuinely needs a stop-on-silence edge may still produce them) but the reference hub emits neither for source loss. A hub MUST NOT report a closed browser tab, or any other departure, as a safety edge it did not actually have.</p>
-<p><em>Why this is a numbered rule (informative):</em> the reference implementation originally released ownership only from the deadman pump, which requires an occupied slot. GOODBYE, rude detach, both evictions and same-slot re-HELLO all reset the slot first — so a departed streamer's dead <code>session_id</code> owned the motion source <strong>forever</strong>, silently conflict-dropping every later client's intents and bundles until reboot. It was invisible to every test that rebooted between runs. Back-to-back sessions with no reboot in between is therefore a mandatory verification pattern for any session-lifecycle change — RFC-042's own staleness/reattach machinery is verified the identical way (<code>test_slopsync_staleness</code>'s STALE-04).</p>
+<p><em>Why this is a numbered rule (informative):</em> the reference implementation originally released ownership only from the deadman pump, which requires an occupied slot. GOODBYE, rude detach, both evictions and same-slot re-HELLO all reset the slot first — so a departed streamer's dead <code>session_id</code> owned the motion source <strong>forever</strong>, silently conflict-dropping every later client's intents and bundles until reboot. It was invisible to every test that rebooted between runs. Back-to-back sessions with no reboot in between is therefore a mandatory verification pattern for any session-lifecycle change — RFC-042's own staleness/reattach machinery is verified the identical way (<code>test_valence_staleness</code>'s STALE-04).</p>
 <p>Codes of note: <code>NORMAL_CLOSURE</code> (clean voluntary teardown, either direction), <code>SESSION_EVICTED</code>, <code>DUPLICATE_INSTANCE</code>, <code>READY_TIMEOUT</code>, <code>SLOT_RECLAIMED</code> (RFC-042, <a href="#s6-6">§6.6</a>), <code>BLOB_REFUSED</code> (<a href="../foundations/#s4-5">§4.5</a>, client-sent), <code>REBOOTING</code> (<a href="../channels/#s9-3">§9.3</a>). <code>DEADMAN_TIMEOUT</code> and <code>IDLE_REAPED</code> remain registered GOODBYE codes but the reference hub no longer emits either — silence produces no GOODBYE at all (staleness is not an ending).</p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -3110,7 +3111,7 @@ diagram, lives in <a href="../traces/">examples/session-traces.md</a> E1.</em></
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

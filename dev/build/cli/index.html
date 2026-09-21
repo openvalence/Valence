@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopScope, the motion-pipeline oscilloscope, and slopsync_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.">
+        <meta name="description" content="Valence Trace, the motion-pipeline oscilloscope, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/build/cli/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/build/cli/">
       
       
         <link rel="prev" href="../hub/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>CLI guide - SlopSync</title>
+        <title>CLI guide - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -1156,15 +1156,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#slopscope" class="md-nav__link">
+  <a href="#valence-trace" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SlopScope
+        Valence Trace
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="SlopScope">
+    <nav class="md-nav" aria-label="Valence Trace">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2844,15 +2844,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#slopscope" class="md-nav__link">
+  <a href="#valence-trace" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SlopScope
+        Valence Trace
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="SlopScope">
+    <nav class="md-nav" aria-label="Valence Trace">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3063,7 +3063,7 @@
 
 
 <h1 id="cli-guide">CLI guide<a class="headerlink" href="#cli-guide" title="Link to this section">#</a></h1>
-<p>Two command-line tools ship with SlopSync. They answer different questions.</p>
+<p>Two command-line tools ship with Valence. They answer different questions.</p>
 <table>
 <thead>
 <tr>
@@ -3073,7 +3073,7 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="#slopscope"><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr></a></td>
+<td><a href="#valence-trace"><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr></a></td>
 <td>Did the machine do what the app asked, and if not, where did the difference come from?</td>
 </tr>
 <tr>
@@ -3082,20 +3082,20 @@
 </tr>
 <tr>
 <td><a href="#the-generators">The generators</a></td>
-<td>Are the published numbers still the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>'s numbers?</td>
+<td>Are the published numbers still the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>'s numbers?</td>
 </tr>
 </tbody>
 </table>
 <p>Both tools are Python. Both need the <code>websocket-client</code> package. Both run
 against <a href="../local-testing/#the-simulator">the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr></a> exactly as they run
 against hardware.</p>
-<h2 id="slopscope"><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr><a class="headerlink" href="#slopscope" title="Link to this section">#</a></h2>
-<p><code>tools/slopscope.py</code> is an oscilloscope for the motion pipeline.</p>
+<h2 id="valence-trace"><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr><a class="headerlink" href="#valence-trace" title="Link to this section">#</a></h2>
+<p><code>tools/valence_trace.py</code> is an oscilloscope for the motion pipeline.</p>
 <h3 id="the-question-it-answers">The question it answers<a class="headerlink" href="#the-question-it-answers" title="Link to this section">#</a></h3>
 <p>A machine feels wrong. The app is a good app, the script is a good script, and
 the motion is still not what the author intended. Nothing in a log answers
 this, because every layer reports itself as healthy.</p>
-<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr> graphs the raw commanded input as it arrives over SlopSync, scaled
+<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> graphs the raw commanded input as it arrives over Valence, scaled
 into the <a href="../../reference/dictionary/#stroke-window"><abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr></a>, against
 what the planner actually did with it. <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">Quintic</abbr> shaping, <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> lag, guard
 fallbacks and handoff bounding stop being feelings and become lines.</p>
@@ -3137,7 +3137,7 @@ current <abbr title="One STREAM data point that commands a time extent, carrying
 <a href="../../reference/dictionary/#motion-anomaly">anomaly</a> events marked on the time
 axis.</p>
 <h3 id="it-cannot-move-the-machine">It cannot move the machine<a class="headerlink" href="#it-cannot-move-the-machine" title="Link to this section">#</a></h3>
-<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr> connects at the <a href="../../reference/dictionary/#watch">watch</a> tier. It
+<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> connects at the <a href="../../reference/dictionary/#watch">watch</a> tier. It
 subscribes and nothing else. It sends no
 <a href="../../reference/dictionary/#intent"><abbr title="A channel class, and the only way a client changes anything.">intent</abbr></a>, <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> no
 <a href="../../reference/dictionary/#stream">stream</a>, and carries no <code>publishes</code> wish in
@@ -3146,7 +3146,7 @@ its HELLO. There is no <abbr title="A channel class, and the only way a client c
 else and watch it here.</p>
 <h3 id="record">record<a class="headerlink" href="#record" title="Link to this section">#</a></h3>
 <p><code>record</code> captures a trace, and can render it in the same run.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/slopscope.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span>--seconds<span class="w"> </span><span class="m">26</span><span class="w"> </span>--out<span class="w"> </span>run.jsonl<span class="w"> </span>--render<span class="w"> </span>run.html
 </span></code></pre></div>
 <table>
@@ -3159,7 +3159,7 @@ else and watch it here.</p>
 <tbody>
 <tr>
 <td><code>--ip</code>, <code>--port</code></td>
-<td>Where the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is. Port 82 is the SlopSync plane</td>
+<td>Where the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is. Port 82 is the Valence plane</td>
 </tr>
 <tr>
 <td><code>--http-port</code></td>
@@ -3171,7 +3171,7 @@ else and watch it here.</p>
 </tr>
 <tr>
 <td><code>--out</code></td>
-<td>Trace file. Defaults to <code>slopscope-&lt;stamp&gt;.jsonl</code></td>
+<td>Trace file. Defaults to <code>valence_trace-&lt;stamp&gt;.jsonl</code></td>
 </tr>
 <tr>
 <td><code>--render</code></td>
@@ -3188,17 +3188,17 @@ else and watch it here.</p>
 </tbody>
 </table>
 <p>It prints how it found every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, which is worth reading once:</p>
-<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[slopscope] connected ws://127.0.0.1:82/ (subprotocol slopsync.v1)
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[slopscope] WELCOME session=1200999484 roles=1 (watch tier is all this tool needs)
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[slopscope] catalog 10617 B, 26 entries, etag VERIFIED
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  resolve window      field_role window.min/window.max -&gt; channel 0x0081 &#39;machine-config&#39; fields &#39;window_min&#39;/&#39;window_max&#39;
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  resolve achieved    field_role telemetry.position -&gt; 0x0080 &#39;motion&#39; field &#39;pos_10um&#39;
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  resolve velocity    field_role telemetry.velocity -&gt; same channel, field &#39;speed&#39;
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  resolve planned     field name match on 0x0080 layout -&gt; &#39;tgt_10um&#39;
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  resolve asked       field name match on 0x0080 layout -&gt; &#39;raw_10um&#39;
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>[slopscope] grants: safety=on-change, motion=60.0Hz, machine-config=on-change,
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            plan-strip=45.0Hz, slopmotion-diag=1.0Hz, motion-anomaly=on-change
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>[slopscope] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -&gt; run.jsonl
+<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[valence_trace] connected ws://127.0.0.1:82/ (subprotocol valence.v1)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[valence_trace] WELCOME session=1200999484 roles=1 (watch tier is all this tool needs)
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[valence_trace] catalog 10617 B, 26 entries, etag VERIFIED
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>  resolve window      field_role window.min/window.max -&gt; channel 0x0081 'machine-config' fields 'window_min'/'window_max'
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  resolve achieved    field_role telemetry.position -&gt; 0x0080 'motion' field 'pos_10um'
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>  resolve velocity    field_role telemetry.velocity -&gt; same channel, field 'speed'
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  resolve planned     field name match on 0x0080 layout -&gt; 'tgt_10um'
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  resolve asked       field name match on 0x0080 layout -&gt; 'raw_10um'
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>[valence_trace] grants: safety=on-change, motion=60.0Hz, machine-config=on-change,
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            plan-strip=45.0Hz, kinetic-diag=1.0Hz, motion-anomaly=on-change
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>[valence_trace] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -&gt; run.jsonl
 </span></code></pre></div>
 <p>Nothing there is a hardcoded <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> number. Positions and the window come from
 <a href="../../reference/registry/catalog-vocabulary/#field-roles"><abbr title="A text tag on a catalog field that says what the value semantically is.">field roles</abbr></a>; the rest
@@ -3207,9 +3207,9 @@ differently still graphs.</p>
 <h3 id="live">live<a class="headerlink" href="#live" title="Link to this section">#</a></h3>
 <p><code>live</code> prints a terminal dashboard while it captures. Add <code>--out</code> to record at
 the same time.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/slopscope.py<span class="w"> </span>live<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--seconds<span class="w"> </span><span class="m">18</span>
+<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>live<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--seconds<span class="w"> </span><span class="m">18</span>
 </span></code></pre></div>
-<div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>SlopScope live  ·  127.0.0.1:82  ·  fw slopsim-0.2.0  ·  watch tier, subscribe-only
+<div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Valence Trace live  ·  127.0.0.1:82  ·  fw valencesim-0.2.0  ·  watch tier, subscribe-only
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>------------------------------------------------------------------------------
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>window   0.0 .. 500.0 mm  (span 500.0)   limits input.accel=8000 input.jerk=2e+06
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>         input.speed=550 user.accel=200 user.speed=50
@@ -3234,7 +3234,7 @@ the same time.</p>
 want to compare two runs, or keep the evidence.</p>
 <h3 id="render">render<a class="headerlink" href="#render" title="Link to this section">#</a></h3>
 <p><code>render</code> turns a trace into one self-contained HTML file.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/slopscope.py<span class="w"> </span>render<span class="w"> </span>run.jsonl<span class="w"> </span>--out<span class="w"> </span>run.html<span class="w"> </span>--theme<span class="w"> </span>light<span class="w"> </span>--palette<span class="w"> </span>cvd
+<div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>render<span class="w"> </span>run.jsonl<span class="w"> </span>--out<span class="w"> </span>run.html<span class="w"> </span>--theme<span class="w"> </span>light<span class="w"> </span>--palette<span class="w"> </span>cvd
 </span></code></pre></div>
 <p>The page inlines its own data, its own SVG and its own script. It fetches
 nothing. It opens on a bench laptop with no internet, months later, and it
@@ -3260,11 +3260,11 @@ that repeats the header with the final window, limits and record counts.</p>
   scale, role, description, bit names and option labels;</li>
 <li>a <code>resolution</code> block saying <strong>how</strong> each thing was found.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span><span class="nt">&quot;rec&quot;</span><span class="p">:</span><span class="s2">&quot;header&quot;</span><span class="p">,</span><span class="nt">&quot;tool&quot;</span><span class="p">:</span><span class="s2">&quot;slopscope&quot;</span><span class="p">,</span><span class="nt">&quot;trace_format&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w"> </span><span class="nt">&quot;hub&quot;</span><span class="p">:{</span><span class="nt">&quot;catalog_etag&quot;</span><span class="p">:</span><span class="s2">&quot;0458eec408a43692&quot;</span><span class="p">,</span><span class="nt">&quot;catalog_etag_verified&quot;</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">&quot;deadman_ms&quot;</span><span class="p">:</span><span class="mi">600</span><span class="p">},</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w"> </span><span class="nt">&quot;window&quot;</span><span class="p">:{</span><span class="nt">&quot;min_mm&quot;</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span><span class="nt">&quot;max_mm&quot;</span><span class="p">:</span><span class="mf">500.0</span><span class="p">,</span><span class="nt">&quot;span_mm&quot;</span><span class="p">:</span><span class="mf">500.0</span><span class="p">},</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w"> </span><span class="nt">&quot;limits&quot;</span><span class="p">:{</span><span class="nt">&quot;limit.input.speed&quot;</span><span class="p">:</span><span class="mf">550.0</span><span class="p">,</span><span class="nt">&quot;limit.input.accel&quot;</span><span class="p">:</span><span class="mf">8000.0</span><span class="p">,</span><span class="nt">&quot;limit.user.speed&quot;</span><span class="p">:</span><span class="mf">50.0</span><span class="p">},</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w"> </span><span class="nt">&quot;series&quot;</span><span class="p">:{</span><span class="nt">&quot;planned&quot;</span><span class="p">:{</span><span class="nt">&quot;channel&quot;</span><span class="p">:</span><span class="mi">128</span><span class="p">,</span><span class="nt">&quot;field&quot;</span><span class="p">:</span><span class="s2">&quot;tgt_10um&quot;</span><span class="p">,</span><span class="nt">&quot;unit&quot;</span><span class="p">:</span><span class="s2">&quot;mm&quot;</span><span class="p">}}}</span>
+<div class="highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span><span class="nt">"rec"</span><span class="p">:</span><span class="s2">"header"</span><span class="p">,</span><span class="nt">"tool"</span><span class="p">:</span><span class="s2">"valence_trace"</span><span class="p">,</span><span class="nt">"trace_format"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w"> </span><span class="nt">"hub"</span><span class="p">:{</span><span class="nt">"catalog_etag"</span><span class="p">:</span><span class="s2">"0458eec408a43692"</span><span class="p">,</span><span class="nt">"catalog_etag_verified"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">"deadman_ms"</span><span class="p">:</span><span class="mi">600</span><span class="p">},</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w"> </span><span class="nt">"window"</span><span class="p">:{</span><span class="nt">"min_mm"</span><span class="p">:</span><span class="mf">0.0</span><span class="p">,</span><span class="nt">"max_mm"</span><span class="p">:</span><span class="mf">500.0</span><span class="p">,</span><span class="nt">"span_mm"</span><span class="p">:</span><span class="mf">500.0</span><span class="p">},</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w"> </span><span class="nt">"limits"</span><span class="p">:{</span><span class="nt">"limit.input.speed"</span><span class="p">:</span><span class="mf">550.0</span><span class="p">,</span><span class="nt">"limit.input.accel"</span><span class="p">:</span><span class="mf">8000.0</span><span class="p">,</span><span class="nt">"limit.user.speed"</span><span class="p">:</span><span class="mf">50.0</span><span class="p">},</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w"> </span><span class="nt">"series"</span><span class="p">:{</span><span class="nt">"planned"</span><span class="p">:{</span><span class="nt">"channel"</span><span class="p">:</span><span class="mi">128</span><span class="p">,</span><span class="nt">"field"</span><span class="p">:</span><span class="s2">"tgt_10um"</span><span class="p">,</span><span class="nt">"unit"</span><span class="p">:</span><span class="s2">"mm"</span><span class="p">}}}</span>
 </span></code></pre></div>
 <p>Two properties follow from that, and both matter.</p>
 <p><strong>A trace stays interpretable.</strong> Open one in a year, against a firmware that
@@ -3272,7 +3272,7 @@ has since changed its layout, and every number still has a name, a unit and a
 scale attached to it. You never need the tool version that recorded it, and you
 never need to guess which field was which.</p>
 <p><strong><code>render</code> is offline and total.</strong> The graph is a pure function of the trace.
-Re-rendering an old trace with a newer <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">SlopScope</abbr> gives the same picture, so a
+Re-rendering an old trace with a newer <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> gives the same picture, so a
 trace attached to a bug report is evidence rather than an anecdote.</p>
 <p>Frame records are short on purpose: <code>r</code> names the kind (<code>m</code> motion, <code>p</code> plan
 strip, <code>c</code> machine config, <code>d</code> diagnostics, <code>a</code> anomaly, <code>s</code> safety), <code>t</code> is
@@ -3282,13 +3282,13 @@ decoded sample with <abbr title="The hub's machine-readable description of every
 <p>Here is one capture read end to end. Both runs are against the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, on
 one unrestarted instance, with the probe as the driver.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># terminal 1 — the machine</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>slopsim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">150</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>valencesim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">150</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># terminal 2 — the scope</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>python<span class="w"> </span>tools/slopscope.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--seconds<span class="w"> </span><span class="m">26</span><span class="w"> </span>--out<span class="w"> </span>seg.jsonl
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--seconds<span class="w"> </span><span class="m">26</span><span class="w"> </span>--out<span class="w"> </span>seg.jsonl
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># terminal 3 — the driver: timed segments, one per second</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>python<span class="w"> </span>tools/slopsync_probe.py<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--segments<span class="w"> </span><span class="m">20</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>python<span class="w"> </span>tools/valence_probe.py<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--segments<span class="w"> </span><span class="m">20</span>
 </span></code></pre></div>
 <p>Then the same again with <code>--stream 20</code>, which sends bare points at 50 Hz
 instead.</p>
@@ -3417,9 +3417,9 @@ question nobody asked.</p>
 <p><strong>A trace is one workload.</strong> Every number in the worked example above is a
 property of that machine, that <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr> and that driver. Capture your own.</p>
 <h2 id="the-probe">The probe<a class="headerlink" href="#the-probe" title="Link to this section">#</a></h2>
-<p><code>tools/slopsync_probe.py</code> is the reference verifier. It runs a scripted <abbr title="The stateful association between one client and the hub.">session</abbr>
+<p><code>tools/valence_probe.py</code> is the reference verifier. It runs a scripted <abbr title="The stateful association between one client and the hub.">session</abbr>
 against a live <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and prints a narrated pass-or-fail transcript.</p>
-<p>It hand-rolls its own encoder against the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> instead of importing the
+<p>It hand-rolls its own encoder against the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> instead of importing the
 library, so a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that passes the probe has agreed with an independent
 implementation. It is also a complete, readable v1.0 <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, which is why the
 <a href="../quickstart/">Quickstart</a> is built from it.</p>
@@ -3430,7 +3430,7 @@ and WELCOME with every required key, the
 BLOB and its <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>, subscriptions and <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grants</abbr>, <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>, each telemetry
 <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>'s layout, an <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> and its <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">post-clamp</abbr> <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr>, the CLOCK exchange, stream
 and <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> ingress with counters, safety ops, the anomaly feed, and GOODBYE.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/slopsync_probe.py<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--segments<span class="w"> </span><span class="m">20</span>
+<div class="highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>tools/valence_probe.py<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--segments<span class="w"> </span><span class="m">20</span>
 </span></code></pre></div>
 <div class="highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>  ✓  intent                 PASS
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>  -  stream                 SKIP
@@ -3498,7 +3498,7 @@ between test runs and the reboot cleared the leak.</p>
 <p>The full reasoning, and the other three patterns worth keeping, are on
 <a href="../local-testing/#the-pattern-that-is-mandatory">Local testing</a>.</p>
 <h2 id="the-generators">The generators<a class="headerlink" href="#the-generators" title="Link to this section">#</a></h2>
-<p>Every number this site <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> is generated from the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> or the
+<p>Every number this site <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> is generated from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> or the
 specification. Both generators take <code>--check</code>, which exits non-zero when a
 generated file no longer matches its source.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>tools/gen_registry_header.py<span class="w"> </span>--check<span class="w">          </span><span class="c1"># the C++ constants</span>
@@ -3599,7 +3599,7 @@ says so, and <code>--check</code> enforces it.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

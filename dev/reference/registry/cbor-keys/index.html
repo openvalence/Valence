@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Generated table of the SlopSync control-plane CBOR integer key space and every scoped sub-map key space.">
+        <meta name="description" content="Generated table of the Valence control-plane CBOR integer key space and every scoped sub-map key space.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/reference/registry/cbor-keys/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/reference/registry/cbor-keys/">
       
       
         <link rel="prev" href="../channels/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>CBOR keys - SlopSync</title>
+        <title>CBOR keys - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -3142,7 +3142,7 @@ experimental and never appear in a tagged release.</p>
 <td><code>40</code></td>
 <td><code>body</code></td>
 <td><code>map</code></td>
-<td><abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr>: the kind-specific fields. Integer keys come from the CHANNEL'S CATALOG <code>schema</code>, exactly as <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>'s <code>value</code> (20) does, NOT from this global space. Grammar fix from the feasibility pass: with kind-specific fields at the top level, every device-authored <abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (the motion-anomaly <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>!) would have needed a <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> PR to name its own fields: the precise coupling the self-describing <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> exists to prevent.</td>
+<td><abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr>: the kind-specific fields. Integer keys come from the CHANNEL'S CATALOG <code>schema</code>, exactly as <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>'s <code>value</code> (20) does, NOT from this global space. Grammar fix from the feasibility pass: with kind-specific fields at the top level, every device-authored <abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (the motion-anomaly <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>!) would have needed a <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> PR to name its own fields: the precise coupling the self-describing <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> exists to prevent.</td>
 </tr>
 <tr>
 <td><code>41</code></td>
@@ -3278,7 +3278,7 @@ number here has no meaning in the global space above.</p>
 <tr>
 <td><code>1</code></td>
 <td><code>product</code></td>
-<td>tstr: product/model identifier, e.g. 'slopdrive-32' (&lt;=32 B)</td>
+<td>tstr: product/model identifier, e.g. 'nucleus' (&lt;=32 B)</td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -3528,7 +3528,7 @@ are device-defined.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

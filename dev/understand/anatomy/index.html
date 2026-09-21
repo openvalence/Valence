@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What a SlopSync frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.">
+        <meta name="description" content="What a Valence frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/understand/anatomy/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/understand/anatomy/">
       
       
         <link rel="prev" href="../how-it-works/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Anatomy of a frame - SlopSync</title>
+        <title>Anatomy of a frame - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2772,7 +2772,7 @@
 
 
 <h1 id="anatomy-of-a-frame">Anatomy of a frame<a class="headerlink" href="#anatomy-of-a-frame" title="Link to this section">#</a></h1>
-<p>Everything SlopSync sends is a <a href="../../reference/dictionary/#frame">frame</a>. A
+<p>Everything Valence sends is a <a href="../../reference/dictionary/#frame">frame</a>. A
 frame is an eight-byte header followed by a payload.</p>
 <p>This is the only page in this section that shows bytes. Read
 <a href="../how-it-works/">How it works</a> first; this page explains the envelope that
@@ -2920,7 +2920,7 @@ but values in the order the <abbr title="The hub's machine-readable description 
 </div>
 
 <p><strong><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr>, on the <a href="../../reference/dictionary/#control-plane"><abbr title="The frames that negotiate, command and confirm, carrying CBOR map payloads.">control plane</abbr></a>.</strong> The
-same two numbers as a map. Each key is an integer from one <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>, and each
+same two numbers as a map. Each key is an integer from one <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>, and each
 value carries its own type.</p>
 <div class="ss-bytemap">
 <div class="ss-bytemap__scale" style="--cols:8" aria-hidden="true">
@@ -2981,7 +2981,7 @@ machine whose <abbr title="The hub's machine-readable description of every chann
 <p><strong>A map may only gain keys.</strong> A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that meets a key it has never seen skips
 the pair. This is the same tolerance rule as the header's, applied one level
 down.</p>
-<p>One more restriction earns its keep. SlopSync uses a deterministic
+<p>One more restriction earns its keep. Valence uses a deterministic
 <a href="../../reference/dictionary/#cbor"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr></a> profile: definite lengths,
 shortest-form integers, sorted keys, no tags. Any message therefore has exactly
 one valid encoding. That is what lets test vectors compare byte for byte, and
@@ -2991,9 +2991,9 @@ values into it, knowing the bytes are what a real encoder would have produced.</
 <ul>
 <li><a href="../how-it-works/">How it works</a> — the mental model these frames serve.</li>
 <li><a href="../../reference/registry/frames/">Frame types</a> — every type, generated from
-  the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>.</li>
+  the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
 <li><a href="../../reference/registry/cbor-keys/"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> keys</a> — every key, generated from
-  the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>.</li>
+  the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -3077,7 +3077,7 @@ values into it, knowing the bytes are what a real encoder would have produced.</
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

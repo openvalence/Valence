@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How to build the SlopSync documentation site, which writing register applies to which page, and why no wire number is ever typed by hand.">
+        <meta name="description" content="How to build the Valence documentation site, which writing register applies to which page, and why no wire number is ever typed by hand.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/community/contributing/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/community/contributing/">
       
       
         <link rel="prev" href="../governance/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Contributing to the documentation - SlopSync</title>
+        <title>Contributing to the documentation - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2861,7 +2861,7 @@
 
 <h1 id="contributing-to-the-documentation">Contributing to the documentation<a class="headerlink" href="#contributing-to-the-documentation" title="Link to this section">#</a></h1>
 <p>This page covers the documentation site. For protocol changes, see
-<a href="../rfc-process/">the <abbr title="The way a change to SlopSync is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>.</p>
+<a href="../rfc-process/">the <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>.</p>
 <h2 id="build-the-site">Build the site<a class="headerlink" href="#build-the-site" title="Link to this section">#</a></h2>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">cd</span><span class="w"> </span>docs-site
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
@@ -2933,13 +2933,13 @@ it.</strong></p>
 <li>Change the number in <code>registry.yaml</code>. That is the only place a number is
    decided.</li>
 <li>Run <code>python tools/gen_docs_tables.py</code>.</li>
-<li>Commit the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> and the generated output together.</li>
+<li>Commit the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the generated output together.</li>
 </ol>
 <p>CI runs <code>python tools/gen_docs_tables.py --check</code> and fails the build when a
 generated file has drifted. Editing a generated page by hand achieves nothing:
 the next run overwrites it, and CI catches it first.</p>
 <p>A generated page carries a <code>generated: true</code> badge and a DO-NOT-EDIT banner.</p>
-<p><strong>Adding a new <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> section?</strong> The generator refuses to run until you say
+<p><strong>Adding a new <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> section?</strong> The generator refuses to run until you say
 which page documents it. That is deliberate — an undocumented <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> is
 exactly the failure this gate exists to stop.</p>
 <h2 id="the-specification-is-generated-too">The Specification is generated too<a class="headerlink" href="#the-specification-is-generated-too" title="Link to this section">#</a></h2>
@@ -2985,7 +2985,7 @@ what shipped, not what was planned.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Link to this section">#</a></h2>
 <ul>
 <li><a href="../governance/">Governance</a></li>
-<li><a href="../rfc-process/">The <abbr title="The way a change to SlopSync is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a></li>
+<li><a href="../rfc-process/">The <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a></li>
 <li><code>docs-site/README.md</code> — layout, the one outside path, and how to extract
   this directory into its own repository.</li>
 </ul>
@@ -3071,7 +3071,7 @@ what shipped, not what was planned.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

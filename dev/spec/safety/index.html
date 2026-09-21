@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 11: the stop taxonomy and safety snapshot, ESTOP end to end, the deadman, control arbitration, and the invariants under partial failure.">
+        <meta name="description" content="Valence clause 11: the stop taxonomy and safety snapshot, ESTOP end to end, the deadman, control arbitration, and the invariants under partial failure.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/safety/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/safety/">
       
       
         <link rel="prev" href="../qos/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Safety - SlopSync</title>
+        <title>Safety - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2859,7 +2859,7 @@
 <li><strong>Hub obligations:</strong> on first valid ESTOP (CRC-checked), stop motion via the driver's e-stop path <strong>before</strong> any protocol bookkeeping; latch; publish <code>safety</code> STATE at critical priority to all subscribers; emit the <code>estop_latched</code> edge on the safety-events channel.</li>
 <li><strong>Relay obligation:</strong> forward ESTOP ahead of all buffered traffic, immediately, on all attached segments (<a href="../transports/#s14-2">§14.2</a>) — including <em>upstream</em> if relay-originated.</li>
 <li><strong>HONESTY CLAUSE (H2) — preemption scope.</strong> "Jumps the queue" is a <strong>per-hop</strong> guarantee: each hop's transmit queue admits ESTOP at the front. It is not magic end-to-end latency — TCP bytes already in flight ahead of it still drain first. Worst-case added latency per binding is declared in <a href="../transports/#s13-1">§13.1</a>.</li>
-<li><strong>HONESTY CLAUSE (H1).</strong> The <strong>hardware</strong> e-stop path remains the guarantee of last resort. SlopSync's ESTOP is a software convenience layered above it and MUST NOT be presented to a user as a substitute for it.</li>
+<li><strong>HONESTY CLAUSE (H1).</strong> The <strong>hardware</strong> e-stop path remains the guarantee of last resort. Valence's ESTOP is a software convenience layered above it and MUST NOT be presented to a user as a substitute for it.</li>
 <li><strong>Clearing:</strong> the <code>estop_clear</code> op requires <code>control</code>; the hub MUST refuse with <code>CLEAR_REFUSED</code> unless (a) the latched cause is resolved (deadman: the lost source is confirmed detached or re-owned; fault: the fault flag is gone), (b) motion is at zero velocity, and (c) no other stop level is pending escalation. <strong>Clearing never restarts motion</strong> — it only re-arms the ability to start. The <code>estop_cleared</code> edge says the latch is gone, never that the machine moved.</li>
 <li><strong>A hub MUST NOT let a catalog authoring error widen safety authorization.</strong> The <code>control</code> floor on <code>estop_clear</code> (and on any op whose effect is to re-arm motion) is a hub obligation independent of what the hub's own catalog declares about it. The catalog is the <em>discovery</em> surface for per-op access; it is not the only enforcement point for the ops that can start a machine moving again.</li>
 </ul>
@@ -2876,9 +2876,9 @@
 </ul>
 <p><em>Why this changed (informative).</em> An earlier design forced a STOP latch on every command-driven deadman fire. Under a clocked interpolator that had a real job: a starved generator could plausibly keep commanding motion on its own. Under an intent-based planner — one command produces one bounded plan, and execution never invents motion between commands (<a href="../channels/#s9-6">§9.6</a>) — that hazard does not exist: a plan that runs out of fresh input already settles to rest by construction, so the forced latch only ever converted a graceful settle into a spurious, operator-visible STOP edge (auto-cleared the moment a resuming stream's first bundle landed) on a machine that had never actually left the operator's control. Treating the window as a hard safety deadline was also never physically honest: browsers throttle a backgrounded tab's timers to roughly one callback per <strong>minute</strong>, so no value legal under the 250–5000 ms clamp could survive a locked screen, and a value fast enough to matter as a safety limit is far too fast to avoid punishing an operator who merely alt-tabbed. The deadman keeps its liveness job — slot/ownership bookkeeping, <code>control-owner</code> accuracy — and sheds the safety job it was never actually doing for command-driven sources.</p>
 <h2 id="s11-4">11.4 Control arbitration<a class="headerlink" href="#s11-4" title="Link to this section">#</a></h2>
-<p>A machine's arbiter assigns priorities <em>between source types</em>. SlopSync adds the layer an arbiter cannot provide: arbitration <em>within</em> a type.</p>
+<p>A machine's arbiter assigns priorities <em>between source types</em>. Valence adds the layer an arbiter cannot provide: arbitration <em>within</em> a type.</p>
 <ul>
-<li><strong>The sole-caller rule is a protocol obligation.</strong> SlopSync sessions submit intents to the machine's motion arbiter, which is the only component permitted to command the driver. A hub that lets any session reach the driver by another path is non-conformant.</li>
+<li><strong>The sole-caller rule is a protocol obligation.</strong> Valence sessions submit intents to the machine's motion arbiter, which is the only component permitted to command the driver. A hub that lets any session reach the driver by another path is non-conformant.</li>
 <li><strong>Exclusive ownership.</strong> Each source has at most one owning session at a time, published in the <code>control-owner</code> STATE channel. The first authorized session to activate a source owns it; a second session's activating intent gets NACK <code>SOURCE_CONFLICT</code>.</li>
 <li><strong>STREAM channels mapped to a source</strong> participate on the same machinery: the <strong>first accepted bundle</strong> acquires the source, each subsequent accepted bundle refreshes the deadman window (<a href="../session/#s6-6">§6.6</a>: any received frame is proof of life), and a bundle from a non-owner while the source is owned is dropped — with the <a href="../channels/#s9-2">§9.2</a> <code>SOURCE_CONFLICT</code> signal so the producer is not left guessing. Data-plane bundles carry no takeover flag; a would-be taker acquires through an intent.</li>
 <li><strong>TAKEOVER:</strong> re-issuing the activating intent with <code>takeover: true</code> (32) transfers ownership if the requester's tier ≥ the owner's. The hub emits a takeover EVENT and a <code>control-owner</code> STATE update; the dispossessed session's UI MUST reflect loss of control immediately — it is subscribed to the same channel as everyone else, so this requires no message addressed to it. Takeover <em>between</em> source types remains the arbiter's existing priority logic, unchanged.</li>
@@ -2976,7 +2976,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

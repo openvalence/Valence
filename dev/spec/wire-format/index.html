@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 5: the 8-byte frame header, the deterministic CBOR profile, packed data-plane layouts, the ESTOP frame, fragmentation, and parser totality.">
+        <meta name="description" content="Valence clause 5: the 8-byte frame header, the deterministic CBOR profile, packed data-plane layouts, the ESTOP frame, fragmentation, and parser totality.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/wire-format/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/wire-format/">
       
       
         <link rel="prev" href="../foundations/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Wire format - SlopSync</title>
+        <title>Wire format - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2873,7 +2873,7 @@
 
 <h1 id="s5">5. Wire Format <em>(normative)</em><a class="headerlink" href="#s5" title="Link to this section">#</a></h1>
 <h2 id="s5-1">5.1 Frame header<a class="headerlink" href="#s5-1" title="Link to this section">#</a></h2>
-<p>Every SlopSync frame begins with the same 8 bytes:</p>
+<p>Every Valence frame begins with the same 8 bytes:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>offset  size  field     notes
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>0       1     type      frame type (registry `frame_types`)
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>1       1     flags     bit0 FRAG_START, bit1 FRAG_MORE; others zero on send, ignored on receive
@@ -2881,7 +2881,7 @@
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>4       2     seq       u16 sequence number (§7.3); 0 where the class is unsequenced
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>6       2     len       u16 payload length in bytes (excluding this header)
 </span></code></pre></div>
-<p>One SlopSync frame maps to exactly one transport datagram/message where the binding allows (<a href="../transports/#s13">§13</a>); <code>len</code> makes frames self-delimiting on byte-pipe bindings.</p>
+<p>One Valence frame maps to exactly one transport datagram/message where the binding allows (<a href="../transports/#s13">§13</a>); <code>len</code> makes frames self-delimiting on byte-pipe bindings.</p>
 <p><strong><code>max_frame</code> is header-inclusive</strong>: it bounds <code>8 + len</code>. Per-binding defaults are in the registry (<code>max_frame_ws</code>, <code>max_frame_espnow</code>, <code>max_frame_ble</code>, <code>max_frame_serial</code>; <a href="../appendices/#appendix-g">Appendix G</a>). A hub advertises its own value in WELCOME <code>limits.max_frame</code> and MAY advertise less than its binding permits; it MUST NOT advertise more. A frame exceeding the negotiated maximum is answered with NACK <code>FRAME_TOO_LARGE</code> (if a session exists) and discarded.</p>
 <p><strong>What <code>header.channel</code> carries, per frame type</strong> <em>(normative routing — previously discoverable only by reading the reference implementation)</em>:</p>
 <table>
@@ -3071,7 +3071,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

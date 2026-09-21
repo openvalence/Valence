@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The normative CDDL definition of the SlopSync channel catalog: channel entries, packed layouts, CBOR schemas, the settings metamodel and store descriptors. Appendix C, in full.">
+        <meta name="description" content="The normative CDDL definition of the Valence channel catalog: channel entries, packed layouts, CBOR schemas, the settings metamodel and store descriptors. Appendix C, in full.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/schema/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/schema/">
       
       
         <link rel="prev" href="../traces/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Catalog schema (CDDL) - SlopSync</title>
+        <title>Catalog schema (CDDL) - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2798,7 +2798,7 @@ language for CBOR. Three conventions carry most of the meaning:</p>
 <p>Comments carry normative constraints that the grammar cannot express —
 the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 <h2 id="cddl">The schema<a class="headerlink" href="#cddl" title="Link to this section">#</a></h2>
-<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">; SlopSync catalog schema (slopsync/1) — NORMATIVE (SPEC.md §8.1, Appendix C)</span>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">; Valence catalog schema (valence/1) — NORMATIVE (SPEC.md §8.1, Appendix C)</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">; The catalog_etag (SPEC.md §8.3) is the first 8 bytes of SHA-256 over the</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1">; catalog encoded per the deterministic CBOR profile (SPEC.md §5.3), entries</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1">; sorted ascending by id.</span>
@@ -2837,8 +2837,8 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">                           </span><span class="c1">;   setting_categories (0..4) pre-Phase-C2 — same wire key, new vocabulary,</span>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">                           </span><span class="c1">;   a pre-tag restructuring (registry header permits it before v1.0).</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">11</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">24</span><span class="p">),</span><span class="w">  </span><span class="c1">; category_label: REQUIRED iff category is in the vendor range (0x40..0x7E)</span>
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">13</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; replay_depth: entries the hub MAY replay on grant (RFC-017). Presence is THE exception to §9.4&#39;s no-replay rule.</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">14</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; setting_channel: the u16 INTENT channel that writes this entry&#39;s setting-annotated fields. REQUIRED iff any field carries setting_key.</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">13</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; replay_depth: entries the hub MAY replay on grant (RFC-017). Presence is THE exception to §9.4's no-replay rule.</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">14</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; setting_channel: the u16 INTENT channel that writes this entry's setting-annotated fields. REQUIRED iff any field carries setting_key.</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">15</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; stream_kind: registry stream_kinds (STREAM class only, RFC-014/023). Absent = 0 (samples) — replaces the M5 unit-string heuristic for segment-class classification (§9.2, §10.4).</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">  </span><span class="c1">; ---- RFC-048 rendering metamodel (entry level, Phase C2) ----</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">16</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; rank: registry ui_ranks (RENDERING.md §4) — how much THIS CHANNEL</span>
@@ -2879,10 +2879,10 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a><span class="c1">; BLOCK — all optional, all ignorable. A client that reads none of them</span>
 </span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a><span class="c1">; behaves exactly as a v1-draft client did. A client that reads them can build</span>
 </span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a><span class="c1">; its entire settings surface from the hub, so a control added in firmware</span>
-</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="c1">; populates on every client&#39;s next connect, with the label, grouping and</span>
+</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a><span class="c1">; populates on every client's next connect, with the label, grouping and</span>
 </span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="c1">; explanation coming from the hub.</span>
 </span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="err">;</span>
-</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="c1">; SlopSync describes what things ARE, never how they LOOK: no widget hints, no</span>
+</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="c1">; Valence describes what things ARE, never how they LOOK: no widget hints, no</span>
 </span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a><span class="c1">; layout, no ordering, no styling, ever. Widget choice is a client-side</span>
 </span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a><span class="c1">; function of type + constraints (bool-u8 -&gt; toggle, u8+options -&gt; select,</span>
 </span><span id="__span-0-88"><a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a><span class="c1">; bitfield8 -&gt; checkbox group, numeric+min/max -&gt; slider, str&lt;N&gt; -&gt; text,</span>
@@ -2891,17 +2891,17 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a><span class="nc">layout-field</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-92"><a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a><span class="w">  </span><span class="mi">1</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">24</span><span class="p">),</span><span class="w"> </span><span class="c1">; name</span>
 </span><span id="__span-0-93"><a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a><span class="w">  </span><span class="mi">2</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">packed-type</span><span class="p">,</span><span class="w">        </span><span class="c1">; registry packed_field_types</span>
-</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a><span class="w">  </span><span class="mi">3</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">8</span><span class="p">),</span><span class="w">  </span><span class="c1">; unit (&quot;mm&quot;, &quot;mm/s&quot;, &quot;mA&quot;, &quot;degC&quot;, &quot;%&quot;, &quot;count&quot;, &quot;flag&quot;, &quot;&quot;)</span>
+</span><span id="__span-0-94"><a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a><span class="w">  </span><span class="mi">3</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="o">..</span><span class="mi">8</span><span class="p">),</span><span class="w">  </span><span class="c1">; unit ("mm", "mm/s", "mA", "degC", "%", "count", "flag", "")</span>
 </span><span id="__span-0-95"><a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a><span class="w">  </span><span class="mi">4</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">float32</span><span class="p">,</span><span class="w">            </span><span class="c1">; scale (wire = physical * scale); 1.0 for unscaled</span>
 </span><span id="__span-0-96"><a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">float32</span><span class="p">,</span><span class="w">          </span><span class="c1">; min (physical units)</span>
 </span><span id="__span-0-97"><a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">6</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">float32</span><span class="p">,</span><span class="w">          </span><span class="c1">; max (physical units)</span>
 </span><span id="__span-0-98"><a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">7</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">uint</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="p">},</span><span class="w">  </span><span class="c1">; bits: bit-index -&gt; meaning (bitfield8 only)</span>
 </span><span id="__span-0-99"><a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a><span class="w">  </span><span class="c1">; ---- RFC-009 annotation block ----</span>
-</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">8</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; setting_key: the CBOR key in the entry&#39;s setting_channel that WRITES this field.</span>
+</span><span id="__span-0-100"><a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">8</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; setting_key: the CBOR key in the entry's setting_channel that WRITES this field.</span>
 </span><span id="__span-0-101"><a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a><span class="w">                           </span><span class="c1">;   PRESENT  = this field is a SETTING (stored config; adopt it into a control).</span>
 </span><span id="__span-0-102"><a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a><span class="w">                           </span><span class="c1">;   ABSENT   = read-only (effective state or telemetry; display it, NEVER write it back</span>
-</span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a><span class="w">                           </span><span class="c1">;              into a setting&#39;s shadow).</span>
-</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a><span class="w">                           </span><span class="c1">; RFC-003&#39;s stored/effective distinction falls out of this presence test with no</span>
+</span><span id="__span-0-103"><a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a><span class="w">                           </span><span class="c1">;              into a setting's shadow).</span>
+</span><span id="__span-0-104"><a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a><span class="w">                           </span><span class="c1">; RFC-003's stored/effective distinction falls out of this presence test with no</span>
 </span><span id="__span-0-105"><a id="__codelineno-0-105" name="__codelineno-0-105" href="#__codelineno-0-105"></a><span class="w">                           </span><span class="c1">; separate flag — it is why RFC-003 is superseded rather than landed.</span>
 </span><span id="__span-0-106"><a id="__codelineno-0-106" name="__codelineno-0-106" href="#__codelineno-0-106"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">9</span><span class="w">  </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">setting-default</span><span class="p">,</span><span class="w"> </span><span class="c1">; default: the FACTORY value, same type as the field</span>
 </span><span id="__span-0-107"><a id="__codelineno-0-107" name="__codelineno-0-107" href="#__codelineno-0-107"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="p">],</span><span class="w">  </span><span class="c1">; options: labels for a single-select; WIRE VALUE = ARRAY INDEX</span>
@@ -2911,7 +2911,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-111"><a id="__codelineno-0-111" name="__codelineno-0-111" href="#__codelineno-0-111"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">14</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">float32</span><span class="p">,</span><span class="w">         </span><span class="c1">; step: range granularity hint</span>
 </span><span id="__span-0-112"><a id="__codelineno-0-112" name="__codelineno-0-112" href="#__codelineno-0-112"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">15</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; flags: bitmask of registry setting_flags (advanced / restart_required / secret)</span>
 </span><span id="__span-0-113"><a id="__codelineno-0-113" name="__codelineno-0-113" href="#__codelineno-0-113"></a><span class="w">  </span><span class="c1">; ---- RFC-037 forward decodability ----</span>
-</span><span id="__span-0-114"><a id="__codelineno-0-114" name="__codelineno-0-114" href="#__codelineno-0-114"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">18</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; size: this field&#39;s packed width in BYTES, stated explicitly.</span>
+</span><span id="__span-0-114"><a id="__codelineno-0-114" name="__codelineno-0-114" href="#__codelineno-0-114"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">18</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; size: this field's packed width in BYTES, stated explicitly.</span>
 </span><span id="__span-0-115"><a id="__codelineno-0-115" name="__codelineno-0-115" href="#__codelineno-0-115"></a><span class="w">                           </span><span class="c1">;   Decoders prefer this over the type-derived width; an unknown TYPE</span>
 </span><span id="__span-0-116"><a id="__codelineno-0-116" name="__codelineno-0-116" href="#__codelineno-0-116"></a><span class="w">                           </span><span class="c1">;   with a declared SIZE is a SKIPPABLE HOLE instead of a decode wall.</span>
 </span><span id="__span-0-117"><a id="__codelineno-0-117" name="__codelineno-0-117" href="#__codelineno-0-117"></a><span class="w">                           </span><span class="c1">;   Without it, the first registry-added packed type strands every</span>
@@ -2922,7 +2922,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-122"><a id="__codelineno-0-122" name="__codelineno-0-122" href="#__codelineno-0-122"></a><span class="w">                           </span><span class="c1">;   a mismatch is an authoring error. (Key 18: 16/17 are taken by</span>
 </span><span id="__span-0-123"><a id="__codelineno-0-123" name="__codelineno-0-123" href="#__codelineno-0-123"></a><span class="w">                           </span><span class="c1">;   schema-field access/option_access under the shared numbering.)</span>
 </span><span id="__span-0-124"><a id="__codelineno-0-124" name="__codelineno-0-124" href="#__codelineno-0-124"></a><span class="w">  </span><span class="c1">; ---- RFC-048 rendering metamodel (Phase C2). Keys start at 19, not 16: 16/17</span>
-</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125" href="#__codelineno-0-125"></a><span class="w">  </span><span class="c1">; are reserved by schema-field&#39;s access/option_access under the shared</span>
+</span><span id="__span-0-125"><a id="__codelineno-0-125" name="__codelineno-0-125" href="#__codelineno-0-125"></a><span class="w">  </span><span class="c1">; are reserved by schema-field's access/option_access under the shared</span>
 </span><span id="__span-0-126"><a id="__codelineno-0-126" name="__codelineno-0-126" href="#__codelineno-0-126"></a><span class="w">  </span><span class="c1">; numbering (layout-field never uses them, but the numbering is shared so one</span>
 </span><span id="__span-0-127"><a id="__codelineno-0-127" name="__codelineno-0-127" href="#__codelineno-0-127"></a><span class="w">  </span><span class="c1">; reader handles both kinds — see the file banner), and 18 is RFC-037 size.</span>
 </span><span id="__span-0-128"><a id="__codelineno-0-128" name="__codelineno-0-128" href="#__codelineno-0-128"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">19</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; rank: registry ui_ranks (RENDERING.md §4). Absent = detail (2).</span>
@@ -2952,8 +2952,8 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-152"><a id="__codelineno-0-152" name="__codelineno-0-152" href="#__codelineno-0-152"></a><span class="c1">; ---------------------------------------------------------------------------</span>
 </span><span id="__span-0-153"><a id="__codelineno-0-153" name="__codelineno-0-153" href="#__codelineno-0-153"></a><span class="c1">; A CBOR-payload field.</span>
 </span><span id="__span-0-154"><a id="__codelineno-0-154" name="__codelineno-0-154" href="#__codelineno-0-154"></a><span class="err">;</span>
-</span><span id="__span-0-155"><a id="__codelineno-0-155" name="__codelineno-0-155" href="#__codelineno-0-155"></a><span class="c1">;   INTENT — the fields of the intent&#39;s `value` map (CBOR key 20).</span>
-</span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156" href="#__codelineno-0-156"></a><span class="c1">;   EVENT  — the fields of the event&#39;s `body` map (CBOR key 40). Kind-specific</span>
+</span><span id="__span-0-155"><a id="__codelineno-0-155" name="__codelineno-0-155" href="#__codelineno-0-155"></a><span class="c1">;   INTENT — the fields of the intent's `value` map (CBOR key 20).</span>
+</span><span id="__span-0-156"><a id="__codelineno-0-156" name="__codelineno-0-156" href="#__codelineno-0-156"></a><span class="c1">;   EVENT  — the fields of the event's `body` map (CBOR key 40). Kind-specific</span>
 </span><span id="__span-0-157"><a id="__codelineno-0-157" name="__codelineno-0-157" href="#__codelineno-0-157"></a><span class="c1">;            EVENT fields ride `body` and draw their integer keys from THIS</span>
 </span><span id="__span-0-158"><a id="__codelineno-0-158" name="__codelineno-0-158" href="#__codelineno-0-158"></a><span class="c1">;            schema, NOT from the global cbor_keys space. That is the v1.0</span>
 </span><span id="__span-0-159"><a id="__codelineno-0-159" name="__codelineno-0-159" href="#__codelineno-0-159"></a><span class="c1">;            grammar fix: with kind-specific fields at the top level, every</span>
@@ -2980,7 +2980,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-180"><a id="__codelineno-0-180" name="__codelineno-0-180" href="#__codelineno-0-180"></a><span class="w">                                     </span><span class="c1">;   field as a VERB rather than a value</span>
 </span><span id="__span-0-181"><a id="__codelineno-0-181" name="__codelineno-0-181" href="#__codelineno-0-181"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">14</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">float32</span><span class="p">,</span><span class="w">         </span><span class="c1">; step</span>
 </span><span id="__span-0-182"><a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">15</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">            </span><span class="c1">; flags (setting_flags)</span>
-</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">16</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">access</span><span class="p">,</span><span class="w">          </span><span class="c1">; PER-OP minimum role; overrides the entry&#39;s `access` floor upward</span>
+</span><span id="__span-0-183"><a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a><span class="w">  </span><span class="o">?</span><span class="w"> </span><span class="mi">16</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">access</span><span class="p">,</span><span class="w">          </span><span class="c1">; PER-OP minimum role; overrides the entry's `access` floor upward</span>
 </span><span id="__span-0-184"><a id="__codelineno-0-184" name="__codelineno-0-184" href="#__codelineno-0-184"></a><span class="w">                           </span><span class="c1">;   or downward. Without this, the role-EXEMPT safety ops (estop,</span>
 </span><span id="__span-0-185"><a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a><span class="w">                           </span><span class="c1">;   stop) would force channel 0x0005 down to `watch` access, and a</span>
 </span><span id="__span-0-186"><a id="__codelineno-0-186" name="__codelineno-0-186" href="#__codelineno-0-186"></a><span class="w">                           </span><span class="c1">;   generic renderer would then offer hold/pause/takeover to every</span>
@@ -2993,7 +2993,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-193"><a id="__codelineno-0-193" name="__codelineno-0-193" href="#__codelineno-0-193"></a><span class="w">                           </span><span class="c1">;   one field. Omit it for the RFC-019 one-field-per-action shape,</span>
 </span><span id="__span-0-194"><a id="__codelineno-0-194" name="__codelineno-0-194" href="#__codelineno-0-194"></a><span class="w">                           </span><span class="c1">;   where key 16 alone is sufficient.</span>
 </span><span id="__span-0-195"><a id="__codelineno-0-195" name="__codelineno-0-195" href="#__codelineno-0-195"></a><span class="w">  </span><span class="c1">; ---- RFC-048 rendering metamodel (Phase C2) — numbered identically to</span>
-</span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196" href="#__codelineno-0-196"></a><span class="w">  </span><span class="c1">; layout-field&#39;s own 19..23 (see that block for per-key meaning); rare on a</span>
+</span><span id="__span-0-196"><a id="__codelineno-0-196" name="__codelineno-0-196" href="#__codelineno-0-196"></a><span class="w">  </span><span class="c1">; layout-field's own 19..23 (see that block for per-key meaning); rare on a</span>
 </span><span id="__span-0-197"><a id="__codelineno-0-197" name="__codelineno-0-197" href="#__codelineno-0-197"></a><span class="w">  </span><span class="c1">; schema field (INTENT/EVENT payloads are mostly verbs, not display values)</span>
 </span><span id="__span-0-198"><a id="__codelineno-0-198" name="__codelineno-0-198" href="#__codelineno-0-198"></a><span class="w">  </span><span class="c1">; but not disallowed — e.g. an aspect-group `action.reset` targets a</span>
 </span><span id="__span-0-199"><a id="__codelineno-0-199" name="__codelineno-0-199" href="#__codelineno-0-199"></a><span class="w">  </span><span class="c1">; specific aspect (RENDERING.md §5.4).</span>
@@ -3014,29 +3014,29 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 </span><span id="__span-0-214"><a id="__codelineno-0-214" name="__codelineno-0-214" href="#__codelineno-0-214"></a><span class="c1">; ---------------------------------------------------------------------------</span>
 </span><span id="__span-0-215"><a id="__codelineno-0-215" name="__codelineno-0-215" href="#__codelineno-0-215"></a><span class="c1">; STORE class (RFC-021). The entry declares the store; ITEMS never appear in</span>
 </span><span id="__span-0-216"><a id="__codelineno-0-216" name="__codelineno-0-216" href="#__codelineno-0-216"></a><span class="c1">; the catalog — they move over BLOB_REQ/BLOB_CHUNK in blob_namespaces.store,</span>
-</span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217" href="#__codelineno-0-217"></a><span class="c1">; addressed by {store_id, slot}. A store&#39;s dynamic side (generation, count) is</span>
+</span><span id="__span-0-217"><a id="__codelineno-0-217" name="__codelineno-0-217" href="#__codelineno-0-217"></a><span class="c1">; addressed by {store_id, slot}. A store's dynamic side (generation, count) is</span>
 </span><span id="__span-0-218"><a id="__codelineno-0-218" name="__codelineno-0-218" href="#__codelineno-0-218"></a><span class="c1">; a separate tiny STATE channel, so the catalog stays invariant per firmware</span>
 </span><span id="__span-0-219"><a id="__codelineno-0-219" name="__codelineno-0-219" href="#__codelineno-0-219"></a><span class="c1">; (§8.6) while the roster changes freely.</span>
 </span><span id="__span-0-220"><a id="__codelineno-0-220" name="__codelineno-0-220" href="#__codelineno-0-220"></a><span class="err">;</span>
-</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a><span class="c1">; `payload` is OPAQUE: the protocol layer NEVER decodes it, and RFC-028&#39;s</span>
+</span><span id="__span-0-221"><a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a><span class="c1">; `payload` is OPAQUE: the protocol layer NEVER decodes it, and RFC-028's</span>
 </span><span id="__span-0-222"><a id="__codelineno-0-222" name="__codelineno-0-222" href="#__codelineno-0-222"></a><span class="c1">; depth and allocation budget explicitly does not extend inside it. A client</span>
 </span><span id="__span-0-223"><a id="__codelineno-0-223" name="__codelineno-0-223" href="#__codelineno-0-223"></a><span class="c1">; that decodes a preset does so above the protocol boundary.</span>
 </span><span id="__span-0-224"><a id="__codelineno-0-224" name="__codelineno-0-224" href="#__codelineno-0-224"></a><span class="err">;</span>
 </span><span id="__span-0-225"><a id="__codelineno-0-225" name="__codelineno-0-225" href="#__codelineno-0-225"></a><span class="c1">; THE ONE CARVE-OUT (M4b, RFC-027.4/029.2): the trust ledger — the store whose</span>
-</span><span id="__span-0-226"><a id="__codelineno-0-226" name="__codelineno-0-226" href="#__codelineno-0-226"></a><span class="c1">; `kind` is &quot;trust.ledger&quot;, declared by spec-core channel 0x000C — has a</span>
+</span><span id="__span-0-226"><a id="__codelineno-0-226" name="__codelineno-0-226" href="#__codelineno-0-226"></a><span class="c1">; `kind` is "trust.ledger", declared by spec-core channel 0x000C — has a</span>
 </span><span id="__span-0-227"><a id="__codelineno-0-227" name="__codelineno-0-227" href="#__codelineno-0-227"></a><span class="c1">; REGISTERED item grammar (`trust_ledger_keys`). Presets are DEVICE content and</span>
 </span><span id="__span-0-228"><a id="__codelineno-0-228" name="__codelineno-0-228" href="#__codelineno-0-228"></a><span class="c1">; are genuinely opaque; the trust ledger is PROTOCOL content whose fields the</span>
 </span><span id="__span-0-229"><a id="__codelineno-0-229" name="__codelineno-0-229" href="#__codelineno-0-229"></a><span class="c1">; spec names, which every `configure` client must render and act on, and where</span>
-</span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230" href="#__codelineno-0-230"></a><span class="c1">; &quot;revoke device 3&quot; has to mean the same thing on every hub. Opacity is the</span>
+</span><span id="__span-0-230"><a id="__codelineno-0-230" name="__codelineno-0-230" href="#__codelineno-0-230"></a><span class="c1">; "revoke device 3" has to mean the same thing on every hub. Opacity is the</span>
 </span><span id="__span-0-231"><a id="__codelineno-0-231" name="__codelineno-0-231" href="#__codelineno-0-231"></a><span class="c1">; default and stays the default: the store MACHINERY is reused verbatim</span>
-</span><span id="__span-0-232"><a id="__codelineno-0-232" name="__codelineno-0-232" href="#__codelineno-0-232"></a><span class="c1">; (chunking, repair, generation, caps) and only this one store&#39;s payload</span>
+</span><span id="__span-0-232"><a id="__codelineno-0-232" name="__codelineno-0-232" href="#__codelineno-0-232"></a><span class="c1">; (chunking, repair, generation, caps) and only this one store's payload</span>
 </span><span id="__span-0-233"><a id="__codelineno-0-233" name="__codelineno-0-233" href="#__codelineno-0-233"></a><span class="c1">; grammar is agreed centrally. Its `access` is `configure` like the rest of the</span>
 </span><span id="__span-0-234"><a id="__codelineno-0-234" name="__codelineno-0-234" href="#__codelineno-0-234"></a><span class="c1">; admin surface — the paired-device list is not open reading, and a hub MUST</span>
-</span><span id="__span-0-235"><a id="__codelineno-0-235" name="__codelineno-0-235" href="#__codelineno-0-235"></a><span class="c1">; gate BLOB_REQ on the declaring entry&#39;s access exactly as it gates SUBSCRIBE.</span>
+</span><span id="__span-0-235"><a id="__codelineno-0-235" name="__codelineno-0-235" href="#__codelineno-0-235"></a><span class="c1">; gate BLOB_REQ on the declaring entry's access exactly as it gates SUBSCRIBE.</span>
 </span><span id="__span-0-236"><a id="__codelineno-0-236" name="__codelineno-0-236" href="#__codelineno-0-236"></a><span class="c1">; ---------------------------------------------------------------------------</span>
 </span><span id="__span-0-237"><a id="__codelineno-0-237" name="__codelineno-0-237" href="#__codelineno-0-237"></a><span class="nc">store-descriptor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 </span><span id="__span-0-238"><a id="__codelineno-0-238" name="__codelineno-0-238" href="#__codelineno-0-238"></a><span class="w">  </span><span class="mi">1</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">               </span><span class="c1">; store_id: u8, unique per hub; selects this store in `blob`.store_id</span>
-</span><span id="__span-0-239"><a id="__codelineno-0-239" name="__codelineno-0-239" href="#__codelineno-0-239"></a><span class="w">  </span><span class="mi">2</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">32</span><span class="p">),</span><span class="w"> </span><span class="c1">; kind: namespaced payload kind, e.g. &quot;pattern.frayd&quot;, &quot;trust.ledger&quot;</span>
+</span><span id="__span-0-239"><a id="__codelineno-0-239" name="__codelineno-0-239" href="#__codelineno-0-239"></a><span class="w">  </span><span class="mi">2</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">tstr</span><span class="w"> </span><span class="ow">.size</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="o">..</span><span class="mi">32</span><span class="p">),</span><span class="w"> </span><span class="c1">; kind: namespaced payload kind, e.g. "pattern.frayd", "trust.ledger"</span>
 </span><span id="__span-0-240"><a id="__codelineno-0-240" name="__codelineno-0-240" href="#__codelineno-0-240"></a><span class="w">  </span><span class="mi">3</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">               </span><span class="c1">; capacity: item slots (conformance floor limits.preset_capacity_min)</span>
 </span><span id="__span-0-241"><a id="__codelineno-0-241" name="__codelineno-0-241" href="#__codelineno-0-241"></a><span class="w">  </span><span class="mi">4</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">               </span><span class="c1">; per_item_max: max encoded payload bytes (default limits.preset_item_max_bytes)</span>
 </span><span id="__span-0-242"><a id="__codelineno-0-242" name="__codelineno-0-242" href="#__codelineno-0-242"></a><span class="w">  </span><span class="mi">5</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">uint</span><span class="p">,</span><span class="w">               </span><span class="c1">; name_max: max item-name bytes</span>
@@ -3046,7 +3046,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
 <ul>
 <li><a href="../catalog/#s8">§8 Catalog</a> — the prose companion, and the etag rules.</li>
 <li><a href="../../reference/channel-catalog/">Channel catalog reference</a> — the
-  SlopDrive-32 catalog that this schema describes, entry by entry.</li>
+  Nucleus catalog that this schema describes, entry by entry.</li>
 <li><a href="../../reference/registry/catalog-vocabulary/">Catalog vocabulary</a> — the
   generated view of every enumeration named above.</li>
 </ul>
@@ -3132,7 +3132,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

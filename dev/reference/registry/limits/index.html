@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Generated table of SlopSync well-known limits, timeouts, caps and defaults.">
+        <meta name="description" content="Generated table of Valence well-known limits, timeouts, caps and defaults.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/reference/registry/limits/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/reference/registry/limits/">
       
       
         <link rel="prev" href="../errors/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Limits and defaults - SlopSync</title>
+        <title>Limits and defaults - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2856,7 +2856,7 @@
 <h1 id="limits-and-defaults">Limits and defaults<a class="headerlink" href="#limits-and-defaults" title="Link to this section">#</a></h1>
 <p>Some of these are hard protocol constants. Others are recommended
 defaults a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> may tune and then advertise. The Notes column carries the
-<abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>'s own rationale where it records one.</p>
+<abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>'s own rationale where it records one.</p>
 <h2 id="core-protocol-constants">Core protocol constants<a class="headerlink" href="#core-protocol-constants" title="Link to this section">#</a></h2>
 <table>
 <thead>
@@ -2940,7 +2940,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>never_shed_stall_eviction_ms</code></td>
 <td><code>2000</code></td>
-<td></td>
+<td>§10.4 step 4: never-shed queue stall past this PARKS the <abbr title="The stateful association between one client and the hub.">session</abbr> (RFC-051) — transport closed + detached, identical end state to RFC-042's transport-loss trigger. No longer a <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr>/<abbr title="The hub closing a session it has decided it cannot keep.">eviction</abbr>; SESSION_EVICTED does not fire from this clock any more.</td>
 </tr>
 <tr>
 <td><code>catalog_chunk_gap_timeout_ms</code></td>
@@ -2990,7 +2990,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>pairing_gesture_boot_count</code></td>
 <td><code>3</code></td>
-<td>RFC-049g: N in §12.3(c)'s power-cycle gesture — this many CONSECUTIVE short boots arm the <abbr title="The pairing mode where physical presence, rather than a proof or an approval, opens a short single-grant window.">push-to-pair</abbr> window on the next boot. Was prose-only ("N (default 3)"); the panel's own complaint pattern (<abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> doctrine says numbers are never left as hedges) applies to this one too.</td>
+<td>RFC-049g: N in §12.3(c)'s power-cycle gesture — this many CONSECUTIVE short boots arm the <abbr title="The pairing mode where physical presence, rather than a proof or an approval, opens a short single-grant window.">push-to-pair</abbr> window on the next boot. Was prose-only ("N (default 3)"); the panel's own complaint pattern (<abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> doctrine says numbers are never left as hedges) applies to this one too.</td>
 </tr>
 <tr>
 <td><code>pairing_gesture_max_uptime_ms</code></td>
@@ -3084,12 +3084,12 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 </tr>
 <tr>
 <td><code>ws_subprotocol</code></td>
-<td><code>slopsync.v1</code></td>
+<td><code>valence.v1</code></td>
 <td></td>
 </tr>
 <tr>
 <td><code>mdns_service</code></td>
-<td><code>_slopsync._tcp</code></td>
+<td><code>_valence._tcp</code></td>
 <td></td>
 </tr>
 </tbody>
@@ -3171,7 +3171,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>segment_handoff_k</code></td>
 <td><code>1.5</code></td>
-<td>RFC-049c: the H11 machine-side handoff-sanity bound (§9.6) — a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> SHOULD reject/bound an accepted end-velocity exceeding k * min(|chord_in|, |chord_out|). Was reference-implementation-only (the MFP plugin's own Fritsch-Carlson limiter and the firmware's boundHandoffVelocity both hardcoded 1.5 independently) — the panel quoted this <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>'s OWN doctrine ("a competing implementation has no authoritative source for the <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr> constant") back at us. Pinned here so a second implementation matches shape without reverse-engineering the reference. <abbr title="The single authoritative endpoint of one machine.">Hub</abbr>-side per-source scheduling-depth backstop (widening H11's lookahead-bounded coverage) is Phase D implementation, not a <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> number.</td>
+<td>RFC-049c: the H11 machine-side handoff-sanity bound (§9.6) — a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> SHOULD reject/bound an accepted end-velocity exceeding k * min(|chord_in|, |chord_out|). Was reference-implementation-only (the MFP plugin's own Fritsch-Carlson limiter and the firmware's boundHandoffVelocity both hardcoded 1.5 independently) — the panel quoted this <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>'s OWN doctrine ("a competing implementation has no authoritative source for the <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr> constant") back at us. Pinned here so a second implementation matches shape without reverse-engineering the reference. <abbr title="The single authoritative endpoint of one machine.">Hub</abbr>-side per-source scheduling-depth backstop (widening H11's lookahead-bounded coverage) is Phase D implementation, not a <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> number.</td>
 </tr>
 </tbody>
 </table>
@@ -3230,7 +3230,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>trust_ledger_max_bytes</code></td>
 <td><code>1900</code></td>
-<td>feasibility pass: the whole encoded ledger is ONE <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> in the existing <code>slopsync</code> NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip.</td>
+<td>feasibility pass: the whole encoded ledger is ONE <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> in the existing <code>valence</code> NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip.</td>
 </tr>
 <tr>
 <td><code>pairing_pending_max</code></td>
@@ -3240,7 +3240,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>client_ver_max_bytes</code></td>
 <td><code>24</code></td>
-<td>HELLO <code>trust</code>.client_ver. Registered as a NUMBER (the trust_keys note only stated it in prose) because RFC-028.2 makes <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> string caps a PARSE-TIME obligation: a receiver rejects an over-cap string in a structural payload rather than truncating and continuing, and it cannot enforce a cap that exists only in English. Same value bounds the trust-ledger <code>version</code> field, so the tripwire never compares a truncated value against a full one.</td>
+<td>HELLO <code>trust</code>.client_ver. Registered as a NUMBER (the trust_keys note only stated it in prose) because RFC-028.2 makes <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> string caps a PARSE-TIME obligation: a receiver rejects an over-cap string in a structural payload rather than truncating and continuing, and it cannot enforce a cap that exists only in English. Same value bounds the trust-ledger <code>version</code> field, so the tripwire never compares a truncated value against a full one.</td>
 </tr>
 <tr>
 <td><code>trust_ledger_name_max_bytes</code></td>
@@ -3363,7 +3363,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

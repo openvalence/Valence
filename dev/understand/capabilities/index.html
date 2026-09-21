@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What a SlopSync hub must provide, what is optional, and why a board with no screen, no LED and no buttons still supports the whole protocol, pairing included.">
+        <meta name="description" content="What a Valence hub must provide, what is optional, and why a board with no screen, no LED and no buttons still supports the whole protocol, pairing included.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/understand/capabilities/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/understand/capabilities/">
       
       
         <link rel="prev" href="../anatomy/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Capabilities and what they mean for custom hardware - SlopSync</title>
+        <title>Capabilities and what they mean for custom hardware - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2900,7 +2900,7 @@ answers it with a checklist rather than a promise.</p>
 supports the full protocol, including <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>. The rest of this page says what
 that costs.</p>
 <h2 id="1-a-feature-exists-if-its-channels-exist">1. A feature exists if its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> exist<a class="headerlink" href="#1-a-feature-exists-if-its-channels-exist" title="Link to this section">#</a></h2>
-<p>SlopSync has no feature list. It has a
+<p>Valence has no feature list. It has a
 <a href="../../reference/dictionary/#catalog"><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a>, and
 <a href="../../reference/dictionary/#capability-discovery"><abbr title="Learning what a machine can do by reading its catalog, rather than from a separate feature list.">capability discovery</abbr></a> is
 reading it.</p>
@@ -3112,7 +3112,7 @@ me" indication. Silent full operation on a mismatched <abbr title="The first eig
 <p><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> is usually where low-capability hardware gets excluded. A ceremony
 needing a keypad on the joiner and a display on the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> rules out most devices
 in this ecosystem.</p>
-<p>SlopSync has one ceremony and three association modes. All three end in the
+<p>Valence has one ceremony and three association modes. All three end in the
 same <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>. The role is an attribute of the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>, never of the ceremony, and
 a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> has zero or one PIN rather than one secret per tier.</p>
 <table>
@@ -3203,7 +3203,7 @@ filesystem, a heap, a clock or a cryptographic library.</p>
 <li><a href="../../build/local-testing/">Local testing</a> — prove your <abbr title="The single authoritative endpoint of one machine.">hub</abbr> against the
   probe and the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> before you trust it.</li>
 <li><a href="../../reference/registry/limits/">Limits and defaults</a> — every number quoted
-  here, generated from the <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr>.</li>
+  here, generated from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -3287,7 +3287,7 @@ filesystem, a heap, a clock or a cryptographic library.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

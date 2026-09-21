@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How SlopSync relates to OSSM, ossm-rs, fray-d lite and other open motion firmwares: a unifying compatibility layer they could adopt, not a replacement for any of them.">
+        <meta name="description" content="How Valence relates to OSSM, ossm-rs, fray-d lite and other open motion firmwares: a unifying compatibility layer they could adopt, not a replacement for any of them.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/understand/ecosystem/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/understand/ecosystem/">
       
       
         <link rel="prev" href="../what-it-replaces/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Ecosystem and compatibility - SlopSync</title>
+        <title>Ecosystem and compatibility - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2864,7 +2864,7 @@
 People designed them, shipped them, supported them, and taught everyone else
 what a good machine controller looks like. Anyone building here today is
 building on work those projects did first.</p>
-<p><strong>SlopSync is not a replacement for any of them, and not an upgrade over any
+<p><strong>Valence is not a replacement for any of them, and not an upgrade over any
 of them.</strong> It is one thing only: a compatibility layer a firmware can adopt,
 so that one app works across all of them.</p>
 <h2 id="the-problem-stated-neutrally">The problem, stated neutrally<a class="headerlink" href="#the-problem-stated-neutrally" title="Link to this section">#</a></h2>
@@ -2893,12 +2893,12 @@ the same declared state.</p>
 <h2 id="what-a-firmware-keeps">What a firmware keeps<a class="headerlink" href="#what-a-firmware-keeps" title="Link to this section">#</a></h2>
 <p>Everything that makes it itself.</p>
 <ul>
-<li><strong>Its own interface.</strong> SlopSync describes what a value <strong>is</strong>. It never says
+<li><strong>Its own interface.</strong> Valence describes what a value <strong>is</strong>. It never says
   how a value should look. There is no widget field in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>,
   deliberately.</li>
 <li><strong>Its own motion planning.</strong> The machine owns motion. The protocol carries
   <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how to execute it.</li>
-<li><strong>Its own protocol.</strong> A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can speak SlopSync alongside whatever it already
+<li><strong>Its own protocol.</strong> A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can speak Valence alongside whatever it already
   speaks. Adding a binding removes nothing.</li>
 <li><strong>Its own identity.</strong> Its name, its brand, its community, its release
   cadence. A conforming <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is a conforming <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, whoever built it.</li>
@@ -2916,7 +2916,7 @@ the same declared state.</p>
 <li>The <strong>frame budget</strong> is 242 bytes for every mandatory message, because the
   weakest transport writes the rules.</li>
 <li><strong>No language is imposed.</strong> The reference implementation is header-only
-  C++20, and nothing requires you to use it. The <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> and the
+  C++20, and nothing requires you to use it. The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the
   <a href="../../reference/dictionary/#golden-vector"><abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr></a> are the contract.
   Implement it in the language your firmware is already written in.</li>
 <li><strong>No transport is imposed.</strong> A binding is four operations plus an honest
@@ -2924,7 +2924,7 @@ the same declared state.</p>
 </ul>
 <p>If some rule in <a href="../../spec/">the specification</a> assumes something your
 firmware cannot do, that is a finding, not a verdict on your design. It
-belongs in the <a href="../../community/rfc-process/"><abbr title="The way a change to SlopSync is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>, where it will be
+belongs in the <a href="../../community/rfc-process/"><abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>, where it will be
 answered on technical merit.</p>
 <h2 id="working-with-specific-projects">Working with specific projects<a class="headerlink" href="#working-with-specific-projects" title="Link to this section">#</a></h2>
 <p>These notes are written <strong>without input from those projects yet</strong>. They are an
@@ -2944,7 +2944,7 @@ is a first-class implementation, not a port.</p>
 would have to fit how that project already models a <abbr title="The stateful association between one client and the hub.">session</abbr> and a running
 pattern, rather than the other way around.</p>
 <p><strong>Apps and bridges.</strong> An application that already speaks a device protocol can
-add a SlopSync <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> without dropping anything it supports today. The first
+add a Valence <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> without dropping anything it supports today. The first
 external <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> written against this protocol was a plugin for an existing
 desktop application, and it kept every other integration that application had.</p>
 <p><strong>Anyone else.</strong> If you maintain a firmware, a remote, an app or a bridge in
@@ -2952,15 +2952,15 @@ this space and want the mapping worked out with you, open an issue. "We
 already do this differently, here is why" is the most useful reply this page
 can get.</p>
 <h2 id="the-governance-stance">The governance stance<a class="headerlink" href="#the-governance-stance" title="Link to this section">#</a></h2>
-<p><strong>SlopSync favors no firmware, no vendor and no product. It is provided to
+<p><strong>Valence favors no firmware, no vendor and no product. It is provided to
 the community as a tool.</strong></p>
 <p>That stance is what makes the rest of this page mean anything, so it is stated
 plainly and mechanically enforced where it can be.</p>
 <ul>
-<li><strong>No firmware is the reference firmware.</strong> SlopDrive-32 is where SlopSync
+<li><strong>No firmware is the reference firmware.</strong> Nucleus is where Valence
   was written and where it is proven on hardware. That makes it the first
   implementation, not the privileged one.</li>
-<li><strong>No vendor gets a reserved number.</strong> The <abbr title="The single machine-readable file that decides every number SlopSync puts on the wire.">registry</abbr> allocates in the open, by
+<li><strong>No vendor gets a reserved number.</strong> The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> allocates in the open, by
   pull request, on technical merit. There is no private range anyone else
   cannot read.</li>
 <li><strong>The specification is the product.</strong> The library is its reference
@@ -2978,7 +2978,7 @@ you find one, report it, and it will be rewritten.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
 <li><a href="../what-it-replaces/">What it replaces</a> — the honest both-columns list,
-  including what SlopSync leaves alone.</li>
+  including what Valence leaves alone.</li>
 <li><a href="../capabilities/">Capabilities and custom hardware</a> — the floor a firmware
   would be adopting.</li>
 <li><a href="../../community/governance/">Governance</a> — the stance in full, and what it
@@ -3066,7 +3066,7 @@ you find one, report it, and it will be rewritten.</p>
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

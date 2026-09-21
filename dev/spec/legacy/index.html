@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 15: legacy text-protocol edges as synthetic sessions, and the predecessor-protocol migration map.">
+        <meta name="description" content="Valence clause 15: legacy text-protocol edges as synthetic sessions, and the predecessor-protocol migration map.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/legacy/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/legacy/">
       
       
         <link rel="prev" href="../transports/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Legacy interop - SlopSync</title>
+        <title>Legacy interop - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2742,15 +2742,15 @@
 <h1 id="s15">15. Legacy Interop <em>(normative rules, informative mapping)</em><a class="headerlink" href="#s15" title="Link to this section">#</a></h1>
 <h2 id="s15-1">15.1 Text-protocol edges as synthetic sessions <em>(normative)</em><a class="headerlink" href="#s15-1" title="Link to this section">#</a></h2>
 <p>A hub MAY continue to accept legacy text-protocol ingest (TCode over serial, BLE-NUS, a raw-text socket, an outbound bridge client, a radio dongle chain). Where it does, <strong>the hub MUST wrap each active legacy edge in a synthetic session</strong>: an internal session object with its own <code>client_kind</code>, capability scoped to that edge's arbiter source only, ownership per <a href="../safety/#s11-4">§11.4</a>, and a deadman equal to the edge's stream-quiet timeout (hub-configurable within <a href="../safety/#s11-3">§11.3</a>'s clamp).</p>
-<p>Effect: legacy clients appear in the session roster, their motion obeys the same deadman, ownership and safety rules as native sessions, and there is <strong>no unmonitored path to motion</strong>. They receive no SlopSync frames; the synthesis is entirely hub-side bookkeeping.</p>
+<p>Effect: legacy clients appear in the session roster, their motion obeys the same deadman, ownership and safety rules as native sessions, and there is <strong>no unmonitored path to motion</strong>. They receive no Valence frames; the synthesis is entirely hub-side bookkeeping.</p>
 <p>TCode passthrough is one of the three sanctioned motion input modes (<a href="../channels/#s9-6">§9.6-1</a>), named there so it is understood as a planned part of a closed surface rather than a future fourth mode.</p>
 <h2 id="s15-2">15.2 Predecessor-protocol migration <em>(informative)</em><a class="headerlink" href="#s15-2" title="Link to this section">#</a></h2>
-<p>The reference implementation's legacy binary UI protocol is SlopSync's direct ancestor; every concept maps:</p>
+<p>The reference implementation's legacy binary UI protocol is Valence's direct ancestor; every concept maps:</p>
 <table>
 <thead>
 <tr>
 <th>Legacy</th>
-<th>SlopSync successor</th>
+<th>Valence successor</th>
 </tr>
 </thead>
 <tbody>
@@ -2887,7 +2887,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   

@@ -6,13 +6,13 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="SlopSync clause 18: every known limitation of v1.0, stated so that nobody rediscovers one as a surprise.">
+        <meta name="description" content="Valence clause 18: every known limitation of v1.0, stated so that nobody rediscovers one as a surprise.">
       
       
-        <meta name="author" content="The SlopSync contributors">
+        <meta name="author" content="The Valence contributors">
       
       
-        <link rel="canonical" href="https://AtlanticTM.github.io/SlopSync/dev/spec/limitations/">
+        <link rel="canonical" href="https://openvalence.github.io/Valence/dev/spec/limitations/">
       
       
         <link rel="prev" href="../conformance/">
@@ -29,7 +29,7 @@
     
     
       
-        <title>Known limitations - SlopSync</title>
+        <title>Known limitations - Valence</title>
       
     
     
@@ -99,7 +99,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="SlopSync" class="md-header__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-header__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
@@ -113,7 +113,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            SlopSync
+            Valence
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -372,13 +372,13 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="SlopSync" class="md-nav__button md-logo" aria-label="SlopSync" data-md-component="logo">
+    <a href="../.." title="Valence" class="md-nav__button md-logo" aria-label="Valence" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.5 21c-3 0-4.19-4.24-5.45-8.72C10.14 9.04 9 5 7.5 5 4.11 5 4 11.93 4 12H2c0-.37.06-9 5.5-9 3 0 4.21 4.25 5.47 8.74C13.83 14.8 15 19 16.5 19c3.44 0 3.53-6.93 3.53-7h2c0 .37-.06 9-5.53 9"/></svg>
 
     </a>
-    SlopSync
+    Valence
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
@@ -2674,9 +2674,9 @@
 <li><strong>Registry <code>ref:</code> fields lag this document's numbering.</strong> Inserting <a href="../session/#s6-4">§6.4</a> (readiness) and splitting <a href="../security/#s12-2">§12.2</a> into <a href="../security/#s12-3">§12.3</a>–<a href="../security/#s12-5">§12.5</a> shifted several pointers: entries citing <a href="../session/#s6-4">§6.4</a>/<a href="../session/#s6-5">§6.5</a>/<a href="../session/#s6-6">§6.6</a>/<a href="../session/#s6-8">§6.8</a> mean <a href="../session/#s6-5">§6.5</a>/<a href="../session/#s6-6">§6.6</a>/<a href="../session/#s6-7">§6.7</a>/<a href="../session/#s6-9">§6.9</a>, and entries citing <a href="../security/#s12-2">§12.2</a> for pairing, token presentation or signing mean <a href="../security/#s12-3">§12.3</a>, <a href="../security/#s12-4">§12.4</a> and <a href="../security/#s12-5">§12.5</a> respectively. Values are unaffected (<a href="../wire-format/#s5-7">§5.7</a>). Correcting the <code>ref:</code> strings requires regenerating the constants header, so it is a follow-up commit rather than part of this document.</li>
 <li><strong><code>curve_family</code> <code>step</code> (3) is declarable but has no reference renderer.</strong> The registry now says so machine-checkably: <code>status: reserved</code> (RFC-049a) — the number is allocated and never renumbered, but the reference engine has no step renderer yet, so a <code>step</code> declaration currently renders as quintic, and the reference delegate's grant echo therefore reports <code>c2_quintic</code> for a <code>step</code> wish even under a follow-client policy: the echo is what the machine will <em>do</em> (<a href="../channels/#s9-6">§9.6</a>'s effective-family rule applied all the way down), never a claim about a renderer that does not exist. <code>requested_curve_family</code> (48, RFC-049b) makes that gap directly visible once a hub emits it: a client sees <code>requested=step, effective=c2_quintic</code> as two present keys, not an inference. When a step renderer lands, only the delegate's mapping changes, <code>status</code> flips to <code>active</code>, and declaring clients see the echo flip to <code>step</code>.</li>
 <li><strong>The <code>source.background_run</code> per-source setting (RFC-045, formally registered by RFC-048) is now shipped.</strong> The reference firmware exposes it as an ordinary <code>pattern-state</code> (0x1200) settings-metamodel field, defaulting <code>false</code> (the pattern generator stops when its owning session's source ownership is released, unless a later session re-activates it) — persisted to NVS like the device's other settings. A client MUST still not assume every hub has adopted it; the setting's <em>presence</em>, per the settings metamodel, is how a client tells whether a given hub has.</li>
-<li><strong>BLE GATT and UDP discovery are shipped and live-verified; cross-transport migration remains unexercised.</strong> RFC-043/046 pin the BLE identity, advertising payload, <code>ws_port</code>/<code>ipv4</code> WELCOME keys, and the UDP probe/reply. Both landed in Phase E (<code>src/comms/SlopSyncBleTransport.*</code>, <code>src/comms/SlopSyncUdpDiscovery.*</code>) and are live on the deployed reference hub: a live UDP probe/reply exchange confirmed unicast, broadcast, and the 1-reply-per-source-per-second rate limit against the real device, and a live BLE scan confirmed the advertised name, service UUID, and primary/scan-response payload split, exactly as designed. Two residuals remain real: no client has yet held a live GATT session (advertising-only verification so far), and generic control-frame fragmentation over a small (unnegotiated) BLE ATT MTU is unimplemented — a control frame that still does not fit after MTU negotiation simply fails to send rather than being split. The migration rule of <a href="../session/#s6-3">§6.3</a> is mechanically in place (reattach matches a HELLO by <code>instance_id</code>, not by which binding it arrived on) but has never been exercised across two different bindings live — no BLE-to-WS or WS-to-BLE reattach has been attempted — so treat cross-transport migration specifically as unverified, not as field-tested behavior.</li>
-<li><strong>RENDERING.md's vocabulary is now wired onto the reference catalog; no reference client yet renders from it.</strong> RFC-048 landed the spec/registry text, and Phase C2 wired it onto the device catalog: entry-level <code>rank</code> (key 16), field-level <code>rank</code>/<code>aspect</code>/<code>scope</code>/<code>provenance</code>/<code>unit_id</code> (keys 19-23), and <code>category</code> (key 10, repurposed to carry the <code>ui_categories</code> vocab) are all present in <code>include/comms/SlopSyncCatalog.h</code> — <code>catalog_lint</code> counts 113 desc / 44 role annotations across it. Still true: no reference client builds pages from the full category-rank-archetype-widget-pattern derivation chain (<code>webui/src</code> decodes <code>category</code>/<code>categoryLabel</code> and stops there — no archetype, widget-pattern, or region consumption). Treat the client-rendering half as a specified extension point — the Completeness Doctrine's fallback rule (RENDERING.md §14d) is exactly what guarantees this can land in a later client without breaking anything shipped today.</li>
-<li><strong>Blob backpressure is shipped as of fw 2.1.81 (RFC-050); completion signaling is not.</strong> <a href="../catalog/#s8-4">§8.4</a>'s backpressure table and <code>blob_chunks_in_flight</code> replace the earlier advisory "a hub MAY pace... MUST respect backpressure" wording the spec fresh-eyes panel found gave no binding-independent signal to code against; BLOB_DONE (<code>0x20</code>) replaces "the sender just stops and hopes" with a positive, idempotent completion signal. The hold-not-drop half landed in the HEAP RELIEF pass: <code>SlopSyncAsyncWsTransport::write()</code> gates <code>BLOB_CHUNK</code> on <code>limits::blob_chunks_in_flight</code> (4) via the same queue-depth check the STATE/STREAM shed-early path already used, holding rather than arming the control-stall timer — live-verified on-device, the catalog BLOB transfer (129/129 chunks) completes cleanly under load that used to close the session. Still not shipped: the hub does not abort a sustained-congestion transfer with NACK <code>BUSY</code>, and no reference client or hub emits BLOB_DONE — do not infer either from the backpressure fix above.</li>
+<li><strong>BLE GATT, UDP discovery, and BLE→WS cross-transport migration are shipped and live-verified.</strong> RFC-043/046 pin the BLE identity, advertising payload, <code>ws_port</code>/<code>ipv4</code> WELCOME keys, and the UDP probe/reply. Both landed in Phase E (<code>src/comms/ValenceBleTransport.*</code>, <code>src/comms/ValenceUdpDiscovery.*</code>) and are live on the deployed reference hub: a live UDP probe/reply exchange confirmed unicast, broadcast, and the 1-reply-per-source-per-second rate limit against the real device, and a live BLE scan confirmed the advertised name, service UUID, and primary/scan-response payload split, exactly as designed. The live-GATT-session and migration residuals BOTH cleared 2026-07-28: a Tauri 2 Android client held a live GATT session with full control against the reference hub, then performed the <a href="../session/#s6-3">§6.3</a> BLE→WS mid-session upgrade handoff — one <code>instance_id</code>, session preserved across bindings [operator-verified 2026-07-28]. One residual remains real: generic control-frame fragmentation over a small (unnegotiated) BLE ATT MTU is unimplemented — a control frame that still does not fit after MTU negotiation simply fails to send rather than being split. The WS→BLE direction of migration remains unexercised (no known client wants it; the rule is direction-agnostic by construction).</li>
+<li><strong>RENDERING.md's vocabulary is now wired onto the reference catalog; no reference client yet renders from it.</strong> RFC-048 landed the spec/registry text, and Phase C2 wired it onto the device catalog: entry-level <code>rank</code> (key 16), field-level <code>rank</code>/<code>aspect</code>/<code>scope</code>/<code>provenance</code>/<code>unit_id</code> (keys 19-23), and <code>category</code> (key 10, repurposed to carry the <code>ui_categories</code> vocab) are all present in <code>include/comms/ValenceCatalog.h</code> — <code>catalog_lint</code> counts 113 desc / 44 role annotations across it. Still true: no reference client builds pages from the full category-rank-archetype-widget-pattern derivation chain (<code>webui/src</code> decodes <code>category</code>/<code>categoryLabel</code> and stops there — no archetype, widget-pattern, or region consumption). Treat the client-rendering half as a specified extension point — the Completeness Doctrine's fallback rule (RENDERING.md §14d) is exactly what guarantees this can land in a later client without breaking anything shipped today.</li>
+<li><strong>Blob backpressure is shipped as of fw 2.1.81 (RFC-050); completion signaling is not.</strong> <a href="../catalog/#s8-4">§8.4</a>'s backpressure table and <code>blob_chunks_in_flight</code> replace the earlier advisory "a hub MAY pace... MUST respect backpressure" wording the spec fresh-eyes panel found gave no binding-independent signal to code against; BLOB_DONE (<code>0x20</code>) replaces "the sender just stops and hopes" with a positive, idempotent completion signal. The hold-not-drop half landed in the HEAP RELIEF pass: <code>ValenceAsyncWsTransport::write()</code> gates <code>BLOB_CHUNK</code> on <code>limits::blob_chunks_in_flight</code> (4) via the same queue-depth check the STATE/STREAM shed-early path already used, holding rather than arming the control-stall timer — live-verified on-device, the catalog BLOB transfer (129/129 chunks) completes cleanly under load that used to close the session. Still not shipped: the hub does not abort a sustained-congestion transfer with NACK <code>BUSY</code>, and no reference client or hub emits BLOB_DONE — do not infer either from the backpressure fix above.</li>
 </ol>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
@@ -2760,7 +2760,7 @@
       <div class="md-copyright">
   
     <div class="md-copyright__highlight">
-      SlopSync is provided to the community as a tool. It favors no firmware, no vendor and no product.
+      Valence is provided to the community as a tool. It favors no firmware, no vendor and no product.
     </div>
   
   
