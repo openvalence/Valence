@@ -3947,3 +3947,94 @@ say exactly which, future-us will want the receipts.*
   (§4.3 requires decoders to ignore unknown keys) and one optional role. No
   packed layout, frame type, or vector changes. The reference hub can
   populate it today from `slopmotion` constants it already owns.
+
+## RFC-060 -- Rename: SlopSync becomes Valence
+
+- **Status:** DRAFT (operator ruling 2026-09-21, recorded on the Valence
+  Drive board as val-smy). Ruling pending on the exact bytes below.
+- **Origin -- a rebrand, ruled, with the wire-visible half deferred to this
+  queue.** The ecosystem is being renamed ahead of its first public tag:
+  the protocol is **Valence**, the reference machine firmware is **Valence
+  Drive** (repo ValenceDrive, the ESP32-P4 OSSM Flagship), the reference
+  client is **Phosphor**, and the libraries are vmotion / vglow / vlog. The
+  code-level renames are each repo's own business; the strings a peer can
+  observe on the wire are not, because they are registry facts (§5.7) and
+  T11 makes every one of them a protocol change. This entry is the ONE
+  atomic pass those strings ride, per the 2026-07-27 C-11 ruling that
+  pre-release wire strings ARE respelled, in one commit, with fixtures and
+  goldens regenerated.
+- **Problem.** The name appears on the wire in seven places, every one of
+  them registry-owned. Renaming the repo and leaving them is a lie a
+  packet capture exposes; renaming them piecemeal is seven RFCs and seven
+  pin bumps. The registry today (quoted, not remembered):
+  `protocol_name: slopsync` and the spec id `slopsync/1`;
+  `ws_subprotocol: "slopsync.v1"`; `mdns_service: "_slopsync._tcp"`;
+  `udp_discovery.port: 21328` (0x5350, ASCII 'SP') and
+  `udp_discovery.magic: "SLOP"`; `ble_identity` service and characteristic
+  UUIDs `534C4F50-5359-4E43-8000-00000000000{1,2,3}` (ASCII 'SLOP' 'SY'
+  'NC'); the HELLO identity note's product example `'slopdrive-32'`; the
+  `limits` note naming the `slopsync` NVS namespace; and the
+  `log_levels` notes citing `sloplog::Level`. SPEC.md additionally
+  recommends the endpoint `/slopsync` (§13, WebSocket binding) and the
+  reference catalogs carry the word inside at least one wire-visible
+  description (`"Motion bundles accepted over SlopSync."`, an etag input).
+- **Proposed change.** One commit in this repo, then a pin bump in every
+  consumer.
+  1. **Identity strings.** `protocol_name: valence`; spec id `valence/1`;
+     `ws_subprotocol: "valence.v1"`; `mdns_service: "_valence._tcp"`;
+     RECOMMENDED endpoint `/valence`. `proto_ver` stays **1**: the grammar
+     does not change, so §4's bump rule is not triggered.
+  2. **UDP discovery.** `magic: "VLNC"` (0x56 0x4C 0x4E 0x43, the same
+     printable-ASCII convention as before and as the ESTOP magic, §5.5).
+     `port: 22096` (0x5650, ASCII 'VP', Valence Probe), keeping the
+     mnemonic-port convention. The port MUST be checked against the IANA
+     registry at acceptance; if 22096 is assigned, the next free 'V?' pair
+     is taken and this entry amended, never a random port.
+  3. **BLE identity.** New service and characteristic UUIDs with the same
+     greppable-ASCII rule: proposed `56414C45-4E43-4531-8000-00000000000{1,2,3}`
+     ('VALE' 'NC' 'E1', service / write / notify as today). A phone
+     scanning for the old UUID never finds a Valence hub, which is the
+     intended outcome: there is no old hub in the field.
+  4. **Notes and examples.** Product example becomes `'valence-drive'`;
+     the NVS namespace note becomes `valence` (the P4 reference already
+     stores under that name); `sloplog::Level` citations become
+     `vlog::Level`. Values are untouched; these are identifier renames in
+     prose that codegen copies into headers.
+  5. **Wire-visible catalog text.** Every reference catalog description
+     that names the protocol is respelled (T11), and the affected etags,
+     the mini-catalog fixture, and the golden byte arrays are regenerated
+     in the same commit. `slopsync_lint`'s frozen-artifact hashes are
+     re-pinned there and nowhere else.
+  6. **Repo and identifiers (not wire, listed so the pass is whole).**
+     Repository SlopSync -> Valence; `lib/slopsync` -> `lib/valence`;
+     include root `slopsync/` -> `valence/`; C++ namespace `slopsync::` ->
+     `valence::` including `generated/registry_constants.hpp`; the JS
+     client package; the MFP plugin `SlopSync` -> `Valence` and its `SlopWire`
+     codec class -> `Valence.Wire` (the term of art "wire" is KEPT, per
+     ruling: "on the wire", "wire format", "wire numbers" are how every
+     implementer already reads this spec); tools `slopsync_probe` ->
+     `valence_probe` (Valence Probe), `slopsync_lint` -> `valence_lint`,
+     `slopscope` -> `valence_trace` (Valence Trace), `slopsoak` ->
+     `valence_soak`; `hub/slopbench` -> Valence Bench; `test/native/
+     test_slopsync_*` -> `test_valence_*`; the `slopsync-canon` skill;
+     `ssmanager` -> Valence Tool; consumers' `slopsync.pin` -> `valence.pin`.
+     The docs-site title and URL follow (rfc-0y5 custom domain).
+- **What this deliberately does NOT propose.** A `proto_ver` bump (no
+  grammar change). A transition shim that accepts both subprotocols or
+  both magics: every known client and hub lives in these repos and flips
+  with the pin, and a shim is exactly the compat layer the 2026-07-25
+  breaking-is-allowed ruling exists to avoid. Any renumbering. Any change
+  to the spec's own nouns: "hub", "client", "channel", "wire" stay; product
+  names (Phosphor, Valence Drive) do not enter normative text, which keeps
+  saying "client" and "reference implementation". A parked name, **Valence
+  Bond**, is reserved for the pairing ceremony and trust ledger and is NOT
+  spent here.
+- **Compatibility.** Breaking at the string level for anything built
+  against `slopsync.v1`, `SLOP`, or the old UUIDs, and allowed because
+  nothing is tagged (never-renumber binds from the v1.0 tag forward). Order
+  of landing: this repo in one commit (registry, SPEC, generated headers,
+  vectors, fixtures, lint hashes); ValenceDrive bumps its pin and flips its
+  WS port's subprotocol echo and NVS namespace in the same change; the
+  archived SlopDrive-32 repo stays at the pre-rename pin and never follows.
+  Sequencing note from the bench: land AFTER the val-091.13 lag A/B, since a
+  pin bump mid-measurement muddies the comparison.
