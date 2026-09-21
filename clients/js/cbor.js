@@ -1,5 +1,5 @@
 /**
- * cbor.js — minimal deterministic CBOR codec for SlopSync (SPEC §5.3).
+ * cbor.js — minimal deterministic CBOR codec for Valence (SPEC §5.3).
  *
  * Deterministic profile ONLY: definite-length containers, shortest-form ints,
  * map keys ascending (caller-supplied order, asserted), float32-only (0xFA +
@@ -7,8 +7,8 @@
  * simple values beyond false/true/null.
  *
  * This is a direct port of the encoder/decoder shape in
- * clients/mfp/SlopSync.cs (CborWriter/CborReader) and
- * tools/slopsync_probe.py (cb_* / cb_decode). Golden-byte verified against
+ * clients/mfp/Valence.cs (CborWriter/CborReader) and
+ * tools/valence_probe.py (cb_* / cb_decode). Golden-byte verified against
  * WireSelfTest.cs — do NOT "optimize" the byte layout, it is wire-visible.
  *
  * Types map: uint/negative-int -> number, byte string -> Uint8Array,

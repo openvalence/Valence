@@ -1,6 +1,6 @@
-# SlopSync Rendering — the UI Constitution
+# Valence Rendering — the UI Constitution
 
-**Protocol:** `slopsync/1`
+**Protocol:** `valence/1`
 **Document version:** v1.0 (public)
 **Status:** Normative. Every enumerable vocabulary in this document is frozen at the v1.0 tag (§14).
 **Registry of record:** [`registry/registry.yaml`](registry/registry.yaml) — every numeric id in this document is a *view* of a registry section named in its heading. **On any conflict between this document and the registry, the registry wins**, exactly as [`SPEC.md`](SPEC.md) §5.7 rules for the wire protocol.
@@ -23,7 +23,7 @@ A conformant renderer builds its whole surface from one catalog by walking a sin
 
 **catalog entry → category (§3) → rank (§4) → archetype (§8) → widget pattern (§10) → region (§9) → page (§11)**
 
-Every arrow is a *rule* stated in this document, not a per-app choice. Two conformant clients fed the same catalog and told the same renderer class (§12) produce the same page tree, differing only in the class's own projection behavior (glance vs. handheld vs. full). This is the single invariant the rest of the document exists to guarantee, and it is why "SlopSync describes what things **are**, never how they **look**" (SPEC §1-7) survives having a rendering constitution at all: nothing here is a pixel, a color, a margin, or a font. Everything here is a *binding* — which archetype, which region, which state — expressed **behaviorally**.
+Every arrow is a *rule* stated in this document, not a per-app choice. Two conformant clients fed the same catalog and told the same renderer class (§12) produce the same page tree, differing only in the class's own projection behavior (glance vs. handheld vs. full). This is the single invariant the rest of the document exists to guarantee, and it is why "Valence describes what things **are**, never how they **look**" (SPEC §1-7) survives having a rendering constitution at all: nothing here is a pixel, a color, a margin, or a font. Everything here is a *binding* — which archetype, which region, which state — expressed **behaviorally**.
 
 ```mermaid
 flowchart LR
@@ -72,7 +72,7 @@ A hub SHOULD expose the well-known channel for any capability it has, carrying a
 | Power metering | `power` | `{watts, …}` | |
 | Usage totals | `odometer` | totals, `aspect: total` (§5.1) | |
 | **Pattern generator** (capability interface) | device-named STATE/INTENT pair | `{running, select(+options), speed?, depth?, stroke?, sensation?}` | The standard role set for a hub with a built-in generator. Optional roles render only when present. |
-| **Advanced generator** — the fray-d shape (capability interface) | device-named STATE/INTENT pair | master state + four modifier lanes (in-speed, out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait, offset}`) + preset store/roster | fray-d's design is the community gold standard; standardizing its *shape* means every advanced generator in the ecosystem speaks it and every client renders it, the same way SlopMotion is the standard planner. |
+| **Advanced generator** — the fray-d shape (capability interface) | device-named STATE/INTENT pair | master state + four modifier lanes (in-speed, out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait, offset}`) + preset store/roster | fray-d's design is the community gold standard; standardizing its *shape* means every advanced generator in the ecosystem speaks it and every client renders it, the same way VMotion is the standard planner. |
 | Thermal | `thermal` | `{temp_actual, temp_setpoint?}` | Heaters are coming. |
 | Battery | `battery` | `{percent, charging}` | Portable devices. |
 | **Identify** (capability interface) | `action.identify`-tagged trigger | none — blink-to-find | Every device ecosystem needs a find-me op. |
@@ -424,7 +424,7 @@ Each earned by a documented field regression in the reference client. A client c
 12. Meet a minimum touch-target size and support reduced motion, as conformance floors, not nice-to-haves.
 13. Never make a safety color themeable.
 
-**The SlopDeck Tier-0 renderer is the REFERENCE renderer for this section** — every law above was earned there first.
+**The Phosphor Tier-0 renderer is the REFERENCE renderer for this section** — every law above was earned there first.
 
 ---
 
@@ -451,7 +451,7 @@ This doctrine is why a fifteenth archetype, a sixth rank, and three new capabili
 - [SPEC.md](SPEC.md) §19 — the normative parent that makes this document a
   conformance companion, and §8.8/§8.9 for the settings metamodel this
   document's derivation chain (§1) consumes.
-- SlopDrive-32's CHANNEL-MAP.md — the concrete device channels a real
+- Valence Drive's CHANNEL-MAP.md — the concrete device channels a real
   renderer walks through this chain (lives in the machine repo, not here;
   see this repo's CHANNEL-GRID.md for the grid convention itself).
 - [RFC-QUEUE.md](RFC-QUEUE.md#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law) — RFC-048, this document's origin, and

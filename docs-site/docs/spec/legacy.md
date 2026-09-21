@@ -1,8 +1,8 @@
 ---
 title: Legacy interop
 description: >-
-  SlopSync clause 15: legacy text-protocol edges as synthetic sessions, and
-  the predecessor-protocol migration map.
+  Valence clause 15: legacy text-protocol edges as synthetic sessions, and the
+  predecessor-protocol migration map.
 register: IEEE
 generated: true
 ---
@@ -23,15 +23,15 @@ generated: true
 
 A hub MAY continue to accept legacy text-protocol ingest (TCode over serial, BLE-NUS, a raw-text socket, an outbound bridge client, a radio dongle chain). Where it does, **the hub MUST wrap each active legacy edge in a synthetic session**: an internal session object with its own `client_kind`, capability scoped to that edge's arbiter source only, ownership per [§11.4](safety.md#s11-4), and a deadman equal to the edge's stream-quiet timeout (hub-configurable within [§11.3](safety.md#s11-3)'s clamp).
 
-Effect: legacy clients appear in the session roster, their motion obeys the same deadman, ownership and safety rules as native sessions, and there is **no unmonitored path to motion**. They receive no SlopSync frames; the synthesis is entirely hub-side bookkeeping.
+Effect: legacy clients appear in the session roster, their motion obeys the same deadman, ownership and safety rules as native sessions, and there is **no unmonitored path to motion**. They receive no Valence frames; the synthesis is entirely hub-side bookkeeping.
 
 TCode passthrough is one of the three sanctioned motion input modes ([§9.6-1](channels.md#s9-6)), named there so it is understood as a planned part of a closed surface rather than a future fourth mode.
 
 ## 15.2 Predecessor-protocol migration *(informative)* {#s15-2}
 
-The reference implementation's legacy binary UI protocol is SlopSync's direct ancestor; every concept maps:
+The reference implementation's legacy binary UI protocol is Valence's direct ancestor; every concept maps:
 
-| Legacy | SlopSync successor |
+| Legacy | Valence successor |
 |---|---|
 | HELLO `{proto_ver, cfg_gen}` | HELLO/WELCOME ([§6.2](session.md#s6-2)–6.3) — adds identity, tiers, grants, etag, `boot_id`, readiness |
 | Telemetry frame: fixed header + n samples | STREAM bundle ([§5.4](wire-format.md#s5-4)) on a catalog-declared channel; flag bits become `safety` and status STATE channels |

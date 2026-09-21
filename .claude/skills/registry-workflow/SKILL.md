@@ -31,7 +31,7 @@ python tools/gen_registry_header.py          # writes both outputs
 python tools/gen_registry_header.py --check  # CI staleness gate, exit 1 on drift
 ```
 
-Outputs: `lib/slopsync/include/slopsync/generated/registry_constants.hpp`
+Outputs: `lib/valence/include/valence/generated/registry_constants.hpp`
 and `clients/js/generated/registry_vocab.js`. Both are committed; both are
 hook-protected against hand edits.
 

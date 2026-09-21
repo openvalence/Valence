@@ -12,7 +12,7 @@ status: stub
 
     An earlier interactive version of this page read a live device catalog.
     That generator (`docs-site/tools/gen_channel_grid_page.py`) stayed in
-    SlopDrive-32, the machine repo, because it parses that machine's own
+    Valence Drive, the machine repo, because it parses that machine's own
     device catalog. Rebuilding an interactive grid on the protocol side
     (reading a hub-agnostic catalog instead of one machine's) is a parked
     work item.
@@ -66,5 +66,5 @@ them. See [Channels](registry/channels.md) for the generated, authoritative list
 ## Worked example
 
 This repository holds no single hub's device map. Each hub publishes its
-own. SlopDrive-32's `CHANNEL-MAP.md`, in its own repository, is the worked
+own. Valence Drive's `CHANNEL-MAP.md`, in its own repository, is the worked
 example.

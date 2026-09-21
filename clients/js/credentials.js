@@ -79,7 +79,7 @@ async function browserGet(url) {
  * string so a shell's custom httpGet can never collide with it by returning
  * ordinary body text.
  */
-export const RATE_LIMITED = Symbol('slopsync.rate_limited');
+export const RATE_LIMITED = Symbol('valence.rate_limited');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -131,7 +131,7 @@ export async function mintUiToken(host, attempts = 4) {
       if (body === RATE_LIMITED) {
         // RETRYING THIS IS NOT OPTIONAL. The mint is capped at one per 250 ms
         // DEVICE-WIDE, not per client, so a second browser tab, a running
-        // slopsoak, or a reconnect storm can all 429 a perfectly entitled page.
+        // valence_soak, or a reconnect storm can all 429 a perfectly entitled page.
         // Treating that as "no credential" would silently demote the UI to
         // viewer — every control dead, no error, until someone reloads. Jitter
         // keeps concurrent callers from colliding again in lockstep.

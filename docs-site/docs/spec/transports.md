@@ -1,7 +1,7 @@
 ---
 title: Transports and relays
 description: >-
-  SlopSync clauses 13-14: the binding contract and its matrix, the WebSocket,
+  Valence clauses 13-14: the binding contract and its matrix, the WebSocket,
   ESP-NOW, BLE, serial and in-process bindings, discovery, and the relay role.
 register: IEEE
 generated: true
@@ -23,7 +23,7 @@ generated: true
 
 ### 13.1 The binding contract {#s13-1}
 
-A binding implements four operations — `open`, `close`, `write(frame)`, `read → frame` — and declares its properties. SlopSync above the binding line is transport-blind. The matrix every implementation codes against:
+A binding implements four operations — `open`, `close`, `write(frame)`, `read → frame` — and declares its properties. Valence above the binding line is transport-blind. The matrix every implementation codes against:
 
 | Binding | `max_frame` (header-incl.) | Payload MTU | Ordered | Reliable | Congestion signal | ESTOP preempt point | Worst-case added ESTOP delay* |
 |---|---|---|---|---|---|---|---|
@@ -39,7 +39,7 @@ The ESP-NOW line is the **normative floor**: `min_transport_payload` = 242 comes
 
 **Conformance profiles (RFC-043).** Which bindings a hub MUST offer depends on what it is:
 
-- **Base profile** (simulators, hosted hubs, relays, in-process test hubs): any **single** binding conforms. A hub with no radio at all — a desktop simulator talking only in-process, a hub behind an existing gateway — is a fully legitimate SlopSync citizen.
+- **Base profile** (simulators, hosted hubs, relays, in-process test hubs): any **single** binding conforms. A hub with no radio at all — a desktop simulator talking only in-process, a hub behind an existing gateway — is a fully legitimate Valence citizen.
 - **Hardware hub profile** (an embedded hub on radio-bearing silicon — every known target is ESP32-class WiFi+BLE): **BLE GATT is MUST**, the conformance floor, because it is the infrastructure-free path — no router, no credentials, phone-direct control and discovery, and the future WiFi-provisioning admin channel all want it. **WebSocket is SHOULD**, the preferred high-throughput path (dense streams, fat catalogs, multiple clients) and expected on all ESP32-class hardware. **ESP-NOW** is the supported ESP32-peer/remote binding: deliberately trivial to enable, not itself conformance-relevant.
 - **Serving a UI is a capability, never a conformance requirement.** A hub with no web assets to serve is fully conformant, and a client MUST NOT assume the hub it is talking to serves one.
 - **Clients SHOULD auto-upgrade BLE→WS** whenever both ends can: BLE is how a client *finds and provisions* a machine, WS is how it *streams* to one ([§6.3](session.md#s6-3)'s transport migration carries the session across the hop).
@@ -48,7 +48,7 @@ All of the above is availability policy, stated so a client knows what to expect
 
 ### 13.2 WebSocket {#s13-2}
 
-Subprotocol **`slopsync.v1`** in the upgrade handshake — this is version negotiation for free, and it lets a legacy protocol coexist on a different path or subprotocol during migration. **The server MUST perform RFC 6455 subprotocol selection and echo `slopsync.v1` in the upgrade response.** Strict clients hard-fail without the echo — two independent WS server libraries had to be patched to comply, which is why this is a sentence rather than an assumption. One SlopSync frame = one WS **binary** message; no batching at the WS layer, since bundles already amortize. Text messages on a `slopsync.v1` socket are a protocol error (close 1002). The server is the hub. RECOMMENDED endpoint: `/slopsync` on the primary HTTP port.
+Subprotocol **`valence.v1`** in the upgrade handshake — this is version negotiation for free, and it lets a legacy protocol coexist on a different path or subprotocol during migration. **The server MUST perform RFC 6455 subprotocol selection and echo `valence.v1` in the upgrade response.** Strict clients hard-fail without the echo — two independent WS server libraries had to be patched to comply, which is why this is a sentence rather than an assumption. One Valence frame = one WS **binary** message; no batching at the WS layer, since bundles already amortize. Text messages on a `valence.v1` socket are a protocol error (close 1002). The server is the hub. RECOMMENDED endpoint: `/valence` on the primary HTTP port.
 
 ### 13.3 ESP-NOW {#s13-3}
 
@@ -58,9 +58,9 @@ Reliability layer: every data frame carries its header seq; receivers emit a bat
 
 ### 13.4 BLE GATT {#s13-4}
 
-A NUS-shaped service (one write characteristic c→h, one notify characteristic h→c) carrying SlopSync frames as characteristic values, each ≤ ATT_MTU − 3.
+A NUS-shaped service (one write characteristic c→h, one notify characteristic h→c) carrying Valence frames as characteristic values, each ≤ ATT_MTU − 3.
 
-**Identity is pinned, not per-implementation (RFC-046 item 1).** Every conformant BLE hub advertises the **same** GATT service, so a client scans for exactly one thing: service UUID `534C4F50-5359-4E43-8000-000000000001` (`ble_identity.service_uuid`; the first three groups spell `SLOP`/`SY`/`NC` in ASCII, deliberately, so the UUID is greppable and mnemonic rather than an opaque v4), write characteristic (c2h) `...-8000-000000000002`, notify characteristic (h2c) `...-8000-000000000003`. This is the phone-facing twin of the ESP-NOW `BEACON` frame's own per-binding discovery ([§13.7](#s13-7)).
+**Identity is pinned, not per-implementation (RFC-046 item 1).** Every conformant BLE hub advertises the **same** GATT service, so a client scans for exactly one thing: service UUID `56414C45-4E43-4531-8000-000000000001` (`ble_identity.service_uuid`; the first three groups spell `VALE`/`NC`/`E1` in ASCII, deliberately, so the UUID is greppable and mnemonic rather than an opaque v4), write characteristic (c2h) `...-8000-000000000002`, notify characteristic (h2c) `...-8000-000000000003`. This is the phone-facing twin of the ESP-NOW `BEACON` frame's own per-binding discovery ([§13.7](#s13-7)).
 
 **Advertising payload (RFC-046 item 2).** Within the legacy ≤ 31-byte advertising budget: the service UUID and a shortened hub name. The fuller name and one flags byte (`ble_adv_flags`) ride the **scan response** instead (active scan required to read it) — the advertisement's own budget (service UUID + shortened name = 27 B) has no room left for a 5 B Manufacturer-Specific-Data record alongside them: bit0 `pairing_window_open` (a [§12.3](security.md#s12-3) association window is open right now — same meaning as the BEACON frame's pairing-open flag), bit1 `ws_available` (the hub currently has a live IP and a listening WebSocket port — RFC-043's signal that a connected client SHOULD auto-upgrade to WS, [§6.3](session.md#s6-3)). Bits 2–7 are reserved and MUST be zero. The endpoint itself — which port, which address — is not squeezed into this byte; it rides WELCOME's `ws_port`/`ipv4` ([§6.3](session.md#s6-3)) once the client has connected and can spend CBOR map keys on it.
 
@@ -68,7 +68,7 @@ Clients SHOULD negotiate MTU ≥ 250 and enable data-length extension **before c
 
 ### 13.5 Serial {#s13-5}
 
-Byte pipe → **COBS** framing, delimiter `0x00`: encode each SlopSync frame with COBS and append `0x00`.
+Byte pipe → **COBS** framing, delimiter `0x00`: encode each Valence frame with COBS and append `0x00`.
 
 ESTOP scanning: the [§5.5](wire-format.md#s5-5) magic is matched on the **decoded** stream; additionally, because COBS never produces `0x00` inside a frame and re-synchronizes at every delimiter, a receiver in an unsynced or corrupt state MUST still run the four-`0xE5` scanner on **raw** bytes between delimiters. `0xE5` survives COBS encoding unchanged when no zero bytes occur in the window, and the CRC validates any candidate either way.
 
@@ -78,7 +78,7 @@ The in-process binding connects hub and client roles inside one process (desktop
 
 ### 13.7 Discovery {#s13-7}
 
-- **mDNS/DNS-SD (WS clients):** service `_slopsync._tcp`; TXT records `v=1`, `name=<hub name>`, `etag=<hex>`, `pairing=<open|closed>`. Browsers cannot mDNS-browse; a hub-served web UI connects to its own origin, so mDNS serves native applications and simulators. A manually-entered address MUST always work — discovery is a convenience, never a requirement. **Discovery doctrine (RFC-046 item 6): mDNS is a free SHOULD for the one audience that can use nothing else** (browsers resolving a `.local` name) — it is not the primary WS-side path; [§13.8](#s13-8)'s UDP probe is.
+- **mDNS/DNS-SD (WS clients):** service `_valence._tcp`; TXT records `v=1`, `name=<hub name>`, `etag=<hex>`, `pairing=<open|closed>`. Browsers cannot mDNS-browse; a hub-served web UI connects to its own origin, so mDNS serves native applications and simulators. A manually-entered address MUST always work — discovery is a convenience, never a requirement. **Discovery doctrine (RFC-046 item 6): mDNS is a free SHOULD for the one audience that can use nothing else** (browsers resolving a `.local` name) — it is not the primary WS-side path; [§13.8](#s13-8)'s UDP probe is.
 - **BLE:** advertising payload and identity are pinned in [§13.4](#s13-4). BLE advertisement is the **primary** discovery path in general: it is physically present, needs no network, and works before the hub is even provisioned onto a WiFi network at all.
 - **ESP-NOW:** the hub or its relay broadcasts a **BEACON** frame (`0x17`, raw, channel 0; payload: `boot_id`, catalog etag, pairing-open flag) every 500 ms **only while a pairing window is open**. New peers respond to beacons, then run PAIR_REQ over unicast. Outside the window, peers must already know the segment from a previous pairing.
 
@@ -88,7 +88,7 @@ The in-process binding connects hub and client roles inside one process (desktop
 
 A minimal broadcast probe/reply pair, and the **canonical WS-side discovery path for a LAN client without BLE** (a desktop shell, a streaming-application plugin, Intiface) — plain UDP sockets both ends, immune to the multicast/mesh-AP/Android failure modes that make mDNS unreliable in real homes, and simple enough to retire a hand-rolled DNS-SD query.
 
-- **Port and magic** are registry-pinned (`udp_discovery`): port `21328` (`0x5350`, ASCII `SP` for "SlopSync Probe"), magic bytes `53 4C 4F 50` (ASCII `SLOP`) opening every probe and reply, mirroring the ESTOP frame's own magic-byte convention ([§5.5](wire-format.md#s5-5)).
+- **Port and magic** are registry-pinned (`udp_discovery`): port `22096` (`0x5650`, ASCII `VP` for "Valence Probe"), magic bytes `56 4C 4E 43` (ASCII `VLNC`) opening every probe and reply, mirroring the ESTOP frame's own magic-byte convention ([§5.5](wire-format.md#s5-5)).
 - **DISCOVER_PROBE** (`0x1E`, raw, c2h): a client **broadcasts** `magic(4B) + proto_ver:u8 + nonce:u32` (client entropy, echoed in the reply so a client running several probes at once can match them).
 - **DISCOVER_REPLY** (`0x1F`, raw, h2c): the hub **unicasts** back to the probe's source address: `magic(4B) + nonce:u32` (echoed) `+ hub_name:str32 + hub_instance_id:u64` (the hub's durable cross-boot identity, [§6.1](session.md#s6-1)/[§6.3](session.md#s6-3) — distinguishing two hubs sharing a name **across reboots**, which a per-boot value cannot do) `+ proto_ver:u8 + ws_port:u16 + fw_version:str16 + catalog_etag:8B + flags:u8` (bit0 `pairing_window_open`, the same philosophy as the ESP-NOW BEACON payload, plus the endpoint a BEACON has no room for). `str16`/`str32` are the fixed-width zero-padded field types of [§5.4](wire-format.md#s5-4)/RFC-026. **RFC-048 correction (operator veto of an RFC-046 decision, at landing):** this field originally carried the hub's `boot_id` (u32); RFC-046's own entry flagged that choice for veto because a boot-scoped id cannot deduplicate two hubs sharing a name across a reboot, which is this field's entire job. The reply's total payload grows from 72 to 76 bytes (the four-byte `u32`→`u64` widening); no other field moves. This layout landed with zero implementations, so the correction is free.
 - **Read-only identity, no control surface.** A probe cannot command anything, and a reply discloses nothing a passive observer of a normal WELCOME could not already learn. Replies are rate-limited to `udp_discovery.reply_rate_limit_per_source_s` (1) **per source address**, so a probe storm cannot load the hub — the same posture as the BEACON frame's own broadcast cadence.

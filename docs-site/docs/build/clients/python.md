@@ -1,7 +1,7 @@
 ---
 title: Python client guide
 description: >-
-  How to write a SlopSync client in Python.
+  How to write a Valence client in Python.
 register: STE
 status: stub
 ---
@@ -20,7 +20,7 @@ status: stub
 
 The tooling and test client. Cover a minimal session, and reading generated constants rather than typing numbers.
 
-Source material: `tools/slopsync_probe.py`, the reference verifier.
+Source material: `tools/valence_probe.py`, the reference verifier.
 
 > DEMO-CANDIDATE: the probe's own minimal session (see the
 > [Quickstart](../quickstart.md#python)) run live, one decoded frame printed
@@ -45,6 +45,6 @@ skim another.
 ## Where to go next
 
 - [Quickstart](../quickstart.md) — the same seven steps, worked end to end.
-- [CLI guide](../cli.md) — the probe and SlopScope, in depth.
+- [CLI guide](../cli.md) — the probe and Valence Trace, in depth.
 - [Local testing](../local-testing.md) — run this against the simulator
   before you run it against hardware.

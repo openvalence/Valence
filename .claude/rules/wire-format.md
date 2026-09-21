@@ -49,6 +49,6 @@ paths:
 ## Where numbers live
 
 Every wire number comes from `spec/registry/registry.yaml` via the generated
-headers (`lib/slopsync/include/slopsync/generated/registry_constants.hpp`,
+headers (`lib/valence/include/valence/generated/registry_constants.hpp`,
 `clients/js/generated/registry_vocab.js`). A hand-typed wire constant in
 library or client code is a defect even when its value is currently correct.

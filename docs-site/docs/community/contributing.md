@@ -1,7 +1,7 @@
 ---
 title: Contributing to the documentation
 description: >-
-  How to build the SlopSync documentation site, which writing register applies
+  How to build the Valence documentation site, which writing register applies
   to which page, and why no wire number is ever typed by hand.
 register: STE
 ---

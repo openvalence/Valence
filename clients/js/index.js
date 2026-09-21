@@ -1,17 +1,17 @@
 /**
- * slopsync-js — browser-side SlopSync client core (wire + session layer).
+ * valence-js — browser-side Valence client core (wire + session layer).
  *
- * This is the THIRD reference client of the SlopSync protocol (after
- * tools/slopsync_probe.py and clients/mfp/SlopSync.cs). It speaks a hub's
- * native plane — ws://<host>:<port>, subprotocol 'slopsync.v1', 8-byte LE
- * frame header + deterministic CBOR (SPEC §5.3). SlopDrive-32's WebUI
+ * This is the THIRD reference client of the Valence protocol (after
+ * tools/valence_probe.py and clients/mfp/Valence.cs). It speaks a hub's
+ * native plane — ws://<host>:<port>, subprotocol 'valence.v1', 8-byte LE
+ * frame header + deterministic CBOR (SPEC §5.3). Valence Drive's WebUI
  * refactor (its own docs/REFACTOR-ROADMAP.md §5, machine repo, not here)
  * wires its cards onto this client, replacing its legacy :81 UiSocket plane.
  *
  * DISCIPLINE (spec-gap ritual, spec/RFC-QUEUE.md's own header): every wire
  * number comes from the generated registry constants (frames.js), byte
  * layouts mirror the probe / C# client, and the golden-byte test
- * (clients/js/test/slopsync-wire.test.mjs) proves this codec is
+ * (clients/js/test/valence-wire.test.mjs) proves this codec is
  * byte-identical to them. Never invent bytes.
  *
  * GROUND TRUTH (SPEC.md §1.2, "Ground truth, hub-authoritative"): STATE events carry the device's REPORTED values;
@@ -20,12 +20,12 @@
  *
  * ── Integrator quick-start (Phase A, read plane) ────────────────────────────
  *
- *   import { createSession, CH } from './core/slopsync/index.js';
+ *   import { createSession, CH } from './core/valence/index.js';
  *
  *   const s = createSession({
  *     host: location.hostname,           // device serves this bundle
  *     clientKind: 'webui',
- *     clientName: 'SlopDrive WebUI',
+ *     clientName: 'ValenceDrive WebUI',
  *     subscriptions: [                    // [channelId, rateHz, priority]
  *       [CH.SAFETY,     0,  PRIORITY.critical],  // on-change, never shed
  *       [CH.MOTION,     20, PRIORITY.elevated],  // live carriage feed

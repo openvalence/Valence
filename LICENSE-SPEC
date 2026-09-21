@@ -3,7 +3,7 @@ Creative Commons Attribution 4.0 International (CC BY 4.0)
 Scope: this license applies to the documents under spec/ (the protocol
 specification, registry, rendering constitution, RFC queue, examples, schema,
 conformance vectors, and reviews) — the human-readable and machine-readable
-description of the SlopSync protocol. It does NOT apply to source code; code
+description of the Valence protocol. It does NOT apply to source code; code
 in this repository (lib/, clients/, hub/, tools/, test/, docs-site/ tooling)
 is licensed under MIT — see LICENSE.
 

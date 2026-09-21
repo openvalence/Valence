@@ -1,7 +1,7 @@
 ---
 title: Session layer
 description: >-
-  SlopSync clause 6: identity, HELLO and WELCOME, the readiness gate, the
+  Valence clause 6: identity, HELLO and WELCOME, the readiness gate, the
   network probe, liveness, mid-session subscription management, reconnect and
   teardown.
 register: IEEE
@@ -172,6 +172,6 @@ GOODBYE (`0x11`, either direction; CBOR `code` from `nack_codes`, optional `deta
 
 **RFC-045 retired the `cause` distinction this paragraph used to describe.** Neither staleness nor teardown latches anything any more, so there is no `deadman`/`session_loss` safety-word edge left to tell apart on a source-loss path; `safety_causes::deadman` (1) and `session_loss` (4) remain registered (a hub whose application-level `sourcePolicy()` genuinely needs a stop-on-silence edge may still produce them) but the reference hub emits neither for source loss. A hub MUST NOT report a closed browser tab, or any other departure, as a safety edge it did not actually have.
 
-*Why this is a numbered rule (informative):* the reference implementation originally released ownership only from the deadman pump, which requires an occupied slot. GOODBYE, rude detach, both evictions and same-slot re-HELLO all reset the slot first — so a departed streamer's dead `session_id` owned the motion source **forever**, silently conflict-dropping every later client's intents and bundles until reboot. It was invisible to every test that rebooted between runs. Back-to-back sessions with no reboot in between is therefore a mandatory verification pattern for any session-lifecycle change — RFC-042's own staleness/reattach machinery is verified the identical way (`test_slopsync_staleness`'s STALE-04).
+*Why this is a numbered rule (informative):* the reference implementation originally released ownership only from the deadman pump, which requires an occupied slot. GOODBYE, rude detach, both evictions and same-slot re-HELLO all reset the slot first — so a departed streamer's dead `session_id` owned the motion source **forever**, silently conflict-dropping every later client's intents and bundles until reboot. It was invisible to every test that rebooted between runs. Back-to-back sessions with no reboot in between is therefore a mandatory verification pattern for any session-lifecycle change — RFC-042's own staleness/reattach machinery is verified the identical way (`test_valence_staleness`'s STALE-04).
 
 Codes of note: `NORMAL_CLOSURE` (clean voluntary teardown, either direction), `SESSION_EVICTED`, `DUPLICATE_INSTANCE`, `READY_TIMEOUT`, `SLOT_RECLAIMED` (RFC-042, [§6.6](#s6-6)), `BLOB_REFUSED` ([§4.5](foundations.md#s4-5), client-sent), `REBOOTING` ([§9.3](channels.md#s9-3)). `DEADMAN_TIMEOUT` and `IDLE_REAPED` remain registered GOODBYE codes but the reference hub no longer emits either — silence produces no GOODBYE at all (staleness is not an ending).

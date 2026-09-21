@@ -1,7 +1,7 @@
 ---
 title: Capabilities and what they mean for custom hardware
 description: >-
-  What a SlopSync hub must provide, what is optional, and why a board with no screen, no LED and no buttons still supports the whole protocol, pairing included.
+  What a Valence hub must provide, what is optional, and why a board with no screen, no LED and no buttons still supports the whole protocol, pairing included.
 register: STE
 ---
 
@@ -16,7 +16,7 @@ that costs.
 
 ## 1. A feature exists if its channels exist
 
-SlopSync has no feature list. It has a
+Valence has no feature list. It has a
 [catalog](../reference/dictionary.md#catalog), and
 [capability discovery](../reference/dictionary.md#capability-discovery) is
 reading it.
@@ -141,7 +141,7 @@ Pairing is usually where low-capability hardware gets excluded. A ceremony
 needing a keypad on the joiner and a display on the hub rules out most devices
 in this ecosystem.
 
-SlopSync has one ceremony and three association modes. All three end in the
+Valence has one ceremony and three association modes. All three end in the
 same grant. The role is an attribute of the grant, never of the ceremony, and
 a hub has zero or one PIN rather than one secret per tier.
 

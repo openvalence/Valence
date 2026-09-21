@@ -1,5 +1,5 @@
 /**
- * catalog.js — SlopSync blob transfer + catalog decode + packed-STATE decoding.
+ * catalog.js — Valence blob transfer + catalog decode + packed-STATE decoding.
  *
  * The catalog is the self-describing channel list (§8.1) and, since RFC-009,
  * the self-describing SETTINGS model too. A client fetches it with BLOB_REQ
@@ -151,7 +151,7 @@ export function sameBlobTarget(a, b) {
 
 /**
  * Receiver-side blob reassembler. Mirrors ChunkReassembler<> in
- * lib/slopsync/.../wire/blob_chunks.hpp: begun from the first chunk's own
+ * lib/valence/.../wire/blob_chunks.hpp: begun from the first chunk's own
  * header (which declares total_bytes, so the size is known before anything is
  * allocated — RFC-028), and REJECTS chunks belonging to a different blob so a
  * catalog transfer and a store fetch cannot corrupt each other.
@@ -161,7 +161,7 @@ export class BlobReassembler {
   //
   // THIS CAP SILENTLY BROKE THE CLIENT. The device catalog was 11,659 B, i.e.
   // 629 bytes under the old ceiling, and nothing anywhere was watching that
-  // margin. Adding the slopmotion tuning cards took it to 15,817 B, the
+  // margin. Adding the vmotion tuning cards took it to 15,817 B, the
   // reassembler refused the transfer header, and the session then went LIVE
   // WITH NO CATALOG -- so every STATE frame arrived undecodable and the UI
   // simply showed nothing. No error, no NACK, no dropped-frame warning: a
@@ -432,7 +432,7 @@ function decodeLayoutField(fm) {
   // read-only effective/telemetry truth — display it, NEVER write it back into
   // a setting's shadow. That presence test IS RFC-003's stored/effective
   // distinction, and stomping a stored value with an effective one is the
-  // original slopsync-js window bug.
+  // original valence-js window bug.
   if (fm.has(8)) f.settingKey = fm.get(8);
   decodeSharedAnnotations(fm, f);
   // RFC-037: the field's packed width, stated explicitly rather than derived
@@ -594,7 +594,7 @@ export function decodePacked(payload, layout) {
     if (f.declaredSize != null && f.declaredSize !== derivedSize && !f._sizeMismatchWarned) {
       f._sizeMismatchWarned = true; // warn once per field, not once per STATE push
       // eslint-disable-next-line no-console
-      console.warn('slopsync: catalog field "' + f.name + '" (type ' + f.typeName +
+      console.warn('valence: catalog field "' + f.name + '" (type ' + f.typeName +
         ') declares size ' + f.declaredSize + ' B but the type is ' + derivedSize +
         ' B wide — trusting the type (RFC-037: this is a catalog authoring error)');
     }

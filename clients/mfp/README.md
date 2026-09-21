@@ -1,11 +1,11 @@
-# SlopSync — MultiFunPlayer plugin
+# Valence — MultiFunPlayer plugin
 
 Streams a [MultiFunPlayer](https://github.com/Yoooi0/MultiFunPlayer) (MFP) axis to a
-**SlopDrive-32** machine over its native **SlopSync** protocol — the device-shadow +
+**Valence Drive** machine over its native **Valence** protocol — the device-shadow +
 capability-negotiation sync protocol the firmware speaks on a binary WebSocket.
 
-This is the first external client implementation of SlopSync. Its wire bytes are a
-faithful mirror of the live-verified reference client `tools/slopsync_probe.py`.
+This is the first external client implementation of Valence. Its wire bytes are a
+faithful mirror of the live-verified reference client `tools/valence_probe.py`.
 
 Instead of TCode-over-serial/UDP, the plugin feeds the machine one of two ways,
 selected by the **Mode** setting:
@@ -27,12 +27,12 @@ selected by the **Mode** setting:
 MFP compiles plugins itself (Roslyn, at runtime) — you do **not** build anything to
 install this.
 
-1. Create a folder `SlopSync` under your MFP `Plugins` directory:
-   `…\MultiFunPlayer\Plugins\SlopSync\`
-2. Copy **`SlopSync.cs`** and **`SlopSync.xaml`** into it.
+1. Create a folder `Valence` under your MFP `Plugins` directory:
+   `…\MultiFunPlayer\Plugins\Valence\`
+2. Copy **`Valence.cs`** and **`Valence.xaml`** into it.
 3. Start MFP. The plugin appears in the plugin list; open its tab.
 
-Only those two files ship. `SlopSync.csproj`, `WireSelfTest.cs`/`.csproj`, and
+Only those two files ship. `Valence.csproj`, `WireSelfTest.cs`/`.csproj`, and
 `LiveWireTest.cs`/`.csproj` are dev-only (compile-check, golden-byte self-test, and
 live device wire test) and must **not** be copied into the Plugins folder.
 
@@ -48,7 +48,7 @@ live device wire test) and must **not** be copied into the Plugins folder.
    (`Samples` or `Segments` — see below). Mode is locked while connected.
 3. Press the **▶ toolbar button** to connect. It streams until you press it again
    (which shows as ■). Connect/disconnect is also bindable from MFP's **Shortcuts** as
-   `SlopSync::Connection::Toggle` / `::Connect` / `::Disconnect` (mirroring a native
+   `Valence::Connection::Toggle` / `::Connect` / `::Disconnect` (mirroring a native
    output target's action naming; Connect/Disconnect are idempotent).
 
 ### The panel
@@ -104,7 +104,7 @@ you will see bundles climbing but no motion. Home it from the machine's own WebU
 | Setting | Default | Meaning |
 |---|---|---|
 | **Address** | `192.168.1.229` | Machine IP / hostname. |
-| **Port** | `82` | SlopSync WebSocket port. |
+| **Port** | `82` | Valence WebSocket port. |
 | **Rate (Hz)** | `50` | How often the axis is sampled and streamed. Clamped 10–250; the machine may grant a *lower* rate (its channel cap is 333 Hz) and the plugin streams at the **granted** rate, not the wish. |
 | **Axis** | `L0` | Which MFP `DeviceAxis` to stream (`L0`, `L1`, `R0`, …). |
 | **Mode** | `Samples` | `Samples` = 50 Hz dense points on `0x2100` (was `0x0084`). `Segments` = one timed command per funscript action on `0x2101` (was `0x0085`). Locked while connected. See *Samples vs Segments* below. |
@@ -143,9 +143,9 @@ axis. Live-driven axes and heavy motion-provider setups belong on Samples.
 
 ## What it does on the wire (protocol summary)
 
-All of this mirrors `tools/slopsync_probe.py` and `spec/SPEC.md`.
+All of this mirrors `tools/valence_probe.py` and `spec/SPEC.md`.
 
-1. **Connect** — WebSocket to `ws://addr:port/`, subprotocol `slopsync.v1`, binary frames.
+1. **Connect** — WebSocket to `ws://addr:port/`, subprotocol `valence.v1`, binary frames.
 2. **HELLO → WELCOME** — identifies (stable 8-byte instance id), wishes to *publish*
    on channel `0x2100` (was `0x0084`) at the configured rate, **and (v1.0) carries its `subscriptions`
    wish list and any cached `catalog_etag`** — §6.2 exists so a simple client can finish
@@ -276,9 +276,9 @@ processing). The limits are shown to the operator. Full stop.
 
 ### Compile check
 ```
-dotnet build clients/mfp/SlopSync.csproj
+dotnet build clients/mfp/Valence.csproj
 ```
-`SlopSync.csproj` is a dev-only project that compiles `SlopSync.cs` standalone against a
+`Valence.csproj` is a dev-only project that compiles `Valence.cs` standalone against a
 local MFP install. **Edit its `HintPath`s** if your MFP is not at
 `C:\Users\Atlan\Downloads\MultiFunPlayer-1.34.5-patreon-SelfContained.10.0.300\`.
 It needs the `net10.0` SDK. The `#:` directives at the top of the plugin are legal because
@@ -289,36 +289,36 @@ file-based-program mode.
 ```
 dotnet run --project clients/mfp/WireSelfTest.csproj
 ```
-Byte-compares the C# encoder against hex derived by running `slopsync_probe.py`'s own
+Byte-compares the C# encoder against hex derived by running `valence_probe.py`'s own
 CBOR primitives (HELLO in five shapes, CLOCK, STREAM/SEGMENT bundles, SUBSCRIBE, GOODBYE,
 BLOB_REQ, CATALOG_READY, BLOB_CHUNK header decode, INTENT + frame seq). Exits 0 on
-all-pass. The codec in `WireSelfTest.cs` is a deliberate copy of `SlopSync.cs`'s — if you
+all-pass. The codec in `WireSelfTest.cs` is a deliberate copy of `Valence.cs`'s — if you
 change one, mirror the other and re-run.
 
 **The HELLO goldens moved at v1.0 and that coupling is intentional.** Adding RFC-006's
 `subscriptions` wish to HELLO changes its bytes; this file is where that is enforced. The
 old publish-only golden is kept as a regression guard alongside the new shapes.
 
-### Live wire test (against SlopBench, a simulator, or a real device)
+### Live wire test (against Valence Bench, a simulator, or a real device)
 
 **Requires a running hub to connect to** — this is the one test in this repo
-that is not self-contained. `hub/slopbench/` (this repo) or SlopDrive-32's
-`sim/slopsim` (machine repo, real device catalog) both work with no hardware;
+that is not self-contained. `hub/bench/` (this repo) or Valence Drive's
+`sim/valencesim` (machine repo, real device catalog) both work with no hardware;
 against real hardware, see the safety gate note below.
 
 ```
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 82
 ```
-Compiles `SlopSync.cs` itself (the plugin's real codec/client/catalog/discovery classes —
+Compiles `Valence.cs` itself (the plugin's real codec/client/catalog/discovery classes —
 no copies) into a console harness and runs the full session: mDNS discovery,
 HELLO→WELCOME publish grant, **BLOB_REQ catalog fetch + local SHA-256 verify +
 CATALOG_READY**, **RFC-006(b) role lookup and live role-value decode**, CLOCK sync, a
 role-resolved stroke-window INTENT round trip (**simulator only**), 5 s of STREAM @ 50 Hz,
-then diffs the target's `/api/slopmotion` ingress counters.
+then diffs the target's `/api/vmotion` ingress counters.
 
 **Safety gate.** On real hardware it reads `/api/status` and **refuses to run if the
 machine is homed or e-stopped** (unhomed = every sample is dropped at the HOMED safety
-gate, so the wire is exercised with zero motion risk). slopsim has no `/api/status`; the
+gate, so the wire is exercised with zero motion risk). valencesim has no `/api/status`; the
 `sim: true` flag in `/api/capabilities` is an explicit waiver, and a target that is
 neither readable nor a declared sim is an **abort** — "unknown machine state" never
 passes. The config-writing INTENT block and everything that could move an axis is gated
@@ -338,7 +338,7 @@ counters. Same safety gate applies.
 ## Troubleshooting
 
 - **"no publish grant"** — the hub did not grant channel `0x2100`. Confirm the firmware
-  advertises `features.slopsync` and the motion-input channel (`curl http://<ip>/api/capabilities`).
+  advertises `features.valence` and the motion-input channel (`curl http://<ip>/api/capabilities`).
 - **Bundles climb but nothing moves** — the machine is not homed, or another source owns
   motion. Home it; check the machine's own UI for the active control source.
 - **NACK `RATE_LIMITED` counting up** — you are asking for more than the granted rate.

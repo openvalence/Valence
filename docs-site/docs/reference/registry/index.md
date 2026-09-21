@@ -1,6 +1,6 @@
 ---
 title: Registry reference
-description: Generated index of the SlopSync protocol registry: frame types, CBOR keys, channels, error codes, limits.
+description: Generated index of the Valence protocol registry: frame types, CBOR keys, channels, error codes, limits.
 register: IEEE
 generated: true
 ---
@@ -16,7 +16,7 @@ generated: true
 
 # Registry reference
 
-The registry is the single source of truth for every number SlopSync
+The registry is the single source of truth for every number Valence
 puts on the wire. These pages are generated from it. No number on this
 site is typed by a human.
 
@@ -26,7 +26,7 @@ If a page here disagrees with prose elsewhere, this page wins.
 
 | Property | Value |
 |---|---|
-| Protocol name | `slopsync` |
+| Protocol name | `valence` |
 | Protocol version | `1` |
 | Byte order | `little-endian` |
 | Header size | `8 bytes` |

@@ -1,6 +1,6 @@
 ---
 title: Limits and defaults
-description: Generated table of SlopSync well-known limits, timeouts, caps and defaults.
+description: Generated table of Valence well-known limits, timeouts, caps and defaults.
 register: IEEE
 generated: true
 ---
@@ -38,7 +38,7 @@ registry's own rationale where it records one.
 | `intent_ingress_default_per_s` | `50` |  |
 | `stream_ingress_overage_nack_per_s` | `5` | §10.5: per-session cap on RATE_LIMITED NACKs emitted for STREAM-ingress overage (throttle — the NACK is back-pressure feedback, not a per-sample echo; unthrottled it would mirror the very flood it reports) |
 | `event_queue_depth_per_subscriber` | `16` |  |
-| `never_shed_stall_eviction_ms` | `2000` |  |
+| `never_shed_stall_eviction_ms` | `2000` | §10.4 step 4: never-shed queue stall past this PARKS the session (RFC-051) — transport closed + detached, identical end state to RFC-042's transport-loss trigger. No longer a teardown/eviction; SESSION_EVICTED does not fire from this clock any more. |
 | `catalog_chunk_gap_timeout_ms` | `500` | recommended (SHOULD) |
 | `busy_retry_after_default_ms` | `2000` |  |
 | `ping_interval_holding_control_ms` | `200` |  |
@@ -67,8 +67,8 @@ registry's own rationale where it records one.
 | `catalog_max_entry_bytes` | `4096` | feasibility pass: a 50-field FULLY annotated entry (defaults + options + groups + descs) encodes to ~8–10 KB, which violates RFC-028's no-unbounded-allocation rule for a per-entry decode buffer. Oversize is a catalog-AUTHORING error caught by conformance tooling, not a runtime surprise: the entry splits across channels or trims its descs. |
 | `max_subscriptions_per_session` | `64` |  |
 | `max_subscriptions_per_frame` | `16` | RFC-033.3: wishes one SUBSCRIBE/HELLO frame may carry (= the reference decoder's kSubscribeMaxWishes, which was previously discoverable only by binary-searching a live hub). Advertised in WELCOME limits key 4; a hub MAY advertise less, never more than it decodes. Overflow answers SUBSCRIBE_REJECTED, never silence. |
-| `ws_subprotocol` | `slopsync.v1` |  |
-| `mdns_service` | `_slopsync._tcp` |  |
+| `ws_subprotocol` | `valence.v1` |  |
+| `mdns_service` | `_valence._tcp` |  |
 
 ## Per-binding max_frame defaults
 
@@ -109,7 +109,7 @@ registry's own rationale where it records one.
 | `preset_capacity_min` | `32` | RFC-021.6: conformance FLOOR for a store's declared capacity, not a cap. 32 fray-d presets ~ 1.5 KB NVS; the mechanism does not blink at 256. Small hubs declare less, the catalog says so, clients render accordingly. |
 | `preset_item_max_bytes` | `4096` | RFC-021.6 default per_item_max. The payload is opaque: the protocol never decodes it, so this is purely a transfer/storage budget. |
 | `paired_devices_max` | `8` | trust-ledger capacity. 8, matching the library's kMaxPaired TODAY (the RFC text said 16; the feasibility pass corrected it against the source). Also equals default_max_clients_ws, which is a coincidence worth not reading meaning into. |
-| `trust_ledger_max_bytes` | `1900` | feasibility pass: the whole encoded ledger is ONE blob in the existing `slopsync` NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip. |
+| `trust_ledger_max_bytes` | `1900` | feasibility pass: the whole encoded ledger is ONE blob in the existing `valence` NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip. |
 | `pairing_pending_max` | `4` | RFC-027.2a: bounded knock list. Bounded because it is an unauthenticated queue — the one surface a stranger can fill. |
 | `client_ver_max_bytes` | `24` | HELLO `trust`.client_ver. Registered as a NUMBER (the trust_keys note only stated it in prose) because RFC-028.2 makes registry string caps a PARSE-TIME obligation: a receiver rejects an over-cap string in a structural payload rather than truncating and continuing, and it cannot enforce a cap that exists only in English. Same value bounds the trust-ledger `version` field, so the tripwire never compares a truncated value against a full one. |
 | `trust_ledger_name_max_bytes` | `16` | trust-ledger `name`. 16 to match the 0x0002 roster's str16 rather than HELLO's 32: a roster label is a label, and the authoritative full name rides HELLO/0x0007 while the session lives. |

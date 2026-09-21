@@ -1,4 +1,4 @@
-# SlopSync documentation site — build dependencies.
+# Valence documentation site — build dependencies.
 #
 #   cd docs-site
 #   python -m venv .venv

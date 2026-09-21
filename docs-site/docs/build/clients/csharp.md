@@ -1,7 +1,7 @@
 ---
 title: C# client guide
 description: >-
-  How to write a SlopSync client in C#.
+  How to write a Valence client in C#.
 register: STE
 status: stub
 ---
@@ -20,7 +20,7 @@ status: stub
 
 The desktop-app client. Cover `ClientWebSocket`, the byte-for-byte builders, and running a session against a real device.
 
-Source material: `clients/mfp/SlopSync.cs`, which is a shipped external client; and its `LiveWireTest` harness, which compiles the plugin file itself into a console program and runs it against hardware.
+Source material: `clients/mfp/Valence.cs`, which is a shipped external client; and its `LiveWireTest` harness, which compiles the plugin file itself into a console program and runs it against hardware.
 
 > DEMO-CANDIDATE: a minimal HELLO/WELCOME round trip built from
 > `LiveWireTest`'s own session code, run live against a device.

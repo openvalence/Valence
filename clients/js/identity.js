@@ -1,5 +1,5 @@
 /**
- * identity.js — this client's persistent SlopSync identity and its per-hub
+ * identity.js — this client's persistent Valence identity and its per-hub
  * credentials.
  *
  * WHY THIS EXISTS: `createSession()` defaults `instanceId` to fresh random
@@ -12,8 +12,8 @@
  * page.
  *
  * WHAT IS STORED, AND WHERE
- *   slopsync.instance   — 8 random bytes, hex. This install's identity.
- *   slopsync.tok.<host> — 16-byte pairing token, hex, ONE PER HUB.
+ *   valence.instance   — 8 random bytes, hex. This install's identity.
+ *   valence.tok.<host> — 16-byte pairing token, hex, ONE PER HUB.
  *
  * Tokens are per-host on purpose: a token is a credential issued BY one hub and
  * meaningless at another, and this same bundle is expected to talk to several
@@ -32,8 +32,8 @@
 import { LIMITS } from './frames.js';
 import { toHex, fromHex } from './sha256.js';
 
-const KEY_INSTANCE = 'slopsync.instance';
-const KEY_TOKEN_PREFIX = 'slopsync.tok.';
+const KEY_INSTANCE = 'valence.instance';
+const KEY_TOKEN_PREFIX = 'valence.tok.';
 
 // ---- storage ---------------------------------------------------------------
 // Same probe-before-trust shape session.js uses for its catalog cache: node
@@ -45,7 +45,7 @@ const _mem = new Map();
 const _store = (() => {
   try {
     if (typeof localStorage === 'undefined') return null;
-    localStorage.getItem('slopsync.probe');
+    localStorage.getItem('valence.probe');
     return localStorage;
   } catch (e) {
     return null;

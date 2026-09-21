@@ -1,4 +1,4 @@
-// gen_seeds — seed-corpus generator for the SlopSync fuzz targets.
+// gen_seeds — seed-corpus generator for the Valence fuzz targets.
 //
 // Fuzzing raw random bytes against a deterministic CBOR profile mostly
 // produces immediate rejects — the profile rejects on the FIRST byte for most
@@ -27,10 +27,10 @@
 
 #include <sys/stat.h>
 
-#include "slopsync/slopsync.h"
-#include "slopsync/conformance/mini_catalog.hpp"
+#include "valence/valence.h"
+#include "valence/conformance/mini_catalog.hpp"
 
-using namespace slopsync;
+using namespace valence;
 
 static std::string g_root;
 
@@ -587,7 +587,7 @@ static void seedPacked() {
         const char* a = "roster-entry";
         std::memcpy(s.data(), a, std::strlen(a));
         s[16] = std::byte(3);
-        const char* b = "mfp-slopsync-plugin";
+        const char* b = "mfp-valence-plugin";
         std::memcpy(s.data() + 17, b, std::strlen(b));
         const char* c = "granted control at 50 Hz";
         std::memcpy(s.data() + 51, c, std::strlen(c));

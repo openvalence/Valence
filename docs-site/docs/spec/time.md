@@ -1,7 +1,7 @@
 ---
 title: Time and sequencing
 description: >-
-  SlopSync clause 7: hub time as the timebase, the CLOCK exchange, timestamp
+  Valence clause 7: hub time as the timebase, the CLOCK exchange, timestamp
   formats and wraparound, sequence numbers, and time through relays.
 register: IEEE
 generated: true

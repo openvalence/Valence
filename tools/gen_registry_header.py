@@ -2,7 +2,7 @@
 """Generate the committed C++ and JS vocabulary artifacts from
 spec/registry/registry.yaml — the single source of truth.
 
-    lib/slopsync/include/slopsync/generated/registry_constants.hpp
+    lib/valence/include/valence/generated/registry_constants.hpp
     clients/js/generated/registry_vocab.js
 
 Usage:
@@ -25,7 +25,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "spec" / "registry" / "registry.yaml"
-OUT = ROOT / "lib" / "slopsync" / "include" / "slopsync" / "generated" / "registry_constants.hpp"
+OUT = ROOT / "lib" / "valence" / "include" / "valence" / "generated" / "registry_constants.hpp"
 OUT_JS = ROOT / "clients" / "js" / "generated" / "registry_vocab.js"
 
 
@@ -92,7 +92,7 @@ def gen(reg: dict) -> str:
     p("// ============================================================================\n")
     p("#pragma once\n\n")
     p("#include <cstdint>\n#include <string_view>\n\n")
-    p("namespace slopsync {\n\n")
+    p("namespace valence {\n\n")
 
     p(f"inline constexpr uint8_t  kProtocolVersion = {meta['protocol_version']};\n")
     p(f"inline constexpr uint8_t  kHeaderBytes     = {meta['header_bytes']};\n\n")
@@ -201,7 +201,7 @@ def gen(reg: dict) -> str:
             p(f"inline constexpr uint32_t {ident(key)} = {v};\n")
     p("}  // namespace limits\n\n")
 
-    p("}  // namespace slopsync\n")
+    p("}  // namespace valence\n")
     return w.getvalue()
 
 

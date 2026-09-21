@@ -1,7 +1,7 @@
 ---
 title: Rendering
 description: >-
-  SlopSync clause 19: the rendering constitution, the three-tier channel
+  Valence clause 19: the rendering constitution, the three-tier channel
   taxonomy, and capability interfaces — establishing RENDERING.md as the
   normative client-rendering companion.
 register: IEEE
@@ -24,7 +24,7 @@ generated: true
 
 How a conformant client turns a hub's catalog into an actual user interface — categories, ranks, archetypes, widget patterns, regions, page composition, and the renderer conformance laws — is specified in full in `RENDERING.md`, the normative companion to this document (RFC-048). RENDERING.md is normative in the sense [§8.8](catalog.md#s8-8)/[§8.9](catalog.md#s8-9) already are: a client claiming conformance to it MUST follow its MUST clauses exactly as it must follow this document's, and its enumerable vocabularies are frozen at the v1.0 tag under the same no-reuse/no-renumber discipline [§5.7](wire-format.md#s5-7) applies to the wire registry.
 
-This section states only what belongs in SPEC proper — channel-level semantics — and stops there by design: **SlopSync describes what things *are*, never how they *look*** ([§1-7](foundations.md#s1)) is unchanged. No widget hint, layout rule, color, or pixel is ever wire-visible; RENDERING.md's entire vocabulary is either registry-numbered metadata (categories, ranks, units, ...) or purely client-side derivation and behavior. Nothing in RENDERING.md is wired onto a real catalog entry as of this landing — [§18-23](limitations.md#s18) records that plainly.
+This section states only what belongs in SPEC proper — channel-level semantics — and stops there by design: **Valence describes what things *are*, never how they *look*** ([§1-7](foundations.md#s1)) is unchanged. No widget hint, layout rule, color, or pixel is ever wire-visible; RENDERING.md's entire vocabulary is either registry-numbered metadata (categories, ranks, units, ...) or purely client-side derivation and behavior. Nothing in RENDERING.md is wired onto a real catalog entry as of this landing — [§18-23](limitations.md#s18) records that plainly.
 
 ## 19.2 The three-tier channel taxonomy {#s19-2}
 

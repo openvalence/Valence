@@ -1,5 +1,5 @@
 # =========================================================================
-# SlopSync documentation site.
+# Valence documentation site.
 #
 # BUILD IT FROM THIS DIRECTORY:
 #     cd docs-site
@@ -15,22 +15,22 @@
 # generator. See README.md, "Extracting this directory".
 # =========================================================================
 
-site_name: SlopSync
+site_name: Valence
 site_description: >-
-  SlopSync is an open device-shadow and capability-negotiation protocol for
+  Valence is an open device-shadow and capability-negotiation protocol for
   motion machines. One app, many firmwares, one truth about what the machine
   is doing.
-site_author: The SlopSync contributors
+site_author: The Valence contributors
 
 # The canonical origin. It feeds sitemap.xml and every canonical link, so
 # CHANGING IT LATER ROTS LINKS. `.invalid` is the reserved placeholder TLD
 # (RFC 2606): if you see it in a deployed sitemap, the deploy forgot to set
-# SLOPSYNC_SITE_URL. CI computes the correct GitHub Pages origin; a custom
+# VALENCE_SITE_URL. CI computes the correct GitHub Pages origin; a custom
 # domain overrides it. README.md explains why a custom domain is worth it.
-site_url: !ENV [SLOPSYNC_SITE_URL, "https://slopsync.invalid/"]
+site_url: !ENV [VALENCE_SITE_URL, "https://valence.invalid/"]
 
 copyright: >-
-  SlopSync is provided to the community as a tool. It favors no firmware,
+  Valence is provided to the community as a tool. It favors no firmware,
   no vendor and no product.
 
 docs_dir: docs
@@ -208,7 +208,7 @@ nav:
       - Local testing: build/local-testing.md
 
   # GENERATED TIER. Every page below except Errata is produced from
-  # docs/slopsync/SPEC.md by tools/gen_spec_pages.py. Keep this block in sync
+  # docs/valence/SPEC.md by tools/gen_spec_pages.py. Keep this block in sync
   # with the generator: `python tools/gen_spec_pages.py --nav` prints it.
   - Specification:
       - spec/index.md

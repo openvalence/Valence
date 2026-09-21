@@ -1,18 +1,18 @@
 ---
-title: SlopSync
+title: Valence
 description: >-
-  SlopSync is an open device-shadow and capability-negotiation protocol for
+  Valence is an open device-shadow and capability-negotiation protocol for
   motion machines. One app, many firmwares, one truth about what the machine
   is doing.
 register: STE
 ---
 
-# SlopSync
+# Valence
 
 **An open protocol for talking to a motion machine, so one app can work with
 many firmwares and never lie about what the machine is doing.**
 
-A machine running SlopSync describes itself. A client reads that description
+A machine running Valence describes itself. A client reads that description
 and builds its interface from it. Neither side needs to be compiled against
 the other.
 
@@ -60,20 +60,20 @@ number in generated tables.
 
 ## What it is not
 
-SlopSync is not a replacement for the firmware you already like. It is a
+Valence is not a replacement for the firmware you already like. It is a
 compatibility layer those firmwares can adopt, so that one app works across all
 of them. See [Ecosystem and compatibility](understand/ecosystem.md).
 
-SlopSync is not a motion planner. The machine owns motion processing. A client
+Valence is not a motion planner. The machine owns motion processing. A client
 sends intent; the hub decides how to execute it safely.
 
-SlopSync is not a security product. The v1 threat model is casual and drive-by
+Valence is not a security product. The v1 threat model is casual and drive-by
 prevention on a trusted local network, and the specification says so plainly
 wherever a defense is weak. See [Security model](understand/security.md).
 
 ## Governance, briefly
 
-**SlopSync favors no firmware, no vendor and no product. It is provided to
+**Valence favors no firmware, no vendor and no product. It is provided to
 the community as a tool.** The full statement is on its own page:
 [Governance](community/governance.md).
 

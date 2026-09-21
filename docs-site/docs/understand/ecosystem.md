@@ -1,7 +1,7 @@
 ---
 title: Ecosystem and compatibility
 description: >-
-  How SlopSync relates to OSSM, ossm-rs, fray-d lite and other open motion
+  How Valence relates to OSSM, ossm-rs, fray-d lite and other open motion
   firmwares: a unifying compatibility layer they could adopt, not a
   replacement for any of them.
 register: STE
@@ -14,7 +14,7 @@ People designed them, shipped them, supported them, and taught everyone else
 what a good machine controller looks like. Anyone building here today is
 building on work those projects did first.
 
-**SlopSync is not a replacement for any of them, and not an upgrade over any
+**Valence is not a replacement for any of them, and not an upgrade over any
 of them.** It is one thing only: a compatibility layer a firmware can adopt,
 so that one app works across all of them.
 
@@ -54,12 +54,12 @@ the same declared state.
 
 Everything that makes it itself.
 
-- **Its own interface.** SlopSync describes what a value **is**. It never says
+- **Its own interface.** Valence describes what a value **is**. It never says
   how a value should look. There is no widget field in the catalog,
   deliberately.
 - **Its own motion planning.** The machine owns motion. The protocol carries
   intent, and the hub decides how to execute it.
-- **Its own protocol.** A hub can speak SlopSync alongside whatever it already
+- **Its own protocol.** A hub can speak Valence alongside whatever it already
   speaks. Adding a binding removes nothing.
 - **Its own identity.** Its name, its brand, its community, its release
   cadence. A conforming hub is a conforming hub, whoever built it.
@@ -112,7 +112,7 @@ would have to fit how that project already models a session and a running
 pattern, rather than the other way around.
 
 **Apps and bridges.** An application that already speaks a device protocol can
-add a SlopSync client without dropping anything it supports today. The first
+add a Valence client without dropping anything it supports today. The first
 external client written against this protocol was a plugin for an existing
 desktop application, and it kept every other integration that application had.
 
@@ -123,13 +123,13 @@ can get.
 
 ## The governance stance
 
-**SlopSync favors no firmware, no vendor and no product. It is provided to
+**Valence favors no firmware, no vendor and no product. It is provided to
 the community as a tool.**
 
 That stance is what makes the rest of this page mean anything, so it is stated
 plainly and mechanically enforced where it can be.
 
-- **No firmware is the reference firmware.** SlopDrive-32 is where SlopSync
+- **No firmware is the reference firmware.** Valence Drive is where Valence
   was written and where it is proven on hardware. That makes it the first
   implementation, not the privileged one.
 - **No vendor gets a reserved number.** The registry allocates in the open, by
@@ -154,7 +154,7 @@ you find one, report it, and it will be rewritten.
 ## Where to go next
 
 - [What it replaces](what-it-replaces.md) — the honest both-columns list,
-  including what SlopSync leaves alone.
+  including what Valence leaves alone.
 - [Capabilities and custom hardware](capabilities.md) — the floor a firmware
   would be adopting.
 - [Governance](../community/governance.md) — the stance in full, and what it

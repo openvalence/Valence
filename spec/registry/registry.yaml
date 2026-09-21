@@ -1,9 +1,9 @@
-# SlopSync Protocol Registry — SINGLE SOURCE OF TRUTH
+# Valence Protocol Registry — SINGLE SOURCE OF TRUTH
 # SPEC.md Appendices A and B are generated from (and MUST match) this file.
 # Allocation policy: additions by PR to this file; numbers are never reused or
 # renumbered once released in a tagged spec version. See SPEC.md §5.7.
 #
-# spec: slopsync/1
+# spec: valence/1
 # status: v1.0-candidate
 #
 # NEVER-RENUMBER SCOPE: the no-reuse/no-renumber rule binds from the v1.0 tag
@@ -12,7 +12,7 @@
 # amendments) is permitted to restructure. After the v1.0 tag, additions only.
 
 meta:
-  protocol_name: slopsync
+  protocol_name: valence
   protocol_version: 1
   byte_order: little-endian
   header_bytes: 8
@@ -93,7 +93,7 @@ channel_classes:
 # hubs could disagree ("ms" vs "msec" vs "millis") and therefore SHED
 # DIFFERENTLY under identical congestion, exactly the divergence RFC-023
 # exists to eliminate on a protocol heading for a third-party-implemented
-# v1.0. SlopSync describes what things ARE, never how they should behave:
+# v1.0. Valence describes what things ARE, never how they should behave:
 # this property says what a STREAM sample IS; §10.4's shedding table derives
 # the never-decimate policy from it and is otherwise UNCHANGED.
 #
@@ -137,7 +137,7 @@ priority_classes:
 channel_id_ranges:
   0x0000:            { name: SESSION, note: "session-scoped frames; never subscribable" }
   0x0001-0x007F:     { name: spec-core, note: "allocated below; spec-governed" }
-  0x0080-0x7FFF:     { name: device-defined, note: "hub firmware allocates; described by catalog. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each hub documents its own device-range allocations; SlopDrive-32's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped catalog." }
+  0x0080-0x7FFF:     { name: device-defined, note: "hub firmware allocates; described by catalog. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each hub documents its own device-range allocations; Valence Drive's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped catalog." }
   0x8000-0xFFFF:     { name: reserved }
 
 core_channels:
@@ -267,7 +267,7 @@ probe_result_keys:
 # capabilities are catalog introspection.
 # ---------------------------------------------------------------------------
 identity_keys:
-  1: { name: product,    note: "tstr: product/model identifier, e.g. 'slopdrive-32' (<=32 B)" }
+  1: { name: product,    note: "tstr: product/model identifier, e.g. 'valence-drive' (<=32 B)" }
   2: { name: fw_version, note: "tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3)." }
   3: { name: hub_name,   note: "tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one." }
   4: { name: info,       note: "map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap." }
@@ -396,9 +396,9 @@ session_event_kinds:
 # kind was considered and rejected: §9.4 already gives EVERY EVENT channel a
 # generic visible drop counter (`events_dropped` on hub-status 0x0006, per
 # §9.4/§16.2) — a per-channel "dropped" kind here would duplicate that home,
-# the same one-home reasoning RFC-016 already applied to fw_version. SlopLog's
+# the same one-home reasoning RFC-016 already applied to fw_version. VLog's
 # OWN ring-level loss count (a record dropped before it ever became a wire
-# EVENT — `sloplog::Record::lost`) is carried honestly as a `body` field on
+# EVENT — `vlog::Record::lost`) is carried honestly as a `body` field on
 # the next entry that DOES get published (mirroring what SerialSink already
 # prints, "(+N lost)") — that is catalog-schema territory, not a registry
 # event_kind.
@@ -460,21 +460,21 @@ trust_states:
 # ---------------------------------------------------------------------------
 # Log severity levels (u8) — log channel (0x0008) `body.level` (RFC-017).
 #
-# MIRRORS lib/sloplog's `sloplog::Level` enum NUMBER-FOR-NUMBER so the
+# MIRRORS lib/vlog's `vlog::Level` enum NUMBER-FOR-NUMBER so the
 # firmware bridge (AppLog -> log EVENT) is a straight `uint8_t(level)` cast,
-# never a translation table. `sloplog::Level` also declares `Off = 6`, but
+# never a translation table. `vlog::Level` also declares `Off = 6`, but
 # Off is a FLOOR sentinel (setFloor() / a sink's floor argument) — push()/
 # logf() reject any record at or above it, so no wire record's level field
 # can ever read 6. It is deliberately NOT registered here: registering it
 # would imply a log line can arrive "at Off", which is a contradiction.
 # ---------------------------------------------------------------------------
 log_levels:
-  0: { name: trace, note: "sloplog::Level::Trace (SLOGT)" }
-  1: { name: debug, note: "sloplog::Level::Debug (SLOGD)" }
-  2: { name: info,  note: "sloplog::Level::Info (SLOGI)" }
-  3: { name: warn,  note: "sloplog::Level::Warn (SLOGW)" }
-  4: { name: error, note: "sloplog::Level::Error (SLOGE)" }
-  5: { name: fatal, note: "sloplog::Level::Fatal (SLOGF)" }
+  0: { name: trace, note: "vlog::Level::Trace (SLOGT)" }
+  1: { name: debug, note: "vlog::Level::Debug (SLOGD)" }
+  2: { name: info,  note: "vlog::Level::Info (SLOGI)" }
+  3: { name: warn,  note: "vlog::Level::Warn (SLOGW)" }
+  4: { name: error, note: "vlog::Level::Error (SLOGE)" }
+  5: { name: fatal, note: "vlog::Level::Fatal (SLOGF)" }
 
 # ---------------------------------------------------------------------------
 # safety-intents channel (0x0005) op codes — `value` map key 1 (§11).
@@ -830,16 +830,16 @@ procedure_phases:
 # the phone-facing twin.
 #
 # The first three groups spell the project name in ASCII, deliberately, so
-# the UUID is greppable and mnemonic rather than an opaque v4: 534C4F50 =
-# 'SLOP', 5359 = 'SY', 4E43 = 'NC'. The last two groups are a characteristic
+# the UUID is greppable and mnemonic rather than an opaque v4: 56414C45 =
+# 'VALE', 4E43 = 'NC', 4531 = 'E1'. The last two groups are a characteristic
 # discriminator matching the protocol's own c2h/h2c framing (§13.1): ...0002
 # is the WRITE characteristic (client -> hub), ...0003 is the NOTIFY
 # characteristic (hub -> client). ...0001 is the service itself.
 # ---------------------------------------------------------------------------
 ble_identity:
-  service_uuid:     "534C4F50-5359-4E43-8000-000000000001"
-  write_char_uuid:  "534C4F50-5359-4E43-8000-000000000002"   # c2h (write) — client submits frames here
-  notify_char_uuid: "534C4F50-5359-4E43-8000-000000000003"   # h2c (notify) — hub delivers frames here
+  service_uuid:     "56414C45-4E43-4531-8000-000000000001"
+  write_char_uuid:  "56414C45-4E43-4531-8000-000000000002"   # c2h (write) — client submits frames here
+  notify_char_uuid: "56414C45-4E43-4531-8000-000000000003"   # h2c (notify) — hub delivers frames here
 
 # ---------------------------------------------------------------------------
 # BLE advertising flags (u8) — RFC-046 §2. Rides the SCAN RESPONSE (active
@@ -867,8 +867,8 @@ ble_adv_flags:
 # observer of WELCOME could not already learn.
 # ---------------------------------------------------------------------------
 udp_discovery:
-  port: 21328           # 0x5350 — ASCII 'SP' (SlopSync Probe), same naming convention as the BLE UUID's ASCII grouping
-  magic: "SLOP"         # 0x53 0x4C 0x4F 0x50, matching the ESTOP frame's own magic-byte convention (§5.5)
+  port: 22096           # 0x5650 — ASCII 'VP' (Valence Probe), same naming convention as the BLE UUID's ASCII grouping
+  magic: "VLNC"         # 0x56 0x4C 0x4E 0x43, matching the ESTOP frame's own magic-byte convention (§5.5)
   reply_rate_limit_per_source_s: 1   # hub replies at most once per second per source address, so a probe storm cannot load the hub
 
 # =============================================================================
@@ -1159,7 +1159,7 @@ limits:
   preset_capacity_min: 32           # RFC-021.6: conformance FLOOR for a store's declared capacity, not a cap. 32 fray-d presets ~ 1.5 KB NVS; the mechanism does not blink at 256. Small hubs declare less, the catalog says so, clients render accordingly.
   preset_item_max_bytes: 4096       # RFC-021.6 default per_item_max. The payload is opaque: the protocol never decodes it, so this is purely a transfer/storage budget.
   paired_devices_max: 8             # trust-ledger capacity. 8, matching the library's kMaxPaired TODAY (the RFC text said 16; the feasibility pass corrected it against the source). Also equals default_max_clients_ws, which is a coincidence worth not reading meaning into.
-  trust_ledger_max_bytes: 1900      # feasibility pass: the whole encoded ledger is ONE blob in the existing `slopsync` NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip.
+  trust_ledger_max_bytes: 1900      # feasibility pass: the whole encoded ledger is ONE blob in the existing `valence` NVS namespace and must stay inside a single ~2 KB NVS page. Written only on change, and gated on ota_active exactly like savePairing() — flash-cache writes during an OTA reset the chip.
   pairing_pending_max: 4            # RFC-027.2a: bounded knock list. Bounded because it is an unauthenticated queue — the one surface a stranger can fill.
   client_ver_max_bytes: 24          # HELLO `trust`.client_ver. Registered as a NUMBER (the trust_keys note only stated it in prose) because RFC-028.2 makes registry string caps a PARSE-TIME obligation: a receiver rejects an over-cap string in a structural payload rather than truncating and continuing, and it cannot enforce a cap that exists only in English. Same value bounds the trust-ledger `version` field, so the tripwire never compares a truncated value against a full one.
   trust_ledger_name_max_bytes: 16   # trust-ledger `name`. 16 to match the 0x0002 roster's str16 rather than HELLO's 32: a roster label is a label, and the authoritative full name rides HELLO/0x0007 while the session lives.
@@ -1170,5 +1170,5 @@ limits:
   # ---- logging (RFC-017) ---------------------------------------------------
   log_replay_depth_default: 32      # entries the hub MAY replay from its ring tail when a session is granted the log channel. THE named exception to §9.4's no-replay rule ("except where a channel's catalog entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every grant a burst.
 
-  ws_subprotocol: "slopsync.v1"
-  mdns_service: "_slopsync._tcp"
+  ws_subprotocol: "valence.v1"
+  mdns_service: "_valence._tcp"

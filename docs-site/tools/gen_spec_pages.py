@@ -97,15 +97,15 @@ def _configured_path(flag: str, env: str, key: str, label: str) -> Path:
 
 
 def spec_path() -> Path:
-    return _configured_path("--spec", "SLOPSYNC_SPEC", "spec_path", "specification")
+    return _configured_path("--spec", "VALENCE_SPEC", "spec_path", "specification")
 
 
 def traces_path() -> Path:
-    return _configured_path("--traces", "SLOPSYNC_TRACES", "traces_path", "session traces")
+    return _configured_path("--traces", "VALENCE_TRACES", "traces_path", "session traces")
 
 
 def cddl_path() -> Path:
-    return _configured_path("--cddl", "SLOPSYNC_CDDL", "cddl_path", "catalog schema")
+    return _configured_path("--cddl", "VALENCE_CDDL", "cddl_path", "catalog schema")
 
 
 # ==========================================================================
@@ -157,86 +157,86 @@ class Page:
 
 PAGES: tuple[Page, ...] = (
     Page("index", "Specification",
-         "The normative SlopSync v1.0 protocol specification: reading guide, "
+         "The normative Valence v1.0 protocol specification: reading guide, "
          "clause map, and the generated clause pages.",
-         ("0",), title="SlopSync Protocol Specification"),
+         ("0",), title="Valence Protocol Specification"),
     Page("foundations", "Foundations",
-         "SlopSync clauses 1-4: purpose and non-goals, design philosophy, RFC 2119 "
+         "Valence clauses 1-4: purpose and non-goals, design philosophy, RFC 2119 "
          "conventions, the honesty clauses, terminology, roles, architecture, and the "
          "versioning and compatibility model.",
          ("1", "2", "3", "4"), title="Foundations"),
     Page("wire-format", "Wire format",
-         "SlopSync clause 5: the 8-byte frame header, the deterministic CBOR profile, "
+         "Valence clause 5: the 8-byte frame header, the deterministic CBOR profile, "
          "packed data-plane layouts, the ESTOP frame, fragmentation, and parser totality.",
          ("5",), promote=True),
     Page("session", "Session layer",
-         "SlopSync clause 6: identity, HELLO and WELCOME, the readiness gate, the network "
+         "Valence clause 6: identity, HELLO and WELCOME, the readiness gate, the network "
          "probe, liveness, mid-session subscription management, reconnect and teardown.",
          ("6",), promote=True),
     Page("time", "Time and sequencing",
-         "SlopSync clause 7: hub time as the timebase, the CLOCK exchange, timestamp "
+         "Valence clause 7: hub time as the timebase, the CLOCK exchange, timestamp "
          "formats and wraparound, sequence numbers, and time through relays.",
          ("7",), promote=True),
     Page("catalog", "Catalog",
-         "SlopSync clause 8: the channel entry, the schema language, etag computation, "
+         "Valence clause 8: the channel entry, the schema language, etag computation, "
          "blob transfer, the static-client profile, stores, and the settings metamodel.",
          ("8",), promote=True),
     Page("channels", "Channel classes",
-         "SlopSync clause 9: STATE, STREAM, INTENT/ECHO, EVENT and STORE semantics, and "
+         "Valence clause 9: STATE, STREAM, INTENT/ECHO, EVENT and STORE semantics, and "
          "the closed motion input surface.",
          ("9",), promote=True),
     Page("qos", "QoS and congestion",
-         "SlopSync clause 10: priorities and the never-shed set, the grant model, "
+         "Valence clause 10: priorities and the never-shed set, the grant model, "
          "per-binding congestion signals, the normative shedding table, and ingress limits.",
          ("10",), promote=True),
     Page("safety", "Safety",
-         "SlopSync clause 11: the stop taxonomy and safety snapshot, ESTOP end to end, "
+         "Valence clause 11: the stop taxonomy and safety snapshot, ESTOP end to end, "
          "the deadman, control arbitration, and the invariants under partial failure.",
          ("11",), promote=True),
     Page("security", "Security and trust",
-         "SlopSync clause 12: threat model, access tiers, pairing ceremonies, token "
+         "Valence clause 12: threat model, access tiers, pairing ceremonies, token "
          "presentation, hub authenticity, the trust ledger, and the administration surface.",
          ("12",), promote=True),
     Page("transports", "Transports and relays",
-         "SlopSync clauses 13-14: the binding contract and its matrix, the WebSocket, "
+         "Valence clauses 13-14: the binding contract and its matrix, the WebSocket, "
          "ESP-NOW, BLE, serial and in-process bindings, discovery, and the relay role.",
          ("13", "14"), title="Transport bindings and the relay role"),
     Page("legacy", "Legacy interop",
-         "SlopSync clause 15: legacy text-protocol edges as synthetic sessions, and the "
+         "Valence clause 15: legacy text-protocol edges as synthetic sessions, and the "
          "predecessor-protocol migration map.",
          ("15",), promote=True),
     Page("errors", "Errors and diagnostics",
-         "SlopSync clause 16: the NACK and GOODBYE code taxonomy, and the observability "
+         "Valence clause 16: the NACK and GOODBYE code taxonomy, and the observability "
          "channels a hub exposes about itself.",
          ("16",), promote=True),
     Page("conformance", "Conformance",
-         "SlopSync clause 17: conformance profiles, golden vectors and the fixture freeze, "
+         "Valence clause 17: conformance profiles, golden vectors and the fixture freeze, "
          "behavioral checklists, and the fuzzing totality gate.",
          ("17",), promote=True),
     Page("limitations", "Known limitations",
-         "SlopSync clause 18: every known limitation of v1.0, stated so that nobody "
+         "Valence clause 18: every known limitation of v1.0, stated so that nobody "
          "rediscovers one as a surprise.",
          ("18",), promote=True),
     Page("rendering", "Rendering",
-         "SlopSync clause 19: the rendering constitution, the three-tier channel "
+         "Valence clause 19: the rendering constitution, the three-tier channel "
          "taxonomy, and capability interfaces — establishing RENDERING.md as the "
          "normative client-rendering companion.",
          ("19",), promote=True),
     Page("traces", "Worked session traces",
-         "Five annotated end-to-end SlopSync session traces, each step citing the "
+         "Five annotated end-to-end Valence session traces, each step citing the "
          "normative rule it exercises.",
          (), title="Worked session traces"),
     Page("schema", "Catalog schema (CDDL)",
-         "The normative CDDL definition of the SlopSync channel catalog: channel "
+         "The normative CDDL definition of the Valence channel catalog: channel "
          "entries, packed layouts, CBOR schemas, the settings metamodel and store "
          "descriptors. Appendix C, in full.",
          (), title="Catalog schema (CDDL)"),
     Page("appendices", "Appendices A-G",
-         "SlopSync appendices A-G: frame types, CBOR keys, the catalog schema, a worked "
+         "Valence appendices A-G: frame types, CBOR keys, the catalog schema, a worked "
          "catalog sketch, the trace and golden-vector indexes, and limits and defaults.",
          ("A", "B", "C", "D", "E", "F", "G"), title="Appendices A-G"),
     Page("rationale", "Rationale and history",
-         "SlopSync appendices H-J: design rationale and rejected alternatives, the "
+         "Valence appendices H-J: design rationale and rejected alternatives, the "
          "design-review gap-closure map, and what changed since the v1 draft.",
          ("H", "I", "J"), title="Appendices H-J: rationale and history"),
 )
@@ -297,7 +297,7 @@ SOURCE_LINKS: dict[str, tuple[str, str]] = {
     "SPEC.md#66-liveness-deadman-and-idle-reaping": ("page", "session.md#s6-6"),
     "SPEC.md#84-transfer-the-catalog-is-blob-namespace-0": ("page", "catalog.md#s8-4"),
     "SPEC.md#173-behavioral-checklists": ("page", "conformance.md#s17-3"),
-    # CHANNEL-MAP.md is SlopDrive-32's device map (machine repo, not here);
+    # CHANNEL-MAP.md is Valence Drive's device map (machine repo, not here);
     # not published by docs-site.
     "CHANNEL-MAP.md": ("strip", ""),
     # RENDERING.md is a normative companion (§19), same tier as SPEC.md itself,
@@ -820,7 +820,7 @@ def build_cddl(page: Page, text: str, src_display: str) -> str:
     p("## Related {#related}\n\n")
     p("- [§8 Catalog](catalog.md#s8) — the prose companion, and the etag rules.\n")
     p("- [Channel catalog reference](../reference/channel-catalog.md) — the\n")
-    p("  SlopDrive-32 catalog that this schema describes, entry by entry.\n")
+    p("  Valence Drive catalog that this schema describes, entry by entry.\n")
     p("- [Catalog vocabulary](../reference/registry/catalog-vocabulary.md) — the\n")
     p("  generated view of every enumeration named above.\n")
     return w.getvalue().rstrip("\n") + "\n"

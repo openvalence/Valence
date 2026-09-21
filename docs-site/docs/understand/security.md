@@ -1,7 +1,7 @@
 ---
 title: Security model and the audit
 description: >-
-  The SlopSync threat model in plain language: what is defended, what is not, the honest ceilings, and what the pre-release fuzz campaign found.
+  The Valence threat model in plain language: what is defended, what is not, the honest ceilings, and what the pre-release fuzz campaign found.
 register: STE
 ---
 
@@ -106,7 +106,7 @@ machine.
 
 ### Deployment rules that follow
 
-1. **Never expose the SlopSync port to the wider internet.** LAN-first is a
+1. **Never expose the Valence port to the wider internet.** LAN-first is a
    security property, not a limitation.
 2. **Prefer knock-and-approve.** It needs no PIN and no display, and it shows
    you who is asking.
@@ -122,7 +122,7 @@ None of what follows shipped. That is the point of doing it before the tag.
 
 ### The fuzz campaign
 
-Every SlopSync parser must map *any* byte string to accept-or-reject. Golden
+Every Valence parser must map *any* byte string to accept-or-reject. Golden
 vectors prove correctness; fuzzing proves totality. Both directions are in
 scope, because a client that auto-connects to a discovered machine is one
 malicious hub away from parsing hostile bytes, and the catalog is the fattest

@@ -1,8 +1,8 @@
 ---
 title: Appendices A-G
 description: >-
-  SlopSync appendices A-G: frame types, CBOR keys, the catalog schema, a
-  worked catalog sketch, the trace and golden-vector indexes, and limits and
+  Valence appendices A-G: frame types, CBOR keys, the catalog schema, a worked
+  catalog sketch, the trace and golden-vector indexes, and limits and
   defaults.
 register: IEEE
 generated: true
@@ -238,5 +238,5 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `max_frame_ws` / `max_frame_espnow` / `max_frame_ble` / `max_frame_serial` | 512 / 250 / 244 / 512 | [§5.1](wire-format.md#s5-1), [§13.1](transports.md#s13-1) |
 | `conformance_min_clients` | 4 | [§6.3](session.md#s6-3), [§17.1](conformance.md#s17-1) |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | [§6.3](session.md#s6-3) |
-| `ws_subprotocol` | `slopsync.v1` | [§13.2](transports.md#s13-2) |
-| `mdns_service` | `_slopsync._tcp` | [§13.7](transports.md#s13-7) |
+| `ws_subprotocol` | `valence.v1` | [§13.2](transports.md#s13-2) |
+| `mdns_service` | `_valence._tcp` | [§13.7](transports.md#s13-7) |

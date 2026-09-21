@@ -13,8 +13,8 @@
 // is only a finding if something reads it.
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 // Selector values are STABLE — the committed seed corpus encodes them, so
 // renumbering silently invalidates the corpus. Append only.

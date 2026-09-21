@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run every SlopSync fuzz target for a fixed wall-clock budget each.
+# Run every Valence fuzz target for a fixed wall-clock budget each.
 #
 #   ./run.sh [seconds-per-target] [builddir] [corpusdir] [workdir] [workers]
 #

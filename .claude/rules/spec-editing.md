@@ -6,7 +6,7 @@ paths:
 # Spec editing: the RFC lifecycle
 
 Truth is RATIFIED here, never discovered here. Discovery happens in the
-reference implementation (SlopDrive-32, sibling checkout) and arrives as an
+reference implementation (Valence Drive, sibling checkout) and arrives as an
 RFC. Never edit the spec to match code; that collapses the review gate.
 
 ## The gate

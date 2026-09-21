@@ -1,5 +1,5 @@
 <!--
-  Standalone runnable golden-byte self-test for the SlopSync wire codec.
+  Standalone runnable golden-byte self-test for the Valence wire codec.
   No MultiFunPlayer / WPF dependencies — pure framework.
   Run:  dotnet run  (project flag) clients/mfp/WireSelfTest.csproj
   Exits 0 on all-pass, 1 on any mismatch.

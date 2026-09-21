@@ -1,10 +1,10 @@
 name: docs
 
-# Build, gate and publish the SlopSync documentation site (docs-site/).
+# Build, gate and publish the Valence documentation site (docs-site/).
 #
 # The site is Material for MkDocs, published to GitHub Pages, versioned with
 # `mike`. There is deliberately no PlatformIO here: PIO exists in the
-# SlopDrive-32 machine repo to build FIRMWARE; a documentation build needs
+# Valence Drive machine repo to build FIRMWARE; a documentation build needs
 # neither a toolchain download nor a framework it cannot use, and this repo
 # has no firmware in it at all.
 #
@@ -36,7 +36,7 @@ name: docs
 # not one flattened docs-site-only repo), so the `working-directory` and
 # `docs-site/`-prefixed paths below are unchanged from the machine repo's
 # copy of this file. What changed: the registry/SPEC/examples paths, which
-# moved from `docs/slopsync/` to `spec/`.
+# moved from `docs/valence/` to `spec/`.
 
 on:
   push:
@@ -128,14 +128,14 @@ jobs:
 
       # The canonical origin. It feeds sitemap.xml and every canonical link, so
       # it must be right the first time — changing it later rots links. A
-      # custom domain (repository variable SLOPSYNC_SITE_URL) wins; otherwise
+      # custom domain (repository variable VALENCE_SITE_URL) wins; otherwise
       # derive the GitHub Pages origin from context, assuming nothing about the
       # repository's name.
       - name: Resolve site_url
         id: siteurl
         run: |
-          if [ -n "${{ vars.SLOPSYNC_SITE_URL }}" ]; then
-            url="${{ vars.SLOPSYNC_SITE_URL }}"
+          if [ -n "${{ vars.VALENCE_SITE_URL }}" ]; then
+            url="${{ vars.VALENCE_SITE_URL }}"
           else
             url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
           fi
@@ -146,13 +146,13 @@ jobs:
       # missing anchors, pages omitted from the nav.
       - name: Gate — strict build
         env:
-          SLOPSYNC_SITE_URL: ${{ steps.siteurl.outputs.url }}
+          VALENCE_SITE_URL: ${{ steps.siteurl.outputs.url }}
         run: python -m mkdocs build --strict
 
       - name: Upload built site
         uses: actions/upload-artifact@v4
         with:
-          name: slopsync-docs-site
+          name: valence-docs-site
           path: docs-site/site
           retention-days: 7
 
@@ -188,8 +188,8 @@ jobs:
       - name: Resolve site_url
         id: siteurl
         run: |
-          if [ -n "${{ vars.SLOPSYNC_SITE_URL }}" ]; then
-            url="${{ vars.SLOPSYNC_SITE_URL }}"
+          if [ -n "${{ vars.VALENCE_SITE_URL }}" ]; then
+            url="${{ vars.VALENCE_SITE_URL }}"
           else
             url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
           fi
@@ -207,7 +207,7 @@ jobs:
       # immutable once published, which is what keeps a citation valid.
       - name: Publish with mike
         env:
-          SLOPSYNC_SITE_URL: ${{ steps.siteurl.outputs.url }}
+          VALENCE_SITE_URL: ${{ steps.siteurl.outputs.url }}
         run: |
           version="${{ github.event.inputs.version }}"
           if [ -z "$version" ]; then version="dev"; fi

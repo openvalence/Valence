@@ -1,6 +1,6 @@
-# SlopSync RFC Queue — proposals targeting PUBLIC v1.0
+# Valence RFC Queue — proposals targeting PUBLIC v1.0
 
-> Channel ids herein are historical (pre-C4); current map: SlopDrive-32's
+> Channel ids herein are historical (pre-C4); current map: Valence Drive's
 > CHANNEL-MAP.md (lives in the machine repo, not here — see this repo's
 > CHANNEL-GRID.md for the grid convention itself). Each entry keeps the ids
 > it had when written — that is the record, not a bug.
@@ -10,7 +10,7 @@ implementation or field use surfaces something the spec got wrong, left
 ambiguous, or never said, it gets an RFC entry here instead of an ad-hoc
 patch. When enough have piled up, we review the queue in one sitting and
 batch the accepted ones into the spec + registry.yaml (codegen + golden
-vectors updated in the same commit, per SlopDrive-32's DOCTRINE.md §9's
+vectors updated in the same commit, per Valence Drive's DOCTRINE.md §9's
 registry discipline).*
 
 **RETARGET RULING (operator, 2026-07-25):** the current spec (v1-draft) was
@@ -24,7 +24,7 @@ table below.
 
 **Standing rulings recorded the same day:**
 - **Breaking is allowed.** v1-draft was never public v1; the base pass MAY
-  break existing SlopSync wire/code where a clean design beats a compat
+  break existing Valence wire/code where a clean design beats a compat
   shim. The "frozen" conformance fixtures (mini-catalog, golden byte
   arrays) are regenerated once at the v1.0 tag and re-frozen THERE; the
   never-renumber rule binds from the v1.0 tag forward, not before it.
@@ -32,18 +32,18 @@ table below.
   (amended 2026-07-25 after the feasibility pass surfaced the conflict).
   Goal state: "HTTP = static assets + OTA + uitoken, nothing else, ever."
   - **OTA** keeps its own token plane; OTA rights are NEVER derivable
-    from SlopSync roles.
+    from Valence roles.
   - **`/uitoken`** ([RFC-029](#rfc-029--trust-lifecycle-hub-authenticity-change-tripwires-own-ui-trust) §4) escapes because its entire security
     property IS browser same-origin policy, which exists only over HTTP —
     it cannot be moved in-band without ceasing to work. Operator
     rationale: *it is a SIDEBAND, not a secondary cost* — a convenience
     for devices that happen to host a WebUI. A hub with no WebUI never
     implements it and loses nothing; no non-WebUI client ever needs it to
-    connect; SlopSync's own surface is identical with or without it.
+    connect; Valence's own surface is identical with or without it.
   - The distinction that makes these two different from `/api/log` and
     `/api/capabilities` (which are demoted to shims and deleted): those
     were carrying PROTOCOL DUTIES that belong in-band. These two carry
-    duties SlopSync structurally cannot own.
+    duties Valence structurally cannot own.
 - **Strings are required** (machine name and other info must be visible to
   clients). Identity/product strings ride the CBOR control plane where
   strings are already legal ([RFC-016](#rfc-016--in-band-hub-identity-capabilities--catalog-introspection)); string VALUES in packed STATE get
@@ -71,7 +71,7 @@ table below.
 ## v1.0 BATCH DISPOSITION (2026-07-26)
 
 *The whole queue was reviewed against `registry.yaml` AND against
-`lib/slopsync/` while rewriting SPEC.md into public v1.0. This is the summary;
+`lib/valence/` while rewriting SPEC.md into public v1.0. This is the summary;
 each entry's own Status line carries the receipts.*
 
 | Disposition | RFCs |
@@ -100,7 +100,7 @@ only), 028/029 (default crypto stubs sign/verify).
 4. **[RFC-020](#rfc-020--procedures-long-running-guarded-operations--reboot-commit) procedures** — pattern, `procedure_phases`, `reboot_in_ms` (43)
    and `REBOOTING` all specified; **zero** implementations, and key 43 appears
    nowhere outside registry comments.
-5. **[RFC-021](#rfc-021--slopsync-presets-operator-ordered) device stores** — the blob/STORE mechanism ships (the trust ledger
+5. **[RFC-021](#rfc-021--valence-presets-operator-ordered) device stores** — the blob/STORE mechanism ships (the trust ledger
    uses it); no `pattern.*` preset backend exists.
 6. **[RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) TCode passthrough** — one of the three sanctioned motion modes, not
    implemented on the reference firmware.
@@ -121,12 +121,12 @@ the copy a third-party implementer reads.
   dispatched, so essentially every NACK it emits carries one — not only
   intent-provoked NACKs. The "clients MUST tolerate its absence" half stands and
   is now covered by §4.3 tolerance.
-- **Origin:** slopsync-js core build (fw 2.1.45, 2026-07-24). Found while
+- **Origin:** valence-js core build (fw 2.1.45, 2026-07-24). Found while
   implementing browser-side intent promises.
 - **Problem:** The NACK payload carries `code`, `channel_id`, `detail`,
   `retry_after_ms`, `precondition` — but no intent id. A client with more
   than one intent in flight on the SAME channel cannot know which one was
-  rejected. slopsync-js works around it by rejecting the oldest pending
+  rejected. valence-js works around it by rejecting the oldest pending
   intent on the NACK's channel; correct for one-at-a-time UIs, wrong the
   moment anyone pipelines.
 - **Proposed change:** Add an optional CBOR key `intent_seq` (the seq of the
@@ -173,7 +173,7 @@ the copy a third-party implementer reads.
 - **Origin:** Live write-plane verification (fw 2.1.45): on an unhomed
   machine, config-set window ECHO returns the STORED config (e.g. [5,495])
   while machine-config 0x0081 STATE publishes the EFFECTIVE window
-  ([0,max_rail]) — legitimately different values, both true. slopsync-js
+  ([0,max_rail]) — legitimately different values, both true. valence-js
   initially misadopted effective as stored and stomped fresh operator input
   (diagnosis doc, layer "window doesn't stick").
 - **Problem:** The spec has no vocabulary for this distinction. A client
@@ -245,10 +245,10 @@ the copy a third-party implementer reads.
   on ANY hub by role rather than by id. The framing correction from [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) is
   normative in SPEC §9.6: limits discovery exists for DISPLAY and OPTIONAL
   pre-adaptation, and the word is MAY, never SHOULD.
-- **Origin:** MFP plugin v0.2.1–v0.2.3 (2026-07-25), measured against slopsim
+- **Origin:** MFP plugin v0.2.1–v0.2.3 (2026-07-25), measured against valencesim
   with the real engine. A funscript axis using MFP's default **Makima**
   interpolation produced a handoff velocity of **1.816 norm/s into a span
-  whose own mean velocity is 0.050 norm/s — 36×**. SlopMotion's legality scan
+  whose own mean velocity is 0.050 norm/s — 36×**. VMotion's legality scan
   rejected the quintic, the Ruckig guard took it, and a "slow, simple" script
   rendered as straight-line strokes with flat-topped velocity. The plugin was
   computing a *mathematically correct* spline tangent and shipping it to a
@@ -287,7 +287,7 @@ the copy a third-party implementer reads.
   mini-catalog stays untouched until 1.1 versions it in). Clients that ignore
   the tags behave exactly as today. Note for implementers: adding a
   `subscribes` wish to a client's HELLO changes its HELLO bytes, so
-  `tools/slopsync_probe.py` and any golden-byte mirror (the MFP plugin's
+  `tools/valence_probe.py` and any golden-byte mirror (the MFP plugin's
   `WireSelfTest.cs`) must move in lockstep — that coupling is why the plugin
   fixed its own tangent geometrically (Fritsch–Carlson bound, k = 1.5) rather
   than reaching for limits it could not portably obtain.
@@ -310,7 +310,7 @@ the copy a third-party implementer reads.
   have predicted the failure in [RFC-006](#rfc-006--motion-producing-clients-have-no-portable-way-to-learn-the-machines-kinematic-limits).
 - **Problem:** Knowing `vmax/amax/jmax` is not sufficient to decide whether a
   `{target, duration}` segment is executable, because that depends on the
-  *shape* the hub plans. SlopMotion renders timed segments as a C2 min-jerk
+  *shape* the hub plans. VMotion renders timed segments as a C2 min-jerk
   quintic, whose peak velocity is `1.875·d/T`, peak accel `5.7735·d/T²` and
   peak jerk `60·d/T³`. A client applying the naive `d/T ≤ vmax` test concludes
   a stroke is fine when the actual profile needs **1.875×** that — measured
@@ -352,7 +352,7 @@ the copy a third-party implementer reads.
   client smarter. That is a trap for an ecosystem protocol. Every kinematic
   rule pushed into clients is (a) re-implemented, subtly differently, by every
   integrator, (b) unverifiable by the device, (c) a reason not to adopt
-  SlopSync at all. It also cannot be right in general: a client cannot know
+  Valence at all. It also cannot be right in general: a client cannot know
   the hub's planner shape, its live limit set, or its window — and those
   change at runtime. Today the MFP plugin carries a spline-tangent limiter
   that is really the *machine's* job.
@@ -393,21 +393,21 @@ the copy a third-party implementer reads.
   (`end_vel` bounding against the *current* segment's chord alone is NOT
   sufficient: the measured pathology was sane relative to its own span and only
   absurd relative to the next one.)
-  **LANDED — milestone M4d, fw 2.1.53 / slopmotion 0.7.0.**
-  `slopmotion::boundHandoffVelocity` is the bound; `Command::next_chord` /
-  `has_next_chord` is the lookahead; `SlopSyncHubService::drainMotionStream`
+  **LANDED — milestone M4d, fw 2.1.53 / vmotion 0.7.0.**
+  `vmotion::boundHandoffVelocity` is the bound; `Command::next_chord` /
+  `has_next_chord` is the lookahead; `ValenceHubService::drainMotionStream`
   supplies it from `PacingRing::peekOldest()` at the latest possible moment
   before the command crosses to Core 1. `chord_in` is measured from the
   machine's ACTUAL position (`|target − p| / T`), which is better ground truth
   than any sender's script geometry. Every bounded handoff is a
-  `HandoffBounded` (kind 8) anomaly: SlopLog `motion` tag via the existing
+  `HandoffBounded` (kind 8) anomaly: VLog `motion` tag via the existing
   Core-1 drain, a per-kind counter on 0x0088 `anom_handoff_bounded` and in
-  `GET /api/slopmotion`, and an EVENT on 0x0089 — so a client can SEE that its
-  content is being reshaped. `handoff_k` (POST /api/slopmotion, 0 = off) is the
+  `GET /api/vmotion`, and an EVENT on 0x0089 — so a client can SEE that its
+  content is being reshaped. `handoff_k` (POST /api/vmotion, 0 = off) is the
   live A/B switch. Verified: 561,599 new property-sweep assertions, all six
-  `slopmotion_traces` scenarios byte-identical (the guard cannot fire without a
+  `vmotion_traces` scenarios byte-identical (the guard cannot fire without a
   lookahead, so no existing motion changed), and an end-to-end run against
-  slopsim producing `event_kind=8 target=0.900 detail=0.0083`.
+  valencesim producing `event_kind=8 target=0.900 detail=0.0083`.
   **Two honest limits of the landed guard**, recorded so nobody re-discovers
   them: (a) the TAIL CASE — a segment with no successor in the ring is accepted
   unchanged, deliberately, because guessing a chord we do not have would trim
@@ -447,16 +447,16 @@ the copy a third-party implementer reads.
   `setting_categories`, `setting_flags`, `field_roles`, `desc_max_bytes`,
   `option_label_max_bytes` and `catalog_max_entry_bytes`. Sub-decision 7
   resolved to option (a) by [RFC-026](#rfc-026--strings-on-the-wire-operator-ordered). Its own out-of-scope note became
-  [RFC-021](#rfc-021--slopsync-presets-operator-ordered).
+  [RFC-021](#rfc-021--valence-presets-operator-ordered).
 - **Origin:** Design sessions 2026-07-25 (fw 2.1.47 era), operator goal
-  statement: SlopSync is the machine's SOLE communication surface (HTTP serves
+  statement: Valence is the machine's SOLE communication surface (HTTP serves
   static web assets, nothing else), and any client — WebUI, phone app, desktop
   app, hardware controller, streaming-client side panel — must build its entire
   settings/control surface from what the hub transmits. One-and-done clients:
   a control added in firmware populates on every client's next connect, with
   the label, grouping, and explanation coming from the hub. The user learns
   what a setting does from the hub's own description, not from the client
-  developer. Receipts for the gap: slopsync-js adopting the effective window
+  developer. Receipts for the gap: valence-js adopting the effective window
   as stored config and stomping operator input ([RFC-003](#rfc-003--state-channels-must-declare-stored-config-vs-effective-state-semantics)'s origin), and the MFP
   plugin flying blind on limits ([RFC-006](#rfc-006--motion-producing-clients-have-no-portable-way-to-learn-the-machines-kinematic-limits)'s origin) — both are instances of
   "the catalog describes values, not meaning."
@@ -474,7 +474,7 @@ the copy a third-party implementer reads.
   Plus two second-order gaps: strings (packed layouts ban variable-length
   fields) and secrets (a WiFi password must NEVER ride a retained STATE
   snapshot that open-access viewers receive).
-- **Doctrine line (binding for review of this and future proposals):** SlopSync
+- **Doctrine line (binding for review of this and future proposals):** Valence
   describes what things ARE, never how they LOOK. No widget hints, no layout,
   no ordering metadata, no styling, ever. A phone renders a range as a slider,
   an OLED remote as a click-wheel value, a streaming plugin as a numeric box —
@@ -590,7 +590,7 @@ the copy a third-party implementer reads.
   session: 32 pattern presets ≈ 1.5 KB NVS — the mechanism should not blink
   at 256.
 
-## RFC-010 — Client-assertable E-STOP over SlopSync
+## RFC-010 — Client-assertable E-STOP over Valence
 
 - **Status:** **Landed (v1.0).** `safety_ops::estop` (6) on 0x0005, dispatched
   THROUGH the same handler as a valid 0xE5 frame, so "exactly as" is true by
@@ -603,9 +603,9 @@ the copy a third-party implementer reads.
   emitted on TRANSITIONS ONLY. Because the op routes through the one function,
   registering the kinds fixed both paths at once, as predicted.
 - **Origin:** 2026-07-25 coverage audit. `webui/src/main.js:239-243`: *"No
-  slopsync 'assert e-stop' op exists … a hard e-stop stays on the legacy
-  op."* `safety_ops` = clear/stop/hold/pause/resume — no assert; SlopSync
-  `stop` maps to HALT (stays homed, `SlopSyncHubService.cpp:221-223`); the
+  valence 'assert e-stop' op exists … a hard e-stop stays on the legacy
+  op."* `safety_ops` = clear/stop/hold/pause/resume — no assert; Valence
+  `stop` maps to HALT (stays homed, `ValenceHubService.cpp:221-223`); the
   raw 0xE5 frame's WS binding + repeat-until-latch obligation is implemented
   by no client. Under sole-surface doctrine the red button silently degrades
   to a decel-stop.
@@ -623,8 +623,8 @@ the copy a third-party implementer reads.
   §4.2-2 and is deliberately stated in BOTH directions: no bump on a
   value-identical accepted write, and a MANDATORY bump on a change no client
   asked for.
-- **Origin:** slopsim's own spec-gap ledger (`sim/slopsim/README.md:455-460`,
-  `MachineSim.h:221-223`): `slopsync::Hub` has no bump API — `cfg_gen` moves
+- **Origin:** valencesim's own spec-gap ledger (`sim/valencesim/README.md:455-460`,
+  `MachineSim.h:221-223`): `valence::Hub` has no bump API — `cfg_gen` moves
   only via intents. Same asymmetry in firmware. A machine-side config change
   (physical control, boot adoption, internal recalc) leaves the generation
   stale, so a client's `precondition` CAS passes against config that already
@@ -663,7 +663,7 @@ the copy a third-party implementer reads.
   sharing the grant path verbatim with HELLO so the two cannot drift; it answers
   with a GRANT even when nothing was granted, because an empty result IS the
   answer.
-- **Origin:** MFP plugin measured (`SlopSync.cs:187-196, 341-355, 613-617`):
+- **Origin:** MFP plugin measured (`Valence.cs:187-196, 341-355, 613-617`):
   §10.5 makes granted rate double as bucket depth, so a sparse-but-bursty
   segment sender (2–4/s mean, ~25/s peak) declares 30 Hz to buy burst budget
   — misrepresenting itself to admission control — and mirrors the hub's
@@ -686,7 +686,7 @@ the copy a third-party implementer reads.
   (250), enforced by the reference hub as a CLAMP rather than a rejection;
   recommended client lookahead <= half of it. Interop by folklore is over.
   Landed together with the `stream_kinds` property [RFC-023](#rfc-023--congestion-shedding-table-becomes-normative) needed anyway.
-- **Origin:** `SlopSync.cs:624-630, 1056-1078` — the plugin schedules
+- **Origin:** `Valence.cs:624-630, 1056-1078` — the plugin schedules
   segment starts on `t_base` (§5.4 pins `t_off[0]`=0 and caps span at
   20 ms, so scheduling cannot ride `t_off`) against a hub future-clamp of
   250 ms that is registered NOWHERE, with a private `SegLookaheadMs = 120`
@@ -707,12 +707,12 @@ the copy a third-party implementer reads.
   `catalog_ready_timeout_ms` (15000) close the "PINGs happily, never adopts"
   hole that liveness reaping structurally cannot see. Both sides implemented,
   including the client's idempotent re-send at `catalog_chunk_gap_timeout_ms`
-  terminating on the first STATE frame. Landed together with [RFC-021](#rfc-021--slopsync-presets-operator-ordered): the
+  terminating on the first STATE frame. Landed together with [RFC-021](#rfc-021--valence-presets-operator-ordered): the
   transfer verbs are BLOB_*, and only the catalog namespace has a READY concept.
   `FALLBACK_LAYOUTS` can go.
-- **Origin:** `webui/src/core/slopsync/catalog.js:11-13, 269-335` — nothing
+- **Origin:** `webui/src/core/valence/catalog.js:11-13, 269-335` — nothing
   orders the retained-STATE push (§6.3) against catalog transfer (§8.4), so
-  slopsync-js ships `FALLBACK_LAYOUTS`, a hand-copied table of THIS device's
+  valence-js ships `FALLBACK_LAYOUTS`, a hand-copied table of THIS device's
   layouts, to decode state that arrives before the decoder ring — precisely
   the coupling the self-describing catalog exists to prevent.
 - **Proposed change (operator-directed 2026-07-25: "ready tag" — reliable,
@@ -764,11 +764,11 @@ the copy a third-party implementer reads.
   (product/fw_version/hub_name, emit-only-when-set so an identity-less
   WELCOME stays byte-identical), `Hub::setIdentity()` is the additive API
   (caller-owned rodata strings, no heap), and the firmware populates
-  `("slopdrive-32", FIRMWARE_VERSION, "")`. Test SI-24. Honest remainder: the
+  `("valence-drive", FIRMWARE_VERSION, "")`. Test SI-24. Honest remainder: the
   `info` (key 4) device-defined extras sub-map is still codec-less — decoders
   skip it per §4.3; register interest before building it.
-- **Origin:** slopsim spec-gap ledger (`README.md:465-467`);
-  `SlopSync.cs:395-397` labels devices `"boot 0x…"` because fw version
+- **Origin:** valencesim spec-gap ledger (`README.md:465-467`);
+  `Valence.cs:395-397` labels devices `"boot 0x…"` because fw version
   exists only in mDNS TXT; `/api/capabilities` audit — feature gates and
   `fw_version` are HTTP-only.
 - **Proposed change:** (a) WELCOME gains identity keys (CBOR — strings
@@ -778,7 +778,7 @@ the copy a third-party implementer reads.
   (`has_rs485` ⇔ servo channels present; ceilings ⇔ [RFC-009](#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) role-tagged
   limit fields). No parallel capability list to drift. (c)
   `/api/capabilities` demoted to legacy shim, deleted with the API plane;
-  "where is SlopSync" bootstrap = mDNS / default port / same-host.
+  "where is Valence" bootstrap = mDNS / default port / same-host.
 - **Compatibility:** additive WELCOME keys; shim removal is post-migration.
 
 ## RFC-017 — Device log channel
@@ -794,7 +794,7 @@ the copy a third-party implementer reads.
   Honest scope note: the reference hub keeps exactly ONE replay ring and gates
   it on the log channel id, so a device declaring `replay_depth` on another
   EVENT channel must wire its own — SPEC §18-6.
-- **Origin:** slopsim ledger (`README.md:462-464`); `/api/log` audit
+- **Origin:** valencesim ledger (`README.md:462-464`); `/api/log` audit
   including its side effect (first fetch triggers `applogSerialQuiet()`).
 - **Proposed change:** spec-core EVENT channel `log` (reserved id, e.g.
   0x0008): `{level u8, tag, hub-ms, message ≤128 B}`, bounded drop-oldest
@@ -847,7 +847,7 @@ the copy a third-party implementer reads.
   INTENT** — the reference device's counter resets still ride their legacy HTTP
   keys and feed `reset_gen` from there. The vocabulary shipped; the verb did
   not. SPEC §18-18.
-- **Origin:** coverage audit: `reset_stats`, `reset_peaks`, slopmotion
+- **Origin:** coverage audit: `reset_stats`, `reset_peaks`, vmotion
   `reset_stats`, `ap_reset` are ACTIONS, not values — [RFC-009](#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) is explicitly
   a value metamodel, and today three different reset verbs ride bespoke
   HTTP keys.
@@ -889,7 +889,7 @@ the copy a third-party implementer reads.
 - **Compatibility:** one new GOODBYE code + spec text; procedure channels
   are device-authored.
 
-## RFC-021 — SlopSync Presets (operator-ordered)
+## RFC-021 — Valence Presets (operator-ordered)
 
 - **Status:** **Landed (v1.0) for the MECHANISM; device preset BACKENDS
   DEFERRED.** LANDED: chunked transfer generalized into the namespaced blob verb
@@ -967,7 +967,7 @@ the copy a third-party implementer reads.
      landmine).
   2. `goodbye_codes` gets its own space (or one normative "GOODBYE uses
      nack_codes" sentence) — today two clients hand-reuse 0x0107
-     (`SlopSync.cs:1479`, `session.js:527`). Add `REBOOTING` ([RFC-020](#rfc-020--procedures-long-running-guarded-operations--reboot-commit)).
+     (`Valence.cs:1479`, `session.js:527`). Add `REBOOTING` ([RFC-020](#rfc-020--procedures-long-running-guarded-operations--reboot-commit)).
   3. Safety `cause` enum gains `session_loss` — deadman is currently blamed
      for GOODBYEs/evictions (`hub_impl.hpp:1342`). **LANDED (M4a):**
      `releaseSessionSources()` derives the cause from the §11.4 release
@@ -1054,14 +1054,14 @@ the copy a third-party implementer reads.
   registry codes + wire bits but no rule on WHO latches them
   (`hub_impl.hpp:583-586`, `safety.hpp:10-12`) — a generic client cannot
   know if sending HOLD does anything on an arbitrary hub; (b) whether
-  viewers may send stop-class ops is unstated — slopsync-js guessed
+  viewers may send stop-class ops is unstated — valence-js guessed
   restrictive (`bridge.js:252-257`), and the wrong guess means "the person
   in the room cannot stop the machine"; (c) override/bypass currently ride
-  a legacy HTTP endpoint with no SlopSync home.
+  a legacy HTTP endpoint with no Valence home.
 - **Proposed change:** (a) the HUB latches all four levels in 0x0003 —
   delegate acceptance is what triggers the latch; a hub whose delegate
   doesn't implement HOLD/PAUSE NACKs `UNSUPPORTED_OP` (discoverable,
-  honest). (b) Role exemption rule: `estop` ([RFC-010](#rfc-010--client-assertable-e-stop-over-slopsync)) and `stop` are
+  honest). (b) Role exemption rule: `estop` ([RFC-010](#rfc-010--client-assertable-e-stop-over-valence)) and `stop` are
   role-EXEMPT on 0x0005 — anyone may stop the machine, §11.2's "safety
   outranks authorization" generalized; `hold/pause/resume/estop_clear`
   require controller. (c) `manual_override` and `bypass_limits` become
@@ -1157,7 +1157,7 @@ the copy a third-party implementer reads.
          window. NVS boot-counter only; cannot collide with a session
          (any power loss already stops motion and forces re-home).
        * A hub with ANY real button MAY bind it as the pairing control —
-         UX upgrade, never required. A hub with SlopGlow hardware SHOULD
+         UX upgrade, never required. A hub with VGlow hardware SHOULD
          show a pairing glow-state; window state is also observable
          in-band by any watch session regardless.
        * Factory reset (token-store wipe) MUST be a deliberately HARDER
@@ -1203,7 +1203,7 @@ the copy a third-party implementer reads.
 - **Origin:** the wire parser is the attack surface in BOTH directions:
   the hub parses HELLO/INTENT/bundles from untrusted clients, and CLIENTS
   parse WELCOME/catalog/STATE from possibly-untrusted hubs — a client
-  auto-connecting to any discovered `_slopsync._tcp` beacon is one
+  auto-connecting to any discovered `_valence._tcp` beacon is one
   malicious hub away from parsing hostile bytes, and the catalog (rich in
   variable-length strings, growing via [RFC-009](#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis)/026) is the fattest
   client-side surface. Today's conformance = golden vectors only; no fuzz
@@ -1230,7 +1230,7 @@ the copy a third-party implementer reads.
      zero crashes/sanitizer findings. Golden vectors prove correctness;
      fuzzing proves totality.
   5. **Client obligations are symmetric** (normative sentence): a hostile
-     hub MUST NOT be able to crash a conforming client. slopsync-js,
+     hub MUST NOT be able to crash a conforming client. valence-js,
      the MFP plugin, and the C++ client core all carry the same totality
      duty as the hub.
 - **Compatibility:** spec text + conformance tooling; zero wire change.
@@ -1286,7 +1286,7 @@ the copy a third-party implementer reads.
   `trust_states` and the RECOGNIZED-PENDING suspension, its honesty clause
   normative (SPEC §12.6, H6/H7 — including the real gap that a device reporting
   NO version can never trip it). (3) the symmetric hub-change signal. (4)
-  `/uitoken` — IMPLEMENTED (`src/comms/SlopSyncUiToken.cpp`), sanctioned as HTTP
+  `/uitoken` — IMPLEMENTED (`src/comms/ValenceUiToken.cpp`), sanctioned as HTTP
   escapee #2, and normatively NOT a connection prerequisite (SPEC §12.8, H8).
   (5) the phish note, as honesty clause H5. (6) token presentation modes with
   AUTH (0x1C), `auth_attempts_max` (3), and the previous-session-nonce shortcut
@@ -1329,7 +1329,7 @@ the copy a third-party implementer reads.
      via [RFC-016](#rfc-016--in-band-hub-identity-capabilities--catalog-introspection) WELCOME identity + etag/boot_id) SHOULD be surfaced by
      clients ("machine updated to X.Y.Z"); clients MAY gate configure-
      tier actions on user acknowledgment after a change. Hub code
-     changes only via the OTA plane, which is outside SlopSync trust by
+     changes only via the OTA plane, which is outside Valence trust by
      standing ruling — a configure-tier compromise cannot flash firmware.
      A hostile hub's ceiling against conforming clients is well-formed
      lies, per [RFC-028](#rfc-028--parser-robustness--fuzz-conformance-gate-anti-cve) symmetric parser totality.
@@ -1359,7 +1359,7 @@ the copy a third-party implementer reads.
        optimize against automatable mass vectors; accept the ceiling on
        individually-targeted LAN-resident attackers.
      * Toggleable off for shared spaces. **Configure always pairs, no
-       exceptions.** Deployment commandment: the SlopSync port is NEVER
+       exceptions.** Deployment commandment: the Valence port is NEVER
        exposed to WAN — LAN-first is a security property.
      * **NOT a connection prerequisite (normative).** A WebUI never
        NEEDS `/uitoken` to connect: with the endpoint absent, disabled,
@@ -1527,7 +1527,7 @@ operator ruling — it is at the bottom, alone.*
 - **019/011 reset classification:** an action that restores
   configuration values bumps `cfg_gen` AND `reset_gen` (`ap_reset` is
   this); an action that clears counters bumps `reset_gen` only
-  (`reset_stats`/`reset_peaks`/slopmotion).
+  (`reset_stats`/`reset_peaks`/vmotion).
 - **022.10 scoped:** applied-within-advertised-range applies to ECHO
   `applied` maps and `setting_key`-bearing fields; effective/read-only
   fields lawfully exceed a paired setting's range and declare their own
@@ -1565,7 +1565,7 @@ operator ruling — it is at the bottom, alone.*
   `Catalog<48,50>` = **320 KiB** (entry = 24 + 136·F bytes; every entry
   carries BOTH layout and schema arrays though only one is ever
   populated; the bitfield-names array is 64 of LayoutField's 100 bytes).
-  Mandated fixes: (1) `buildSlopDriveCatalog()` becomes an OUT-PARAM —
+  Mandated fixes: (1) `buildValenceDriveCatalog()` becomes an OUT-PARAM —
   the current by-value return at F=50 is a 320 KiB stack temporary, the
   HubSession stack bomb, act two; (2) layout/schema become a
   union/variant; (3) field capacity is PER-ENTRY (exactly one entry —
@@ -1582,7 +1582,7 @@ operator ruling — it is at the bottom, alone.*
   deterministic random-input doctest loop over the same surfaces
   (coverage-blind, zero new toolchain).
 - **NVS:** 20 KiB partition, ~16 KiB usable; ledger + keypair ≈1.1 KiB
-  fits. Rules: the trust ledger is ONE blob in the existing `slopsync`
+  fits. Rules: the trust ledger is ONE blob in the existing `valence`
   namespace, kept under ~1900 B (single-page), written only on change,
   and gated on `ota_active` exactly like `savePairing()` (flash-cache
   writes during OTA reset the chip). Correction: `kMaxPaired` is 8
@@ -1634,13 +1634,13 @@ operator ruling — it is at the bottom, alone.*
   `CatalogCaps` class-type NTTP if a sixth pool ever appears; (c)
   `estop_frame.hpp` hand-rolls an `EstopCause` enum that the registry now
   owns as `safety_causes` — **DONE (M4a): the enum is deleted; callers use
-  `slopsync::safety_causes::`.**
+  `valence::safety_causes::`.**
 
 ### OPERATOR DECISION — RESOLVED 2026-07-25
 - **`/uitoken` is the SECOND sanctioned HTTP escapee.** Ruling: it is a
   sideband, not a secondary cost — a convenience for devices that host a
   WebUI, never a requirement, never a connection prerequisite for any
-  other client, and it does not break SlopSync for a hub with no WebUI.
+  other client, and it does not break Valence for a hub with no WebUI.
   The standing ruling at the head of this file is amended accordingly
   (static assets + OTA + uitoken, nothing else, ever). No RFC text
   changes: 029 §4 stands as written.
@@ -1694,7 +1694,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
   key 45 on publishes/granted_publishes entries; the GRANT echoes the
   **EFFECTIVE** family via `HubDelegate::effectiveCurveFamily` (answers M-2's
   "honored vs silently downgraded" open question — a ForceC1/C2 machine
-  reports the forced family, never parrots); `slopmotion::Command::
+  reports the forced family, never parrots); `vmotion::Command::
   client_curve_family` resolves `CurvePolicy::FollowClient` at last (c1_cubic
   → cubic reconstruction; everything else = pre-RFC quintic); firmware stamps
   each pacing-ring segment with its session's granted family. Test SI-23.
@@ -1751,7 +1751,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
 - **Compatibility:** Fully additive — a new registry enum, one optional
   descriptor field, one optional INTENT. Absent = `unspecified` = current
   behavior, so no existing client, catalog or golden vector changes. The
-  device-side consumer already exists (`slopmotion::CurvePolicy`), which is why
+  device-side consumer already exists (`vmotion::CurvePolicy`), which is why
   this is a wire proposal and not a feature proposal.
 
 ---
@@ -1762,9 +1762,9 @@ B/C/D. Status column matches each entry's own line; cross-check against
   (operator, M5c): *"I don't use the servo tuning at the moment, we'll
   re-introduce later as it was always broken lol."* **Amended by operator
   ruling 2026-07-27:** register read/write-STYLE communication is a shape
-  SlopSync must support. The servo pane itself stays parked, but item 5 below
+  Valence must support. The servo pane itself stays parked, but item 5 below
   is accepted-in-principle and waits only for a consumer.
-- **Origin:** M5c (fw 2.1.72). The ruling is **"no controls outside SlopSync,
+- **Origin:** M5c (fw 2.1.72). The ruling is **"no controls outside Valence,
   HTTP is read only"**, and `POST /api/servo` was the last writer standing after
   the motion, mode, tuning and admin surfaces moved. It is retired (410 Gone)
   rather than ported, because porting a surface nobody uses and that never
@@ -1776,7 +1776,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
   an **arbitrary register->value map** over a Modbus device. That is not a fixed
   INTENT schema, and forcing it into one would either pin every register number
   into the catalog forever or reintroduce an untyped escape hatch, which is the
-  thing SlopSync exists to avoid.
+  thing Valence exists to avoid.
 - **Proposed change:** Split it by what the data actually IS, rather than by
   which endpoint it used to share.
   1. **The `live` whitelist becomes real settings.** It is a bounded, known set
@@ -1786,7 +1786,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
      other setting — and it makes the Configure pane buildable by a third-party
      client, which the HTTP version never allowed.
   2. **`program` (the full gold-motor sequence) is a DOCUMENT, not a form**, and
-     belongs on the [RFC-021](#rfc-021--slopsync-presets-operator-ordered) blob store: one `writeBlob` on the delegate seam
+     belongs on the [RFC-021](#rfc-021--valence-presets-operator-ordered) blob store: one `writeBlob` on the delegate seam
      inherits chunking, selective repair, `total_bytes` pre-sizing and
      `CHUNK_UNAVAILABLE` for free. A register dump is exactly the shape that
      seam was generalized for.
@@ -2028,7 +2028,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
   str16/32/64 as renderable by type (width = the bound); the exercised fixture
   is the SIMULATOR's divergent catalog, never the frozen mini-catalog (whose
   etag pin a string setting would break).
-- **Origin:** Found by `tools/slopsync_probe.py` against the divergent simulator
+- **Origin:** Found by `tools/valence_probe.py` against the divergent simulator
   catalog, 2026-07-27 — the FIRST time a `str16` setting field was ever
   exercised. [RFC-026](#rfc-026--strings-on-the-wire-operator-ordered) landed the packed string types and nothing had used one.
 - **Problem:** The probe's `cat_renderable` check requires every setting to carry
@@ -2060,9 +2060,9 @@ B/C/D. Status column matches each entry's own line; cross-check against
   batch. Until then the key is registered, decodable, and unexercised —
   exactly the state [RFC-036](#rfc-036--renderability-of-string-settings).3 warns about, so the follow-up carries a "add an
   emitting fixture" obligation with it.
-- **Origin:** Grievance sweep 2026-07-27. `webui/src/core/slopsync/catalog.js:470`
+- **Origin:** Grievance sweep 2026-07-27. `webui/src/core/valence/catalog.js:470`
   (*"unknown packed type: offsets are unknowable past here"*) and
-  `clients/mfp-slopsync/SlopSync.cs:2859` (*"An UNKNOWN packed type makes every
+  `clients/mfp-valence/Valence.cs:2859` (*"An UNKNOWN packed type makes every
   later offset unknowable, so we stop there rather than silently mis-decoding
   the tail"*) carry the identical defensive truncation. The probe's 0x0088
   misread (80 B struct silently accepted an 84 B grown payload, every field
@@ -2129,20 +2129,20 @@ B/C/D. Status column matches each entry's own line; cross-check against
   ALREADY answering NACK MALFORMED there — the silent-demotion case is a
   well-FORMED but unrecognized token, which is [RFC-029](#rfc-029--trust-lifecycle-hub-authenticity-change-tripwires-own-ui-trust)'s deliberate
   admit-at-watch tripwire behavior and stays. The asymmetry: BLOB_REFUSED is
-  a CLIENT obligation and only slopsync-js has a reassembler cap to refuse
+  a CLIENT obligation and only valence-js has a reassembler cap to refuse
   with — that emission is on the WebUI agent (handoff item 8); the C++ client
   core sizes its scratch from its own build and structurally cannot hit it.
 - **Origin:** Grievance sweep 2026-07-27, three receipts:
-  1. `webui/src/core/slopsync/catalog.js:131-137` — the client's blob
+  1. `webui/src/core/valence/catalog.js:131-137` — the client's blob
      reassembler cap refused a grown catalog's transfer header and the session
      *"then went LIVE WITH NO CATALOG… No error, no NACK, no dropped-frame
      warning: a refused blob header just stops."* ([RFC-015](#rfc-015--syncing-order-catalog-completes-before-retained-state)'s READY_TIMEOUT
      eventually kills the session 15 s later — and blames the client.)
-  2. `clients/mfp-slopsync/SlopSync.cs:536` — a HELLO token of the wrong
+  2. `clients/mfp-valence/Valence.cs:536` — a HELLO token of the wrong
      shape (a PIN typed where a 16 B token belongs) is silently ignored and
      the session downgraded to viewer tier: *"Under enforcement that would
      present as 'connects, plays nothing'."*
-  3. `lib/slopsync/hub/hub_impl.hpp:3056-3058` — idle reaping ([RFC-024](#rfc-024--idle-session-reaping-for-non-owning-sessions)) has
+  3. `lib/valence/hub/hub_impl.hpp:3056-3058` — idle reaping ([RFC-024](#rfc-024--idle-session-reaping-for-non-owning-sessions)) has
      no GOODBYE code of its own, so a reaped VIEWER is labeled
      `DEADMAN_TIMEOUT` — the motion-safety code — in every log and client.
      The comment says *"flagged rather than invented"*; this RFC invents it
@@ -2175,10 +2175,10 @@ B/C/D. Status column matches each entry's own line; cross-check against
   1. **Frame-header channel table.** Which frame types carry
      `header.channel == 0` vs a target channel id is normative routing that
      exists only in the reference implementation
-     (`tools/slopsync_probe.py:33-41`: *"confirmed against the reference C++
+     (`tools/valence_probe.py:33-41`: *"confirmed against the reference C++
      impl, not spelled out explicitly in SPEC.md prose"*). SPEC §4 gains the
      per-frame-type table.
-  2. **WS subprotocol selection is an obligation.** §13.2 names `slopsync.v1`
+  2. **WS subprotocol selection is an obligation.** §13.2 names `valence.v1`
      but never says the server MUST perform RFC 6455 selection and echo it —
      two independent WS libraries (firmware's vendored ESP32Async patch, the
      sim's IXWebSocket patch) had to be patched because strict clients
@@ -2247,14 +2247,14 @@ B/C/D. Status column matches each entry's own line; cross-check against
   `min`/`max` catalog bounds, which is what it already does). The reference
   webui client implements the role BINDING now (`model/roles.js`,
   `ui/heroes.js`, `RailWidget.svelte`'s `hi` derivation) so it lights up the
-  moment `SlopSyncCatalog.h` tags `max_rail`/`measured_stroke` with these
+  moment `ValenceCatalog.h` tags `max_rail`/`measured_stroke` with these
   roles.
   **UPDATE (fw 2.1.77, firmware-side agent, same day):** the firmware-side
   tagging described above as "not yet done" is done — `registry.yaml`
   gained both roles verbatim (names match this entry exactly, discovered
   independently rather than coordinated), `max_rail` and `measured_stroke`
   on 0x1000 carry `roles::geometry_max_travel` /
-  `roles::geometry_measured_travel`, and `test_slopsync_devicecatalog`
+  `roles::geometry_measured_travel`, and `test_valence_devicecatalog`
   covers the tags (registered-role allowlist, discoverable-and-unique,
   round-trip). Status line left at Draft — landing the RFC itself is a
   batch-review call, not this agent's to make — but both halves of the
@@ -2309,10 +2309,10 @@ B/C/D. Status column matches each entry's own line; cross-check against
   own MAY-fallback clause the hub continues to apply the duplicate-identity
   eviction rule there. Only the [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) STALE-instance_id case (unambiguous:
   a STALE session is never a live competing claimant) is implemented.
-  Tests: `test/native/test_slopsync_staleness/test_main.cpp` (STALE-01..04)
-  plus rewritten expectations in `test_slopsync_safety` (S-05/S-06, the two
-  "M4a" [RFC-022](#rfc-022--registry-hygiene-omnibus).3 cases), `test_slopsync_m3b` (MB-10/11), `test_slopsync_m4b`
-  (M4B-05), `test_slopsync_m4c` (M4C-11), and `test_slopsync_streamingress`
+  Tests: `test/native/test_valence_staleness/test_main.cpp` (STALE-01..04)
+  plus rewritten expectations in `test_valence_safety` (S-05/S-06, the two
+  "M4a" [RFC-022](#rfc-022--registry-hygiene-omnibus).3 cases), `test_valence_m3b` (MB-10/11), `test_valence_m4b`
+  (M4B-05), `test_valence_m4c` (M4C-11), and `test_valence_streamingress`
   (SI-08/SI-15). Verified: `pio test -e native`, all suites, exit 0.
 - **Origin:** Operator requirement, 2026-07-27, verbatim: *"clients, even the
   webui, seem to just die sometimes. A client should never randomly die. If a
@@ -2362,7 +2362,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
     - **Initiator-bound / command-driven** — `move` (MANUAL, a single bounded
       point-to-point plan that completes and holds on its own),
       `motion-input`/`motion-segment` (TCODE_STREAM, whose planner already
-      brakes to rest with no external help — SlopDrive-32's DOCTRINE.md §8:
+      brakes to rest with no external help — Valence Drive's DOCTRINE.md §8:
       *"plan ending still-moving with no fresh command → one-time
       velocity-interface brake-to-rest [SETTLE]"* — and whose segment commands are individually
       time-bounded to begin with, §5.4/§9.2). Silence from the owning session
@@ -2371,7 +2371,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
       construction, with no hub intervention required.
     - **Hub-autonomous** — the pattern generator (`MotionSource::PATTERN`),
       which already has `SourceLossPolicy::Continue`
-      (`SlopSyncHubService.cpp:867`) precisely because it runs *on the hub*,
+      (`ValenceHubService.cpp:867`) precisely because it runs *on the hub*,
       independent of the client that pressed start.
   - **Operator ruling on the one real nuance (2026-07-27), stated plainly
     rather than left open:** *"For now, motion started on the machine stays
@@ -2433,7 +2433,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
      should also skip the forced-stop dispatch is the same argument extended
      further, but it is a broader change (touches §6.9's "behaviorally
      identical" invariant across all six teardown doors, and the firmware's
-     own `SlopDriveHubDelegate::sourcePolicy()` choice of `Stop` for
+     own `ValenceDriveHubDelegate::sourcePolicy()` choice of `Stop` for
      `MANUAL`/`TCODE_STREAM`) that deserves its own review rather than riding
      in on a session-lifecycle RFC. **Named follow-up, not part of this
      RFC:** revisit whether `MANUAL`/`TCODE_STREAM` need
@@ -2471,7 +2471,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
      A stale session costs the hub **exactly as much as a live one** — full
      `HubSession` + `Slot` footprint, unreduced (the struct is large enough
      that an earlier field bug blew an 8 KB task stack copying one, per
-     SlopDrive-32's TRAPS.md field-bug ledger). Staleness is not a compression scheme; it
+     Valence Drive's TRAPS.md field-bug ledger). Staleness is not a compression scheme; it
      is a promise not to reclaim something already paid for, made *only* on
      the belief the owner might come back. That belief is exactly what the
      eviction rule below exists to bound.
@@ -2626,7 +2626,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
   **Named follow-up, not part of this RFC:** whether
   `SourceLossPolicy::Stop` is still the right default for
   `MANUAL`/`TCODE_STREAM` on the four teardown doors this RFC leaves
-  unchanged, now that SlopMotion's SETTLE makes the forced-halt redundant
+  unchanged, now that VMotion's SETTLE makes the forced-halt redundant
   there too.
 
 ---
@@ -2634,7 +2634,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
 ## RFC-043 — Transport conformance profiles: which bindings a hub must offer
 
 **Status:** Landed (v1.0). SPEC §13.1 states both profiles verbatim (base profile: any single binding conforms; hardware hub profile: BLE GATT MUST, WS SHOULD, ESP-NOW supported-not-conformance-relevant), UI-serving-as-capability, and the BLE→WS auto-upgrade guidance; §17.1's hub conformance row cross-references it. Documentation-only, as proposed — no reference-hub gap beyond the one already named (BLE GATT `ITransport` unbuilt; SPEC §18-22).
-**Origin:** Operator rulings 2026-07-27 (SlopDeck design sessions; the ESP32
+**Origin:** Operator rulings 2026-07-27 (Phosphor design sessions; the ESP32
 WROOM-D / OSSM-reference-PCB target).
 
 - **Problem:** §13 defines transport bindings (WebSocket, ESP-NOW, BLE GATT,
@@ -2645,7 +2645,7 @@ WROOM-D / OSSM-reference-PCB target).
   (phones without LAN access, browserless controllers) — or BLE-only where
   WS would serve LAN clients better. Separately, nothing says a hub need NOT
   serve a UI: a 4 MB-flash WROOM hub that cannot host web assets is a fully
-  legitimate SlopSync citizen, and the spec should say so out loud.
+  legitimate Valence citizen, and the spec should say so out loud.
 - **Proposed change:** add conformance PROFILES to §13:
   - **Base profile** (sim, hosted, relay, in-process hubs): any single
     binding conforms — a hub with no radios is fully legitimate.
@@ -2665,12 +2665,12 @@ WROOM-D / OSSM-reference-PCB target).
     clients MUST NOT assume the hub they talk to served them.
   All SHOULD/MUST language is availability policy — no wire change.
 - **Compatibility:** documentation-only; no wire format, registry, or
-  fixture impact. Reference-hub gap it names: the SlopDrive-32 firmware
-  currently implements only the WS binding (`SlopSyncAsyncWsTransport`); a
+  fixture impact. Reference-hub gap it names: the Valence Drive firmware
+  currently implements only the WS binding (`ValenceAsyncWsTransport`); a
   BLE GATT `ITransport` is the named follow-up work. The legacy OSSM BLE
   masquerade service (`OssmBleService`, KinkyMakers-compat for OSSM
   Possum/XToys) is ruled END-OF-LIFE the same day and is NOT the BLE
-  binding — SlopSync-over-BLE-GATT replaces it, it does not extend it.
+  binding — Valence-over-BLE-GATT replaces it, it does not extend it.
 
 ---
 
@@ -2681,14 +2681,14 @@ WROOM-D / OSSM-reference-PCB target).
 the "TCode pass-through DEFERRED post-MFP" disposition).
 
 - **Problem:** the ecosystem strategy is to never force other firmwares' or
-  clients' hands — SlopSync must win by being the easiest thing to
+  clients' hands — Valence must win by being the easiest thing to
   implement. Most existing clients already generate TCode. Today their only
   path onto this machine is a legacy raw-TCode transport (serial/BLE NUS,
-  §15.1), which contradicts "SlopSync is the only way in and out" and gives
-  those clients none of SlopSync's session/safety/arbitration guarantees.
+  §15.1), which contradicts "Valence is the only way in and out" and gives
+  those clients none of Valence's session/safety/arbitration guarantees.
 - **Proposed change:** define the three-rung CLIENT ONRAMP as explicit
   protocol posture. Rung 1, TCode passthrough, is a CLIENT-SIDE ADAPTER: a
-  small reference library — a SlopDeck kernel module first, a C# helper for
+  small reference library — a Phosphor kernel module first, a C# helper for
   MFP-class apps later — consumes the TCode a client already generates and
   translates it locally into native segments or samples before anything
   reaches the wire. Rung 2: native motion-segment (0x2101) — the better
@@ -2700,13 +2700,13 @@ the "TCode pass-through DEFERRED post-MFP" disposition).
   implement. §15.1's legacy text-edge synthetic-session mechanism is
   unrelated and unaffected: it remains the only place a hub itself ever sees
   TCode bytes, and only because they arrive over a transport (serial,
-  BLE-NUS) that was never a SlopSync frame to begin with.
+  BLE-NUS) that was never a Valence frame to begin with.
 
 **CORRECTION (operator, 2026-07-27):** the paragraphs above, and SPEC's
 first-cut onramp text, originally described rung 1 as a hub-parsed
 TCode-passthrough STREAM channel, with a named blocker — the TCodeParser
 cross-task race (the parser lives on the transport tasks today; a
-SlopSync-carried feed would arrive on the hub task). **That plan is
+Valence-carried feed would arrive on the hub task). **That plan is
 retracted, not merely deferred.** The hub NEVER parses TCode and there is
 NO wire channel for it: the `0x2102 tcode-passthrough` reservation some
 earlier CHANNEL-MAP.md/registry commentary carried is dropped, and
@@ -2726,12 +2726,12 @@ surface. SPEC §9.6's onramp paragraph is reworded to match (see SPEC.md).
 **Implementation landed, 2026-07-27 (Phase D).** `Hub::releaseSessionSources()` no longer runs any Stop-vs-Continue policy dispatch — the `if (pol == SourceLossPolicy::Stop) { ... }` branch (latch STOP + `onDeadmanStop()` + broadcast) is deleted outright; every release, from any of the (now seven, post-[RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops)) teardown/staleness doors, is `_delegate.onSourceOwnership(source, 0, reason)` and nothing else. `HubDelegate::sourcePolicy()`/`onDeadmanStop()` remain declared (frozen delegate interface, extended additively with a doc-comment note) but are never called by the reference hub. The STREAM-ingress "accepted bundle clears a latched STOP" workaround this RFC's own Problem section named (SI-15) is deleted from `Hub::handleStream()` — moot, not merely obsolete, since no source-loss path latches STOP any more for it to un-wedge; the separate, still-valid §11.1 rule ("an accepted source-mapped INTENT clears STOP") is unrelated and untouched in `handleIntent()`. `source.background_run` itself (the firmware delegate decision this RFC hands off to) is item 3 of this same Phase D pass — see the ledger/report for the channel choice. Verified: `pio test -e native`, all suites, exit 0 (SI-08/SI-15, S-05/S-06, and the M4a/M3b/M4b/M4c staleness rewrites all assert "nothing latches" directly).
 **Origin:** Operator ruling 2026-07-27 — resolving [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops)'s own named
 follow-up ("whether SourceLossPolicy::Stop is still the right default …
-now that SlopMotion's SETTLE makes the forced-halt redundant").
+now that VMotion's SETTLE makes the forced-halt redundant").
 
 - **Problem:** §11.3's source-loss policy latches a STOP when a streaming
   source dies or goes silent. That latch was load-bearing in the
   clocked-interpolator era, when a starved generator could plausibly keep
-  commanding motion. Under SlopMotion the physics are different: absence of
+  commanding motion. Under VMotion the physics are different: absence of
   input IS the stopped state — a plan that ends with no fresh command
   settles to rest by construction. The latch now adds only friction (SI-15
   already had to make accepted STREAM bundles clear latched stops to
@@ -2774,7 +2774,7 @@ now that SlopMotion's SETTLE makes the forced-halt redundant").
 
 ## RFC-046 — BLE-primary discovery, UDP probe and reply, and cross-transport migration
 
-**Status:** Landed (v1.0). Registry gains `ble_identity` (service/write/notify UUIDs), `ble_adv_flags` (pairing_window_open/ws_available), `udp_discovery` (port 21328/magic `SLOP`/reply rate limit), frame types `DISCOVER_PROBE` (0x1E) / `DISCOVER_REPLY` (0x1F), and WELCOME keys `ws_port` (46) / `ipv4` (47). SPEC §13.1 (profiles), §13.4 (BLE identity + advertising payload pinned), §13.7 (discovery doctrine restated), new §13.8 (UDP probe/reply), and §6.3 (transport migration + `ws_port`/`ipv4` documented) carry the normative text. Two decisions made without an explicit operator number and flagged for veto: (1) the UDP reply's `hub_id` field reuses the existing `boot_id` (u32) rather than a new identity primitive; (2) transport migration is specified against TODAY's session model (a `LIVE` duplicate-`instance_id` HELLO), with [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops)'s `STALE` case named as composing identically once that RFC lands — [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) itself is NOT landed by this batch and remains Draft. No reference implementation exists yet (BLE `ITransport`, UDP responder); SPEC §18-22 records it. **[RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) landed 2026-07-27 (Phase D)** — its `STALE` reattach case DOES compose exactly as this entry predicted (`Hub::handleReattach()` implements it for the same-binding-type case; the general cross-BINDING-TYPE migration this RFC describes remains unimplemented, since the reference hub still has only one binding).
+**Status:** Landed (v1.0). Registry gains `ble_identity` (service/write/notify UUIDs), `ble_adv_flags` (pairing_window_open/ws_available), `udp_discovery` (port 22096/magic `VLNC`/reply rate limit), frame types `DISCOVER_PROBE` (0x1E) / `DISCOVER_REPLY` (0x1F), and WELCOME keys `ws_port` (46) / `ipv4` (47). SPEC §13.1 (profiles), §13.4 (BLE identity + advertising payload pinned), §13.7 (discovery doctrine restated), new §13.8 (UDP probe/reply), and §6.3 (transport migration + `ws_port`/`ipv4` documented) carry the normative text. Two decisions made without an explicit operator number and flagged for veto: (1) the UDP reply's `hub_id` field reuses the existing `boot_id` (u32) rather than a new identity primitive; (2) transport migration is specified against TODAY's session model (a `LIVE` duplicate-`instance_id` HELLO), with [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops)'s `STALE` case named as composing identically once that RFC lands — [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) itself is NOT landed by this batch and remains Draft. No reference implementation exists yet (BLE `ITransport`, UDP responder); SPEC §18-22 records it. **[RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) landed 2026-07-27 (Phase D)** — its `STALE` reattach case DOES compose exactly as this entry predicted (`Hub::handleReattach()` implements it for the same-binding-type case; the general cross-BINDING-TYPE migration this RFC describes remains unimplemented, since the reference hub still has only one binding).
 **Origin:** Operator direction 2026-07-27 ("more robust discovery for
 clients — mDNS works but isn't my pick; BLE discovery and upgrade path").
 Companions: [RFC-043](#rfc-043--transport-conformance-profiles-which-bindings-a-hub-must-offer) (BLE GATT is the hardware-hub conformance floor),
@@ -2792,7 +2792,7 @@ for the peer radio; this is the phone-facing twin).
   only WS-side discovery and it is the weakest link in real homes
   (multicast across mesh/consumer APs and Android is unreliable).
 - **Proposed change:**
-  1. **Registry pins the SlopSync BLE identity** (wire numbers, allocated
+  1. **Registry pins the Valence BLE identity** (wire numbers, allocated
      at landing): ONE ecosystem-wide GATT service UUID + write(c2h) +
      notify(h2c) characteristic UUIDs. Every conformant BLE hub advertises
      the same service UUID; every client scans for exactly one thing.
@@ -2832,7 +2832,7 @@ for the peer radio; this is the phone-facing twin).
      probe is the canonical WS-side discovery for LAN clients without BLE
      (desktop shells, MFP, Intiface). mDNS remains a free SHOULD for the
      one audience that can use nothing else (browsers resolving
-     slopdrive.local). Manual IP always works.
+     valence-drive.local). Manual IP always works.
 - **Compatibility:** additive — new registry section (BLE identity UUIDs +
   UDP discovery port/magic/frames), two WELCOME keys, one advertising flags
   definition, migration semantics layered on [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops)'s existing reattach. No existing frame changes.
@@ -2857,7 +2857,7 @@ codegen already tolerates without changes. Item 4 (`tools/gen_channel_map.py`)
 remains unbuilt; CHANNEL-MAP.md stays hand-maintained for now.
 
 - **Problem:** device channel ids (0x0080-0x7FFF, hub-allocated) accrete in
-  arrival order — SlopDrive's own space interleaves STATE/STREAM/EVENT ids
+  arrival order — ValenceDrive's own space interleaves STATE/STREAM/EVENT ids
   with no structure, so the numbers encode nothing but history and nobody
   can hold the map in their head. There is also no experimental space (a
   vendor prototyping a channel has nowhere collision-safe to play) and no
@@ -2871,7 +2871,7 @@ remains unbuilt; CHANNEL-MAP.md stays hand-maintained for now.
      byte. Every digit answers a question; `0x2101` READS as
      STREAM-motion-01. `0x7000-0x7FFF` reserved experimental/vendor —
      never in a shipped catalog.
-  2. **SlopDrive-32 renumbers to the grid** (see docs/slopsync/
+  2. **Valence Drive renumbers to the grid** (see docs/valence/
      CHANNEL-MAP.md for the full old→new table) — legal as a device
      catalog evolution while v1.0 is untagged; the frozen mini-catalog is
      unaffected. This is the LAST legal renumber; the grid exists so no
@@ -2899,7 +2899,7 @@ STATE/roster channel, or the sole INTENT verb for a single-writer family),
 and every non-zero member is a related channel within that family (a tuning
 card, a modifier lane, a preset-store twin). The **mirror rule**: a channel
 and its paired writer/twin across class bands share domain+family+member
-exactly — `0x1120` slopmotion-limits (STATE) and `0x3120` slopmotion-set
+exactly — `0x1120` vmotion-limits (STATE) and `0x3120` vmotion-set
 (INTENT) are both domain=motion, family=2, member=0. **Family `0xF` is
 admin/meta in every band** — `0x30F0` machine-admin (clear-fault, scan,
 save, reboot) is the machine domain's admin family. **Named reserves** hold
@@ -2907,10 +2907,10 @@ a slot with no catalog entry behind it yet: `0x1011` battery, `0x1012`
 thermal ([RFC-048](#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law) capability interfaces). **Reserved domains** `3`
 (auxiliary), `4` (playback), `5` (automation) are held for future
 subsystems; domains `8`-`F` are parked for a future multi-axis convention.
-SlopDrive-32's device catalog renumbered onto this convention (Phase C4;
-`docs/slopsync/CHANNEL-MAP.md` carries the full old→new table and
-`docs/slopsync/channel-grid.html` — now parsed live from
-`SlopSyncCatalog.h` rather than hand-typed — visualizes it), and this really
+Valence Drive's device catalog renumbered onto this convention (Phase C4;
+`docs/valence/CHANNEL-MAP.md` carries the full old→new table and
+`docs/valence/channel-grid.html` — now parsed live from
+`ValenceCatalog.h` rather than hand-typed — visualizes it), and this really
 is the last legal renumber: every family reserves 15 unused member slots
 and every domain reserves unused families, so a new member of an existing
 concept gets a numeric home without disturbing its neighbors.
@@ -2956,7 +2956,7 @@ unattended-and-moving indicator) normative in RENDERING.md §10.1. `gen_registry
 machine-unspecific; specify machine-specific and machine-agnostic channels
 in the spec; a standardized set of UI-building rules — for a remote with an
 OLED, a phone, a desktop, anything with a screen"), staged in full at
-`docs/slopsync/[RFC-048](#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law)-STAGING.md` and ratified clause-by-clause before this
+`docs/valence/[RFC-048](#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law)-STAGING.md` and ratified clause-by-clause before this
 landing; the `hub_instance_id` fix and the `source.background_run` promotion
 are two additional same-day operator rulings folded into this batch.
 **Problem:** (1) the spec had two channel tiers (protocol core,
@@ -2984,7 +2984,7 @@ on an unmet hub without hardcoding a channel, the exact gap `command.*` and
      speed?, depth?, stroke?, sensation?}`) and the **advanced generator /
      fray-d shape** interface (master state + four modifier lanes + preset
      store/roster) — fray-d's shape is the community gold standard,
-     standardized the way SlopMotion is the standard planner. Per-axis
+     standardized the way VMotion is the standard planner. Per-axis
      instancing and actuator-type vocabulary remain PARKED, with runway.
   3. **Two orthogonal catalog vocabulary axes** (RENDERING.md §3-4):
      `category` (WHERE, 14 ids + vendor range + the graceful-extension rule
@@ -3016,7 +3016,7 @@ on an unmet hub without hardcoding a channel, the exact gap `command.*` and
      `pattern-panel`, and `generator-advanced` are REQUIRED on handheld/full.
   5. **Renderer laws, consolidated** (RENDERING.md §13): thirteen MUST rules,
      each earned by a documented field regression in the reference client;
-     the SlopDeck Tier-0 renderer is named the reference renderer.
+     the Phosphor Tier-0 renderer is named the reference renderer.
   6. **The Vocabulary Completeness Doctrine** (RENDERING.md §14): every
      enumerable vocabulary is exhaustively enumerated pre-tag, frozen at
      v1.0, armed with an unknown-value degradation rule, and — the
@@ -3137,23 +3137,23 @@ exactly Phase D and needed no new spec work — LEDGER.md's own note).
     `requested_curve_family`, encoded/decoded on key 48 in both WELCOME and
     GRANT. `Hub::grantPublishWish()` echoes `wish.curve_family` verbatim
     (unmodified by `curve_policy`) alongside the existing effective value.
-    Test: `test_slopsync_streamingress`'s SI-23b.
+    Test: `test_valence_streamingress`'s SI-23b.
   - **(c), the pinned constant, landed.** The firmware's independently
     hardcoded `1.5f` default (`SystemState.h`'s `sm_tune_handoff_k`) now
-    reads `slopsync::limits::segment_handoff_k` — the ONE remaining
-    duplicate this RFC's own Problem section named. `lib/slopmotion`'s own
+    reads `valence::limits::segment_handoff_k` — the ONE remaining
+    duplicate this RFC's own Problem section named. `lib/vmotion`'s own
     `Config::handoff_chord_factor` default is intentionally left as a bare
     `1.5f`: that library is zero-dependency and protocol-agnostic by
-    doctrine (DOCTRINE.md §9), so it does not gain a `lib/slopsync` include
+    doctrine (DOCTRINE.md §9), so it does not gain a `lib/valence` include
     for its own standalone default — only the firmware GLUE that wires the
     registry value in was carrying the duplication this RFC flagged.
   - **(c), the scheduling-depth backstop, EVALUATED AND NOT LANDED.** A
-    variant of `slopmotion::Engine::commitWaveform()`'s [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) handoff guard
+    variant of `vmotion::Engine::commitWaveform()`'s [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) handoff guard
     — falling `chord_out` back to the segment's own `chord_in` when no
     lookahead (`Command::has_next_chord`) is available, instead of skipping
     the guard per [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client)'s original tail-case exemption — was implemented
     and then REVERTED after it measurably regressed this library's own
-    `test_slopmotion` regression bench
+    `test_vmotion` regression bench
     ("Mixed feasible/infeasible chain settles centered and STAYS there," the
     operator's real 26.8 mm-off-center bench case): the centering-OFF
     baseline defect shrank from -23.6 mm to -9.4 mm purely as a side effect
@@ -3164,7 +3164,7 @@ exactly Phase D and needed no new spec work — LEDGER.md's own note).
     rule (three-strikes-then-report): a correct fix needs a signal that can
     tell "a successor is coming, just not yet queued" apart from "this is
     genuinely the last segment," which `chord_in` alone cannot provide.
-    Recorded in `slopmotion.hpp`'s `commitWaveform()` comment beside the
+    Recorded in `vmotion.hpp`'s `commitWaveform()` comment beside the
     guard, and in `Command::has_next_chord`'s doc comment, so the rejected
     approach is not silently retried.
 
@@ -3233,7 +3233,7 @@ positive application-level acknowledgment that a transfer completed"
   `registry.yaml`'s `SESSION_EVICTED` and `never_shed_stall_eviction_ms`
   comments updated to match (no key renumbered, no wire-emitted string
   changed — comments only, `gen_registry_header.py --check` re-run clean).
-- **Origin:** live kill-test verification of [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) on SlopDrive-32 fw
+- **Origin:** live kill-test verification of [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) on Valence Drive fw
   2.1.8x, three separate kill tests across both shipped transports
   (2026-07-28): every one evicted via `SESSION_EVICTED` instead of parking.
 - **Problem:** a vanished client's link reports itself CONGESTED (§10.3)
@@ -3270,7 +3270,7 @@ positive application-level acknowledgment that a transfer completed"
   which of those two a client should now expect from a stalled link, and a
   client written against [RFC-042](#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops) already handles the parked case correctly
   (a stale reconnect is indistinguishable from any other §6.6 resumption).
-  New test: `test_slopsync_staleness` gains a critical-stall-parks-then-
+  New test: `test_valence_staleness` gains a critical-stall-parks-then-
   reattaches-with-grants-intact vector (STALE state, transport null,
   congestion bookkeeping cleared, then a fresh HELLO with the same
   `instance_id` reattaches through the existing §6.3 migration path).
@@ -3281,8 +3281,8 @@ positive application-level acknowledgment that a transfer completed"
   with scope amendments.** Four deliberately separable parts: (a)–(c) are
   lib/tooling additions with zero wire change; (d) is one additive
   entry-level catalog key.
-  - **(a) RULED IN, STAGED.** The layer's home is the SlopSync lib (rejected
-    alternative: build it in SlopDrive-32 and promote later — Phase 6's
+  - **(a) RULED IN, STAGED.** The layer's home is the Valence lib (rejected
+    alternative: build it in Valence Drive and promote later — Phase 6's
     `examples/author_minimal_hub/` is a second consumer already inside the
     approved plan, and relocating headers afterward means rewriting includes
     across the whole ported catalog). Split by phase: `field_spec.hpp` +
@@ -3307,7 +3307,7 @@ positive application-level acknowledgment that a transfer completed"
     necessity" — the container desc factors the shared context OUT of its
     fields' 128-byte desc budgets, so each field's bytes spend on the delta,
     not on repeating where it lives.
-- **Origin:** the campaign's traced chain (SlopDrive-32 ledger, 2026-07-29).
+- **Origin:** the campaign's traced chain (Valence Drive ledger, 2026-07-29).
   The reference catalog is ~1,980 lines of imperative builder calls in which
   the facts an operator actually edits (`min`/`max`/`step`/`desc`/`group`)
   are buried in wire machinery; the JS client hand-copies registry
@@ -3334,7 +3334,7 @@ positive application-level acknowledgment that a transfer completed"
      fix by design — §8.1 says containers ride the entry level, so this
      needs an entry-level key.
 - **Proposed change:**
-  - **(a) `slopsync::author` — a constexpr table layer** in the lib:
+  - **(a) `valence::author` — a constexpr table layer** in the lib:
     `field_spec.hpp` (optional-membered row struct, flat designated
     initializers — presence inferred from `std::optional`, no
     `.hasMin = true` boilerplate), `channel_table.hpp` (constexpr table with
@@ -3402,12 +3402,12 @@ positive application-level acknowledgment that a transfer completed"
   accepts it.
 - **Proposed change:**
   1. **Scoped doctrine exception in §13.8:** a valid ESTOP frame
-     (12 bytes, `E5` magic, CRC-checked) received on UDP port 21328 —
+     (12 bytes, `E5` magic, CRC-checked) received on UDP port 22096 —
      broadcast or unicast — dispatches into the **same single e-stop
      function** as §11.2's two existing paths. This is not a "command" in
      §13.8's sense: §11.2 already removed stopping from authorization
      ("you may always stop the machine; you may not always start it").
-     The magic dispatch is disjoint by construction (`SLOP` vs
+     The magic dispatch is disjoint by construction (`VLNC` vs
      `E5 E5 E5 E5`), so the listener change is a prefix match plus CRC.
   2. **ESP-NOW acceptance:** on a hub that operates the §13.3 binding, a
      valid ESTOP frame MUST be accepted from ANY peer — paired or not,
@@ -3506,7 +3506,7 @@ positive application-level acknowledgment that a transfer completed"
   - **(b)** a blob-namespace read (§8.4 machinery reused) gated to
     `configure` tier + an open §12.3 pairing window;
   - **(c)** prior art, named for the record and disfavored: an
-    Improv-WiFi-style dedicated GATT characteristic outside SlopSync
+    Improv-WiFi-style dedicated GATT characteristic outside Valence
     framing — rejected-by-default because it forks the protocol surface
     per transport, the exact thing the one-frame-format design exists to
     prevent.
@@ -3521,8 +3521,8 @@ positive application-level acknowledgment that a transfer completed"
 
 ## RFC-055 — Admission control: a hub that cannot serve you must SAY SO
 
-- **Status:** PROPOSED (operator-ordered 2026-07-31, SlopDrive-32 bench).
-- **Origin — a live failure, with receipts.** SlopDrive-32 fw 2.2.1,
+- **Status:** PROPOSED (operator-ordered 2026-07-31, Valence Drive bench).
+- **Origin — a live failure, with receipts.** Valence Drive fw 2.2.1,
   2026-07-31. FIVE half-open TCP connections (socket opens, partial HTTP
   request, never completed) took the hub from serving to `reset_reason
   TASK_WDT` **every single attempt**. `heap_min` at the crash was 40 619 B —
@@ -3531,7 +3531,7 @@ positive application-level acknowledgment that a transfer completed"
   count survived untouched, so the trigger is incomplete requests, not load.
   This is textbook **slowloris** (known since 2009), and the industry answer
   is not novel — see Prior art below.
-  The protocol's part in it: SlopSync today has **no way for a hub to say
+  The protocol's part in it: Valence today has **no way for a hub to say
   "I am full, come back in N ms."** A hub at capacity can drop, close, or
   die, and all three look identical to a client, which then immediately
   retries and makes it worse.
@@ -3575,11 +3575,11 @@ positive application-level acknowledgment that a transfer completed"
     *event-driven* servers (nginx, lighttpd) and lethal against
     thread/slot-per-connection ones.
     **Scope correction, recorded because the first draft of this RFC got it
-    wrong:** the SlopDrive-32 failure above was on its **sync HTTP sideband
-    (:80 — static page, `/api/*`, OTA, uitoken)**, NOT on the SlopSync
+    wrong:** the Valence Drive failure above was on its **sync HTTP sideband
+    (:80 — static page, `/api/*`, OTA, uitoken)**, NOT on the Valence
     transport, which is event-driven ESPAsyncWebServer on :82 and was never
     touched by that test. The hub plane is not the structurally exposed one.
-    What the incident proves for SlopSync is narrower and still worth a
+    What the incident proves for Valence is narrower and still worth a
     normative answer: **a hub is only as available as the whole process it
     lives in**, so admission control has to be stated in-protocol rather
     than inferred from a connection that vanished for reasons the client
@@ -3621,12 +3621,12 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-056 — Modular conformance: a hub is a set of duties, not a chip
 
-- **Status:** PROPOSED (operator-ordered 2026-08-01, SlopDrive-32 bench).
-- **Origin — a shipped split, with receipts.** SlopDrive-32, 2026-08-01. The
+- **Status:** PROPOSED (operator-ordered 2026-08-01, Valence Drive bench).
+- **Origin — a shipped split, with receipts.** Valence Drive, 2026-08-01. The
   hub was moved off the motion MCU's radios: an ESP32-C5 terminates WiFi 6 /
-  5 GHz and the SlopSync WebSocket and relays whole frames to the ESP32-S3
-  over UART (§13.5 COBS), while the `slopsync::Hub` itself stays on the S3.
-  `slopsync_probe.py` reports **55 passed, 0 failed** through that split —
+  5 GHz and the Valence WebSocket and relays whole frames to the ESP32-S3
+  over UART (§13.5 COBS), while the `valence::Hub` itself stays on the S3.
+  `valence_probe.py` reports **55 passed, 0 failed** through that split —
   HELLO, WELCOME, catalog + blob transfer, every subscription, INTENT, STREAM,
   segments, safety modes — with the S3's own WebSocket **compiled out
   entirely**. From the client's side nothing changed; only the IP did.
@@ -3646,12 +3646,12 @@ say exactly which, future-us will want the receipts.*
      is an implementation concern the protocol has no stake in.
   2. **The hardware-hub profile makes BLE GATT a MUST**, and that MUST is now
      doing harm. Operator ruling, verbatim in intent: *BLE-only controllers
-     are kinda pointless — the ESP32 is cheap, and SlopSync is meant to be
+     are kinda pointless — the ESP32 is cheap, and Valence is meant to be
      high performance.* BLE's real jobs are discovery and provisioning; RFC-046
      UDP discovery already covers the first on any WiFi-bearing hub, and a
      remote a user actually streams to is on WiFi regardless. Forcing a BLE
      stack onto every hardware hub costs real memory — **~64 KB of NimBLE plus
-     a 16,560 B port object on SlopDrive-32, on a device whose free heap was
+     a 16,560 B port object on Valence Drive, on a device whose free heap was
      36 KB** — to satisfy a checkbox its deployment never uses.
   3. **The credential bootstrap has no stated owner once BLE is optional.**
      §13.1 leans on BLE as "the infrastructure-free path… the future
@@ -3668,8 +3668,8 @@ say exactly which, future-us will want the receipts.*
      bindings it exposes. A client MUST NOT be able to tell the difference, and
      MUST NOT probe for it. Corollary, worth stating because it is the case
      that motivated this: **an internal link between hub components is not a
-     SlopSync binding and has no conformance duty of its own** — it may be any
-     transport at all, including a §13.5 serial link carrying SlopSync frames,
+     Valence binding and has no conformance duty of its own** — it may be any
+     transport at all, including a §13.5 serial link carrying Valence frames,
      and it is invisible to conformance.
   2. **Demote BLE GATT from MUST to SHOULD** in the hardware-hub profile, and
      say why: it is the infrastructure-free discovery/provisioning path and
@@ -3695,15 +3695,15 @@ say exactly which, future-us will want the receipts.*
   duty. A hardware hub that shipped BLE remains conformant and RECOMMENDED. A
   client written against the old text loses nothing — it may simply now meet
   hubs with no BLE, which it already had to tolerate under the base profile.
-  **Migration note for SlopDrive-32:** BLE was removed there on 2026-08-01,
+  **Migration note for Valence Drive:** BLE was removed there on 2026-08-01,
   which was a conformance violation from that moment until this RFC lands.
   Recorded so the gap is a decision in the log, not a discrepancy someone
   finds later.
-- **Second receipt (2026-09-02).** SlopDrive-32 ratified a THREE-component
-  hub: the ESP32-C5 terminates the network, the ESP32-S3 runs `slopsync::Hub`
+- **Second receipt (2026-09-02).** Valence Drive ratified a THREE-component
+  hub: the ESP32-C5 terminates the network, the ESP32-S3 runs `valence::Hub`
   and owns policy, and an RP2350 runs the motion planner and pulse generation
   over an internal SPI link, reporting its rendered position as the machine's
-  position truth (SlopDrive-32 `architecture.md` §2, dev board sd-4k1). The
+  position truth (Valence Drive `architecture.md` §2, dev board sd-4k1). The
   motion processor is now a separate component too. Item 1's corollary covers
   it unchanged: SPI is an internal link, not a binding, and has no
   conformance duty. Nothing in the proposal changes; the case for it does.
@@ -3714,28 +3714,28 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-057 — The two HTTP escapees are HUB duties, not chip duties
 
-- **Status:** PROPOSED (SlopDrive-32 bench, 2026-08-05).
+- **Status:** PROPOSED (Valence Drive bench, 2026-08-05).
 - **Depends on:** [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip),
   whose duty-vs-topology principle this extends to the two HTTP escapees.
-  RFC-056 without this entry is incomplete: it frees the SlopSync bindings
-  from topology and leaves the two non-SlopSync duties silently pinned to
+  RFC-056 without this entry is incomplete: it frees the Valence bindings
+  from topology and leaves the two non-Valence duties silently pinned to
   whichever chip happens to run the hub.
-- **Origin — a strip that the current text makes unimplementable.** SlopDrive-32
+- **Origin — a strip that the current text makes unimplementable.** Valence Drive
   is removing WiFi from the ESP32-S3 entirely, so the S3 is hub, planner,
   arbiter and current sensing with no radio and no IP stack; the ESP32-C5
   already terminates WiFi and the WebSocket. That is exactly the split RFC-056
   blesses. But SPEC §1 says: *"On the reference device exactly two HTTP duties
-  are permanently exempt, because SlopSync structurally cannot own them:
+  are permanently exempt, because Valence structurally cannot own them:
   firmware/asset OTA … and the optional served-page token sideband."* Both
   are HTTP duties, HTTP needs an IP stack, and after the strip the component
   being flashed has neither.
-  The reading that "the hub" means "the chip running `slopsync::Hub`" makes
+  The reading that "the hub" means "the chip running `valence::Hub`" makes
   the reference device non-conformant the moment the radio leaves, for a
   change that improves it. That reading cannot be right, but the text does
   not currently say so.
 - **Why it matters beyond one device.** The OTA carve-out rests on an AUTH
   argument, not a transport one: OTA rights are never derivable from a
-  SlopSync role, so OTA must not ride a SlopSync channel. That argument is
+  Valence role, so OTA must not ride a Valence channel. That argument is
   about WHERE AUTHORITY COMES FROM. It says nothing about which processor
   holds the flash being written, and it must not be read as though it did --
   otherwise the spec accidentally forbids the safest available arrangement,
@@ -3747,10 +3747,10 @@ say exactly which, future-us will want the receipts.*
      belong to the hub as a whole. A multi-component hub MAY serve either duty
      from any component, and MAY carry the resulting bytes to their destination
      component over the internal link. Per RFC-056 the internal link is not a
-     SlopSync binding and has no conformance duty, so this is invisible to
+     Valence binding and has no conformance duty, so this is invisible to
      clients and to the golden vectors.
   2. **State the OTA carve-out's actual scope, normatively.** OTA MUST NOT be
-     reachable through any SlopSync channel, verb, or role. It MUST have an
+     reachable through any Valence channel, verb, or role. It MUST have an
      authority plane of its own. Neither requirement constrains which component
      terminates the upload, nor how bytes reach the component that writes flash.
   3. **Add the corollary for the token sideband.** `/uitoken`'s security
@@ -3764,19 +3764,19 @@ say exactly which, future-us will want the receipts.*
      path is a bench act. This is guidance, not conformance.
 - **What this deliberately does NOT change.** No wire format, no frame type,
   no registry id, no golden vector, no role or grant semantics. OTA stays off
-  SlopSync, and stays on its own token plane; the queue's standing ruling
+  Valence, and stays on its own token plane; the queue's standing ruling
   ("HTTP has exactly TWO permanent escapees") is preserved verbatim in force.
   This entry only says WHICH BOX the duty sits in, never whether it exists.
 - **Compatibility.** Strictly loosening. A single-chip hub serving both duties
   itself is unaffected and remains the common case. No implementation that
   conforms today stops conforming.
-  **Migration note for SlopDrive-32:** the S3's HTTP surface is being retired
+  **Migration note for Valence Drive:** the S3's HTTP surface is being retired
   in favor of the C5 serving OTA and piping the image over the existing
   §13.5 serial link's bridge control channel -- link machinery, deliberately
-  NOT a SlopSync channel, so item 2 is satisfied by construction. Recorded so
+  NOT a Valence channel, so item 2 is satisfied by construction. Recorded so
   the sequencing is a decision in the log rather than a discrepancy found later.
 - **Second instance of item 4 (2026-09-02).** The RP2350 motion component of
-  SlopDrive-32's three-component hub is reflashable only over USB today and
+  Valence Drive's three-component hub is reflashable only over USB today and
   gains a link-fed A/B update path (dev board sd-4k1.3), sequenced BEFORE the
   motion port that would make it the most-edited firmware in the product.
   Item 4's guidance ("prove the path before removing the last independent
@@ -3789,14 +3789,14 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-058 -- End-velocity `unspecified` semantics and the rest-before-hold rule
 
-- **Status:** DRAFT (SlopDrive-32 bench, 2026-09-02). Ruling pending (rfc-zj1).
-- **Receipt 2026-09-03 (SlopDrive-32 fw 2.5.2, after the RP-owns-motion port
-  and the slopmotion refactor of the same day).** What the reference does
+- **Status:** DRAFT (Valence Drive bench, 2026-09-02). Ruling pending (rfc-zj1).
+- **Receipt 2026-09-03 (Valence Drive fw 2.5.2, after the RP-owns-motion port
+  and the vmotion refactor of the same day).** What the reference does
   now, item by item: (1) the sentinel value is unchanged and still lives only
   in the reference catalog comment and the MFP plugin's hand copy; the
   registry limit is still the ask. (2) NOT implemented as written: the
   reference resolves `unspecified` to a stream-velocity estimate whenever
-  the stream reads dense (`slopmotion.hpp`, `commitWaveform`, the
+  the stream reads dense (`vmotion.hpp`, `commitWaveform`, the
   `has_end_vel` fallback), with or without a scheduled successor, and to
   rest only on a sparse stream. The field does not hit it because the
   reference client sends explicit rest before every hold and gap (MFP
@@ -3809,7 +3809,7 @@ say exactly which, future-us will want the receipts.*
   because the census was unreadable with the two conflated; the proposal
   text should follow the code here. (4) Unchanged. Compatibility note
   stands: no bytes change.
-- **Origin -- two measured drive losses, one spec silence.** SlopDrive-32
+- **Origin -- two measured drive losses, one spec silence.** Valence Drive
   fw 2.4.105 (dev board sd-ar3) and fw 2.4.108-112 (sd-d77), both on the
   `segments`-kind channel, both root-caused with the encoder validator and
   the engine's per-commit census:
@@ -3873,7 +3873,7 @@ say exactly which, future-us will want the receipts.*
      segment settles the machine, as §6.6 already says.
 - **Compatibility.** Additive. The sentinel VALUE is what already ships, so
   no bytes change; the reference hub already implements items 2 and 3
-  (fw 2.4.105+, `slopmotion` dwell rule). One registry table gains two
+  (fw 2.4.105+, `vmotion` dwell rule). One registry table gains two
   limits. Verify whether any golden vector encodes a 0x2101-shaped
   end-velocity field before claiming "no vector changes".
 - **Test of the doctrine (RFC-008).** Would every conforming client have to
@@ -3882,7 +3882,7 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-059 -- Hub-advertised scheduling latency
 
-- **Status:** DRAFT (SlopDrive-32 bench, 2026-09-02). Ruling pending (rfc-r4v).
+- **Status:** DRAFT (Valence Drive bench, 2026-09-02). Ruling pending (rfc-r4v).
 - **Receipt 2026-09-03.** The origin's numbers are gone and the mechanism
   is still right. The reference deleted its sample-synthesis holdback (the
   two-knot, 120 ms plus 40 ms pipeline) on 2026-09-03, and after the
@@ -3898,7 +3898,7 @@ say exactly which, future-us will want the receipts.*
   media by a sixth of a second. `schedule_latency_us` on the grant is the
   only place a client can learn the current number. Item 4 (a `plan.latency`
   role) stays optional.
-- **Origin -- a hub constant living in a client's settings.** SlopDrive-32
+- **Origin -- a hub constant living in a client's settings.** Valence Drive
   fw 2.4.120-2.4.122 (dev board sd-2fb, sd-beq, sd-2vp). To survive knot
   jitter on bare-point (`samples`-kind) streams the reference engine now
   renders a fixed two knots (~120 ms) plus a 40 ms jitter margin BEHIND the
@@ -3909,7 +3909,7 @@ say exactly which, future-us will want the receipts.*
   firmware. That is interop by folklore, the exact shape
   [RFC-014](#rfc-014--timed-segment-scheduling-contract) already had to fix
   once for `max_future_schedule_ms`.
-  A second receipt: SlopDrive-32 ratified a three-component hub on
+  A second receipt: Valence Drive ratified a three-component hub on
   2026-09-02 (network C5, hub-and-policy S3, motion planner RP2350 over an
   internal SPI link). The composite's execution delay is the sum of hops only
   the hub can see; a client cannot measure it and must not guess it.
@@ -3946,12 +3946,45 @@ say exactly which, future-us will want the receipts.*
 - **Compatibility.** Purely additive: one optional CBOR key on an entry map
   (§4.3 requires decoders to ignore unknown keys) and one optional role. No
   packed layout, frame type, or vector changes. The reference hub can
-  populate it today from `slopmotion` constants it already owns.
+  populate it today from `vmotion` constants it already owns.
 
 ## RFC-060 -- Rename: SlopSync becomes Valence
 
-- **Status:** DRAFT (operator ruling 2026-09-21, recorded on the Valence
-  Drive board as val-smy). Ruling pending on the exact bytes below.
+- **Status:** ACCEPTED and LANDED (v1.0-candidate), 2026-09-21, in the single
+  rename commit this entry describes. Accepted by the operator ruling of the
+  same day ("atomic change every single instance now"); every proposed byte
+  below is in the registry, SPEC.md, the generated views and the fixtures as
+  of that commit.
+- **Receipts -- the values actually taken.**
+  - `protocol_name: valence`, spec id `valence/1`, `proto_ver` still **1**.
+  - `ws_subprotocol: "valence.v1"`, `mdns_service: "_valence._tcp"`,
+    RECOMMENDED WebSocket endpoint `/valence` (SPEC §13.2).
+  - `udp_discovery.port: 22096` (0x5650, ASCII 'VP'), `magic: "VLNC"`
+    (0x56 0x4C 0x4E 0x43). **The IANA check item 2 demanded was run**
+    against the service-name-and-port registry CSV on 2026-09-21: 22096 is
+    UNASSIGNED for both tcp and udp (nearest neighbors 22005 and 22125), so
+    the proposed port stands and no amendment was needed.
+  - `ble_identity` UUIDs `56414C45-4E43-4531-8000-00000000000{1,2,3}`
+    ('VALE' 'NC' 'E1'), service / write(c2h) / notify(h2c) as before.
+  - Product example `'valence-drive'`; NVS namespace note `valence`;
+    log-level notes cite `vlog::Level` (verified against the vlog library:
+    `enum class Level` lives in `vlog/vlog_core.hpp` and the `SLOGx` macro
+    names are UNCHANGED, so only the enum's qualification moved).
+  - Wire-visible catalog text: the JS client's captured-catalog fixture
+    carried `"Motion bundles accepted over SlopSync."` and five
+    `slopmotion-*` channel names; both were respelled (T11) and the fixture's
+    etag moved `b69eb06249ebe73a` -> `1f0244534f758694`. `valence_lint`'s
+    two frozen-artifact hashes were re-pinned in the same commit; the
+    fixtures' ENCODED bytes did not move, only their header comments.
+  - One deviation from item 6's spelling: the MFP plugin's codec class is
+    `ValenceWire`, not `Valence.Wire`. The plugin is a single file with no
+    namespace and its PluginBase subclass is now `Valence`, so a namespace
+    `Valence` beside a type `Valence` is a C# name collision (CS0101). The
+    term of art is unchanged; only the separator is.
+  - `hub/slopbench` -> `hub/bench` (CMake project and target `bench`),
+    product name Valence Bench; `slopscope` -> `valence_trace` (Valence
+    Trace); `slopsoak` -> `valence_soak`; `ssmanager` -> `valencetool`
+    (Valence Tool); the `slopsync-canon` skill -> `valence-canon`.
 - **Origin -- a rebrand, ruled, with the wire-visible half deferred to this
   queue.** The ecosystem is being renamed ahead of its first public tag:
   the protocol is **Valence**, the reference machine firmware is **Valence

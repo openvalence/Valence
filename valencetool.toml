@@ -1,0 +1,149 @@
+# Valence's tool registry. Schema: valencetool/SCHEMA.md.
+#
+# Every entry's `run` is the exact command a developer types by hand.
+# Valence Tool is a funnel, not a gate (DOCTRINE §10) — if an entry stops
+# working in a plain shell, the entry is wrong, not the shell.
+
+schema = 1
+repo   = "Valence"
+
+# ---- Host toolchains --------------------------------------------------------
+
+# `probe` is a candidate LIST, first-to-exit-0 wins. Do not reduce these to a
+# single bare command: measured 2026-07-30, both `pio` and `mkdocs` are fully
+# installed on the primary dev host and absent from PATH. See SCHEMA.md.
+
+[toolchain.python]
+probe   = [["python", "--version"], ["python3", "--version"]]
+unlocks = "repo lint, registry codegen check, the docs site"
+
+[toolchain.pio]
+probe   = [
+    ["pio", "--version"],
+    ["platformio", "--version"],
+    ["~/.platformio/penv/Scripts/platformio.exe", "--version"],
+    ["~/.platformio/penv/bin/platformio", "--version"],
+]
+unlocks = "the native conformance suite (16 test binaries)"
+
+[toolchain.node]
+probe   = [["node", "--version"]]
+unlocks = "the JS reference client's wire suite"
+
+[toolchain.cmake]
+probe   = [["cmake", "--version"]]
+unlocks = "Valence Bench, the hub load bench"
+
+[toolchain.clang]
+probe   = [["clang", "--version"], ["clang-18", "--version"], ["clang-17", "--version"]]
+unlocks = "the libFuzzer harnesses"
+
+[toolchain.mkdocs]
+probe   = [
+    ["mkdocs", "--version"],
+    ["docs-site/.venv/Scripts/mkdocs.exe", "--version"],
+    ["docs-site/.venv/bin/mkdocs", "--version"],
+]
+unlocks = "building the docs site locally"
+
+# ---- Gates: fast, run these constantly --------------------------------------
+
+[[tool]]
+id      = "valence-lint"
+name    = "Repo lint"
+group   = "gates"
+run     = ["python", "tools/valence_lint.py"]
+inputs  = ["lib/valence/**", "spec/**", "clients/**", "tools/valence_lint.py"]
+needs   = ["python"]
+# Documented contract in the tool's own docstring: 0 clean, 1 findings,
+# 2 could not run. The split is why `error_exit` exists in the schema.
+success_exit = [0]
+error_exit   = [2]
+order       = 10
+description = "Mechanical rule checks. Every hit is a defect by definition."
+
+[[tool]]
+id      = "registry-codegen-check"
+name    = "Registry codegen is current"
+group   = "gates"
+run     = ["python", "tools/gen_registry_header.py", "--check"]
+inputs  = ["spec/registry/registry.yaml", "lib/valence/include/valence/generated/**", "clients/js/generated/**", "tools/gen_registry_header.py"]
+needs   = ["python"]
+order   = 20
+description = "Fails if either generated artifact is stale against registry.yaml."
+unlocks = "confidence that C++ and JS share one vocabulary"
+
+# ---- Suites -----------------------------------------------------------------
+
+[[tool]]
+id      = "native-conformance"
+name    = "Native conformance suite"
+group   = "suites"
+run     = ["pio", "test", "-e", "native"]
+inputs  = ["lib/valence/**", "test/native/**", "platformio.ini"]
+needs   = ["pio"]
+order   = 10
+description = "The protocol library under the host toolchain. Header-only, no board."
+unlocks = "everything — this is the suite a hub or client implementation trusts"
+
+[[tool]]
+id      = "js-wire-suite"
+name    = "JS client wire suite"
+group   = "suites"
+run     = ["node", "clients/js/test/valence-wire.test.mjs"]
+inputs  = ["clients/js/**", "spec/vectors/**"]
+needs   = ["node"]
+order   = 20
+description = "The reference client decoded against the pinned vectors."
+
+# ---- Fuzz -------------------------------------------------------------------
+# POSIX-only by construction: these are shell scripts driving libFuzzer.
+# Per SCHEMA.md, an OS-specific script is its own entry rather than a branch.
+
+[[tool]]
+id      = "fuzz-build"
+name    = "Build fuzz harnesses"
+group   = "fuzz"
+run     = ["./build.sh"]
+cwd     = "test/fuzz"
+inputs  = ["test/fuzz/**", "lib/valence/**"]
+needs   = ["clang"]
+os      = ["posix"]
+order   = 10
+
+[[tool]]
+id      = "fuzz-smoke"
+name    = "Fuzz smoke (30s per target)"
+group   = "fuzz"
+run     = ["./run.sh", "30"]
+cwd     = "test/fuzz"
+inputs  = ["test/fuzz/**", "lib/valence/**"]
+needs   = ["clang"]
+os      = ["posix"]
+order   = 20
+description = "Seven targets: frame, cbor, catalog, bundle, blob, packed, messages."
+
+# ---- Bench ------------------------------------------------------------------
+
+[[tool]]
+id      = "bench-build"
+name    = "Valence Bench build"
+group   = "bench"
+run     = ["cmake", "--build", "build"]
+cwd     = "hub/bench"
+inputs  = ["hub/bench/src/**", "hub/bench/CMakeLists.txt"]
+needs   = ["cmake"]
+order   = 10
+
+# ---- Docs -------------------------------------------------------------------
+
+[[tool]]
+id      = "docs-site-build"
+name    = "Docs site builds"
+group   = "docs"
+run     = ["mkdocs", "build", "--strict"]
+cwd     = "docs-site"
+inputs  = ["docs-site/**", "spec/**"]
+needs   = ["mkdocs"]
+order   = 10
+description = "Strict mode: a broken link or missing anchor fails the build."

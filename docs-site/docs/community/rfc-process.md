@@ -1,7 +1,7 @@
 ---
 title: RFC process
 description: >-
-  How a change to the SlopSync protocol is proposed, argued, and either bound into the specification or refused.
+  How a change to the Valence protocol is proposed, argued, and either bound into the specification or refused.
 register: STE
 status: stub
 ---

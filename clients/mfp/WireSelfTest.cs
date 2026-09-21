@@ -1,19 +1,19 @@
 // =============================================================================
-// WireSelfTest — standalone golden-byte check for the SlopSync wire codec.
+// WireSelfTest — standalone golden-byte check for the Valence wire codec.
 //
-// It re-implements the exact encoder logic used by SlopSync.cs (CBOR writer,
+// It re-implements the exact encoder logic used by Valence.cs (CBOR writer,
 // frame header, HELLO / SUBSCRIBE / GOODBYE / CLOCK / STREAM / BLOB_REQ /
 // INTENT builders and the BLOB_CHUNK header decoder) with NO MultiFunPlayer /
 // WPF dependencies, and byte-compares its output against golden hex derived by
-// RUNNING tools/slopsync_probe.py's own CBOR primitives (see
+// RUNNING tools/valence_probe.py's own CBOR primitives (see
 // scratchpad/gen_golden_m5d.py). This is the referee that proves the C# bytes
 // match the live-verified Python probe.
 //
 // Build & run:  dotnet run --project clients/mfp/WireSelfTest.csproj
 // Exits 0 on all-pass, 1 on any mismatch.
 //
-// NOTE: the encoder methods below are a deliberate verbatim copy of SlopSync.cs's
-// SlopWire/CborWriter. If you change the codec in SlopSync.cs, mirror it here and
+// NOTE: the encoder methods below are a deliberate verbatim copy of Valence.cs's
+// ValenceWire/CborWriter. If you change the codec in Valence.cs, mirror it here and
 // re-run — both must keep matching the probe.
 //
 // M5d MOVED THE HELLO GOLDENS ON PURPOSE. Adding RFC-006's `subscriptions` (10)
@@ -28,7 +28,7 @@
 // (42) and `curve_family` (45) in the wish-entry map — keys ascending
 // 12<15<42<45. The pre-RFC-013 2-key entry shape is KEPT as a regression
 // guard (the rate-only BuildHello overload must stay byte-identical). Goldens
-// derived from tools/slopsync_probe.py's primitives via
+// derived from tools/valence_probe.py's primitives via
 // scratchpad/gen_golden_rfc013_030.py.
 // =============================================================================
 using System;
@@ -70,7 +70,7 @@ internal static class Program
 
     private static int Main()
     {
-        Console.WriteLine("SlopSync wire self-test (golden bytes from slopsync_probe.py):");
+        Console.WriteLine("Valence wire self-test (golden bytes from valence_probe.py):");
 
         var inst = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7 };
         // The frozen mini-catalog etag — a stable 8-byte value to exercise the
@@ -78,34 +78,34 @@ internal static class Program
         var etag = new byte[] { 0x21, 0xCB, 0x26, 0xC9, 0x4F, 0xB3, 0x88, 0xB5 };
 
         // ---- HELLO: publish-only shape (pre-M5d) — regression guard ---------
-        var hello = Wire.BuildHello("probe", "slopsync_probe.py", inst, 0x2100, 100.0);
+        var hello = Wire.BuildHello("probe", "valence_probe.py", inst, 0x2100, 100.0);
         Check("HELLO payload (publish-only, unchanged)", hello,
-            "A50101026570726F62650371736C6F7073796E635F70726F62652E7079044800010203040506070B81A20CFA42C800000F192100");
+            "A50101026570726F6265037076616C656E63655F70726F62652E7079044800010203040506070B81A20CFA42C800000F192100");
 
         var helloFrame = Wire.EncodeFrame(0x00, 0, hello, 0);
         Check("HELLO frame (publish-only)", helloFrame,
-            "0000000000003400A50101026570726F62650371736C6F7073796E635F70726F62652E7079044800010203040506070B81A20CFA42C800000F192100");
+            "0000000000003300A50101026570726F6265037076616C656E63655F70726F62652E7079044800010203040506070B81A20CFA42C800000F192100");
 
         // ---- HELLO: the plugin's ACTUAL M5d shape ---------------------------
         // subscriptions(10) rides in HELLO now: safety(0x0003) on-change
         // critical + motion(0x0080) @20 Hz elevated, then the publish wish.
         // Key order 1<2<3<4<10<11; wish-entry order 12<13<15 and 12<15.
         var subs = new (ushort, double, byte)[] { (0x0003, 0.0, 3), (0x0080, 20.0, 2) };
-        var helloMfp = Wire.BuildHello("mfp", "MultiFunPlayer SlopSync", inst,
+        var helloMfp = Wire.BuildHello("mfp", "MultiFunPlayer Valence", inst,
             new (ushort, double)[] { (0x2100, 50.0) }, null, subs);
         Check("HELLO payload (mfp Samples: subs + 1 publish)", helloMfp,
-            "A6010102636D667003774D756C746946756E506C6179657220536C6F7053796E63044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
+            "A6010102636D667003764D756C746946756E506C617965722056616C656E6365044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
 
         Check("HELLO frame (mfp Samples)", Wire.EncodeFrame(0x00, 0, helloMfp, 0),
-            "0000000000005100A6010102636D667003774D756C746946756E506C6179657220536C6F7053796E63044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
+            "0000000000005000A6010102636D667003764D756C746946756E506C617965722056616C656E6365044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
 
         // Rate-only wish entries (pre-RFC-013 2-key {12,15} shape) — kept as a
         // regression guard: the rate-only BuildHello overload must keep
         // producing exactly these bytes.
-        var helloSeg = Wire.BuildHello("mfp", "MultiFunPlayer SlopSync", inst,
+        var helloSeg = Wire.BuildHello("mfp", "MultiFunPlayer Valence", inst,
             new (ushort, double)[] { (0x2100, 50.0), (0x2101, 30.0) }, null, subs);
         Check("HELLO payload (rate-only wish entries, pre-RFC-013 regression guard)", helloSeg,
-            "A6010102636D667003774D756C746946756E506C6179657220536C6F7053796E63044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A20CFA41F000000F192101");
+            "A6010102636D667003764D756C746946756E506C617965722056616C656E6365044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A20CFA41F000000F192101");
 
         // ---- HELLO: the plugin's ACTUAL v0.4.0 Segments shape ----------------
         // RFC-013 honest wish + RFC-030 curve declaration on the 0x2101 entry
@@ -113,24 +113,24 @@ internal static class Program
         // {12:rate 5.0, 15:0x2101, 42:burst 25.0, 45:curve_family 1} — keys
         // ascending 12<15<42<45; the 0x2100 fallback entry (was 0x0084) stays
         // the 2-key map (burst<=0 and family 0 are OMITTED, never encoded).
-        var helloSegV4 = Wire.BuildHello("mfp", "MultiFunPlayer SlopSync", inst,
+        var helloSegV4 = Wire.BuildHello("mfp", "MultiFunPlayer Valence", inst,
             new (ushort, double, double, byte)[] { (0x2100, 50.0, 0.0, 0), (0x2101, 5.0, 25.0, 1) },
             null, subs);
         Check("HELLO payload (mfp Segments v0.4.0: honest rate + burst + curve_family)", helloSegV4,
-            "A6010102636D667003774D756C746946756E506C6179657220536C6F7053796E63044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A40CFA40A000000F192101182AFA41C80000182D01");
+            "A6010102636D667003764D756C746946756E506C617965722056616C656E6365044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A40CFA40A000000F192101182AFA41C80000182D01");
 
         // ---- HELLO: RFC-015 cached-etag fast path ---------------------------
         // catalog_etag(8) sits between instance_id(4) and subscriptions(10).
-        var helloEtag = Wire.BuildHello("mfp", "MultiFunPlayer SlopSync", inst,
+        var helloEtag = Wire.BuildHello("mfp", "MultiFunPlayer Valence", inst,
             new (ushort, double)[] { (0x2100, 50.0) }, null, subs, etag);
         Check("HELLO payload (cached etag + subs + publish)", helloEtag,
-            "A7010102636D667003774D756C746946756E506C6179657220536C6F7053796E6304480001020304050607084821CB26C94FB388B50A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
+            "A7010102636D667003764D756C746946756E506C617965722056616C656E636504480001020304050607084821CB26C94FB388B50A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
 
         // Every optional at once: token(5) then etag(8) then subs(10).
-        var helloAll = Wire.BuildHello("mfp", "MultiFunPlayer SlopSync", inst,
+        var helloAll = Wire.BuildHello("mfp", "MultiFunPlayer Valence", inst,
             new (ushort, double)[] { (0x2100, 50.0) }, Encoding.UTF8.GetBytes("1234"), subs, etag);
         Check("HELLO payload (token + etag + subs + publish)", helloAll,
-            "A8010102636D667003774D756C746946756E506C6179657220536C6F7053796E6304480001020304050607054431323334084821CB26C94FB388B50A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
+            "A8010102636D667003764D756C746946756E506C617965722056616C656E636504480001020304050607054431323334084821CB26C94FB388B50A82A30CFA000000000D030F03A30CFA41A000000D020F18800B81A20CFA424800000F192100");
 
         var clockReq = Wire.BuildClockRequest(0x11223344);
         Check("CLOCK request", clockReq, "44332211");
@@ -186,7 +186,7 @@ internal static class Program
         // ---- BuildHello refactor invariant ----------------------------------
         // The single-wish overload must be byte-identical to a list-of-one, so
         // Samples mode's HELLO bytes are unchanged by the multi-wish refactor.
-        var helloListOfOne = Wire.BuildHello("probe", "slopsync_probe.py", inst,
+        var helloListOfOne = Wire.BuildHello("probe", "valence_probe.py", inst,
             new (ushort, double)[] { (0x2100, 100.0) });
         Check("HELLO single-wish == list-of-one", helloListOfOne, Convert.ToHexString(hello));
 
@@ -259,7 +259,7 @@ internal static class Program
     }
 }
 
-// ---- verbatim copy of SlopSync.cs's SlopWire encoders (MFP-free) ------------
+// ---- verbatim copy of Valence.cs's ValenceWire encoders (MFP-free) ------------
 internal static class Wire
 {
     public const int KProtoVer = 1, KClientKind = 2, KClientName = 3, KInstanceId = 4, KToken = 5;
@@ -467,7 +467,7 @@ internal static class Wire
         return buf;
     }
 
-    // Mirror of SlopWire.BuildSegmentBundle (0x2101, was 0x0085): 6-byte samples
+    // Mirror of ValenceWire.BuildSegmentBundle (0x2101, was 0x0085): 6-byte samples
     // {target:u16 LE ×10000, duration:u16 LE, end_vel:i16 LE ×1000}. Sentinel
     // encodes INT16_MIN; a real end_vel clamps ±32767 so it can't hit the sentinel.
     public static byte[] BuildSegmentBundle(uint tBase, IReadOnlyList<(ushort off, double target, int durationMs, double endVel, bool sentinel)> samples)

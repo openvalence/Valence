@@ -1,7 +1,7 @@
 ---
 title: What it replaces, and what it does not
 description: >-
-  An honest account of what SlopSync takes over and what it deliberately leaves alone, including TCode's continued role as compatibility ingest.
+  An honest account of what Valence takes over and what it deliberately leaves alone, including TCode's continued role as compatibility ingest.
 register: STE
 ---
 
@@ -12,21 +12,21 @@ one that matters more.
 
 ## Start here if you use TCode
 
-**Your setup keeps working.** SlopSync does not deprecate TCode, and there is
+**Your setup keeps working.** Valence does not deprecate TCode, and there is
 no flag day.
 
 A hub keeps its TCode edges as **compatibility ingest**. It wraps each active
 edge in a [synthetic session](../reference/dictionary.md#synthetic-session):
 an internal session object that appears in the roster, owns its arbiter
 source, and carries a [deadman](../reference/dictionary.md#deadman) equal to
-that edge's existing quiet timeout. A TCode sender receives no SlopSync
+that edge's existing quiet timeout. A TCode sender receives no Valence
 frames. The wrapping is entirely hub-side bookkeeping.
 
 That is a safety rule, not a courtesy. There is no unmonitored path to motion.
 A legacy transport that could move the machine outside the safety machinery
 would be a hole in it.
 
-SlopSync-native motion streaming is the **upgrade path**, not a deadline. A
+Valence-native motion streaming is the **upgrade path**, not a deadline. A
 native stream carries timestamps, a rate
 [grant](../reference/dictionary.md#grant),
 [source ownership](../reference/dictionary.md#source-ownership) and the
@@ -74,7 +74,7 @@ instant. A protocol that let clients plan motion would export a decision to
 the one party that cannot make it correctly.
 
 The consequence is freeing. A client ships what its author meant, and the
-machine renders it as well as it can. SlopSync carries intent honestly and
+machine renders it as well as it can. Valence carries intent honestly and
 refuses to make the client responsible for feasibility.
 
 ### Firmware update
@@ -92,11 +92,11 @@ inside the system it would replace.
 These are a boundary, not a competition. Where a hub dials out to an
 application protocol, that outbound client is an adapter the hub owns, and it
 materializes as a synthetic session like any other legacy edge. Exposing
-SlopSync to those stacks directly is out of scope.
+Valence to those stacks directly is out of scope.
 
 ### Any firmware's own interface, protocol or identity
 
-A hub can speak SlopSync **alongside** whatever it already speaks. Nothing
+A hub can speak Valence **alongside** whatever it already speaks. Nothing
 here asks a project to retire its own control surface, its own app or its own
 name. See [Ecosystem and compatibility](ecosystem.md), whose tone rules apply
 to this section too.
@@ -107,7 +107,7 @@ The protocol's ESTOP is a software convenience layered above the hardware
 path. It is fast, role-exempt and latched, and it is still software on a
 network. The hardware path remains the guarantee of last resort.
 
-## What SlopSync deliberately is not
+## What Valence deliberately is not
 
 These are non-goals. They were decided, not overlooked.
 
@@ -126,12 +126,12 @@ These are non-goals. They were decided, not overlooked.
 
 ## What migration deletes, honestly
 
-On the machine where SlopSync was written, migration did not only move
+On the machine where Valence was written, migration did not only move
 surfaces. It deleted some. The reasons are worth publishing, because every
 project has a version of this list.
 
 - **A transport-mode selector** that chose between competing ingest paths.
-  SlopSync replaced the thing it was selecting between.
+  Valence replaced the thing it was selecting between.
 - **An endpoint that always answered "not cleared"** — a stub whose only real
   behavior was a side effect available elsewhere.
 - **A control that posted to a route the firmware never had.** It rendered, it

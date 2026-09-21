@@ -1,7 +1,7 @@
 ---
 title: Errata
 description: >-
-  Corrections to published SlopSync specification versions, and the process that produces them.
+  Corrections to published Valence specification versions, and the process that produces them.
 register: IEEE
 ---
 

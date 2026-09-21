@@ -1,4 +1,4 @@
-# SlopSync Channel-Space Grid
+# Valence Channel-Space Grid
 
 *Companion to [SPEC.md](SPEC.md) §4.4 (channel id ranges) and
 [registry/registry.yaml](registry/registry.yaml)'s `channel_id_ranges` /
@@ -6,11 +6,11 @@
 for the change history this grid landed in).*
 
 This document is the protocol-side half of channel numbering: the
-**convention** every SlopSync hub's device-defined channel space (`0x0080`
+**convention** every Valence hub's device-defined channel space (`0x0080`
 –`0x7FFF`) is RECOMMENDED to follow, plus the fixed core channel list
 (`0x0001`–`0x000E`) that every hub shares. It does not enumerate any single
 hub's actual device channels — that allocation is each hub's own, documented
-in its own repository. SlopDrive-32's `CHANNEL-MAP.md` is the worked example
+in its own repository. Valence Drive's `CHANNEL-MAP.md` is the worked example
 of a real hub applying this convention.
 
 ## Why a grid, not arrival order
@@ -113,6 +113,6 @@ subscribable). Full field-level detail lives in `registry/registry.yaml`'s
 Each hub documents its own device-range allocations; this repository does
 not carry any single hub's channel map, on purpose — the whole point of the
 grid is that a device catalog is self-describing over the wire (SPEC.md
-§8), so a generic client never needs a static map to work. SlopDrive-32 (the
+§8), so a generic client never needs a static map to work. Valence Drive (the
 reference hub implementation) publishes its own `CHANNEL-MAP.md` in its own
 repository as the worked example of a real device applying this convention.

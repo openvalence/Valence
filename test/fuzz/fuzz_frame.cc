@@ -10,8 +10,8 @@
 // timeout path are only reachable across calls.
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     FuzzInput fi(data, size);

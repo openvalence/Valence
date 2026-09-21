@@ -1,7 +1,7 @@
-# SlopSync -- THE SPEC REPO
+# Valence -- THE SPEC REPO
 
 Protocol truth is RATIFIED here, never discovered here. Discovery happens in
-the reference implementation (SlopDrive-32, sibling checkout) and arrives as
+the reference implementation (Valence Drive, sibling checkout) and arrives as
 RFCs in `spec/RFC-QUEUE.md`, ruled by the operator: approve / deny / modify.
 
 Law of the land:
@@ -17,10 +17,10 @@ Law of the land:
   read.
 - American English (British spellings get nuked on sight). No em dashes; use
   "--" or restructure. Comments state constraints, not stories.
-- Skills: `slopsync-canon` (distilled spec, citation-anchored),
+- Skills: `valence-canon` (distilled spec, citation-anchored),
   `registry-workflow` (allocation/regen/tagging), `advisor` (read-only design
   counsel). Beads board here is the RFC BOARD (`rfc-` prefix): RFC lifecycle
-  tracking only, no implementation dev work (that lives on SlopDrive-32's
+  tracking only, no implementation dev work (that lives on Valence Drive's
   dev board).
 
 ## Compact Instructions

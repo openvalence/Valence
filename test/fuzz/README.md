@@ -1,6 +1,6 @@
-# SlopSync fuzz gate (RFC-028)
+# Valence fuzz gate (RFC-028)
 
-**The obligation being proven:** every SlopSync parser, hub-side or
+**The obligation being proven:** every Valence parser, hub-side or
 client-side, maps *any* byte string to accept-or-reject — no out-of-bounds
 read, no unbounded allocation or recursion, no UB. Golden vectors prove
 *correctness*; this proves *totality*.
@@ -8,7 +8,7 @@ read, no unbounded allocation or recursion, no UB. Golden vectors prove
 Both directions are in scope. The hub parses HELLO/INTENT/bundles from
 untrusted clients; a **client parses WELCOME/catalog/STATE from a possibly
 hostile hub** — a client that auto-connects to any discovered
-`_slopsync._tcp` beacon is one malicious hub away from parsing attacker
+`_valence._tcp` beacon is one malicious hub away from parsing attacker
 bytes, and the catalog (nested maps, a dozen variable-length strings per
 field, index-aligned label pools) is the fattest client-side surface in the
 protocol. RFC-028 §5 makes "a hostile hub MUST NOT be able to crash a
@@ -31,20 +31,20 @@ compiling against the repo over the mount:
 
 ```bash
 # inside WSL
-R=/mnt/c/Users/Atlan/Documents/SlopDrive-32
+R=/mnt/c/Users/Atlan/Documents/Valence Drive
 mkdir -p ~/fuzz && cd ~/fuzz
 
 # build every target (mirrors build.sh; run it from ~/fuzz, not from /mnt/c)
 for t in fuzz_cbor fuzz_catalog fuzz_frame fuzz_packed fuzz_bundle fuzz_blob fuzz_messages; do
   clang++ -std=c++2b -O1 -g -fno-omit-frame-pointer -Wall -Wextra \
     -Wno-unused-private-field \
-    -I $R/lib/slopsync/include -I $R/test/fuzz \
+    -I $R/lib/valence/include -I $R/test/fuzz \
     -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
     $R/test/fuzz/$t.cc -o build/$t
 done
 
 # regenerate the seed corpus from the library's OWN encoders
-clang++ -std=c++2b -O1 -g -I $R/lib/slopsync/include -I $R/test/fuzz \
+clang++ -std=c++2b -O1 -g -I $R/lib/valence/include -I $R/test/fuzz \
   -fsanitize=address,undefined -fno-sanitize-recover=undefined \
   $R/test/fuzz/gen_seeds.cc -o build/gen_seeds
 ./build/gen_seeds corpus
@@ -170,9 +170,9 @@ their numbers show it.
 
 | # | Where | What | Regression test |
 |---|---|---|---|
-| 1 | `CborReader::readTstr`/`readBstr` | `start + len > _in.size()` **overflows**. A head of `7B FF×8` (tstr claiming 2⁶⁴−1 bytes) wraps the sum to a value that passes the check, and the reader returns a 2⁶⁴−1-byte view into a 9-byte buffer while rewinding `_pos` backwards. Reachable from *every* message decoder and from `skipValue()` — i.e. the §4.3 unknown-key path, which is the attacker's preferred entry point. Fix: `arg > remaining`. | `test_slopsync_cbor` — 4 cases |
-| 2 | `ChunkReassembler::begin` | A transfer `begin()` correctly REFUSED (chunk_count/total_bytes past capacity — RFC-028's know-the-size-before-you-allocate rule working) still stored the attacker's numbers, and `missingIndices()`/`assembled()` used them without consulting `active()`. UBSan: OOB read past an 8-element array. Fix: refusing a transfer refuses its NUMBERS too. | `test_slopsync_m3b` — 2 cases |
-| 3 | `Reassembler::accept` | Unbounded `memcpy` into `pendingLastBytes` (504 B) in the "last fragment, unit size not yet known" branch — the one write in the class that did not go through the bounds-checking `placeFragment()`. ASan: WRITE of size 3998. Fix: report it as the `CapacityExceeded` it is. | `test_slopsync_transport` — 2 cases |
+| 1 | `CborReader::readTstr`/`readBstr` | `start + len > _in.size()` **overflows**. A head of `7B FF×8` (tstr claiming 2⁶⁴−1 bytes) wraps the sum to a value that passes the check, and the reader returns a 2⁶⁴−1-byte view into a 9-byte buffer while rewinding `_pos` backwards. Reachable from *every* message decoder and from `skipValue()` — i.e. the §4.3 unknown-key path, which is the attacker's preferred entry point. Fix: `arg > remaining`. | `test_valence_cbor` — 4 cases |
+| 2 | `ChunkReassembler::begin` | A transfer `begin()` correctly REFUSED (chunk_count/total_bytes past capacity — RFC-028's know-the-size-before-you-allocate rule working) still stored the attacker's numbers, and `missingIndices()`/`assembled()` used them without consulting `active()`. UBSan: OOB read past an 8-element array. Fix: refusing a transfer refuses its NUMBERS too. | `test_valence_m3b` — 2 cases |
+| 3 | `Reassembler::accept` | Unbounded `memcpy` into `pendingLastBytes` (504 B) in the "last fragment, unit size not yet known" branch — the one write in the class that did not go through the bounds-checking `placeFragment()`. ASan: WRITE of size 3998. Fix: report it as the `CapacityExceeded` it is. | `test_valence_transport` — 2 cases |
 
 ### The trap worth remembering
 
@@ -196,11 +196,11 @@ Stated plainly so nobody reads a green run as more than it is:
   the class the source-ownership leak belonged to — are out of reach here.
   Back-to-back sessions without a reboot remains a manual verification
   pattern, not something this replaces.
-* **The firmware transports.** `SlopSyncWsTransport`, the ESP-NOW/BLE/serial
+* **The firmware transports.** `ValenceWsTransport`, the ESP-NOW/BLE/serial
   adapters and everything in `src/comms/` are Arduino/FreeRTOS code and are
   not fuzzable in this harness. The library boundary is where the fuzzing
   stops; whatever a transport does to a buffer before calling into
-  `lib/slopsync` is unproven by this gate.
+  `lib/valence` is unproven by this gate.
 * **Cross-task/concurrency behavior.** Single-threaded by construction.
 * **Timing, rate limiting, token buckets, deadman policy.** Reachable in
   principle through a stateful hub harness; not attempted.

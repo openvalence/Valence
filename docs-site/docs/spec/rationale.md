@@ -1,7 +1,7 @@
 ---
 title: Rationale and history
 description: >-
-  SlopSync appendices H-J: design rationale and rejected alternatives, the
+  Valence appendices H-J: design rationale and rejected alternatives, the
   design-review gap-closure map, and what changed since the v1 draft.
 register: IEEE
 generated: true
@@ -157,4 +157,4 @@ For implementers of the draft. This is a summary; the reasoning lives in `RFC-QU
 
 ---
 
-*End of SPEC.md — `slopsync/1`, document version v1.0.*
+*End of SPEC.md — `valence/1`, document version v1.0.*

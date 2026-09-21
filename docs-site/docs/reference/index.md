@@ -1,7 +1,7 @@
 ---
 title: Reference
 description: >-
-  Lookup material: the SlopSync Dictionary, the generated registry tables, and the channel catalog reference.
+  Lookup material: the Valence Dictionary, the generated registry tables, and the channel catalog reference.
 register: STE
 ---
 

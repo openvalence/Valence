@@ -1,7 +1,7 @@
 ---
 title: Quickstart
 description: >-
-  Connect a SlopSync client, adopt live machine state, and send one intent — with the readiness gate that every client written against the old draft gets wrong.
+  Connect a Valence client, adopt live machine state, and send one intent — with the readiness gate that every client written against the old draft gets wrong.
 register: STE
 ---
 
@@ -15,19 +15,19 @@ real hub, the real motion engine and the real catalog, so a client that works
 there works on hardware. Nobody's machine has to be in the room.
 
 ```bash
-slopsim machine --homed --headless --duration 120
+valencesim machine --homed --headless --duration 120
 ```
 
 ## The session, in seven steps
 
-Every SlopSync client does this, in this order.
+Every Valence client does this, in this order.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant C as Client
     participant H as Hub
-    C->>H: connect (subprotocol slopsync.v1)
+    C->>H: connect (subprotocol valence.v1)
     C->>H: HELLO
     H->>C: WELCOME (session id, catalog etag, limits, deadman)
     Note over C: fetch the catalog, or reuse the one cached under that etag
@@ -52,7 +52,7 @@ library and writes only the session.
 import os, sys, time, websocket
 
 sys.path.insert(0, "tools")            # the probe is import-safe: use it as the wire library
-import slopsync_probe as ss
+import valence_probe as ss
 
 ws = websocket.create_connection("ws://127.0.0.1:82/",
                                  subprotocols=[ss.WS_SUBPROTOCOL], timeout=5)
@@ -141,7 +141,7 @@ import { createSession, CH, PRIORITY } from './clients/js/index.js';
 const s = createSession({
   host: location.hostname,
   clientKind: 'webui',
-  clientName: 'My SlopSync Client',
+  clientName: 'My Valence Client',
   subscriptions: [                     // [channelId, rateHz, priority]
     [CH.SAFETY, 0, PRIORITY.critical],     // on-change, never shed
     [CH.MOTION, 20, PRIORITY.elevated],    // live carriage feed
@@ -170,10 +170,10 @@ await s.sendMove(targetMm);
 Prove your build against a real hub before you trust it, running the full
 read-only session **twice back to back** -- the
 [mandatory pattern](local-testing.md#the-pattern-that-is-mandatory) for
-anything touching session lifecycle. `clients/js/test/slopsync-wire.test.mjs`
+anything touching session lifecycle. `clients/js/test/valence-wire.test.mjs`
 in this repo proves the wire codec byte-for-byte; a live two-connection
 session walkthrough against a real hub is a small script away using the same
-`clients/js/` primitives, or reach for `tools/slopsync_probe.py`.
+`clients/js/` primitives, or reach for `tools/valence_probe.py`.
 
 ## The ready gate
 

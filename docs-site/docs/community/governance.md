@@ -1,7 +1,7 @@
 ---
 title: Governance
 description: >-
-  SlopSync favors no firmware, no vendor and no product. It is provided to
+  Valence favors no firmware, no vendor and no product. It is provided to
   the community as a tool.
 register: STE
 ---
@@ -10,7 +10,7 @@ register: STE
 
 ## The stance
 
-**SlopSync favors no firmware, no vendor and no product. It is provided to
+**Valence favors no firmware, no vendor and no product. It is provided to
 the community as a tool.**
 
 That sentence is the whole stance. Everything below is what it means in
@@ -18,8 +18,8 @@ practice.
 
 ## What that means in practice
 
-**No firmware is the reference firmware.** SlopDrive-32 happens to be where
-SlopSync was written and where it is proven on hardware. That makes it the
+**No firmware is the reference firmware.** Valence Drive happens to be where
+Valence was written and where it is proven on hardware. That makes it the
 first implementation. It does not make it the privileged one. A conforming hub
 is a conforming hub.
 
@@ -52,7 +52,7 @@ bugs before release, and they are documented rather than quietly patched.
 Publishing found-and-fixed bugs is a credibility asset. A protocol that claims
 a clean history is either very young or not telling you something.
 
-## What SlopSync will not do
+## What Valence will not do
 
 - It will not require a specific motor driver, motion planner, transport or
   cloud service.

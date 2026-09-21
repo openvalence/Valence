@@ -26,7 +26,7 @@ Material for MkDocs fetches `mermaid.min.js` from `unpkg.com` at page load.
 That makes a diagram page — and only a diagram page — depend on a CDN, while
 every other part of this build is hermetic and offline-capable.
 
-SlopSync is a LAN-first, offline-first protocol. A page that explains that
+Valence is a LAN-first, offline-first protocol. A page that explains that
 property must not phone a CDN to draw its own diagram. The failure modes are
 real and boring: a blocked network, an air-gapped bench, a CDN outage, a
 reader behind a corporate proxy. Any of them turns every figure on this site

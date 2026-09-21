@@ -1,13 +1,13 @@
 name: fuzz
 
-# RFC-028 parser-totality gate for lib/slopsync.
+# RFC-028 parser-totality gate for lib/valence.
 #
 # The library is header-only, zero-dependency and hardware-free, so every
 # fuzz target is ONE clang invocation over ONE .cc file. There is deliberately
 # no PlatformIO here: PIO exists in this repo to build FIRMWARE, and it adds
 # a toolchain download and a framework it cannot use to a build that needs
 # neither. If this workflow ever needs PIO, something has been included into
-# lib/slopsync that does not belong there.
+# lib/valence that does not belong there.
 #
 # PR runs are short (smoke: does every target still build, and does the
 # committed corpus still replay clean?) plus a brief mutation budget.
@@ -17,12 +17,12 @@ on:
   push:
     branches: [main, 'feat/**']
     paths:
-      - 'lib/slopsync/**'
+      - 'lib/valence/**'
       - 'test/fuzz/**'
       - '.github/workflows/fuzz.yml'
   pull_request:
     paths:
-      - 'lib/slopsync/**'
+      - 'lib/valence/**'
       - 'test/fuzz/**'
       - '.github/workflows/fuzz.yml'
   schedule:
@@ -72,7 +72,7 @@ jobs:
         run: |
           clang++ -std=c++2b -O1 -g -fno-omit-frame-pointer \
             -Wall -Wextra -Wno-unused-private-field \
-            -I lib/slopsync/include -I test/fuzz \
+            -I lib/valence/include -I test/fuzz \
             -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
             test/fuzz/${{ matrix.target }}.cc -o ${{ matrix.target }}
 
@@ -152,7 +152,7 @@ jobs:
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |
           clang++ -std=c++2b -O1 -g -Wall -Wextra -Wno-unused-private-field \
-            -I lib/slopsync/include -I test/fuzz \
+            -I lib/valence/include -I test/fuzz \
             -fsanitize=address,undefined -fno-sanitize-recover=undefined \
             test/fuzz/gen_seeds.cc -o gen_seeds
           ./gen_seeds /tmp/seeds

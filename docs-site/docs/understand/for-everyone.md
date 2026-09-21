@@ -1,7 +1,7 @@
 ---
 title: For everyone
 description: >-
-  What SlopSync means if you simply own a machine: your apps and your machine agree, the stop control always works, and nothing leaves your home.
+  What Valence means if you simply own a machine: your apps and your machine agree, the stop control always works, and nothing leaves your home.
 register: STE
 ---
 
@@ -10,7 +10,7 @@ register: STE
 This page is for people who own a machine and do not write software. There is
 no code on it and nothing to configure.
 
-**SlopSync is a shared language between a machine and the apps you use with
+**Valence is a shared language between a machine and the apps you use with
 it.** The machine explains itself. The app listens. That is the whole idea,
 and everything below is a consequence of it.
 

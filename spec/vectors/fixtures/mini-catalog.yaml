@@ -1,5 +1,5 @@
 # FROZEN conformance fixture — human-readable mirror of the normative code
-# fixture lib/slopsync/include/slopsync/conformance/mini_catalog.hpp.
+# fixture lib/valence/include/valence/conformance/mini_catalog.hpp.
 # Referenced by vectors/manifest.yaml (`fixtures.catalog`). DO NOT EDIT after
 # K-suite golden vectors are generated: K-01 pins its encoding, K-02 its etag.
 # Coverage: every packed type, every CBOR field type, both entry forms,

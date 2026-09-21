@@ -15,10 +15,10 @@
 // numeric ones, which is where the offset math actually gets stressed.
 #include "fuzz_common.hpp"
 
-#include "slopsync/conformance/mini_catalog.hpp"
+#include "valence/conformance/mini_catalog.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 static Catalog32 g_mini;
 static Catalog32 g_strs;

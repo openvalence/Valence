@@ -1,7 +1,7 @@
 ---
 title: C++ client guide
 description: >-
-  How to write a SlopSync client in C++.
+  How to write a Valence client in C++.
 register: STE
 status: stub
 ---
@@ -20,9 +20,9 @@ status: stub
 
 The embedded and native client. Cover the header-only library, the injected clock and randomness, and the transport interface a caller implements.
 
-Source material: `lib/slopsync/README.md` (the vendorable front door), `lib/slopsync/include/slopsync/client.hpp`, and `examples/slopsync_demo/demo.cpp`.
+Source material: `lib/valence/README.md` (the vendorable front door), `lib/valence/include/valence/client.hpp`, and `examples/valence_demo/demo.cpp`.
 
-> DEMO-CANDIDATE: `examples/slopsync_demo/demo.cpp` walked step by step as a
+> DEMO-CANDIDATE: `examples/valence_demo/demo.cpp` walked step by step as a
 > live connect-and-print session.
 
 ## Every client guide covers the same seven things

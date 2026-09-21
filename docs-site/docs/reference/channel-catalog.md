@@ -1,7 +1,7 @@
 ---
 title: Channel catalog reference
 description: >-
-  What a real SlopSync device catalog looks like, entry by entry, with every field explained.
+  What a real Valence device catalog looks like, entry by entry, with every field explained.
 register: STE
 status: stub
 ---
@@ -39,12 +39,12 @@ It should also cover the authoring rules that are easy to get wrong:
 ## Source material
 
 - [Appendix D](../spec/appendices.md#appendix-d) of `spec/SPEC.md`: the initial device catalog sketch.
-- SlopDrive-32's `include/comms/SlopSyncCatalog.h` (machine repo): the
+- Valence Drive's `include/comms/ValenceCatalog.h` (machine repo): the
   catalog a real device actually publishes. Prefer this over the appendix
   where they differ. It is what ships.
 - [Catalog schema (CDDL)](../spec/schema.md): the normative catalog encoding,
   published from `spec/schema/catalog.cddl`.
-- `lib/slopsync/include/slopsync/conformance/catalog_check.hpp`: the rules a
+- `lib/valence/include/valence/conformance/catalog_check.hpp`: the rules a
   catalog is mechanically checked against. Every check there is a rule this
   page should explain.
 

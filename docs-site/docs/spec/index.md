@@ -1,7 +1,7 @@
 ---
 title: Specification
 description: >-
-  The normative SlopSync v1.0 protocol specification: reading guide, clause
+  The normative Valence v1.0 protocol specification: reading guide, clause
   map, and the generated clause pages.
 register: IEEE
 generated: true
@@ -17,7 +17,7 @@ generated: true
      and fail the docs build. Edit the specification instead.
      ========================================================== -->
 
-# SlopSync Protocol Specification
+# Valence Protocol Specification
 
 !!! danger "This tier is generated. Edit the specification, not these pages."
 
@@ -31,12 +31,14 @@ generated: true
     specification that can drift from its source is a defect, not a
     convenience.
 
-**Protocol:** `slopsync/1`  
-**Document version:** v1.0 (public)  
-**Status:** Normative.  
+**Protocol:** `valence/1`  
+**Document version:** v1.0-draft (public, **not yet pinned** — see Freeze state)  
+**Status:** Normative in content; the numbers are NOT frozen.  
 **Registry of record:** [`registry/registry.yaml`](../reference/registry/index.md) — Appendices [A](appendices.md#appendix-a), [B](appendices.md#appendix-b) and [G](appendices.md#appendix-g) are generated *views* of it. **On any conflict between this document and the registry, the registry wins** ([§5.7](wire-format.md#s5-7)).  
 **Companion normative artifacts:** [`schema/catalog.cddl`](schema.md) ([Appendix C](appendices.md#appendix-c)), `vectors/manifest.yaml` ([Appendix F](appendices.md#appendix-f)), `RENDERING.md` (client-rendering conformance, [§19](rendering.md#s19)).  
 **Non-normative companions:** `RFC-QUEUE.md` (change history and rationale), `V1-READINESS.md`, [`examples/session-traces.md`](traces.md) ([Appendix E](appendices.md#appendix-e)).
+
+**FREEZE STATE — read this before building against any number here.** Clauses throughout this document and RENDERING.md bind "from the v1.0 tag forward": the never-reuse/never-renumber rule ([§5.7](wire-format.md#s5-7)), the conformance fixture freeze ([§16](errors.md#s16)), and RENDERING.md's enumerable-vocabulary freeze ([§14](transports.md#s14)). **That event has not occurred.** It is the **release pin** — one commit the operator locks once the protocol has been put through its paces, after which only documentation, clients, and tools move. Until the pin exists, every one of those clauses describes a future state and binds nothing: numbers, frozen fixtures, and vocabularies MAY still change, and a registry regeneration is explicitly planned to happen *at* the pin (RFC-QUEUE.md). Implement against this document freely — that is what it is for — but treat no number as stable yet, and pin by **commit sha**, never by this document's version string. This notice is deleted at the pin, and its deletion is the announcement.
 
 ## 0. Reading this document {#s0}
 

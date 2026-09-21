@@ -1,4 +1,4 @@
-; SlopSync catalog schema (slopsync/1) — NORMATIVE (SPEC.md §8.1, Appendix C)
+; Valence catalog schema (valence/1) — NORMATIVE (SPEC.md §8.1, Appendix C)
 ; The catalog_etag (SPEC.md §8.3) is the first 8 bytes of SHA-256 over the
 ; catalog encoded per the deterministic CBOR profile (SPEC.md §5.3), entries
 ; sorted ascending by id.
@@ -82,7 +82,7 @@ priority  = 0 ; background
 ; populates on every client's next connect, with the label, grouping and
 ; explanation coming from the hub.
 ;
-; SlopSync describes what things ARE, never how they LOOK: no widget hints, no
+; Valence describes what things ARE, never how they LOOK: no widget hints, no
 ; layout, no ordering, no styling, ever. Widget choice is a client-side
 ; function of type + constraints (bool-u8 -> toggle, u8+options -> select,
 ; bitfield8 -> checkbox group, numeric+min/max -> slider, str<N> -> text,

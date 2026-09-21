@@ -1,13 +1,13 @@
 ---
 title: Anatomy of a frame
 description: >-
-  What a SlopSync frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.
+  What a Valence frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.
 register: STE
 ---
 
 # Anatomy of a frame
 
-Everything SlopSync sends is a [frame](../reference/dictionary.md#frame). A
+Everything Valence sends is a [frame](../reference/dictionary.md#frame). A
 frame is an eight-byte header followed by a payload.
 
 This is the only page in this section that shows bytes. Read
@@ -160,7 +160,7 @@ channel and retiring the old one, which keeps its number forever.
 the pair. This is the same tolerance rule as the header's, applied one level
 down.
 
-One more restriction earns its keep. SlopSync uses a deterministic
+One more restriction earns its keep. Valence uses a deterministic
 [CBOR](../reference/dictionary.md#cbor) profile: definite lengths,
 shortest-form integers, sorted keys, no tags. Any message therefore has exactly
 one valid encoding. That is what lets test vectors compare byte for byte, and

@@ -1,17 +1,17 @@
 ---
 title: CLI guide
 description: >-
-  SlopScope, the motion-pipeline oscilloscope, and slopsync_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.
+  Valence Trace, the motion-pipeline oscilloscope, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.
 register: STE
 ---
 
 # CLI guide
 
-Two command-line tools ship with SlopSync. They answer different questions.
+Two command-line tools ship with Valence. They answer different questions.
 
 | Tool | Answers |
 |---|---|
-| [SlopScope](#slopscope) | Did the machine do what the app asked, and if not, where did the difference come from? |
+| [Valence Trace](#valence-trace) | Did the machine do what the app asked, and if not, where did the difference come from? |
 | [The probe](#the-probe) | Does this hub answer a full scripted session correctly? |
 | [The generators](#the-generators) | Are the published numbers still the registry's numbers? |
 
@@ -19,9 +19,9 @@ Both tools are Python. Both need the `websocket-client` package. Both run
 against [the simulator](local-testing.md#the-simulator) exactly as they run
 against hardware.
 
-## SlopScope
+## Valence Trace
 
-`tools/slopscope.py` is an oscilloscope for the motion pipeline.
+`tools/valence_trace.py` is an oscilloscope for the motion pipeline.
 
 ### The question it answers
 
@@ -29,7 +29,7 @@ A machine feels wrong. The app is a good app, the script is a good script, and
 the motion is still not what the author intended. Nothing in a log answers
 this, because every layer reports itself as healthy.
 
-SlopScope graphs the raw commanded input as it arrives over SlopSync, scaled
+Valence Trace graphs the raw commanded input as it arrives over Valence, scaled
 into the [stroke window](../reference/dictionary.md#stroke-window), against
 what the planner actually did with it. Quintic shaping, chase lag, guard
 fallbacks and handoff bounding stop being feelings and become lines.
@@ -63,7 +63,7 @@ axis.
 
 ### It cannot move the machine
 
-SlopScope connects at the [watch](../reference/dictionary.md#watch) tier. It
+Valence Trace connects at the [watch](../reference/dictionary.md#watch) tier. It
 subscribes and nothing else. It sends no
 [intent](../reference/dictionary.md#intent), publishes no
 [stream](../reference/dictionary.md#stream), and carries no `publishes` wish in
@@ -77,16 +77,16 @@ else and watch it here.
 `record` captures a trace, and can render it in the same run.
 
 ```bash
-python tools/slopscope.py record --ip 127.0.0.1 --port 82 \
+python tools/valence_trace.py record --ip 127.0.0.1 --port 82 \
     --seconds 26 --out run.jsonl --render run.html
 ```
 
 | Flag | What it does |
 |---|---|
-| `--ip`, `--port` | Where the hub is. Port 82 is the SlopSync plane |
+| `--ip`, `--port` | Where the hub is. Port 82 is the Valence plane |
 | `--http-port` | Where to read `/api/capabilities` for the firmware version. Optional |
 | `--seconds` | Capture length. `0` runs until ctrl-c |
-| `--out` | Trace file. Defaults to `slopscope-<stamp>.jsonl` |
+| `--out` | Trace file. Defaults to `valence_trace-<stamp>.jsonl` |
 | `--render` | Also write the HTML graph here |
 | `--theme`, `--palette` | Passed to the renderer. See [color](#color) |
 | `--window MIN:MAX` | Escape hatch for a hub whose catalog declares no window role. Recorded as an operator override, never as machine truth |
@@ -94,17 +94,17 @@ python tools/slopscope.py record --ip 127.0.0.1 --port 82 \
 It prints how it found every channel, which is worth reading once:
 
 ```text
-[slopscope] connected ws://127.0.0.1:82/ (subprotocol slopsync.v1)
-[slopscope] WELCOME session=1200999484 roles=1 (watch tier is all this tool needs)
-[slopscope] catalog 10617 B, 26 entries, etag VERIFIED
+[valence_trace] connected ws://127.0.0.1:82/ (subprotocol valence.v1)
+[valence_trace] WELCOME session=1200999484 roles=1 (watch tier is all this tool needs)
+[valence_trace] catalog 10617 B, 26 entries, etag VERIFIED
   resolve window      field_role window.min/window.max -> channel 0x0081 'machine-config' fields 'window_min'/'window_max'
   resolve achieved    field_role telemetry.position -> 0x0080 'motion' field 'pos_10um'
   resolve velocity    field_role telemetry.velocity -> same channel, field 'speed'
   resolve planned     field name match on 0x0080 layout -> 'tgt_10um'
   resolve asked       field name match on 0x0080 layout -> 'raw_10um'
-[slopscope] grants: safety=on-change, motion=60.0Hz, machine-config=on-change,
-            plan-strip=45.0Hz, slopmotion-diag=1.0Hz, motion-anomaly=on-change
-[slopscope] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -> run.jsonl
+[valence_trace] grants: safety=on-change, motion=60.0Hz, machine-config=on-change,
+            plan-strip=45.0Hz, vmotion-diag=1.0Hz, motion-anomaly=on-change
+[valence_trace] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -> run.jsonl
 ```
 
 Nothing there is a hardcoded channel number. Positions and the window come from
@@ -118,11 +118,11 @@ differently still graphs.
 the same time.
 
 ```bash
-python tools/slopscope.py live --ip 127.0.0.1 --port 82 --seconds 18
+python tools/valence_trace.py live --ip 127.0.0.1 --port 82 --seconds 18
 ```
 
 ```text
-SlopScope live  ·  127.0.0.1:82  ·  fw slopsim-0.2.0  ·  watch tier, subscribe-only
+Valence Trace live  ·  127.0.0.1:82  ·  fw valencesim-0.2.0  ·  watch tier, subscribe-only
 ------------------------------------------------------------------------------
 window   0.0 .. 500.0 mm  (span 500.0)   limits input.accel=8000 input.jerk=2e+06
          input.speed=550 user.accel=200 user.speed=50
@@ -152,7 +152,7 @@ want to compare two runs, or keep the evidence.
 `render` turns a trace into one self-contained HTML file.
 
 ```bash
-python tools/slopscope.py render run.jsonl --out run.html --theme light --palette cvd
+python tools/valence_trace.py render run.jsonl --out run.html --theme light --palette cvd
 ```
 
 The page inlines its own data, its own SVG and its own script. It fetches
@@ -184,7 +184,7 @@ The header is the reason the format is worth explaining. It carries:
 - a `resolution` block saying **how** each thing was found.
 
 ```json
-{"rec":"header","tool":"slopscope","trace_format":1,
+{"rec":"header","tool":"valence_trace","trace_format":1,
  "hub":{"catalog_etag":"0458eec408a43692","catalog_etag_verified":true,"deadman_ms":600},
  "window":{"min_mm":0.0,"max_mm":500.0,"span_mm":500.0},
  "limits":{"limit.input.speed":550.0,"limit.input.accel":8000.0,"limit.user.speed":50.0},
@@ -199,7 +199,7 @@ scale attached to it. You never need the tool version that recorded it, and you
 never need to guess which field was which.
 
 **`render` is offline and total.** The graph is a pure function of the trace.
-Re-rendering an old trace with a newer SlopScope gives the same picture, so a
+Re-rendering an old trace with a newer Valence Trace gives the same picture, so a
 trace attached to a bug report is evidence rather than an anecdote.
 
 Frame records are short on purpose: `r` names the kind (`m` motion, `p` plan
@@ -214,13 +214,13 @@ one unrestarted instance, with the probe as the driver.
 
 ```bash
 # terminal 1 — the machine
-slopsim machine --homed --headless --duration 150
+valencesim machine --homed --headless --duration 150
 
 # terminal 2 — the scope
-python tools/slopscope.py record --ip 127.0.0.1 --port 82 --seconds 26 --out seg.jsonl
+python tools/valence_trace.py record --ip 127.0.0.1 --port 82 --seconds 26 --out seg.jsonl
 
 # terminal 3 — the driver: timed segments, one per second
-python tools/slopsync_probe.py --ip 127.0.0.1 --port 82 --segments 20
+python tools/valence_probe.py --ip 127.0.0.1 --port 82 --segments 20
 ```
 
 Then the same again with `--stream 20`, which sends bare points at 50 Hz
@@ -311,7 +311,7 @@ property of that machine, that limit set and that driver. Capture your own.
 
 ## The probe
 
-`tools/slopsync_probe.py` is the reference verifier. It runs a scripted session
+`tools/valence_probe.py` is the reference verifier. It runs a scripted session
 against a live hub and prints a narrated pass-or-fail transcript.
 
 It hand-rolls its own encoder against the registry instead of importing the
@@ -329,7 +329,7 @@ channel's layout, an intent and its post-clamp ECHO, the CLOCK exchange, stream
 and segment ingress with counters, safety ops, the anomaly feed, and GOODBYE.
 
 ```bash
-python tools/slopsync_probe.py --ip 127.0.0.1 --port 82 --segments 20
+python tools/valence_probe.py --ip 127.0.0.1 --port 82 --segments 20
 ```
 
 ```text

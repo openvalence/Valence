@@ -1,6 +1,6 @@
 ---
 title: Discovery
-description: Generated tables of the SlopSync BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).
+description: Generated tables of the Valence BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).
 register: IEEE
 generated: true
 ---
@@ -29,9 +29,9 @@ in ASCII, deliberately, so the UUID is greppable rather than an opaque v4.
 
 | Role | UUID |
 |---|---|
-| Service | `534C4F50-5359-4E43-8000-000000000001` |
-| Write characteristic (c2h) | `534C4F50-5359-4E43-8000-000000000002` |
-| Notify characteristic (h2c) | `534C4F50-5359-4E43-8000-000000000003` |
+| Service | `56414C45-4E43-4531-8000-000000000001` |
+| Write characteristic (c2h) | `56414C45-4E43-4531-8000-000000000002` |
+| Notify characteristic (h2c) | `56414C45-4E43-4531-8000-000000000003` |
 
 ## BLE advertising flags
 
@@ -53,8 +53,8 @@ in real homes.
 
 | Property | Value |
 |---|---|
-| Port | `21328` |
-| Magic | `SLOP` |
+| Port | `22096` |
+| Magic | `VLNC` |
 | Reply rate limit | 1 / source / second |
 
 The probe and reply frames themselves, `DISCOVER_PROBE` (`0x1E`) and

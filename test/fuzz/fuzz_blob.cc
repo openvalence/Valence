@@ -13,8 +13,8 @@
 // instead of in slack the default capacity happens to have.
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 using SmallReassembler = ChunkReassembler<8>;
 

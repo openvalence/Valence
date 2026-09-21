@@ -1,13 +1,13 @@
 ---
 title: Local testing
 description: >-
-  The SlopSync simulator, the probe, the golden vectors, the fuzz harnesses, and the back-to-back-sessions pattern that catches what none of them can.
+  The Valence simulator, the probe, the golden vectors, the fuzz harnesses, and the back-to-back-sessions pattern that catches what none of them can.
 register: STE
 ---
 
 # Local testing
 
-You can test a SlopSync client or a SlopSync hub with no machine on the bench.
+You can test a Valence client or a Valence hub with no machine on the bench.
 This page covers the four instruments, and then the one manual pattern that
 catches a class of bug none of them reach.
 
@@ -23,13 +23,13 @@ Read the last section even if you skip the rest.
 
 ## The simulator
 
-`hub/slopbench` (SlopBench) is a desktop binary that behaves like a hub.
+`hub/bench` (Valence Bench) is a desktop binary that behaves like a hub.
 
 It is not a mock. It embeds the **real** hub library behind a **real**
 WebSocket server speaking the same subprotocol as any conforming hardware
 hub. Point a client at it and the client cannot tell the difference: a bug
-you find against SlopBench is a bug in the same code a real hub runs.
-Unlike a single machine's own simulator, SlopBench has no fixed catalog and
+you find against Valence Bench is a bug in the same code a real hub runs.
+Unlike a single machine's own simulator, Valence Bench has no fixed catalog and
 no motion engine of its own -- it serves whatever catalog a `.bench` config
 file describes, which is what makes it useful for testing a client against
 catalog shapes no single hub happens to produce (extra archetypes, alien
@@ -43,8 +43,8 @@ plane at all.
 ```bash
 # Any C++20 host toolchain plus CMake and Ninja. On Windows this project
 # uses WinLibs GCC; put your compiler on PATH first.
-cmake -S hub/slopbench -B hub/slopbench/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build hub/slopbench/build
+cmake -S hub/bench -B hub/bench/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build hub/bench/build
 ```
 
 Dependencies are pinned and fetched by CMake. The binary is statically linked,
@@ -53,20 +53,20 @@ so you can copy it anywhere.
 ### Run it
 
 ```bash
-slopbench hub/slopbench/configs/tiny-axis.bench                 # interactive terminal UI
-slopbench hub/slopbench/configs/kitchen-sink.bench --headless --duration 30   # scripted, for CI
+bench hub/bench/configs/tiny-axis.bench                 # interactive terminal UI
+bench hub/bench/configs/kitchen-sink.bench --headless --duration 30   # scripted, for CI
 ```
 
 Useful flags: `--port` for the protocol socket, `--headless` for no
 terminal UI, and `--duration` to exit after a fixed time. See
-`hub/slopbench/README.md` for the config file grammar and the three
+`hub/bench/README.md` for the config file grammar and the three
 example configs.
 
 ### A real device's own simulator
 
 A specific hub implementation may also ship its own device-fidelity
 simulator, embedding that machine's real motion engine and real device
-catalog behind the same wire protocol. SlopDrive-32's `sim/slopsim` is that
+catalog behind the same wire protocol. Valence Drive's `sim/valencesim` is that
 project's own instrument (its own repository, not this one) -- reach for it
 when you need to test against one exact machine's behavior rather than the
 protocol in general.
@@ -74,7 +74,7 @@ protocol in general.
 ### The question only a wire-level simulator answers
 
 A trace tells you whether a hub rendered your motion well. A simulator with
-recording (SlopBench's session log, or a device-fidelity simulator's own
+recording (Valence Bench's session log, or a device-fidelity simulator's own
 trace) also records **what actually arrived on the wire**, raw values beside
 decoded values, at the point of decoding.
 
@@ -84,12 +84,12 @@ intended while the hub renders faithfully, only the wire content proves
 where the fault is. Export the recorded stream and compare it against what
 your client believed it sent.
 
-> DEMO-CANDIDATE: an embedded SlopBench terminal a reader can drive from the
+> DEMO-CANDIDATE: an embedded Valence Bench terminal a reader can drive from the
 > page, with the raw wire trace scrolling beside it.
 
 ## The probe
 
-`tools/slopsync_probe.py` is a standalone Python client. It runs a scripted
+`tools/valence_probe.py` is a standalone Python client. It runs a scripted
 session against a live hub and prints a narrated pass-or-fail transcript.
 
 It is the fastest conformance smoke test for a hub you are writing. It hand
@@ -97,9 +97,9 @@ rolls its own encoder against the registry rather than importing the library,
 so a hub that passes the probe has agreed with an independent implementation.
 
 ```bash
-python tools/slopsync_probe.py --ip <hub-ip> --port <port>
-python tools/slopsync_probe.py --ip <hub-ip> --no-motion      # observe only
-python tools/slopsync_probe.py --ip <hub-ip> --pair           # pairing scenario
+python tools/valence_probe.py --ip <hub-ip> --port <port>
+python tools/valence_probe.py --ip <hub-ip> --no-motion      # observe only
+python tools/valence_probe.py --ip <hub-ip> --pair           # pairing scenario
 ```
 
 | Flag | What it does |
@@ -185,13 +185,13 @@ for t in fuzz_cbor fuzz_catalog fuzz_frame fuzz_packed \
          fuzz_bundle fuzz_blob fuzz_messages; do
   clang++ -std=c++2b -O1 -g -fno-omit-frame-pointer -Wall -Wextra \
     -Wno-unused-private-field \
-    -I $R/lib/slopsync/include -I $R/test/fuzz \
+    -I $R/lib/valence/include -I $R/test/fuzz \
     -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined \
     $R/test/fuzz/$t.cc -o build/$t
 done
 
 # regenerate the seed corpus using the library's own encoders
-clang++ -std=c++2b -O1 -g -I $R/lib/slopsync/include -I $R/test/fuzz \
+clang++ -std=c++2b -O1 -g -I $R/lib/valence/include -I $R/test/fuzz \
   -fsanitize=address,undefined -fno-sanitize-recover=undefined \
   $R/test/fuzz/gen_seeds.cc -o build/gen_seeds
 ./build/gen_seeds corpus

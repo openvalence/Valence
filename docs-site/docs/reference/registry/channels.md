@@ -73,7 +73,7 @@ A subscription carries a priority class. The lower number sheds first.
 |---|---|---|
 | `0x0000` | `SESSION` | session-scoped frames; never subscribable |
 | `0x0001-0x007F` | `spec-core` | allocated below; spec-governed |
-| `0x0080-0x7FFF` | `device-defined` | hub firmware allocates; described by catalog. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each hub documents its own device-range allocations; SlopDrive-32's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped catalog. |
+| `0x0080-0x7FFF` | `device-defined` | hub firmware allocates; described by catalog. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each hub documents its own device-range allocations; Valence Drive's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped catalog. |
 | `0x8000-0xFFFF` | `reserved` |  |
 
 ## Spec-core channels

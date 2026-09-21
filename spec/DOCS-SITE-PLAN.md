@@ -1,6 +1,6 @@
-# SlopSync Documentation Site — Plan
+# Valence Documentation Site — Plan
 
-*Operator brief, 2026-07-25: SPEC.md alone will not carry v1.0. SlopSync needs
+*Operator brief, 2026-07-25: SPEC.md alone will not carry v1.0. Valence needs
 a proper documentation site — "there's no googling how to use this until Google
 starts indexing it," so the site IS the discovery mechanism. Target: the place
 people land first and leave understanding.*
@@ -78,7 +78,7 @@ another (e.g. "Build" hits a wire-format question and jumps to
 "Specification"). Nothing here loops — each tier is read once per visit.*
 
 ### Home
-One screen: what SlopSync is, who it is for, three entry doors (Understand /
+One screen: what Valence is, who it is for, three entry doors (Understand /
 Build / Specification).
 
 ### Understand *(STE register — the "why" tier)*
@@ -90,8 +90,8 @@ Build / Specification).
   columns. Names TCode's continued role as compatibility ingest.
 - **Ecosystem & compatibility** — OSSM, **ossm-rs**, **fray-d lite** and peers.
   **TONE IS BINDING: these are legitimately great projects. Do not position
-  SlopSync as a replacement or an upgrade over them.** The framing is that
-  SlopSync adds a *unifying compatibility layer* those firmwares could adopt,
+  Valence as a replacement or an upgrade over them.** The framing is that
+  Valence adds a *unifying compatibility layer* those firmwares could adopt,
   so one app works across all of them. Any sentence that reads as "better than"
   is a defect in this section.
 - **Security model & the audit** — the threat model in plain language, what is
@@ -112,7 +112,7 @@ Build / Specification).
 - **Plugin guide** — writing an app integration; the MFP plugin as worked example
 - **Hub / firmware implementer guide** — building a conforming device
 - **CLI guide** — the tooling, including the motion-vs-planner graphing CLI
-- **Local testing guide** — the simulator, `slopsync_probe.py`, the fuzz harnesses,
+- **Local testing guide** — the simulator, `valence_probe.py`, the fuzz harnesses,
   and the back-to-back-sessions-without-reboot regression pattern
 
 ### Specification *(IEEE register — normative)*
@@ -122,13 +122,13 @@ Build / Specification).
 - Errata and the RFC process
 
 ### Reference
-- **The SlopSync Dictionary** — every term, one definition, auto-linked
+- **The Valence Dictionary** — every term, one definition, auto-linked
   site-wide via the glossary system. This is the anchor deliverable.
 - Channel catalog reference · NACK/error codes · limits table (all generated)
 
 ### Community
 - Contributing, the RFC process, and the **governance stance**:
-  *SlopSync favors no firmware, no vendor, and no product. It is provided to
+  *Valence favors no firmware, no vendor, and no product. It is provided to
   the community as a tool.* State it plainly on its own page.
 
 ## 4. Generation discipline (NON-NEGOTIABLE — same disease we spent this whole project curing)
@@ -151,11 +151,11 @@ drift.
 
 ## 5. SEO / discoverability notes
 
-The naming doctrine pays off here: "SlopSync" is zero-collision, so every page
+The naming doctrine pays off here: "Valence" is zero-collision, so every page
 is findable once indexed. Support it with real meta descriptions per page, a
 sitemap, semantic headings, and stable URLs (versioned trees must not break
 links). Publish the dictionary early — glossary pages index well and answer the
-long-tail "what is a SlopSync <term>" queries that will be the first traffic.
+long-tail "what is a Valence <term>" queries that will be the first traffic.
 
 ## 6. Sequencing
 

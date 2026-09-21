@@ -12,13 +12,13 @@
 *[knock and approve]: The primary pairing mode, a client knocks with no proof, and any configure session approves it.
 *[knock-and-approve]: The primary pairing mode, a client knocks with no proof, and any configure session approves it.
 *[served-page token]: A single-use token the hub mints for its own served web page, so that page reaches control without a pairing ceremony.
-*[slopsync_probe.py]: The reference verifier, which runs a scripted session against a hub and prints a pass-or-fail transcript per stage.
 *[synthetic session]: A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.
 *[welcome signature]: An optional hub signature over client-supplied entropy, proving you reached the machine you paired with.
 *[idempotency ring]: The hub's per-session record of the last 32 intent ids and the echoes they produced.
 *[sequence numbers]: A per-channel, per-direction counter that lets a receiver reject anything older than what it already holds.
 *[setting category]: The tab a settings field belongs in, chosen from a registered list so placement is consistent across hubs.
 *[source ownership]: The rule that each arbiter source has at most one owning session at a time.
+*[valence_probe.py]: The reference verifier, which runs a scripted session against a hub and prints a pass-or-fail transcript per stage.
 *[change tripwire]: The rule that an observed client-version change drops a paired device to recognized-pending until re-approved.
 *[channel classes]: One of STATE, STREAM, INTENT, EVENT or STORE.
 *[parser totality]: The requirement that every parser maps any byte string to accept or reject, with no crash in between.
@@ -34,6 +34,7 @@
 *[CATALOG_READY]: The rule that a session's frames are refused until it confirms which catalog it has adopted.
 *[Catalog entry]: One channel's description inside the catalog, encoded as an independent self-delimiting document.
 *[MotionArbiter]: The single component that commands the motor driver for positioning.
+*[Valence Trace]: The motion-pipeline oscilloscope, which graphs asked against planned against achieved.
 *[active source]: The motion arbiter input currently driving motion.
 *[channel class]: One of STATE, STREAM, INTENT, EVENT or STORE.
 *[control plane]: The frames that negotiate, command and confirm, carrying CBOR map payloads.
@@ -41,9 +42,10 @@
 *[golden vector]: A byte-exact recorded frame that every implementation must encode and decode identically.
 *[liveness ping]: A tiny frame a client sends during silence to prove it is still there.
 *[publish grant]: The hub's applied answer to a client's wish to send on an inbound STREAM channel.
-*[registry.yaml]: The single machine-readable file that decides every number SlopSync puts on the wire.
+*[registry.yaml]: The single machine-readable file that decides every number Valence puts on the wire.
 *[setting flags]: A per-field annotation marking a setting advanced, restart-required, or secret.
 *[stroke window]: The operator-set lower and upper position bounds that motion stays inside.
+*[valence_trace]: The motion-pipeline oscilloscope, which graphs asked against planned against achieved.
 *[Access level]: The tier a session holds, which gates what channels it may read and write.
 *[Ground truth]: The doctrine that a client never displays machine state that differs from the device's, in either direction.
 *[catalog_etag]: The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.
@@ -57,7 +59,7 @@
 *[token bucket]: The ingress rate limiter, a bucket that refills at the granted sample rate and holds one burst's worth of tokens.
 *[trust ledger]: The hub's stored list of paired devices, their roles, and how each one presents its token.
 *[wire numbers]: Any value that appears on the wire and must therefore mean the same thing to every implementation.
-*[RFC process]: The way a change to SlopSync is proposed, argued and either bound into the specification or refused.
+*[RFC process]: The way a change to Valence is proposed, argued and either bound into the specification or refused.
 *[`configure`]: The highest access tier; a configure session changes device configuration and administers pairing.
 *[field roles]: A text tag on a catalog field that says what the value semantically is.
 *[instance id]: Eight bytes a client generates once and persists, saying who it durably is.
@@ -77,22 +79,20 @@
 *[ready gate]: The rule that a session's frames are refused until it confirms which catalog it has adopted.
 *[session_id]: A random non-zero 32-bit number the hub assigns to one association, unique within a hub boot.
 *[watch tier]: The lowest access tier; a watch session observes state and may still stop the machine.
-*[SlopScope]: The motion-pipeline oscilloscope, which graphs asked against planned against achieved.
 *[`control`]: The middle access tier; a control session drives the machine and may own a motion source.
 *[conflated]: Keeping at most one queued unsent frame per channel and subscriber, so a newer snapshot replaces an older one.
 *[fuzz gate]: The continuous-integration job that feeds mutated input to every parser and fails on any memory-safety error.
 *[limit set]: A named group of speed, acceleration and jerk ceilings the arbiter selects per source.
 *[publishes]: The hub's applied answer to a client's wish to send on an inbound STREAM channel.
 *[simulator]: A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.
-*[slopscope]: The motion-pipeline oscilloscope, which graphs asked against planned against achieved.
-*[Registry]: The single machine-readable file that decides every number SlopSync puts on the wire.
+*[Registry]: The single machine-readable file that decides every number Valence puts on the wire.
 *[Takeover]: Re-issuing an activating intent with the takeover flag set, to transfer source ownership.
 *[channels]: A named, numbered, typed data flow declared in the catalog.
 *[clamping]: Replacing a requested value with the nearest value the machine's limits allow.
 *[dead-man]: The silence window bound to an active source, after which the source's loss policy fires.
 *[decimate]: What the hub drops, and in what order, when a link cannot carry everything granted.
 *[eviction]: The hub closing a session it has decided it cannot keep.
-*[registry]: The single machine-readable file that decides every number SlopSync puts on the wire.
+*[registry]: The single machine-readable file that decides every number Valence puts on the wire.
 *[retained]: The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.
 *[segments]: One STREAM data point that commands a time extent, carrying its own duration.
 *[sessions]: The stateful association between one client and the hub.

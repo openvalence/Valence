@@ -1,6 +1,6 @@
 ---
 title: Pairing modes
-description: Generated table of the SlopSync pairing mode bitmask advertised in WELCOME.
+description: Generated table of the Valence pairing mode bitmask advertised in WELCOME.
 register: IEEE
 generated: true
 ---

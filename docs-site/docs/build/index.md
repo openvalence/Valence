@@ -1,11 +1,11 @@
 ---
-title: Build with SlopSync
+title: Build with Valence
 description: >-
   The how tier: connect a client, write an app integration, make your firmware a conforming hub, and test all of it locally.
 register: STE
 ---
 
-# Build with SlopSync
+# Build with Valence
 
 This section is task-oriented. Each page gets you to something running.
 

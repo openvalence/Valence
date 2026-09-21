@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build every SlopSync fuzz target with libFuzzer + ASan + UBSan.
+# Build every Valence fuzz target with libFuzzer + ASan + UBSan.
 #
 # The library is header-only and hardware-free, so each target is ONE
 # translation unit and there is nothing for PlatformIO to add. Requires clang
@@ -25,7 +25,7 @@ COMMON=(
   # is the library's ONE known benign warning under clang. Everything else must
   # stay clean — do not widen this list to silence a real diagnostic.
   -Wall -Wextra -Wno-unused-private-field
-  -I "$REPO/lib/slopsync/include"
+  -I "$REPO/lib/valence/include"
   -I "$HERE"
 )
 SAN=(-fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined)

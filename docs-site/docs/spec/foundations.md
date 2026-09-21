@@ -1,7 +1,7 @@
 ---
 title: Foundations
 description: >-
-  SlopSync clauses 1-4: purpose and non-goals, design philosophy, RFC 2119
+  Valence clauses 1-4: purpose and non-goals, design philosophy, RFC 2119
   conventions, the honesty clauses, terminology, roles, architecture, and the
   versioning and compatibility model.
 register: IEEE
@@ -24,13 +24,13 @@ generated: true
 
 ### 1.1 Purpose, scope, non-goals {#s1-1}
 
-SlopSync is a hub-and-spoke **device-shadow protocol**: one hub (a machine's main controller) holds the single canonical machine state; any number of clients — browser UIs, hardware remotes, mobile apps, bridges, simulators, streaming-application plugins — connect over heterogeneous transports, announce who they are and what they can do, and thereafter remain in continuous, truthful sync with that state. Clients submit **intents**; the hub applies, clamps, and echoes what was *actually applied*; every subscriber observes the same reality.
+Valence is a hub-and-spoke **device-shadow protocol**: one hub (a machine's main controller) holds the single canonical machine state; any number of clients — browser UIs, hardware remotes, mobile apps, bridges, simulators, streaming-application plugins — connect over heterogeneous transports, announce who they are and what they can do, and thereafter remain in continuous, truthful sync with that state. Clients submit **intents**; the hub applies, clamps, and echoes what was *actually applied*; every subscriber observes the same reality.
 
-**In scope:** session establishment and identity; a self-describing channel catalog carrying enough semantics for a generic client to build its entire settings and control surface from the hub; five channel classes (state, stream, intent, event, store); per-subscriber rate grants with priorities and congestion adaptation; safety semantics (e-stop, deadman, control arbitration, stop taxonomy); a namespaced blob-transfer verb serving the catalog and device stores alike; a tiered pairing and trust model with hub authenticity; parser-totality obligations; bindings for WebSocket, ESP-NOW, BLE GATT, serial, and in-process transports; a relay role; migration from the legacy SlopDrive port-81 protocol.
+**In scope:** session establishment and identity; a self-describing channel catalog carrying enough semantics for a generic client to build its entire settings and control surface from the hub; five channel classes (state, stream, intent, event, store); per-subscriber rate grants with priorities and congestion adaptation; safety semantics (e-stop, deadman, control arbitration, stop taxonomy); a namespaced blob-transfer verb serving the catalog and device stores alike; a tiered pairing and trust model with hub authenticity; parser-totality obligations; bindings for WebSocket, ESP-NOW, BLE GATT, serial, and in-process transports; a relay role; migration from the legacy ValenceDrive port-81 protocol.
 
 **Non-goals:**
 
-- **Cloud anything.** SlopSync is LAN/offline-first. There is no broker but the hub, no account system, no telemetry leaving the site.
+- **Cloud anything.** Valence is LAN/offline-first. There is no broker but the hub, no account system, no telemetry leaving the site.
 - **Server-Sent Events.** SSE was evaluated as a telemetry channel (browser-native reconnect is attractive) and rejected: it is text-only (≈+33 % base64 overhead on packed samples), strictly one-way (intents would need a side channel), and its reconnect advantage evaporates once one client library implements reconnection for every consumer. The browser binding is WebSocket ([§13.2](transports.md#s13-2)).
 - **Replacing TCode as an ecosystem interface.** Existing TCode text edges remain supported as compatibility ingest ([§15.1](legacy.md#s15-1)).
 - **Peer-to-peer sync.** Clients never talk to each other; all truth flows through the hub.
@@ -44,17 +44,17 @@ SlopSync is a hub-and-spoke **device-shadow protocol**: one hub (a machine's mai
 4. **The weakest transport writes the rules.** Every guarantee here is stated against unordered, lossy, 250-byte datagrams (ESP-NOW). Anything that works there works everywhere; TCP transports enjoy stronger behavior for free.
 5. **Unknown means ignore.** Unknown channels, keys, frame types, roles, flags, trailing bytes: skip them, never disconnect. This single rule is why a v1 remote still works against a v4 hub.
 6. **The machine owns motion processing, not the client** ([§9.6](channels.md#s9-6)). If every conforming client would otherwise have to implement a piece of kinematic work, that work belongs on the hub — written once, verifiable, identical for all clients. A client ships its content *as authored* and gets good motion.
-7. **The machine owns UI description, not the client** ([§8.8](catalog.md#s8-8)). A control added in firmware appears on every client's next connect, with its label, grouping, units, constraints and explanation coming from the hub. But SlopSync describes what things **are**, never how they **look**: no widget hints, no layout, no ordering metadata, no styling, ever.
-8. **One surface.** SlopSync is intended to be a machine's sole application-level communication surface. On the reference device exactly two HTTP duties are permanently exempt, because SlopSync structurally cannot own them: firmware/asset **OTA** (its rights are never derivable from a SlopSync role) and the optional **served-page token sideband** ([§12.8](security.md#s12-8), whose entire security property is browser same-origin policy). Static asset serving is not an API and is not in scope either way.
+7. **The machine owns UI description, not the client** ([§8.8](catalog.md#s8-8)). A control added in firmware appears on every client's next connect, with its label, grouping, units, constraints and explanation coming from the hub. But Valence describes what things **are**, never how they **look**: no widget hints, no layout, no ordering metadata, no styling, ever.
+8. **One surface.** Valence is intended to be a machine's sole application-level communication surface. On the reference device exactly two HTTP duties are permanently exempt, because Valence structurally cannot own them: firmware/asset **OTA** (its rights are never derivable from a Valence role) and the optional **served-page token sideband** ([§12.8](security.md#s12-8), whose entire security property is browser same-origin policy). Static asset serving is not an API and is not in scope either way.
 
 ### 1.3 Prior art and provenance {#s1-3}
 
-SlopSync deliberately steals from systems that survived contact with production, after a research pass confirmed none could be adopted whole ([Appendix H](rationale.md#appendix-h)):
+Valence deliberately steals from systems that survived contact with production, after a research pass confirmed none could be adopted whole ([Appendix H](rationale.md#appendix-h)):
 
 - **ThingSet** — the self-describing catalog: clients discover channels, types, units, and access rights from the device itself ([§8](catalog.md#s8)).
 - **ESPHome native API** — the versioned Hello handshake with identity + entity discovery + subscription streaming ([§6](session.md#s6)).
 - **Micro XRCE-DDS** — the minimal transport abstraction: a binding is four operations plus declared properties ([§13.1](transports.md#s13-1)).
-- **SlopDrive port-81 protocol** — the working ancestor: `cfg_gen` epochs, CLOCK t0/t1/t2 sync, batched samples, CMD/ECHO idempotency all originate there and are generalized here ([§15.2](legacy.md#s15-2)).
+- **ValenceDrive port-81 protocol** — the working ancestor: `cfg_gen` epochs, CLOCK t0/t1/t2 sync, batched samples, CMD/ECHO idempotency all originate there and are generalized here ([§15.2](legacy.md#s15-2)).
 - **MQTT retained messages** — the retained-value-on-subscribe rule ([§9.1](channels.md#s9-1)), implemented at the channel layer since no embeddable broker provides it.
 - **Matter / Chromecast commissioning** — possession-is-root bootstrap and the physical-presence window ([§12.3](security.md#s12-3)).
 - **BLE Secure Simple Pairing association models** — one ceremony, several association modes chosen by joiner I/O capability ([§12.3](security.md#s12-3)).
@@ -69,7 +69,7 @@ Access tiers are named **watch**, **control** and **configure** throughout ([§1
 
 ### 1.5 Index of honesty clauses *(normative)* {#s1-5}
 
-Each of the following is a normative limitation of `slopsync/1`. An implementation MUST NOT present a user-facing claim that contradicts one, and SHOULD surface the limitation where a user could reasonably assume otherwise.
+Each of the following is a normative limitation of `valence/1`. An implementation MUST NOT present a user-facing claim that contradicts one, and SHOULD surface the limitation where a user could reasonably assume otherwise.
 
 | # | Clause | Where |
 |---|---|---|
@@ -141,7 +141,7 @@ A client MUST NOT act on user input that requires hub state before reaching LIVE
   mobile app ──WS──────►│           HUB              │──── motion arbiter ──► motor driver
   desktop sim ─in-proc─►│  (device firmware /        │         ▲
   BLE remote ──BLE─────►│   hub role of the library) │   (sole caller — no
-  TCode app ───legacy──►│                            │    SlopSync session
+  TCode app ───legacy──►│                            │    Valence session
                         └──────────▲─────────────────┘    touches the driver)
                                    │ UART
                              ┌─────┴─────┐
@@ -153,13 +153,13 @@ A client MUST NOT act on user input that requires hub state before reaching LIVE
 
 Layering, bottom-up: **transport binding** ([§13](transports.md#s13): open/close/write/read + declared MTU/ordering/reliability/`max_frame`) → **framing** ([§5](wire-format.md#s5): 8-byte header + payload, fragmentation if unavoidable) → **channel layer** ([§9](channels.md#s9): class semantics per channel) → **session layer** ([§6](session.md#s6): identity, readiness, grants, liveness, reconnect) → **trust layer** ([§12](security.md#s12): tiers, pairing, authenticity).
 
-**Normative architectural rule** (restated normatively in [§11.4](safety.md#s11-4)): SlopSync sessions terminate at the hub's session engine, which submits intents to the machine's **motion arbiter** — the only component permitted to command the motor driver. No SlopSync-originated data reaches the driver by any other path. A hub implementation that lets a session bypass its arbiter is non-conformant.
+**Normative architectural rule** (restated normatively in [§11.4](safety.md#s11-4)): Valence sessions terminate at the hub's session engine, which submits intents to the machine's **motion arbiter** — the only component permitted to command the motor driver. No Valence-originated data reaches the driver by any other path. A hub implementation that lets a session bypass its arbiter is non-conformant.
 
 ### 3.2 Worked narratives {#s3-2}
 
 *(Full annotated traces are in [`examples/session-traces.md`](traces.md); [Appendix E](appendices.md#appendix-e) indexes them.)*
 
-- **A browser connects:** WS upgrade with subprotocol `slopsync.v1` → HELLO (identity, token, subscription and publication wishes) → WELCOME (session id, boot id, roles, grants, catalog etag, hub identity, limits) → client's cached etag matches, so it is READY on the spot and downloads nothing → hub pushes retained STATE for every granted channel → client reaches LIVE and renders, entirely from device truth.
+- **A browser connects:** WS upgrade with subprotocol `valence.v1` → HELLO (identity, token, subscription and publication wishes) → WELCOME (session id, boot id, roles, grants, catalog etag, hub identity, limits) → client's cached etag matches, so it is READY on the spot and downloads nothing → hub pushes retained STATE for every granted channel → client reaches LIVE and renders, entirely from device truth.
 - **A remote nudges speed:** INTENT {channel: config-set, value: 420, intent_id: 17} → hub clamps to 400 (its ceiling), applies via the arbiter, bumps `cfg_gen` because the applied value actually changed → ECHO {intent_id: 17, applied: 400, cfg_gen} to the sender → STATE update to *every* subscriber including the sender. Every screen now shows 400. Nobody shows 420, including the remote that asked for it.
 - **The wifi dies mid-stroke:** streaming client vanishes → hub deadman fires at 600 ms → the session is marked `STALE` (RFC-042 — its slot, `session_id` and grants are RETAINED, not torn down) and the streaming source's ownership is released, unconditionally → the machine has no fresh command to execute and settles to rest on its own, latching nothing ([§11.3](safety.md#s11-3)/RFC-045) → `control-owner` updates so any authorized session may claim the source next → if the client's WiFi recovers, a fresh HELLO on the new connection REATTACHES the same session identity ([§6.3](session.md#s6-3)) rather than starting over. Had a hub-autonomous pattern been driving instead, its `source.background_run` setting would have governed (default `false`: the generator stops; `true`: it keeps running, unowned, stoppable only by the role-exempt `stop`/`estop` ops) — either way, nothing latches, and it never depended on any client staying connected.
 - **A new remote is adopted:** the remote has one button and no screen. It knocks (bare PAIR_REQ). The knock appears as protocol state on the pending-pairing channel and as an event; the operator's phone — any `configure` session, not "the WebUI" — approves it at the `control` tier; PAIR_GRANT delivers a token and the hub's public key. From then the remote can verify it is talking to *that* machine.
@@ -213,7 +213,7 @@ Reserved ranges: frame types `0x02` and `0x21–0x3F` spec/core, `0x40–0x7F` f
 
 **Experimental ranges MUST NOT appear in tagged releases.**
 
-Breaking the wire grammar requires a `proto_ver` bump, which requires exceptional justification. The intended lifetime of `slopsync/1` is the lifetime of the hardware.
+Breaking the wire grammar requires a `proto_ver` bump, which requires exceptional justification. The intended lifetime of `valence/1` is the lifetime of the hardware.
 
 ### 4.5 Every refusal is answered {#s4-5}
 

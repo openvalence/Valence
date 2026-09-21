@@ -1,7 +1,7 @@
 ---
 title: Plugin guide
 description: >-
-  How to write an app integration that speaks SlopSync, using a shipped plugin as the worked example.
+  How to write an app integration that speaks Valence, using a shipped plugin as the worked example.
 register: STE
 status: stub
 ---

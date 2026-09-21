@@ -1,7 +1,7 @@
 ---
 title: Catalog schema (CDDL)
 description: >-
-  The normative CDDL definition of the SlopSync channel catalog: channel
+  The normative CDDL definition of the Valence channel catalog: channel
   entries, packed layouts, CBOR schemas, the settings metamodel and store
   descriptors. Appendix C, in full.
 register: IEEE
@@ -46,7 +46,7 @@ the depth budget, which keys are mutually exclusive, and why. Read them.
 ## The schema {#cddl}
 
 ```cddl
-; SlopSync catalog schema (slopsync/1) — NORMATIVE (SPEC.md §8.1, Appendix C)
+; Valence catalog schema (valence/1) — NORMATIVE (SPEC.md §8.1, Appendix C)
 ; The catalog_etag (SPEC.md §8.3) is the first 8 bytes of SHA-256 over the
 ; catalog encoded per the deterministic CBOR profile (SPEC.md §5.3), entries
 ; sorted ascending by id.
@@ -130,7 +130,7 @@ priority  = 0 ; background
 ; populates on every client's next connect, with the label, grouping and
 ; explanation coming from the hub.
 ;
-; SlopSync describes what things ARE, never how they LOOK: no widget hints, no
+; Valence describes what things ARE, never how they LOOK: no widget hints, no
 ; layout, no ordering, no styling, ever. Widget choice is a client-side
 ; function of type + constraints (bool-u8 -> toggle, u8+options -> select,
 ; bitfield8 -> checkbox group, numeric+min/max -> slider, str<N> -> text,
@@ -295,6 +295,6 @@ store-descriptor = {
 
 - [§8 Catalog](catalog.md#s8) — the prose companion, and the etag rules.
 - [Channel catalog reference](../reference/channel-catalog.md) — the
-  SlopDrive-32 catalog that this schema describes, entry by entry.
+  Valence Drive catalog that this schema describes, entry by entry.
 - [Catalog vocabulary](../reference/registry/catalog-vocabulary.md) — the
   generated view of every enumeration named above.

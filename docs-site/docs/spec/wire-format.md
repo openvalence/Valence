@@ -1,7 +1,7 @@
 ---
 title: Wire format
 description: >-
-  SlopSync clause 5: the 8-byte frame header, the deterministic CBOR profile,
+  Valence clause 5: the 8-byte frame header, the deterministic CBOR profile,
   packed data-plane layouts, the ESTOP frame, fragmentation, and parser
   totality.
 register: IEEE
@@ -22,7 +22,7 @@ generated: true
 
 ## 5.1 Frame header {#s5-1}
 
-Every SlopSync frame begins with the same 8 bytes:
+Every Valence frame begins with the same 8 bytes:
 
 ```
 offset  size  field     notes
@@ -33,7 +33,7 @@ offset  size  field     notes
 6       2     len       u16 payload length in bytes (excluding this header)
 ```
 
-One SlopSync frame maps to exactly one transport datagram/message where the binding allows ([§13](transports.md#s13)); `len` makes frames self-delimiting on byte-pipe bindings.
+One Valence frame maps to exactly one transport datagram/message where the binding allows ([§13](transports.md#s13)); `len` makes frames self-delimiting on byte-pipe bindings.
 
 **`max_frame` is header-inclusive**: it bounds `8 + len`. Per-binding defaults are in the registry (`max_frame_ws`, `max_frame_espnow`, `max_frame_ble`, `max_frame_serial`; [Appendix G](appendices.md#appendix-g)). A hub advertises its own value in WELCOME `limits.max_frame` and MAY advertise less than its binding permits; it MUST NOT advertise more. A frame exceeding the negotiated maximum is answered with NACK `FRAME_TOO_LARGE` (if a session exists) and discarded.
 

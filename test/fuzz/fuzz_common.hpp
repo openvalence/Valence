@@ -1,7 +1,7 @@
-// SlopSync fuzz harness — shared skeleton (RFC-028 parser-totality gate).
+// Valence fuzz harness — shared skeleton (RFC-028 parser-totality gate).
 //
 // Every target in this directory is a libFuzzer `LLVMFuzzerTestOneInput` over
-// exactly one DECODE surface of lib/slopsync. The obligation being proven is
+// exactly one DECODE surface of lib/valence. The obligation being proven is
 // RFC-028 §1: any byte string maps to accept-or-reject — never an OOB read,
 // never unbounded allocation/recursion, never UB. The sanitizers (ASan +
 // UBSan with -fno-sanitize-recover) are the oracle; the harness itself only
@@ -29,9 +29,9 @@
 #include <cstring>
 #include <span>
 
-#include "slopsync/slopsync.h"
+#include "valence/valence.h"
 
-namespace slopfuzz {
+namespace valencefuzz {
 
 // A tiny front-consuming byte reader. Everything it returns is well-defined
 // on an exhausted buffer (zeros / empty spans), so no target ever needs a
@@ -111,4 +111,4 @@ inline void sinkF(float f) {
     g_sink = g_sink ^ bits;
 }
 
-}  // namespace slopfuzz
+}  // namespace valencefuzz

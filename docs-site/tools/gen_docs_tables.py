@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the SlopSync documentation site's registry reference pages and the
+"""Generate the Valence documentation site's registry reference pages and the
 Dictionary, from the two sources of truth:
 
     <registry_path>        every wire number (frame types, CBOR keys, NACK
@@ -28,7 +28,7 @@ WHY THIS EXISTS
 
 CONFIGURATION
     Exactly one path reaches outside docs-site/: the registry. It is resolved
-    from docs-site/site.config.yml, overridable by $SLOPSYNC_REGISTRY or
+    from docs-site/site.config.yml, overridable by $VALENCE_REGISTRY or
     --registry. See that file's comments.
 """
 from __future__ import annotations
@@ -57,11 +57,11 @@ GENERATOR_NAME = "docs-site/tools/gen_docs_tables.py"
 
 
 def registry_path() -> Path:
-    """Resolve the registry location: --registry > $SLOPSYNC_REGISTRY > config."""
+    """Resolve the registry location: --registry > $VALENCE_REGISTRY > config."""
     if "--registry" in sys.argv:
         raw = sys.argv[sys.argv.index("--registry") + 1]
-    elif os.environ.get("SLOPSYNC_REGISTRY"):
-        raw = os.environ["SLOPSYNC_REGISTRY"]
+    elif os.environ.get("VALENCE_REGISTRY"):
+        raw = os.environ["VALENCE_REGISTRY"]
     else:
         cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8")) or {}
         raw = cfg.get("registry_path")
@@ -74,7 +74,7 @@ def registry_path() -> Path:
         raise SystemExit(
             f"registry not found: {p}\n"
             f"  Set `registry_path` in {CONFIG} (relative to that file),\n"
-            f"  or export SLOPSYNC_REGISTRY, or pass --registry PATH."
+            f"  or export VALENCE_REGISTRY, or pass --registry PATH."
         )
     return p
 
@@ -262,7 +262,7 @@ def page_index(reg: dict, reg_display: str) -> str:
         p,
         title="Registry reference",
         description=(
-            "Generated index of the SlopSync protocol registry: frame types, "
+            "Generated index of the Valence protocol registry: frame types, "
             "CBOR keys, channels, error codes, limits."
         ),
         register="IEEE",
@@ -270,7 +270,7 @@ def page_index(reg: dict, reg_display: str) -> str:
     banner(p, reg_display)
     m = reg["meta"]
     p("# Registry reference\n\n")
-    p("The registry is the single source of truth for every number SlopSync\n")
+    p("The registry is the single source of truth for every number Valence\n")
     p("puts on the wire. These pages are generated from it. No number on this\n")
     p("site is typed by a human.\n\n")
     p("If a page here disagrees with prose elsewhere, this page wins.\n\n")
@@ -317,7 +317,7 @@ def page_frames(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Frame types",
-                 description="Generated table of every SlopSync frame type byte and header flag.",
+                 description="Generated table of every Valence frame type byte and header flag.",
                  register="IEEE")
     banner(p, reg_display)
     p("# Frame types\n\n")
@@ -418,7 +418,7 @@ def page_cbor_keys(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="CBOR keys",
-                 description="Generated table of the SlopSync control-plane CBOR integer key space and every scoped sub-map key space.",
+                 description="Generated table of the Valence control-plane CBOR integer key space and every scoped sub-map key space.",
                  register="IEEE")
     banner(p, reg_display)
     p("# CBOR keys\n\n")
@@ -579,7 +579,7 @@ def page_safety(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Safety codes",
-                 description="Generated tables of SlopSync safety intent operations and safety cause codes.",
+                 description="Generated tables of Valence safety intent operations and safety cause codes.",
                  register="IEEE")
     banner(p, reg_display)
     p("# Safety codes\n\n")
@@ -614,7 +614,7 @@ def page_pairing(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Pairing modes",
-                 description="Generated table of the SlopSync pairing mode bitmask advertised in WELCOME.",
+                 description="Generated table of the Valence pairing mode bitmask advertised in WELCOME.",
                  register="IEEE")
     banner(p, reg_display)
     p("# Pairing modes\n\n")
@@ -672,7 +672,7 @@ def page_discovery(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Discovery",
-                 description="Generated tables of the SlopSync BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).",
+                 description="Generated tables of the Valence BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).",
                  register="IEEE")
     banner(p, reg_display)
     p("# Discovery\n\n")
@@ -831,7 +831,7 @@ def page_errors(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="NACK codes",
-                 description="Generated table of every SlopSync NACK and GOODBYE reason code, grouped by range.",
+                 description="Generated table of every Valence NACK and GOODBYE reason code, grouped by range.",
                  register="IEEE")
     banner(p, reg_display)
     p("# NACK and GOODBYE codes\n\n")
@@ -868,7 +868,7 @@ def page_limits(reg: dict, reg_display: str, raw: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Limits and defaults",
-                 description="Generated table of SlopSync well-known limits, timeouts, caps and defaults.",
+                 description="Generated table of Valence well-known limits, timeouts, caps and defaults.",
                  register="IEEE")
     banner(p, reg_display)
     p("# Limits and defaults\n\n")
@@ -925,9 +925,9 @@ def build_dictionary(d: dict) -> tuple[str, str, int]:
     p = w.write
     front_matter(
         p,
-        title="The SlopSync Dictionary",
+        title="The Valence Dictionary",
         description=(
-            "Every SlopSync term with exactly one definition: hub, client, session, "
+            "Every Valence term with exactly one definition: hub, client, session, "
             "channel, catalog, etag, grant, shadow, deadman, intent, echo, and the rest."
         ),
         register="STE",
@@ -941,7 +941,7 @@ def build_dictionary(d: dict) -> tuple[str, str, int]:
     p("     can never have two definitions.\n")
     p("     ========================================================== -->\n\n")
 
-    p("# The SlopSync Dictionary\n\n")
+    p("# The Valence Dictionary\n\n")
     p(d["meta"]["intro"].strip() + "\n\n")
 
     # Index of every term, alphabetical, so a reader can land on a word.

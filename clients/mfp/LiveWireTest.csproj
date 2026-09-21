@@ -1,13 +1,13 @@
 <!--
-  Live wire test harness for the SlopSync MFP plugin. Compiles SlopSync.cs
-  standalone (same trick as SlopSync.csproj — MFP dll refs to resolve
+  Live wire test harness for the Valence MFP plugin. Compiles Valence.cs
+  standalone (same trick as Valence.csproj — MFP dll refs to resolve
   PluginBase's WPF-derived base types, FileBasedProgram feature to accept the
   file's leading #: directives) plus LiveWireTest.cs, and links against the
-  plugin's REAL HubClient/SlopWire/CborWriter/CborReader/MdnsDiscovery classes
+  plugin's REAL HubClient/ValenceWire/CborWriter/CborReader/MdnsDiscovery classes
   — no codec is duplicated here (contrast WireSelfTest.cs, which deliberately
   re-implements the codec for a golden-byte comparison).
 
-  This project does NOT instantiate the SlopSync PluginBase itself — it needs
+  This project does NOT instantiate the Valence PluginBase itself — it needs
   the MFP runtime host. It only uses the standalone helper classes.
 
   HintPaths point into the local MFP install; adjust if yours differs:
@@ -28,14 +28,14 @@
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <!-- Matches SlopSync.csproj: accept the plugin file's leading #: directives. -->
+    <!-- Matches Valence.csproj: accept the plugin file's leading #: directives. -->
     <Features>FileBasedProgram</Features>
     <AssemblyName>LiveWireTest</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Compile ONLY the plugin source + this harness — nothing else. -->
-    <Compile Include="SlopSync.cs" />
+    <Compile Include="Valence.cs" />
     <Compile Include="LiveWireTest.cs" />
   </ItemGroup>
 

@@ -13,12 +13,12 @@ trivial. If the conversation concludes in a decision, you offer to capture it
 
 ## The two repos and the flow direction
 
-- SlopSync (spec repo): truth is RATIFIED. `spec/SPEC.md` is normative,
+- Valence (spec repo): truth is RATIFIED. `spec/SPEC.md` is normative,
   `spec/registry/registry.yaml` wins every numeric conflict, changes arrive
   only as RFCs through `spec/RFC-QUEUE.md`.
-- SlopDrive-32 (machine repo, sibling checkout): truth is DISCOVERED. It
-  consumes SlopSync pinned by sha in `slopsync.pin` via
-  `symlink://../SlopSync/lib/slopsync`. Divergence from the pinned spec is
+- Valence Drive (machine repo, sibling checkout): truth is DISCOVERED. It
+  consumes Valence pinned by sha in `valence.pin` via
+  `symlink://../Valence/lib/valence`. Divergence from the pinned spec is
   EXPECTED during development and resolves upstream via RFCs.
 - dev -> spec via RFC; spec -> code via a pin bump. Never spec-edits-to-match-
   code; never code-edits-to-match an unaccepted clause.
@@ -27,11 +27,11 @@ trivial. If the conversation concludes in a decision, you offer to capture it
 
 Every answer states where the decision belongs. The canonical shapes:
 
-- "Prototype freely in SlopDrive, but this changes the wire format, so
+- "Prototype freely in ValenceDrive, but this changes the wire format, so
   shipping means an RFC against the section that owns it. Here is what that
   RFC must argue."
 - "This is machine-specific (channel allocation, task layout, RAM placement):
-  SlopDrive territory, the spec should never learn about it."
+  ValenceDrive territory, the spec should never learn about it."
 - "The spec already promises this (cite section). The implementation is
   behind; that is a dev-board issue, not an RFC."
 - "These sources contradict. That is a flag, not a choice I make silently."
@@ -40,7 +40,7 @@ Every answer states where the decision belongs. The canonical shapes:
 ## Grounding rules
 
 - Ground every protocol claim in SPEC.md or registry.yaml by citation (the
-  slopsync-canon skill has the distilled map). Never invent registry numbers
+  valence-canon skill has the distilled map). Never invent registry numbers
   or clauses; when unsure, read the actual section.
 - Flag conflicts with normative text or Honesty Clauses H1..H12 by citation.
   An idea whose UI story contradicts an honesty clause is non-conformant even

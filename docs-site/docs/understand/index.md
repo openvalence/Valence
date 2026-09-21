@@ -1,11 +1,11 @@
 ---
-title: Understand SlopSync
+title: Understand Valence
 description: >-
-  The why tier: the mental model behind SlopSync, what it does and does not replace, how it fits the existing ecosystem, and what its security actually defends.
+  The why tier: the mental model behind Valence, what it does and does not replace, how it fits the existing ecosystem, and what its security actually defends.
 register: STE
 ---
 
-# Understand SlopSync
+# Understand Valence
 
 This section explains the ideas. It asks for no code, and it shows no wire
 numbers — [Anatomy of a frame](anatomy.md) shows byte *shapes*, and every
@@ -19,7 +19,7 @@ Read [How it works](how-it-works.md) first. Everything else assumes it.
 | [How it works](how-it-works.md) | What is a catalog, a channel, a shadow, an intent? |
 | [Anatomy of a frame](anatomy.md) | What is in a frame, and why are there two payload encodings? |
 | [Capabilities and custom hardware](capabilities.md) | What must my device provide, and what is optional? |
-| [What it replaces](what-it-replaces.md) | What does SlopSync take over, and what does it leave alone? |
+| [What it replaces](what-it-replaces.md) | What does Valence take over, and what does it leave alone? |
 | [Ecosystem and compatibility](ecosystem.md) | How does this fit alongside the firmwares people already run? |
 | [Security model and the audit](security.md) | What is defended, what is not, and what did the fuzzing find? |
 | [For everyone](for-everyone.md) | I just own a machine. What does this mean for me? |

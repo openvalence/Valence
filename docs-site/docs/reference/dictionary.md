@@ -1,6 +1,6 @@
 ---
-title: The SlopSync Dictionary
-description: Every SlopSync term with exactly one definition: hub, client, session, channel, catalog, etag, grant, shadow, deadman, intent, echo, and the rest.
+title: The Valence Dictionary
+description: Every Valence term with exactly one definition: hub, client, session, channel, catalog, etag, grant, shadow, deadman, intent, echo, and the rest.
 register: STE
 generated: true
 ---
@@ -14,7 +14,7 @@ generated: true
      can never have two definitions.
      ========================================================== -->
 
-# The SlopSync Dictionary
+# The Valence Dictionary
 
 One term, one meaning. This page is the vocabulary the specification, the guides and the reference tables all draw from. Where a word appears anywhere on this site, it means what it means here.
 
@@ -28,14 +28,14 @@ The Dictionary keeps industry vocabulary intact. A word like *deadman*, *etag*, 
 
 ## Endpoints and roles
 
-SlopSync has one authority per machine and any number of peers talking to it. These are the words for the parties.
+Valence has one authority per machine and any number of peers talking to it. These are the words for the parties.
 
 ### Hub
 
 **The single authoritative endpoint of one machine.**
 
 The hub owns machine state, the catalog, and every grant. There is
-exactly one hub per machine. On SlopDrive-32 the hub is the ESP32-S3
+exactly one hub per machine. On Valence Drive the hub is the ESP32-S3
 main controller.
 
 The hub is the only party that decides anything. A client asks; the
@@ -200,11 +200,11 @@ See also: [Access level](#access-level), [Pairing](#pairing), [Token](#token) ·
 
 ## The wire
 
-Everything SlopSync sends is a frame. A frame belongs to one of two planes, and the plane decides how its payload is encoded. These are the words the diagrams in Understand use.
+Everything Valence sends is a frame. A frame belongs to one of two planes, and the plane decides how its payload is encoded. These are the words the diagrams in Understand use.
 
 ### Frame
 
-**One SlopSync message, an eight-byte header followed by a payload.**
+**One Valence message, an eight-byte header followed by a payload.**
 
 The header names the frame type, the channel, the sequence number
 and the payload length. Every frame starts this way, so a receiver
@@ -252,7 +252,7 @@ See also: [Control plane](#control-plane), [Layout](#layout), [Packed field type
 **A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.**
 
 CBOR is to binary what JSON is to text: the same shapes, far fewer
-bytes, and no parsing ambiguity. SlopSync restricts it further:
+bytes, and no parsing ambiguity. Valence restricts it further:
 definite lengths, shortest-form integers, sorted keys, binary32
 floats, no tags.
 
@@ -409,7 +409,7 @@ device-defined and the hub supplies the label.
 A category **spans channels**: `user` and `user-2` merge into one
 tab. That is how a category outgrows one 242-byte snapshot.
 
-There is no widget field, deliberately. SlopSync describes what
+There is no widget field, deliberately. Valence describes what
 things are, never how they look.
 
 See also: [Setting flag](#setting-flag), [Setting_key](#setting_key), [Field role](#field-role) · Source: RFC-009
@@ -525,7 +525,7 @@ See also: [State](#state), [Stream](#stream), [Intent](#intent), [Event](#event)
 **A channel class carrying idempotent full snapshots of a coherent group of fields.**
 
 Every STATE frame contains the complete current value of its
-channel. There are no deltas in `slopsync/1`. A delta would make
+channel. There are no deltas in `valence/1`. A delta would make
 frame loss corrupting, which destroys the property the whole design
 leans on.
 
@@ -843,7 +843,7 @@ See also: [Teardown](#teardown), [Shedding](#shedding), [Configure](#configure) 
 
 **A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.**
 
-A TCode edge is not a SlopSync client and receives no SlopSync
+A TCode edge is not a Valence client and receives no Valence
 frames. The hub still wraps it in a session: it appears in the
 roster, it owns its arbiter source, and it carries the deadman its
 existing silence timeout implies.
@@ -890,7 +890,7 @@ See also: [Segment](#segment), [Stream kind](#stream-kind), [Shedding](#shedding
 A segment is not a point on a continuous curve. A dropped segment is
 a permanently lost **command**, not a recoverable interpolation gap.
 
-On SlopDrive-32 one segment becomes one quintic waveform command,
+On Valence Drive one segment becomes one quintic waveform command,
 which is roughly two to four packets per second for a scripted
 session, instead of a dense sample stream.
 
@@ -993,7 +993,7 @@ Nothing else calls the driver. Manual input, transports, the pattern
 engine and remotes all submit intents to the arbiter, which owns
 arbitration, limit-set selection and every safety gate.
 
-SlopSync submits through the arbiter like everything else. The
+Valence submits through the arbiter like everything else. The
 protocol never bypasses the sole-caller rule.
 
 See also: [Active source](#active-source), [Source ownership](#source-ownership) · Source: SPEC
@@ -1343,7 +1343,7 @@ See also: [Pairing](#pairing), [Token](#token), [Control](#control) · Source: R
 
 ## Motion vocabulary
 
-SlopSync carries motion, so it inherits motion words. These are defined here rather than softened, because they are precise and implementers need them.
+Valence carries motion, so it inherits motion words. These are defined here rather than softened, because they are precise and implementers need them.
 
 ### Quintic
 
@@ -1353,7 +1353,7 @@ Matching all three at both ends makes the joins continuous in
 acceleration, so the boundary jerk spikes of a lower-order fit
 disappear.
 
-On SlopDrive-32 each commanded segment becomes exactly one quintic
+On Valence Drive each commanded segment becomes exactly one quintic
 over the commanded duration, which reproduces the sender's own
 spline rather than approximating it with a stretched
 accelerate-cruise-decelerate profile.
@@ -1478,11 +1478,11 @@ See also: [Waveform](#waveform), [Chase](#chase), [Event](#event), [Clamp](#clam
 
 Three programs do the work nobody should do by hand: prove a hub, pretend to be a machine, and show what the motion actually did.
 
-### SlopScope
+### Valence Trace
 
 **The motion-pipeline oscilloscope, which graphs asked against planned against achieved.**
 
-SlopScope subscribes at the [watch](#watch) tier and nothing else. It
+Valence Trace subscribes at the [watch](#watch) tier and nothing else. It
 sends no [intent](#intent), publishes no [stream](#stream), and
 carries no publish wish. It is structurally unable to command motion.
 
@@ -1507,7 +1507,7 @@ So a trace stays interpretable months later, against a firmware that
 has since changed, and rendering it is a pure offline function of the
 file. A trace on a bug report is evidence, not an anecdote.
 
-See also: [SlopScope](#slopscope), [Etag](#etag), [Limit set](#limit-set) · Source: Roadmap
+See also: [Valence Trace](#valence-trace), [Etag](#etag), [Limit set](#limit-set) · Source: Roadmap
 { .ss-termmeta }
 
 ### Probe
@@ -1536,7 +1536,7 @@ Its actuator is the honest exception: an ideal follower with no step
 quantization, current limit, encoder lag or compliance. Trust it for
 protocol, planning and shaping. Confirm tracking numbers on hardware.
 
-See also: [Probe](#probe), [SlopScope](#slopscope), [In-process binding](#in-process-binding) · Source: Roadmap
+See also: [Probe](#probe), [Valence Trace](#valence-trace), [In-process binding](#in-process-binding) · Source: Roadmap
 { .ss-termmeta }
 
 ## Specification and process
@@ -1545,7 +1545,7 @@ The specification is the product. The library is its reference implementation. T
 
 ### Registry
 
-**The single machine-readable file that decides every number SlopSync puts on the wire.**
+**The single machine-readable file that decides every number Valence puts on the wire.**
 
 Frame types, CBOR keys, NACK codes, channel ids, limits, roles and
 categories all live there. The C++ constants and every table on this
@@ -1609,13 +1609,13 @@ See also: [Conformance profile](#conformance-profile) · Source: RFC-028
 
 ### RFC process
 
-**The way a change to SlopSync is proposed, argued and either bound into the specification or refused.**
+**The way a change to Valence is proposed, argued and either bound into the specification or refused.**
 
 A number is added by a pull request against the registry, and
 appears in the next tagged specification version.
 
 Breaking the wire grammar needs a protocol version bump, which needs
-exceptional justification. The intended lifetime of `slopsync/1` is
+exceptional justification. The intended lifetime of `valence/1` is
 the lifetime of the hardware.
 
 See also: [Registry](#registry), [Errata](#errata) · Source: SPEC

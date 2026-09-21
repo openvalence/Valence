@@ -1,7 +1,7 @@
 ---
 title: JavaScript client guide
 description: >-
-  How to write a SlopSync client in JavaScript.
+  How to write a Valence client in JavaScript.
 register: STE
 status: stub
 ---
@@ -22,7 +22,7 @@ The browser client. Cover `WebSocket` binary frames, the subprotocol, CBOR in th
 
 Source material: `clients/js/`, this repo's own v1.0 reference
 implementation (see the [Quickstart](../quickstart.md#javascript) for a
-worked example), and `tools/slopsync_probe.py` for wire parity.
+worked example), and `tools/valence_probe.py` for wire parity.
 
 > DEMO-CANDIDATE: a live connect-and-subscribe walkthrough in the browser —
 > HELLO to rendered STATE, one frame at a time.

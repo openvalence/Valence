@@ -1,9 +1,9 @@
 /**
- * session.js — SlopSync browser session state machine (read + write plane).
+ * session.js — Valence browser session state machine (read + write plane).
  *
- * Owns ONE WebSocket to ws://<host>:82 (subprotocol slopsync.v1, binary), and
+ * Owns ONE WebSocket to ws://<host>:82 (subprotocol valence.v1, binary), and
  * drives the full v1.0 session choreography that the reference clients
- * (lib/slopsync/.../client/client_impl.hpp, tools/slopsync_probe.py) implement:
+ * (lib/valence/.../client/client_impl.hpp, tools/valence_probe.py) implement:
  *
  *   connect → HELLO [+ cached catalog etag] → WELCOME (session id, roles,
  *             deadman, grants, hub identity, catalog etag)
@@ -139,11 +139,11 @@ function defaultCatalogStore() {
       // Touch it: node defines the global but THROWS on access without
       // --localstorage-file, and a browser in private mode can too. A probe
       // read is the only honest availability test.
-      localStorage.getItem('slopsync.probe');
+      localStorage.getItem('valence.probe');
       return localStorage;
     } catch (e) { return null; }
   })();
-  const keyFor = (host) => 'slopsync.catalog.' + host;
+  const keyFor = (host) => 'valence.catalog.' + host;
   return {
     load(host) {
       if (ls) {
@@ -175,7 +175,7 @@ function defaultCatalogStore() {
 }
 
 /**
- * Create a SlopSync session.
+ * Create a Valence session.
  * @param {Object} opts
  * @param {string} opts.host device host/IP (default 192.168.1.229)
  * @param {number} [opts.port] hub WS port (default 82)
@@ -206,7 +206,7 @@ export function createSession(opts = {}) {
   const host = opts.host || '192.168.1.229';
   const port = opts.port || 82;
   const clientKind = opts.clientKind || 'webui';
-  const clientName = opts.clientName || 'slopsync-js';
+  const clientName = opts.clientName || 'valence-js';
   const instanceId = opts.instanceId || newInstanceId();
   // `token` may be BYTES or a PROVIDER. The provider form exists because the
   // device's /uitoken credential is single-use and short-lived: bytes captured
@@ -570,7 +570,7 @@ export function createSession(opts = {}) {
 
   /**
    * Send a bare PAIR_REQ knock: {instance_id(4): bstr}, nothing else. Mirrors
-   * tools/slopsync_probe.py's build_pair_knock() byte-for-byte.
+   * tools/valence_probe.py's build_pair_knock() byte-for-byte.
    *
    * A bare knock (no `pin_proof`) is mode (a) knock-and-approve or mode (c)
    * push-to-pair — hub_impl.hpp::handleKnock decides which by whether a

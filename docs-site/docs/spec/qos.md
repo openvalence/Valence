@@ -1,7 +1,7 @@
 ---
 title: QoS and congestion
 description: >-
-  SlopSync clause 10: priorities and the never-shed set, the grant model,
+  Valence clause 10: priorities and the never-shed set, the grant model,
   per-binding congestion signals, the normative shedding table, and ingress
   limits.
 register: IEEE

@@ -1,10 +1,10 @@
 // =============================================================================
-// LiveWireTest — exercises the REAL SlopSync.cs protocol classes (HubClient,
-// SlopWire, CborWriter/Reader, MdnsDiscovery, WelcomeInfo) against a live
-// SlopDrive-32 device over its actual WebSocket. This is NOT a codec
+// LiveWireTest — exercises the REAL Valence.cs protocol classes (HubClient,
+// ValenceWire, CborWriter/Reader, MdnsDiscovery, WelcomeInfo) against a live
+// Valence Drive device over its actual WebSocket. This is NOT a codec
 // self-test (see WireSelfTest.cs, which deliberately re-implements the codec
 // to golden-byte-check it) — it links and drives the plugin's own classes,
-// unmodified, exactly as SlopSync.cs's SessionAsync does.
+// unmodified, exactly as Valence.cs's SessionAsync does.
 //
 // Never sends an INTENT frame or any motion command besides the STREAM
 // bundles described below. GET-only against the device's HTTP API.
@@ -46,15 +46,15 @@ internal static class LiveWireTest
         string baseUrl = $"http://{ip}";
 
         Console.WriteLine("=============================================================");
-        Console.WriteLine($" SlopSync LiveWireTest — target {ip}:{port}  mode={(segments ? "SEGMENTS (0x2101)" : "SAMPLES (0x2100)")}");
+        Console.WriteLine($" Valence LiveWireTest — target {ip}:{port}  mode={(segments ? "SEGMENTS (0x2101)" : "SAMPLES (0x2100)")}");
         Console.WriteLine("=============================================================");
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
 
         // ---- SAFETY GATE ----------------------------------------------------
         // On real hardware: /api/status must say unhomed + not e-stopped, or we
-        // refuse to open a socket at all. On slopsim there is no /api/status
-        // (its HTTP facade is capabilities + slopmotion only) and nothing
+        // refuse to open a socket at all. On valencesim there is no /api/status
+        // (its HTTP facade is capabilities + vmotion only) and nothing
         // physical to move, so `sim: true` in /api/capabilities is an explicit
         // waiver. An endpoint we cannot read on a machine that is NOT a
         // declared sim is an ABORT — "unknown machine state" is never a pass.
@@ -79,7 +79,7 @@ internal static class LiveWireTest
                 Console.WriteLine($"ABORT: no /api/status at {baseUrl} ({ex.Message}) and the target does not declare itself a simulator — refusing to stream at an unknown machine state.");
                 return 3;
             }
-            Console.WriteLine("[gate] no /api/status (slopsim) — proceeding on the declared-simulator waiver.");
+            Console.WriteLine("[gate] no /api/status (valencesim) — proceeding on the declared-simulator waiver.");
         }
 
         if (status != null)
@@ -101,9 +101,9 @@ internal static class LiveWireTest
         }
         Console.WriteLine();
 
-        // ---- Baseline /api/slopmotion sync counters --------------------------
+        // ---- Baseline /api/vmotion sync counters --------------------------
         var (baseBundles, baseSamples, baseEnqueued, baseDropped) = await ReadSyncCounters(http, baseUrl);
-        Console.WriteLine("[baseline] /api/slopmotion sync block:");
+        Console.WriteLine("[baseline] /api/vmotion sync block:");
         Console.WriteLine($"    bundles={baseBundles} samples={baseSamples} enqueued={baseEnqueued} dropped={baseDropped}");
         Console.WriteLine();
 
@@ -138,7 +138,7 @@ internal static class LiveWireTest
         // but the motion-input/motion-segment publish wish is refused, which is
         // exactly why every grant assertion below used to read NaN. Mirrors the
         // self-serve rung of the plugin's own AcquireTokenAsync ladder
-        // (SlopSync.cs) — this harness has no PIN box, so it mints fresh every
+        // (Valence.cs) — this harness has no PIN box, so it mints fresh every
         // run instead of trying the paired-token rung first.
         byte[] token16 = await MintUiTokenAsync(http, baseUrl);
         Console.WriteLine(token16 != null
@@ -147,16 +147,16 @@ internal static class LiveWireTest
         Console.WriteLine();
 
         // ---- Session test --------------------------------------------------
-        var instanceId = new byte[SlopWire.InstanceIdBytes];
+        var instanceId = new byte[ValenceWire.InstanceIdBytes];
         RandomNumberGenerator.Fill(instanceId);
 
         using var sessionCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var token = sessionCts.Token;
 
         using var ws = new ClientWebSocket();
-        ws.Options.AddSubProtocol(SlopWire.WsSubprotocol);
+        ws.Options.AddSubProtocol(ValenceWire.WsSubprotocol);
         var uri = new Uri($"ws://{ip}:{port}/");
-        Console.WriteLine($"[ws] connecting to {uri} (subprotocol {SlopWire.WsSubprotocol})...");
+        Console.WriteLine($"[ws] connecting to {uri} (subprotocol {ValenceWire.WsSubprotocol})...");
         await ws.ConnectAsync(uri, token);
         Console.WriteLine("[ws] connected.");
 
@@ -166,8 +166,8 @@ internal static class LiveWireTest
         // byte shape WireSelfTest's HELLO goldens pin.
         var subWishes = new (ushort ch, double rate, byte prio)[]
         {
-            (SlopWire.ChSafety, 0.0, SlopWire.PriorityCritical),
-            (SlopWire.ChMotion, 20.0, SlopWire.PriorityElevated),
+            (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical),
+            (ValenceWire.ChMotion, 20.0, ValenceWire.PriorityElevated),
         };
 
         WelcomeInfo welcome;
@@ -176,19 +176,19 @@ internal static class LiveWireTest
         {
             Console.WriteLine("[hello] subs safety+motion; wishing publish on motion-input (0x2100) @ 50 Hz AND motion-segment (0x2101) @ 10 Hz...");
             welcome = await client.HelloAsync("mfp", "LiveWireTest",
-                new (ushort ch, double rate)[] { (SlopWire.ChMotionInput, 50.0), (SlopWire.ChMotionSegment, 10.0) },
+                new (ushort ch, double rate)[] { (ValenceWire.ChMotionInput, 50.0), (ValenceWire.ChMotionSegment, 10.0) },
                 token16, token, subWishes);
-            segGranted = welcome.GrantedPublishRate(SlopWire.ChMotionSegment);
+            segGranted = welcome.GrantedPublishRate(ValenceWire.ChMotionSegment);
         }
         else
         {
             Console.WriteLine("[hello] subs safety+motion; wishing publish on motion-input (0x2100) @ 50 Hz...");
             welcome = await client.HelloAsync("mfp", "LiveWireTest",
-                new (ushort ch, double rate)[] { (SlopWire.ChMotionInput, 50.0) },
+                new (ushort ch, double rate)[] { (ValenceWire.ChMotionInput, 50.0) },
                 token16, token, subWishes);
         }
-        double granted = welcome.GrantedPublishRate(SlopWire.ChMotionInput);
-        Console.WriteLine($"[welcome] session_id={welcome.SessionId} boot_id=0x{welcome.BootId:X8} etag={SlopCatalog.Hex(welcome.CatalogEtag)} granted motion-input={granted:F1} Hz (wished 50.0)"
+        double granted = welcome.GrantedPublishRate(ValenceWire.ChMotionInput);
+        Console.WriteLine($"[welcome] session_id={welcome.SessionId} boot_id=0x{welcome.BootId:X8} etag={ValenceCatalog.Hex(welcome.CatalogEtag)} granted motion-input={granted:F1} Hz (wished 50.0)"
             + (segments ? $" motion-segment={segGranted:F1} Hz (wished 10.0)" : ""));
         Console.WriteLine();
 
@@ -202,18 +202,18 @@ internal static class LiveWireTest
         var catalogBytes = await client.FetchCatalogAsync(token);
         bool catalogOk = catalogBytes != null;
         bool etagVerified = false;
-        SlopCatalog catalog = null;
+        ValenceCatalog catalog = null;
         if (!catalogOk)
         {
             Console.WriteLine("[ready] FAIL: catalog transfer produced nothing.");
         }
         else
         {
-            var digest = SlopCatalog.Etag(catalogBytes);
-            etagVerified = SlopCatalog.BytesEqual(digest, welcome.CatalogEtag);
-            catalog = SlopCatalog.Decode(catalogBytes);
-            Console.WriteLine($"[ready] catalog {catalogBytes.Length} B, sha256[:8]={SlopCatalog.Hex(digest)} "
-                + (etagVerified ? "VERIFIES against WELCOME" : $"MISMATCH (WELCOME said {SlopCatalog.Hex(welcome.CatalogEtag)})")
+            var digest = ValenceCatalog.Etag(catalogBytes);
+            etagVerified = ValenceCatalog.BytesEqual(digest, welcome.CatalogEtag);
+            catalog = ValenceCatalog.Decode(catalogBytes);
+            Console.WriteLine($"[ready] catalog {catalogBytes.Length} B, sha256[:8]={ValenceCatalog.Hex(digest)} "
+                + (etagVerified ? "VERIFIES against WELCOME" : $"MISMATCH (WELCOME said {ValenceCatalog.Hex(welcome.CatalogEtag)})")
                 + $", decoded {catalog?.Entries.Count ?? 0} channels / {catalog?.RoleCount ?? 0} roles");
             await client.SendCatalogReadyAsync(digest, token);
             Console.WriteLine($"[ready] CATALOG_READY sent — data plane + control plane open.");
@@ -225,10 +225,10 @@ internal static class LiveWireTest
         // knowing this device's channel numbering. Nothing below names 0x0081.
         var roleNames = new[]
         {
-            SlopWire.RoleWindowMin, SlopWire.RoleWindowMax,
-            SlopWire.RoleLimitInputSpeed, SlopWire.RoleLimitInputAccel, SlopWire.RoleLimitInputJerk,
+            ValenceWire.RoleWindowMin, ValenceWire.RoleWindowMax,
+            ValenceWire.RoleLimitInputSpeed, ValenceWire.RoleLimitInputAccel, ValenceWire.RoleLimitInputJerk,
         };
-        var locators = new Dictionary<string, SlopCatalog.RoleLocator>();
+        var locators = new Dictionary<string, ValenceCatalog.RoleLocator>();
         Console.WriteLine("[roles] locating kinematic field_roles in the fetched catalog:");
         foreach (var rn in roleNames)
         {
@@ -245,12 +245,12 @@ internal static class LiveWireTest
         // Mid-session SUBSCRIBE to whatever channel(s) those roles landed on.
         var roleChannels = new List<ushort>();
         foreach (var loc in locators.Values)
-            if (loc.ChannelId != SlopWire.ChSafety && loc.ChannelId != SlopWire.ChMotion && !roleChannels.Contains(loc.ChannelId))
+            if (loc.ChannelId != ValenceWire.ChSafety && loc.ChannelId != ValenceWire.ChMotion && !roleChannels.Contains(loc.ChannelId))
                 roleChannels.Add(loc.ChannelId);
         if (roleChannels.Count > 0)
         {
             Console.WriteLine($"[subscribe] role-located channel(s): {string.Join(", ", roleChannels.ConvertAll(c => $"0x{c:X4}"))} (on-change, normal)");
-            await client.SubscribeAsync(roleChannels.ConvertAll(c => (c, 0.0, SlopWire.PriorityNormal)), token);
+            await client.SubscribeAsync(roleChannels.ConvertAll(c => (c, 0.0, ValenceWire.PriorityNormal)), token);
         }
 
         int nackCount = 0;
@@ -276,14 +276,14 @@ internal static class LiveWireTest
             foreach (var kv in locators)
             {
                 if (kv.Value.ChannelId != channel) continue;
-                double v = SlopCatalog.ReadField(payload, kv.Value.Field);
+                double v = ValenceCatalog.ReadField(payload, kv.Value.Field);
                 if (!double.IsNaN(v)) roleValues[kv.Key] = v;
             }
         }
 
         var recvTask = client.ReceiveLoopAsync(OnNack, OnState, token);
 
-        // ---- CLOCK sync (mirrors SlopSync.cs's ResyncClock: several
+        // ---- CLOCK sync (mirrors Valence.cs's ResyncClock: several
         // exchanges, keep the best-RTT offset) ---------------------------------
         Console.WriteLine("[clock] running 5-exchange sync (keep best RTT)...");
         long bestRtt = long.MaxValue;
@@ -321,13 +321,13 @@ internal static class LiveWireTest
         // and (3) header.seq == intent_id, so a NACK's intent_seq would name
         // the same number the ECHO does (RFC-001).
         bool intentTested = false, intentEchoed = false, intentRestored = false;
-        var wMinLoc = locators.TryGetValue(SlopWire.RoleWindowMin, out var wl) ? wl : null;
-        var wMaxLoc = locators.TryGetValue(SlopWire.RoleWindowMax, out var wh) ? wh : null;
+        var wMinLoc = locators.TryGetValue(ValenceWire.RoleWindowMin, out var wl) ? wl : null;
+        var wMaxLoc = locators.TryGetValue(ValenceWire.RoleWindowMax, out var wh) ? wh : null;
         if (isSim && wMinLoc != null && wMaxLoc != null && wMinLoc.Writable && wMaxLoc.Writable &&
-            roleValues.ContainsKey(SlopWire.RoleWindowMin) && roleValues.ContainsKey(SlopWire.RoleWindowMax))
+            roleValues.ContainsKey(ValenceWire.RoleWindowMin) && roleValues.ContainsKey(ValenceWire.RoleWindowMax))
         {
-            double origMin = roleValues[SlopWire.RoleWindowMin];
-            double origMax = roleValues[SlopWire.RoleWindowMax];
+            double origMin = roleValues[ValenceWire.RoleWindowMin];
+            double origMax = roleValues[ValenceWire.RoleWindowMax];
             double tryMin = origMin + 10.0;
             double tryMax = origMax - 10.0;
 
@@ -347,8 +347,8 @@ internal static class LiveWireTest
                 + $"via channel 0x{wMinLoc.SettingChannel:X4} keys {wMinLoc.SettingKey}/{wMaxLoc.SettingKey} (role-resolved, intent_id=101)");
             await client.SendIntentAsync(wMinLoc.SettingChannel.Value, 101, new (int, byte[])[]
             {
-                (wMinLoc.SettingKey.Value, SlopWire.CborF32(tryMin)),
-                (wMaxLoc.SettingKey.Value, SlopWire.CborF32(tryMax)),
+                (wMinLoc.SettingKey.Value, ValenceWire.CborF32(tryMin)),
+                (wMaxLoc.SettingKey.Value, ValenceWire.CborF32(tryMax)),
             }, token);
             intentTested = true;
             await Task.Delay(600, token);
@@ -357,8 +357,8 @@ internal static class LiveWireTest
             Console.WriteLine($"[intent] restoring window {origMin:F1}/{origMax:F1} (intent_id=102)");
             await client.SendIntentAsync(wMinLoc.SettingChannel.Value, 102, new (int, byte[])[]
             {
-                (wMinLoc.SettingKey.Value, SlopWire.CborF32(origMin)),
-                (wMaxLoc.SettingKey.Value, SlopWire.CborF32(origMax)),
+                (wMinLoc.SettingKey.Value, ValenceWire.CborF32(origMin)),
+                (wMaxLoc.SettingKey.Value, ValenceWire.CborF32(origMax)),
             }, token);
             await Task.Delay(600, token);
             intentRestored = echoes.Exists(e => e.IntentId == 102);
@@ -479,7 +479,7 @@ internal static class LiveWireTest
         long dEnqueued = afterEnqueued - baseEnqueued;
         long dDropped = afterDropped - baseDropped;
 
-        Console.WriteLine("[after] /api/slopmotion sync block:");
+        Console.WriteLine("[after] /api/vmotion sync block:");
         Console.WriteLine($"    bundles={afterBundles} samples={afterSamples} enqueued={afterEnqueued} dropped={afterDropped}");
         Console.WriteLine($"[diff]  bundles={dBundles} samples={dSamples} enqueued={dEnqueued} dropped={dDropped}");
         Console.WriteLine();
@@ -490,7 +490,7 @@ internal static class LiveWireTest
             ("control-tier credential presented (/uitoken)", token16 != null, token16 != null ? "minted" : "NOT minted — HELLO went tokenless"),
             ("granted motion-input rate == 50 Hz", Math.Abs(granted - 50.0) < 0.01, $"granted={granted:F2}"),
             ("catalog fetched over BLOB_REQ/BLOB_CHUNK", catalogOk, catalogOk ? $"{catalogBytes.Length} B" : "no bytes"),
-            ("catalog sha256[:8] == WELCOME catalog_etag", etagVerified, SlopCatalog.Hex(welcome.CatalogEtag)),
+            ("catalog sha256[:8] == WELCOME catalog_etag", etagVerified, ValenceCatalog.Hex(welcome.CatalogEtag)),
             ("catalog decodes to >0 channels", (catalog?.Entries.Count ?? 0) > 0, $"channels={catalog?.Entries.Count ?? 0}"),
             ("all 5 kinematic roles located by role, not channel", rolesFound == 5, $"found={rolesFound}/5"),
             ("role values decoded from STATE", roleValuesRead == rolesFound, $"read={roleValuesRead}/{rolesFound}"),
@@ -521,7 +521,7 @@ internal static class LiveWireTest
         return allPass ? 0 : 1;
     }
 
-    // Minimal mirror of SlopSync.cs's AcquireTokenAsync, mint-only rung (this
+    // Minimal mirror of Valence.cs's AcquireTokenAsync, mint-only rung (this
     // harness has no PIN box to try first). GET /uitoken has no CORS headers by
     // design (RFC-029 §4) — that property only matters to a browser, so a
     // console client just reads the body directly. Rate-limited server-side to
@@ -545,7 +545,7 @@ internal static class LiveWireTest
                 }
                 var j = JObject.Parse(await res.Content.ReadAsStringAsync());
                 var tok = j.Value<string>("token");
-                if (j.Value<bool?>("ok") == true && tok != null && tok.Length == SlopWire.TokenBytes * 2)
+                if (j.Value<bool?>("ok") == true && tok != null && tok.Length == ValenceWire.TokenBytes * 2)
                     return Convert.FromHexString(tok);
                 return null;
             }
@@ -560,7 +560,7 @@ internal static class LiveWireTest
 
     private static async Task<(long bundles, long samples, long enqueued, long dropped)> ReadSyncCounters(HttpClient http, string baseUrl)
     {
-        var body = await http.GetStringAsync($"{baseUrl}/api/slopmotion");
+        var body = await http.GetStringAsync($"{baseUrl}/api/vmotion");
         var obj = JObject.Parse(body);
         var sync = obj["sync"];
         long bundles = sync?.Value<long?>("bundles") ?? 0;

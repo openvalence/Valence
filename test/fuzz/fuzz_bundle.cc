@@ -19,8 +19,8 @@
 // you like, then send bytes that disagree with it).
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if (size < 2) return 0;

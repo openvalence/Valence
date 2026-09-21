@@ -1,5 +1,5 @@
 /**
- * sha256.js — synchronous SHA-256 for SlopSync catalog etag verification (§8.3).
+ * sha256.js — synchronous SHA-256 for Valence catalog etag verification (§8.3).
  *
  * WHY A HAND-ROLLED HASH: the catalog etag is the 8-byte truncated SHA-256 of
  * the exact catalog encoding, and RFC-015's readiness gate requires the client
@@ -13,7 +13,7 @@
  *
  * So: FIPS 180-4 SHA-256, ~70 lines, synchronous, no dependencies. A 2–8 KB
  * catalog hashes in well under a millisecond. Verified in
- * clients/js/test/slopsync-wire.test.mjs against published NIST test vectors AND
+ * clients/js/test/valence-wire.test.mjs against published NIST test vectors AND
  * against node's own crypto.subtle.
  */
 
@@ -83,7 +83,7 @@ export function sha256(bytes) {
 }
 
 /**
- * The SlopSync catalog etag (§8.3): SHA-256 truncated to `limits.etag_bytes`.
+ * The Valence catalog etag (§8.3): SHA-256 truncated to `limits.etag_bytes`.
  * @param {Uint8Array} catalogBytes the exact encoded catalog
  * @param {number} [n] etag length (LIMITS.etag_bytes = 8)
  * @returns {Uint8Array}

@@ -1,4 +1,4 @@
-# SlopSync Worked Session Traces *(informative — [SPEC.md](../SPEC.md) Appendix E)*
+# Valence Worked Session Traces *(informative — [SPEC.md](../SPEC.md) Appendix E)*
 
 Five end-to-end narratives. Every step cites the normative rule it exercises — **a step
 that needs a rule this spec doesn't state is a spec bug** ([SPEC §17.3](../SPEC.md#173-behavioral-checklists)).
@@ -16,7 +16,7 @@ key names.
 > **Spec-core ids (`0x0001–0x007F`) in these traces are real** and are used correctly:
 > `0x0003` safety, `0x0004` control-owner, `0x0005` safety-intents, `0x0007`
 > session-events, `0x000E` safety-events. Current device ids live in
-> SlopDrive-32's CHANNEL-MAP.md (the machine repo, not here).
+> Valence Drive's CHANNEL-MAP.md (the machine repo, not here).
 
 ---
 
@@ -26,7 +26,7 @@ Preconditions: hub LIVE with one pattern running; the client has no cached etag.
 
 | # | Dir | Frame / action | Rule |
 |---|-----|----------------|------|
-| 1 | c→h | WS upgrade, subprotocol `slopsync.v1` | §13.2 |
+| 1 | c→h | WS upgrade, subprotocol `valence.v1` | §13.2 |
 | 2 | c→h | HELLO{proto_ver:1, client_kind:"webui", client_name:"desk", instance_id, subscriptions:[{0x0003,0,3},{0xEE00,60,2},{0xEE05,0,1},{0xEE03,0,1},{0xEE0C,2,1}]} — no token: `watch` | §6.2 |
 | 3 | h→c | WELCOME{session_id, boot_id, catalog_etag, cfg_gen, roles:0, limits, deadman_ms:600, deadman_policy, nonce, grants, identity} | §6.3, §10.2 |
 | 4 | c | etag unknown ⇒ session is **NOT ready**: the hub sends no STATE, no STREAM, and would NACK `NOT_READY` on any intent | §6.4 |
@@ -198,7 +198,7 @@ Preconditions: a remote behind a relay (datagram radio, 30 % loss today); machin
 | 6 | h→* | safety(0x0003) STATE at critical priority: ESTOP bit + cause + seq; `estop_latched` edge on safety-events(0x000E); both traverse the relay's critical queue | §11.2, §10.1, §14.1 |
 | 7 | remote | t≈120 ms: observes safety STATE with ESTOP latched and `estop_seq ≥ 1` ⇒ **stops repeating**; UI shows the latched state | §11.2 (the latch is the ACK) |
 | 8 | any | later: a `control` session sends `estop_clear` on 0x0005 → the hub verifies cause resolved, zero velocity, nothing pending ⇒ clears the latch and emits `estop_cleared`. **Motion still does not start** — clearing only re-arms | §11.2 |
-| 9 | — | had all 20 repeats died (relay dead): the remote surfaces a loud local failure at t≈1 s. The machine-side guarantee is then the deadman on whatever source was streaming, and the **hardware** e-stop path — which SlopSync never claimed to replace | §11.2 H1/H2, §11.5 |
+| 9 | — | had all 20 repeats died (relay dead): the remote surfaces a loud local failure at t≈1 s. The machine-side guarantee is then the deadman on whatever source was streaming, and the **hardware** e-stop path — which Valence never claimed to replace | §11.2 H1/H2, §11.5 |
 
 ```mermaid
 sequenceDiagram
@@ -267,7 +267,7 @@ parse crash, not silent wrongness. And note step 1's omission: everything in §1
 ## See also
 
 - [SPEC.md](../SPEC.md) — the normative rules every step above cites.
-- SlopDrive-32's CHANNEL-MAP.md — current (post-Phase-C4) device channel ids,
+- Valence Drive's CHANNEL-MAP.md — current (post-Phase-C4) device channel ids,
   for anyone tempted to reuse a number from this file's fictitious `0xEE00+`
   range (lives in the machine repo, not here).
 - [RENDERING.md](../RENDERING.md) — how a generic client turns the STATE these traces

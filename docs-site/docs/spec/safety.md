@@ -1,7 +1,7 @@
 ---
 title: Safety
 description: >-
-  SlopSync clause 11: the stop taxonomy and safety snapshot, ESTOP end to end,
+  Valence clause 11: the stop taxonomy and safety snapshot, ESTOP end to end,
   the deadman, control arbitration, and the invariants under partial failure.
 register: IEEE
 generated: true
@@ -49,7 +49,7 @@ They are latched **modes**, not stop edges, and deliberately have no event kind:
 - **Hub obligations:** on first valid ESTOP (CRC-checked), stop motion via the driver's e-stop path **before** any protocol bookkeeping; latch; publish `safety` STATE at critical priority to all subscribers; emit the `estop_latched` edge on the safety-events channel.
 - **Relay obligation:** forward ESTOP ahead of all buffered traffic, immediately, on all attached segments ([§14.2](transports.md#s14-2)) — including *upstream* if relay-originated.
 - **HONESTY CLAUSE (H2) — preemption scope.** "Jumps the queue" is a **per-hop** guarantee: each hop's transmit queue admits ESTOP at the front. It is not magic end-to-end latency — TCP bytes already in flight ahead of it still drain first. Worst-case added latency per binding is declared in [§13.1](transports.md#s13-1).
-- **HONESTY CLAUSE (H1).** The **hardware** e-stop path remains the guarantee of last resort. SlopSync's ESTOP is a software convenience layered above it and MUST NOT be presented to a user as a substitute for it.
+- **HONESTY CLAUSE (H1).** The **hardware** e-stop path remains the guarantee of last resort. Valence's ESTOP is a software convenience layered above it and MUST NOT be presented to a user as a substitute for it.
 - **Clearing:** the `estop_clear` op requires `control`; the hub MUST refuse with `CLEAR_REFUSED` unless (a) the latched cause is resolved (deadman: the lost source is confirmed detached or re-owned; fault: the fault flag is gone), (b) motion is at zero velocity, and (c) no other stop level is pending escalation. **Clearing never restarts motion** — it only re-arms the ability to start. The `estop_cleared` edge says the latch is gone, never that the machine moved.
 - **A hub MUST NOT let a catalog authoring error widen safety authorization.** The `control` floor on `estop_clear` (and on any op whose effect is to re-arm motion) is a hub obligation independent of what the hub's own catalog declares about it. The catalog is the *discovery* surface for per-op access; it is not the only enforcement point for the ops that can start a machine moving again.
 
@@ -69,9 +69,9 @@ The deadman binds to the **active motion source**, not to sessions in general ([
 
 ## 11.4 Control arbitration {#s11-4}
 
-A machine's arbiter assigns priorities *between source types*. SlopSync adds the layer an arbiter cannot provide: arbitration *within* a type.
+A machine's arbiter assigns priorities *between source types*. Valence adds the layer an arbiter cannot provide: arbitration *within* a type.
 
-- **The sole-caller rule is a protocol obligation.** SlopSync sessions submit intents to the machine's motion arbiter, which is the only component permitted to command the driver. A hub that lets any session reach the driver by another path is non-conformant.
+- **The sole-caller rule is a protocol obligation.** Valence sessions submit intents to the machine's motion arbiter, which is the only component permitted to command the driver. A hub that lets any session reach the driver by another path is non-conformant.
 - **Exclusive ownership.** Each source has at most one owning session at a time, published in the `control-owner` STATE channel. The first authorized session to activate a source owns it; a second session's activating intent gets NACK `SOURCE_CONFLICT`.
 - **STREAM channels mapped to a source** participate on the same machinery: the **first accepted bundle** acquires the source, each subsequent accepted bundle refreshes the deadman window ([§6.6](session.md#s6-6): any received frame is proof of life), and a bundle from a non-owner while the source is owned is dropped — with the [§9.2](channels.md#s9-2) `SOURCE_CONFLICT` signal so the producer is not left guessing. Data-plane bundles carry no takeover flag; a would-be taker acquires through an intent.
 - **TAKEOVER:** re-issuing the activating intent with `takeover: true` (32) transfers ownership if the requester's tier ≥ the owner's. The hub emits a takeover EVENT and a `control-owner` STATE update; the dispossessed session's UI MUST reflect loss of control immediately — it is subscribed to the same channel as everyone else, so this requires no message addressed to it. Takeover *between* source types remains the arbiter's existing priority logic, unchanged.

@@ -1,5 +1,5 @@
 /**
- * frames.js — SlopSync 8-byte frame header + the wire numbers the registry does
+ * frames.js — Valence 8-byte frame header + the wire numbers the registry does
  * not own.
  *
  * Every registry-defined vocabulary is RE-EXPORTED from generated/registry_vocab.js
@@ -90,7 +90,7 @@ export const CH_PAIRED_DEVICES = CORE_CHANNEL.paired_devices;
 export const CH_PAIRED_DEVICES_ROSTER = CORE_CHANNEL.paired_devices_roster;
 export const CH_SAFETY_EVENTS = CORE_CHANNEL.safety_events;
 
-// ---- Device channel ids (include/comms/SlopSyncCatalog.h ch::) -------------
+// ---- Device channel ids (include/comms/ValenceCatalog.h ch::) -------------
 // RFC-047 "Phase C2" renumbered these onto the new grid (Jul 2026). Values
 // below are current; see the RFC for the old->new table if you need history.
 export const CH_MOTION = 0x1100; // ch::motion (STATE)
@@ -101,7 +101,7 @@ export const CH_MOTION_INPUT = 0x2100; // ch::motion_input (STREAM c2h)
 export const CH_MOTION_SEGMENT = 0x2101; // ch::motion_segment (STREAM c2h)
 export const CH_PLAN_STRIP = 0x1110; // ch::plan_strip (STATE, 45 Hz diagnostics)
 export const CH_POWER = 0x1010; // ch::power (STATE, only when the hardware exists)
-export const CH_MOTION_DIAG = 0x1111; // ch::motion_diag (STATE, slopmotion counters)
+export const CH_MOTION_DIAG = 0x1111; // ch::motion_diag (STATE, vmotion counters)
 export const CH_MOTION_ANOMALY = 0x4100; // ch::motion_anomaly (EVENT)
 // M5b: the four MODE settings the legacy :81/HTTP plane owned. A separate
 // category from 0x1000 because that channel's RFC-009 enabled_mask is a
@@ -122,7 +122,7 @@ export const CH_MODES_SET = 0x3030; // ch::modes_set (INTENT)
  */
 export const SAFETY_OP_ROLE_EXEMPT = new Set([SAFETY_OP.stop, SAFETY_OP.estop]);
 
-// ---- Home intent ops (SlopSyncCatalog.h 0x3101) ----------------------------
+// ---- Home intent ops (ValenceCatalog.h 0x3101) ----------------------------
 // A DEVICE channel's op numbering, not a registry vocabulary — a different hub
 // may number its homing ops differently and still conform.
 export const HOME_OP = { home: 1, force_home: 2, clear_override: 3 };

@@ -1,6 +1,6 @@
-# SlopSync Authoring — you want X on screen, so you author Y
+# Valence Authoring — you want X on screen, so you author Y
 
-**Protocol:** `slopsync/1`
+**Protocol:** `valence/1`
 **Status:** Informative quickstart. Nothing here is new law — every row below
 POINTS at the clause that owns the fact ([`RENDERING.md`](RENDERING.md),
 [`SPEC.md`](SPEC.md), [`registry/registry.yaml`](registry/registry.yaml)).
@@ -195,11 +195,11 @@ statically known — conformance tooling flags it, SPEC §9.1).
 
 ## 8. Verify your work
 
-- [`tools/slopsync_lint.py`](../tools/slopsync_lint.py) — spec/registry
+- [`tools/valence_lint.py`](../tools/valence_lint.py) — spec/registry
   consistency (this repo).
 - [`tools/gen_registry_header.py`](../tools/gen_registry_header.py)
   `--check` — generated vocabularies in sync with the registry.
-- `tools/catalog_lint.py` (machine repo, SlopDrive-32) — the shipped
+- `tools/catalog_lint.py` (machine repo, Valence Drive) — the shipped
   catalog's annotation coverage.
 - The reference hub pins its catalog etag in a native test; an unintended
   wire change fails the build before it ships.

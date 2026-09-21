@@ -1,12 +1,12 @@
-SlopSync
+Valence
 
-"SlopSync" names a specific protocol: the one defined in spec/SPEC.md and the
+"Valence" names a specific protocol: the one defined in spec/SPEC.md and the
 registry it points to. The code (MIT) and the spec text (CC-BY 4.0) are
 freely reusable — copy them, adapt them, ship them.
 
 The name is reserved for implementations that actually speak the protocol.
-Please don't call something "SlopSync" (or something confusingly close to
-it) if it doesn't conform to spec/SPEC.md — call it "SlopSync-inspired" or
+Please don't call something "Valence" (or something confusingly close to
+it) if it doesn't conform to spec/SPEC.md — call it "Valence-inspired" or
 name it something else. This keeps the name meaning one thing to anyone who
 hears it.
 

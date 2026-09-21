@@ -10,8 +10,8 @@
 
 export const PROTO_VER = 1;
 export const HEADER_BYTES = 8;
-export const WS_SUBPROTOCOL = 'slopsync.v1';
-export const MDNS_SERVICE = '_slopsync._tcp';
+export const WS_SUBPROTOCOL = 'valence.v1';
+export const MDNS_SERVICE = '_valence._tcp';
 
 // ---- frame_types ---------------------------------------------------
 export const FRAME = {
@@ -305,7 +305,7 @@ export const PROBE_RESULT_K = {
 
 // ---- identity_keys -------------------------------------------------
 export const IDENTITY_K = {
-  product: 1,  // tstr: product/model identifier, e.g. 'slopdrive-32' (<=32 B)
+  product: 1,  // tstr: product/model identifier, e.g. 'valence-drive' (<=32 B)
   fw_version: 2,  // tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made
   hub_name: 3,  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where
   info: 4,  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr;
@@ -444,12 +444,12 @@ export const SAFETY_EVENT_KIND_NAME = {
 
 // ---- log_levels ----------------------------------------------------
 export const LOG_LEVEL = {
-  trace: 0,  // sloplog::Level::Trace (SLOGT)
-  debug: 1,  // sloplog::Level::Debug (SLOGD)
-  info: 2,  // sloplog::Level::Info (SLOGI)
-  warn: 3,  // sloplog::Level::Warn (SLOGW)
-  error: 4,  // sloplog::Level::Error (SLOGE)
-  fatal: 5,  // sloplog::Level::Fatal (SLOGF)
+  trace: 0,  // vlog::Level::Trace (SLOGT)
+  debug: 1,  // vlog::Level::Debug (SLOGD)
+  info: 2,  // vlog::Level::Info (SLOGI)
+  warn: 3,  // vlog::Level::Warn (SLOGW)
+  error: 4,  // vlog::Level::Error (SLOGE)
+  fatal: 5,  // vlog::Level::Fatal (SLOGF)
 };
 export const LOG_LEVEL_NAME = {
   0: 'trace',
@@ -1037,6 +1037,6 @@ export const LIMITS = {
   hub_sig_timeout_ms: 3000,
   auth_attempts_max: 3,
   log_replay_depth_default: 32,
-  ws_subprotocol: 'slopsync.v1',
-  mdns_service: '_slopsync._tcp',
+  ws_subprotocol: 'valence.v1',
+  mdns_service: '_valence._tcp',
 };

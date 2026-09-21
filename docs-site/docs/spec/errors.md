@@ -1,8 +1,8 @@
 ---
 title: Errors and diagnostics
 description: >-
-  SlopSync clause 16: the NACK and GOODBYE code taxonomy, and the
-  observability channels a hub exposes about itself.
+  Valence clause 16: the NACK and GOODBYE code taxonomy, and the observability
+  channels a hub exposes about itself.
 register: IEEE
 generated: true
 ---

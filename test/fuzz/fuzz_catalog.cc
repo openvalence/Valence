@@ -2,7 +2,7 @@
 // CLIENT-side surface.
 //
 // RFC-028's asymmetry point: a client that auto-connects to a discovered
-// `_slopsync._tcp` beacon parses whatever catalog that hub sends, and the
+// `_valence._tcp` beacon parses whatever catalog that hub sends, and the
 // catalog is the fattest parse surface in the protocol — nested maps four
 // deep, a dozen variable-length string keys per field, index-aligned pools
 // (bit labels, option labels, option_access), STORE descriptors, and the
@@ -20,8 +20,8 @@
 // state is a memory-safety bug that only fires downstream.
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 static Catalog32 g_cat;
 static std::array<std::byte, 64 * 1024> g_reencode;

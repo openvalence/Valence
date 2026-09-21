@@ -1,0 +1,15 @@
+{
+  "name": "valence",
+  "version": "0.1.0",
+  "description": "Valence protocol reference implementation (valence/1): hub-and-spoke device-shadow sync with capability negotiation. Hardware-free, zero-dependency C++20. Spec: spec/SPEC.md",
+  "keywords": ["protocol", "device-shadow", "state-sync", "valence"],
+  "license": "MIT",
+  "frameworks": "*",
+  "platforms": "*",
+  "headers": "valence/valence.h",
+  "build": {
+    "includeDir": "include",
+    "srcDir": "src",
+    "flags": ["-std=gnu++2b"]
+  }
+}

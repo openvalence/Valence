@@ -12,8 +12,8 @@
 //            (the classic "length field says 2^64-1" case lives here).
 #include "fuzz_common.hpp"
 
-using namespace slopsync;
-using namespace slopfuzz;
+using namespace valence;
+using namespace valencefuzz;
 
 static void walkGeneric(std::span<const std::byte> in) {
     CborReader r(in);

@@ -1,7 +1,7 @@
 ---
 title: Security and trust
 description: >-
-  SlopSync clause 12: threat model, access tiers, pairing ceremonies, token
+  Valence clause 12: threat model, access tiers, pairing ceremonies, token
   presentation, hub authenticity, the trust ledger, and the administration
   surface.
 register: IEEE
@@ -36,7 +36,7 @@ On this product category, **unauthorized control is a physical-safety issue**, a
 
 The ruling that shapes every choice below: **optimize against automatable mass vectors; accept the ceiling on individually-targeted LAN-resident attackers.**
 
-**Deployment commandment (normative):** the SlopSync port MUST NOT be exposed to the wider internet. LAN-first is a security property of this design, not an accident of it.
+**Deployment commandment (normative):** the Valence port MUST NOT be exposed to the wider internet. LAN-first is a security property of this design, not an accident of it.
 
 ## 12.2 Access tiers {#s12-2}
 
@@ -156,7 +156,7 @@ Each item is a CBOR map from the registered `trust_ledger_keys` grammar ([§8.7]
 - **HONESTY CLAUSE (H6):** the version is **self-reported**. This is a **tripwire, not attestation**: it catches an honest update and nothing else. A deliberately malicious update lies about its version and keeps its token. The real bounds on a hostile client are tier scoping, instant revocation, roster visibility, and the role-exempt safety ops. **A UI MUST NOT imply this is attestation.**
 - **HONESTY CLAUSE (H7):** a device that reports **no** version can never trip the wire. This is a real gap, stated rather than hidden.
 
-**The symmetric signal.** A change in the hub's own `fw_version` ([§6.3](session.md#s6-3)) SHOULD be surfaced by clients ("this machine updated to X.Y.Z"), and clients MAY gate `configure`-tier actions on user acknowledgment afterwards. Hub code changes only through the OTA plane, which is outside SlopSync trust by [§12.2](#s12-2) — so a `configure`-tier compromise cannot flash firmware. A hostile hub's ceiling against a conforming client is **well-formed lies**, which is exactly the bound [§5.8-5](wire-format.md#s5-8) sets and the reason it is symmetric.
+**The symmetric signal.** A change in the hub's own `fw_version` ([§6.3](session.md#s6-3)) SHOULD be surfaced by clients ("this machine updated to X.Y.Z"), and clients MAY gate `configure`-tier actions on user acknowledgment afterwards. Hub code changes only through the OTA plane, which is outside Valence trust by [§12.2](#s12-2) — so a `configure`-tier compromise cannot flash firmware. A hostile hub's ceiling against a conforming client is **well-formed lies**, which is exactly the bound [§5.8-5](wire-format.md#s5-8) sets and the reason it is symmetric.
 
 ## 12.7 The administration surface {#s12-7}
 
