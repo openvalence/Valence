@@ -1,4 +1,4 @@
-# Valence — MultiFunPlayer plugin
+# Valence Connect — the MultiFunPlayer plugin
 
 Streams a [MultiFunPlayer](https://github.com/Yoooi0/MultiFunPlayer) (MFP) axis to a
 **Nucleus** machine over its native **Valence** protocol — the device-shadow +
@@ -27,12 +27,12 @@ selected by the **Mode** setting:
 MFP compiles plugins itself (Roslyn, at runtime) — you do **not** build anything to
 install this.
 
-1. Create a folder `Valence` under your MFP `Plugins` directory:
-   `…\MultiFunPlayer\Plugins\Valence\`
-2. Copy **`Valence.cs`** and **`Valence.xaml`** into it.
+1. Create a folder `ValenceConnect` under your MFP `Plugins` directory:
+   `…\MultiFunPlayer\Plugins\ValenceConnect\`
+2. Copy **`ValenceConnect.cs`** and **`ValenceConnect.xaml`** into it.
 3. Start MFP. The plugin appears in the plugin list; open its tab.
 
-Only those two files ship. `Valence.csproj`, `WireSelfTest.cs`/`.csproj`, and
+Only those two files ship. `ValenceConnect.csproj`, `WireSelfTest.cs`/`.csproj`, and
 `LiveWireTest.cs`/`.csproj` are dev-only (compile-check, golden-byte self-test, and
 live device wire test) and must **not** be copied into the Plugins folder.
 
@@ -48,7 +48,7 @@ live device wire test) and must **not** be copied into the Plugins folder.
    (`Samples` or `Segments` — see below). Mode is locked while connected.
 3. Press the **▶ toolbar button** to connect. It streams until you press it again
    (which shows as ■). Connect/disconnect is also bindable from MFP's **Shortcuts** as
-   `Valence::Connection::Toggle` / `::Connect` / `::Disconnect` (mirroring a native
+   `ValenceConnect::Connection::Toggle` / `::Connect` / `::Disconnect` (mirroring a native
    output target's action naming; Connect/Disconnect are idempotent).
 
 ### The panel
@@ -68,8 +68,8 @@ machine stops receiving for the length of the reconnect and its deadman covers t
 so it is safe, but it *is* a visible interruption mid-scene.
 
 * **LIVE** (always visible) — granted rate, session, uptime, bundles/segments, STATE
-  count, NACK + rate-limited counts, clock offset/RTT, and the Segments-mode divergence
-  warning.
+  count, NACK + rate-limited counts, clock offset/RTT, the **lag** row (see *The lag
+  meter* below), and the Segments-mode divergence warning.
 * **THE RAIL** — the machine's travel drawn to scale, with the stroke window on it and
   three markers. The colors are the machine's own WebUI language:
   * **blue (`reality`)** — the **measured carriage position**, plus the window band. This
@@ -138,6 +138,40 @@ output against its own script prediction once a second, and if they diverge pers
 it surfaces a warning in the LIVE panel — it keeps streaming the authored script (it
 never silently switches modes), but the warning is your cue to use Samples mode for that
 axis. Live-driven axes and heavy motion-provider setups belong on Samples.
+
+### The lag meter
+
+The **Lag** row in LIVE answers the question this plugin could not answer before:
+*how far behind the timeline MFP meant is the machine actually moving?* It reads
+`+18 ms · amp 1.00`, or `idle` while nothing is moving enough to measure.
+
+It is the only instrument that can answer it, because it is the only place that
+knows both halves: the **intended hub time** of every segment it sent (the
+segment's END: `t_base + t_off + duration`; for Samples mode, the sample's own
+stamp) and the **rendered position** coming back on the motion STATE channel,
+mapped onto the stroke window the same way a target is mapped onto it. Both
+series are stamped in **hub microseconds** through the clock offset the plugin
+already maintains, so there is one time base and no second clock to agree with.
+
+Once a second it resamples the last ~3 s of both series onto a 10 ms grid and
+finds the shift in ±300 ms (5 ms steps) that maximizes their cross-correlation.
+Positive means the rendered motion arrives *after* it was intended. The
+amplitude ratio beside it is the least-squares gain of rendered against intended
+at that shift -- below 1.0 means the machine is not reaching the full stroke it
+was asked for. Cross-correlation rather than a sine fit is what makes it
+**arbitrary-script-safe**: it reads a real funscript as well as a bench sine.
+
+**It is a METER, never a controller.** Nothing it produces reaches the
+scheduler, the lookahead, or your sync offset. Setting that offset stays your
+call -- showing you the true number is the entire point. It also logs at INFO
+once every 10 s.
+
+Next to it, `hub:` is the hub's OWN declared scheduling latency. It reads `n/a`
+today: [RFC-059](../../spec/RFC-QUEUE.md) proposes `schedule_latency_us` on the
+`granted_publishes` entry and is still a draft, so no hub can send it and this
+plugin will not invent the key.
+
+---
 
 ---
 
@@ -276,9 +310,9 @@ processing). The limits are shown to the operator. Full stop.
 
 ### Compile check
 ```
-dotnet build clients/mfp/Valence.csproj
+dotnet build clients/mfp/ValenceConnect.csproj
 ```
-`Valence.csproj` is a dev-only project that compiles `Valence.cs` standalone against a
+`ValenceConnect.csproj` is a dev-only project that compiles `ValenceConnect.cs` standalone against a
 local MFP install. **Edit its `HintPath`s** if your MFP is not at
 `C:\Users\Atlan\Downloads\MultiFunPlayer-1.34.5-patreon-SelfContained.10.0.300\`.
 It needs the `net10.0` SDK. The `#:` directives at the top of the plugin are legal because
@@ -292,7 +326,7 @@ dotnet run --project clients/mfp/WireSelfTest.csproj
 Byte-compares the C# encoder against hex derived by running `valence_probe.py`'s own
 CBOR primitives (HELLO in five shapes, CLOCK, STREAM/SEGMENT bundles, SUBSCRIBE, GOODBYE,
 BLOB_REQ, CATALOG_READY, BLOB_CHUNK header decode, INTENT + frame seq). Exits 0 on
-all-pass. The codec in `WireSelfTest.cs` is a deliberate copy of `Valence.cs`'s — if you
+all-pass. The codec in `WireSelfTest.cs` is a deliberate copy of `ValenceConnect.cs`'s — if you
 change one, mirror the other and re-run.
 
 **The HELLO goldens moved at v1.0 and that coupling is intentional.** Adding RFC-006's
@@ -309,7 +343,7 @@ against real hardware, see the safety gate note below.
 ```
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 82
 ```
-Compiles `Valence.cs` itself (the plugin's real codec/client/catalog/discovery classes —
+Compiles `ValenceConnect.cs` itself (the plugin's real codec/client/catalog/discovery classes —
 no copies) into a console harness and runs the full session: mDNS discovery,
 HELLO→WELCOME publish grant, **BLOB_REQ catalog fetch + local SHA-256 verify +
 CATALOG_READY**, **RFC-006(b) role lookup and live role-value decode**, CLOCK sync, a
@@ -327,6 +361,18 @@ on `sim`; the Home intent is never sent by this harness at all.
 **Run it TWICE back-to-back without restarting the target.** That is the
 source-ownership-release regression check, and it exists because a real field bug hid for
 months behind deploys that rebooted between runs (fw ≥ 2.1.44).
+
+Pass `--lag-selftest` to check the `LagMeter`'s correlation math against a known
+40 ms shift and 0.80 gain -- no hardware, no network, no socket opened.
+
+Pass `--lag` for the **lag-meter live check**: it force-homes (home op 2 with a
+stroke) and config-sets a 0..50 mm window through the role-resolved config channel,
+then streams a 0.8 Hz sine for 14 s as 100 ms segments scheduled 120 ms ahead -- the
+plugin's own shape -- feeding the plugin's own `LagMeter` from both ends and printing
+it once a second. **This mode deliberately MOVES the machine** (a lag meter pointed
+at a parked machine measures nothing), so it does not take the unhomed safety gate
+above. Cross-check it against Nucleus's `tools/lag_probe.py --segments --force-home
+50 --window 0 50`, which measures the same quantity by a sine fit.
 
 Pass `--segments` to exercise the `0x2101` path instead (was `0x0085`): it wishes both channels,
 requires the segment grant, and sends 5 timed segments over ~5 s (alternating target

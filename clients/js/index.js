@@ -2,7 +2,7 @@
  * valence-js — browser-side Valence client core (wire + session layer).
  *
  * This is the THIRD reference client of the Valence protocol (after
- * tools/valence_probe.py and clients/mfp/Valence.cs). It speaks a hub's
+ * tools/valence_probe.py and clients/mfp/ValenceConnect.cs). It speaks a hub's
  * native plane — ws://<host>:<port>, subprotocol 'valence.v1', 8-byte LE
  * frame header + deterministic CBOR (SPEC §5.3). Nucleus's WebUI
  * refactor (its own docs/REFACTOR-ROADMAP.md §5, machine repo, not here)

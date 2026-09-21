@@ -7,7 +7,7 @@
  * simple values beyond false/true/null.
  *
  * This is a direct port of the encoder/decoder shape in
- * clients/mfp/Valence.cs (CborWriter/CborReader) and
+ * clients/mfp/ValenceConnect.cs (CborWriter/CborReader) and
  * tools/valence_probe.py (cb_* / cb_decode). Golden-byte verified against
  * WireSelfTest.cs — do NOT "optimize" the byte layout, it is wire-visible.
  *

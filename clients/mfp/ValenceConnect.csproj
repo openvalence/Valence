@@ -1,8 +1,8 @@
 <!--
-  DEV-ONLY compile-check project for the Valence MFP plugin. It is NOT how the
-  plugin is deployed — MFP compiles Valence.cs itself via Roslyn at runtime
+  DEV-ONLY compile-check project for the Valence Connect MFP plugin. It is NOT how the
+  plugin is deployed — MFP compiles ValenceConnect.cs itself via Roslyn at runtime
   (see README). This project exists only to catch compile errors and give an IDE
-  Intellisense. It compiles Valence.cs standalone (the .xaml view and the
+  Intellisense. It compiles ValenceConnect.cs standalone (the .xaml view and the
   WireSelfTest.cs harness are excluded).
 
   HintPaths point into the local MFP install; adjust if yours differs:
@@ -23,14 +23,14 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <!-- MFP compiles the plugin in file-based-program mode (that is how the #: directives
-         at the top of Valence.cs are legal). Match it so this compile-check accepts them. -->
+         at the top of ValenceConnect.cs are legal). Match it so this compile-check accepts them. -->
     <Features>FileBasedProgram</Features>
     <!-- MFP feeds Roslyn its own usings; this project uses the file's explicit usings. -->
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Compile ONLY the plugin source; the .xaml is not a build input here. -->
-    <Compile Include="Valence.cs" />
+    <Compile Include="ValenceConnect.cs" />
   </ItemGroup>
 
   <ItemGroup>

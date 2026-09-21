@@ -1,6 +1,6 @@
 <!--
-  Live wire test harness for the Valence MFP plugin. Compiles Valence.cs
-  standalone (same trick as Valence.csproj — MFP dll refs to resolve
+  Live wire test harness for the Valence Connect MFP plugin. Compiles ValenceConnect.cs
+  standalone (same trick as ValenceConnect.csproj — MFP dll refs to resolve
   PluginBase's WPF-derived base types, FileBasedProgram feature to accept the
   file's leading #: directives) plus LiveWireTest.cs, and links against the
   plugin's REAL HubClient/ValenceWire/CborWriter/CborReader/MdnsDiscovery classes
@@ -28,14 +28,14 @@
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <!-- Matches Valence.csproj: accept the plugin file's leading #: directives. -->
+    <!-- Matches ValenceConnect.csproj: accept the plugin file's leading #: directives. -->
     <Features>FileBasedProgram</Features>
     <AssemblyName>LiveWireTest</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Compile ONLY the plugin source + this harness — nothing else. -->
-    <Compile Include="Valence.cs" />
+    <Compile Include="ValenceConnect.cs" />
     <Compile Include="LiveWireTest.cs" />
   </ItemGroup>
 

@@ -19,7 +19,7 @@ Full scope, non-goals, and design philosophy: [`spec/SPEC.md`](spec/SPEC.md)
 | `spec/` | The protocol specification: `SPEC.md` (normative), `RENDERING.md` (UI/rendering constitution), `CHANNEL-GRID.md` (the 0xCDSS channel-space convention), `RFC-QUEUE.md` (change history), `registry/registry.yaml` (single source of truth for every wire number), `schema/`, `vectors/`, `examples/`, `reviews/` |
 | `lib/valence/` | The reference C++20 implementation: header-only, hardware-free, zero external dependencies |
 | `clients/js/` | The JavaScript reference client |
-| `clients/mfp/` | The Multi Function Player (MFP) reference client plugin |
+| `clients/mfp/` | Valence Connect, the Multi Function Player (MFP) reference client plugin |
 | `hub/bench/` | Valence Bench, a machine-agnostic reference hub for exercising the protocol without hardware |
 | `tools/` | Verification and authoring tools: `valence_probe.py` (wire-level conformance probe), `valence_trace.py`, `valence_soak.py`, `gen_registry_header.py`, `valence_lint.py` |
 | `test/` | The native conformance suite (`test/native/test_valence_*`) and the fuzz gate (`test/fuzz/`) |

@@ -1,13 +1,18 @@
 // =============================================================================
-// LiveWireTest — exercises the REAL Valence.cs protocol classes (HubClient,
+// LiveWireTest — exercises the REAL ValenceConnect.cs protocol classes (HubClient,
 // ValenceWire, CborWriter/Reader, MdnsDiscovery, WelcomeInfo) against a live
 // Nucleus device over its actual WebSocket. This is NOT a codec
 // self-test (see WireSelfTest.cs, which deliberately re-implements the codec
 // to golden-byte-check it) — it links and drives the plugin's own classes,
-// unmodified, exactly as Valence.cs's SessionAsync does.
+// unmodified, exactly as ValenceConnect.cs's SessionAsync does.
 //
-// Never sends an INTENT frame or any motion command besides the STREAM
-// bundles described below. GET-only against the device's HTTP API.
+// The DEFAULT run never sends an INTENT frame or any motion command besides the
+// STREAM bundles described below, and is GET-only against the device's HTTP API.
+// Two extra modes have their own contracts, stated at their own entry points:
+//   --lag          live check of the plugin's LagMeter. DELIBERATELY MOVES THE
+//                  MACHINE (force-home + window config-set + 14 s of sine).
+//   --lag-selftest the LagMeter's math against a known shift. No hardware, no
+//                  network, no socket opened at all.
 //
 // Run:  dotnet run --project clients/mfp/LiveWireTest.csproj [ip] [port]
 // Exit 0 only if every hard PASS criterion below is met.
@@ -44,6 +49,15 @@ internal static class LiveWireTest
         string ip = pos.Length > 0 ? pos[0] : "192.168.1.229";
         int port = pos.Length > 1 ? int.Parse(pos[1]) : 82;
         string baseUrl = $"http://{ip}";
+
+        // --lag is a DIFFERENT test with a different contract: it deliberately
+        // MOVES the machine, because a lag meter pointed at a machine that is
+        // not moving measures nothing. It therefore shares neither the wire-
+        // shape assertions nor the unhomed safety gate below, and lives apart.
+        if (Array.Exists(args, a => a == "--lag-selftest"))
+            return LagSelfTest();
+        if (Array.Exists(args, a => a == "--lag"))
+            return await LagModeAsync(ip, port);
 
         Console.WriteLine("=============================================================");
         Console.WriteLine($" Valence LiveWireTest — target {ip}:{port}  mode={(segments ? "SEGMENTS (0x2101)" : "SAMPLES (0x2100)")}");
@@ -138,7 +152,7 @@ internal static class LiveWireTest
         // but the motion-input/motion-segment publish wish is refused, which is
         // exactly why every grant assertion below used to read NaN. Mirrors the
         // self-serve rung of the plugin's own AcquireTokenAsync ladder
-        // (Valence.cs) — this harness has no PIN box, so it mints fresh every
+        // (ValenceConnect.cs) — this harness has no PIN box, so it mints fresh every
         // run instead of trying the paired-token rung first.
         byte[] token16 = await MintUiTokenAsync(http, baseUrl);
         Console.WriteLine(token16 != null
@@ -283,7 +297,7 @@ internal static class LiveWireTest
 
         var recvTask = client.ReceiveLoopAsync(OnNack, OnState, token);
 
-        // ---- CLOCK sync (mirrors Valence.cs's ResyncClock: several
+        // ---- CLOCK sync (mirrors ValenceConnect.cs's ResyncClock: several
         // exchanges, keep the best-RTT offset) ---------------------------------
         Console.WriteLine("[clock] running 5-exchange sync (keep best RTT)...");
         long bestRtt = long.MaxValue;
@@ -521,7 +535,268 @@ internal static class LiveWireTest
         return allPass ? 0 : 1;
     }
 
-    // Minimal mirror of Valence.cs's AcquireTokenAsync, mint-only rung (this
+    // --lag-selftest : the LagMeter's correlation math against a KNOWN shift and
+    // gain, with no hardware and no network. Exists because the live check
+    // needs a machine, and a meter nobody can test offline is a meter nobody
+    // re-tests after touching it.
+    private static int LagSelfTest()
+    {
+        const double truthMs = 40.0;   // rendered trails intended by this much
+        const double truthGain = 0.80;
+        var meter = new LagMeter();
+        uint t0 = HubClient.ClientNowUs();
+        // 6 s of a 0.8 Hz sine: intended at its own time, rendered delayed and
+        // scaled about the same mean. 10 ms steps on both sides.
+        for (int ms = 0; ms <= 6000; ms += 10)
+        {
+            double s = 0.5 + 0.35 * Math.Sin(2.0 * Math.PI * 0.8 * (ms / 1000.0));
+            meter.NoteIntent(unchecked(t0 + (uint)(ms * 1000)), s);
+            double d = 0.5 + 0.35 * truthGain * Math.Sin(2.0 * Math.PI * 0.8 * ((ms - truthMs) / 1000.0));
+            meter.NoteRendered(unchecked(t0 + (uint)(ms * 1000)), d);
+        }
+        // Two updates: the first seeds the EMA, the second confirms it settles.
+        meter.Update(unchecked(t0 + 6_000_000));
+        meter.Update(unchecked(t0 + 7_100_000));
+        Console.WriteLine($"[lag-selftest] truth {truthMs:+0;-0} ms gain {truthGain:F2}  ->  meter {meter.Summary}");
+        bool okLag = !meter.Idle && Math.Abs(meter.LagMs - truthMs) <= LagMeter.ShiftStepMs;
+        bool okGain = Math.Abs(meter.AmpRatio - truthGain) <= 0.05;
+
+        // And the idle gate: a held target is not a measurement.
+        var held = new LagMeter();
+        uint h0 = HubClient.ClientNowUs();
+        for (int ms = 0; ms <= 6000; ms += 10)
+        {
+            held.NoteIntent(unchecked(h0 + (uint)(ms * 1000)), 0.5);
+            held.NoteRendered(unchecked(h0 + (uint)(ms * 1000)), 0.5);
+        }
+        held.Update(unchecked(h0 + 6_000_000));
+        bool okIdle = held.Idle;
+
+        Console.WriteLine($"  [{(okLag ? "PASS" : "FAIL")}] recovered shift within one step");
+        Console.WriteLine($"  [{(okGain ? "PASS" : "FAIL")}] recovered gain within 0.05");
+        Console.WriteLine($"  [{(okIdle ? "PASS" : "FAIL")}] a held target reads idle, not a number");
+        return okLag && okGain && okIdle ? 0 : 1;
+    }
+
+    // =========================================================================
+    // --lag : live check of the plugin's LagMeter against a known reference.
+    //
+    // Streams the SAME shape the plugin's Segments mode emits (100 ms timed
+    // segments on 0x2101 scheduled SegLookaheadMs ahead) and feeds the plugin's
+    // OWN LagMeter from both ends, so what prints here is the number the
+    // plugin's status row will show. The reference it is checked against is
+    // Nucleus's tools/lag_probe.py --segments over the same window; run them
+    // back to back and compare.
+    //
+    // THIS ONE MOVES THE MACHINE, deliberately and with the operator's ruling:
+    // it force-homes (home op 2 with a stroke, the RFC-025 bench op) and
+    // config-sets a 0..50 mm window first, exactly as lag_probe.py does, since
+    // a machine parked at the HOMED gate renders nothing to correlate against.
+    // The home channel and op are the one hub-specific number in this file and
+    // they are lag_probe.py's, not a guess; everything else is role-resolved.
+    // =========================================================================
+    private const ushort LagHomeChannel = 0x3101;   // tools/lag_probe.py:118 (Nucleus bench)
+    private const int LagHomeOpStroke = 2;          // home op 2 = home to a declared stroke
+    private const double LagStrokeMm = 50.0;
+    private const double LagFreqHz = 0.8;
+    private const double LagAmp = 0.35;
+    private const double LagCenter = 0.5;
+    private const int LagSegMs = 100;
+    private const double LagLookaheadMs = 120.0;    // ValenceConnect.cs SegLookaheadMs
+    private const double LagSeconds = 14.0;
+
+    private static async Task<int> LagModeAsync(string ip, int port)
+    {
+        Console.WriteLine("=============================================================");
+        Console.WriteLine($" Valence Connect LagMeter live check -- target {ip}:{port}");
+        Console.WriteLine($" THIS MOVES THE MACHINE: force-home stroke {LagStrokeMm:F0} mm, window 0..{LagStrokeMm:F0} mm,");
+        Console.WriteLine($" then {LagSeconds:F0}s of {LagFreqHz:F1} Hz sine as {LagSegMs} ms segments on 0x2101.");
+        Console.WriteLine("=============================================================");
+
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        byte[] token16 = await MintUiTokenAsync(http, $"http://{ip}");
+        if (token16 == null)
+        {
+            Console.WriteLine("ABORT: no /uitoken -- a watch-tier session cannot publish a stream.");
+            return 3;
+        }
+
+        var instanceId = new byte[ValenceWire.InstanceIdBytes];
+        RandomNumberGenerator.Fill(instanceId);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        var token = cts.Token;
+
+        using var ws = new ClientWebSocket();
+        ws.Options.AddSubProtocol(ValenceWire.WsSubprotocol);
+        ws.Options.KeepAliveInterval = TimeSpan.Zero;
+        await ws.ConnectAsync(new Uri($"ws://{ip}:{port}/"), token);
+        var client = new HubClient(ws, instanceId, Log);
+
+        // The plugin's own Segments HELLO: both wishes, RFC-013 burst, RFC-030
+        // family, and the safety subscription. The motion STATE subscription is
+        // role-resolved below rather than wished here, because this hub's
+        // motion channel is not the number ChMotion holds.
+        var welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
+            new (ushort ch, double rate, double burst, byte curveFamily)[]
+            {
+                (ValenceWire.ChMotionInput, 50.0, 0.0, ValenceWire.CurveUnspecified),
+                // The HONEST wish for what THIS harness sends: a constant
+                // 1000/LagSegMs per second, not the plugin's 2-4/s script mean.
+                // Wishing the plugin's 5 Hz here just buys a NACK storm.
+                (ValenceWire.ChMotionSegment, 1000.0 / LagSegMs, 25.0, ValenceWire.CurveC1Cubic),
+            },
+            token16, token,
+            new (ushort, double, byte)[] { (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical) });
+        double segGranted = welcome.GrantedPublishRate(ValenceWire.ChMotionSegment);
+        Console.WriteLine($"[welcome] session={welcome.SessionId} granted motion-segment={segGranted:F1} Hz");
+        if (double.IsNaN(segGranted))
+        {
+            Console.WriteLine("ABORT: no motion-segment (0x2101) publish grant.");
+            return 1;
+        }
+
+        var catalogBytes = await client.FetchCatalogAsync(token);
+        if (catalogBytes == null) { Console.WriteLine("ABORT: catalog transfer produced nothing."); return 1; }
+        var catalog = ValenceCatalog.Decode(catalogBytes);
+        await client.SendCatalogReadyAsync(ValenceCatalog.Etag(catalogBytes), token);
+        Console.WriteLine($"[ready] catalog {catalogBytes.Length} B, {catalog.Entries.Count} channels / {catalog.RoleCount} roles");
+
+        var rPos = catalog.LocateRole(ValenceWire.RoleTelemetryPosition);
+        var rMin = catalog.LocateRole(ValenceWire.RoleWindowMin);
+        var rMax = catalog.LocateRole(ValenceWire.RoleWindowMax);
+        if (rPos == null || rMin == null || rMax == null || !rMin.Writable || !rMax.Writable)
+        {
+            Console.WriteLine("ABORT: this hub does not advertise telemetry.position plus a writable window.min/max.");
+            return 1;
+        }
+        Console.WriteLine($"[roles] telemetry.position -> 0x{rPos.ChannelId:X4} '{rPos.Field.Name}', "
+            + $"window -> 0x{rMin.SettingChannel:X4} keys {rMin.SettingKey}/{rMax.SettingKey}");
+
+        // The meter and the readback both run off the receive loop.
+        var meter = new LagMeter();
+        double winMin = double.NaN, winMax = double.NaN;
+        long stateCount = 0, nackCount = 0;
+
+        void OnNack(HubClient.NackInfo n)
+        {
+            nackCount++;
+            Console.WriteLine($"    [recv] NACK {n.Name} channel=0x{n.Channel:X4} intent_seq={n.IntentSeq?.ToString() ?? "-"}");
+        }
+
+        void OnState(ushort channel, byte[] payload)
+        {
+            stateCount++;
+            if (rMin.ChannelId == channel) { double v = ValenceCatalog.ReadField(payload, rMin.Field); if (!double.IsNaN(v)) winMin = v; }
+            if (rMax.ChannelId == channel) { double v = ValenceCatalog.ReadField(payload, rMax.Field); if (!double.IsNaN(v)) winMax = v; }
+            if (rPos.ChannelId != channel) return;
+            double p = ValenceCatalog.ReadField(payload, rPos.Field);
+            // Same mapping ValenceConnect.cs's AdoptRoleReadback feeds the meter.
+            if (!double.IsNaN(p) && !double.IsNaN(winMin) && !double.IsNaN(winMax) && winMax - winMin > 1e-6)
+                meter.NoteRendered(client.HubNowUs(), (p - winMin) / (winMax - winMin));
+        }
+
+        var recvTask = client.ReceiveLoopAsync(OnNack, OnState, token);
+
+        Console.WriteLine($"[home] INTENT 0x{LagHomeChannel:X4} op {LagHomeOpStroke} stroke {LagStrokeMm:F0} mm (intent_id=1)");
+        await client.SendIntentAsync(LagHomeChannel, 1, new (int, byte[])[]
+        {
+            (1, ValenceWire.CborUInt(LagHomeOpStroke)),
+            (2, ValenceWire.CborF32(LagStrokeMm)),
+        }, token);
+
+        Console.WriteLine($"[window] INTENT 0x{rMin.SettingChannel:X4} 0..{LagStrokeMm:F0} mm (intent_id=2, role-resolved)");
+        await client.SendIntentAsync(rMin.SettingChannel.Value, 2, new (int, byte[])[]
+        {
+            (rMin.SettingKey.Value, ValenceWire.CborF32(0.0)),
+            (rMax.SettingKey.Value, ValenceWire.CborF32(LagStrokeMm)),
+        }, token);
+
+        // Position at a rate; the window on-change. Both are needed: without
+        // the window this harness cannot map mm onto the normalized target the
+        // intended series is expressed in, and the meter stays idle forever.
+        var subs = new List<(ushort, double, byte)> { (rPos.ChannelId, 60.0, ValenceWire.PriorityElevated) };
+        foreach (var ch in new[] { rMin.ChannelId, rMax.ChannelId })
+            if (ch != rPos.ChannelId && !subs.Exists(e => e.Item1 == ch))
+                subs.Add((ch, 0.0, ValenceWire.PriorityNormal));
+        await client.SubscribeAsync(subs, token);
+        Console.WriteLine($"[subscribe] {string.Join(", ", subs.ConvertAll(e => $"0x{e.Item1:X4}@{e.Item2:F0}Hz"))}");
+
+        // Let the echoes and the config push land before anything is measured.
+        await Task.Delay(1000, token);
+
+        long bestRtt = long.MaxValue, bestOffset = 0;
+        for (int i = 0; i < 5; i++)
+        {
+            var r = await client.ClockExchangeAsync(token);
+            if (r == null) continue;
+            if (r.Value.rtt < bestRtt) { bestRtt = r.Value.rtt; bestOffset = r.Value.offset; }
+        }
+        if (bestRtt == long.MaxValue) { Console.WriteLine("ABORT: no CLOCK exchange completed."); return 1; }
+        client.SetClockOffset(bestOffset);
+        Console.WriteLine($"[clock] offset={bestOffset} us rtt={bestRtt} us");
+        Console.WriteLine();
+
+        // ---- the stream, shaped exactly like SendSegmentAsync ----------------
+        var sw = Stopwatch.StartNew();
+        double nextMs = 0, lastPrintMs = 0;
+        long sends = 0;
+        var readings = new List<double>();
+        double lead = (LagLookaheadMs + LagSegMs) / 1000.0;
+        while (sw.Elapsed.TotalSeconds < LagSeconds && !token.IsCancellationRequested)
+        {
+            double nowMs = sw.Elapsed.TotalMilliseconds;
+            if (nowMs < nextMs) { await Task.Delay((int)Math.Max(1, Math.Min(nextMs - nowMs, 5)), token); continue; }
+            nextMs += LagSegMs;
+            if (nextMs < nowMs) nextMs = nowMs + LagSegMs;
+
+            // The target is the sine at the segment's END, so the intended
+            // series carries the time this client MEANT each target for.
+            double target = LagCenter + LagAmp * Math.Sin(2.0 * Math.PI * LagFreqHz * (sw.Elapsed.TotalSeconds + lead));
+            uint dueClientUs = unchecked(HubClient.ClientNowUs() + (uint)(LagLookaheadMs * 1000.0));
+            // Mirror of ValenceConnect.cs SendSegmentAsync: the meter is told
+            // the segment's END, the wire is told its START.
+            meter.NoteIntent(client.HubUsFromClientUs(unchecked(dueClientUs + (uint)(LagSegMs * 1000))), target);
+            await client.SendSegmentSampleAsync(client.HubUsFromClientUs(dueClientUs),
+                                                new SegmentSample(target, LagSegMs, 0.0, true), token);
+            sends++;
+
+            if (meter.Update(client.HubNowUs()) && sw.Elapsed.TotalMilliseconds - lastPrintMs >= 900)
+            {
+                lastPrintMs = sw.Elapsed.TotalMilliseconds;
+                Console.WriteLine($"    t={sw.Elapsed.TotalSeconds,5:F1}s  meter: {meter.Summary}");
+                // The first two seconds are the cold-start positioning move to
+                // the stream's opening position, not content: same one-second
+                // cut lag_probe.py takes before it fits.
+                if (sw.Elapsed.TotalSeconds >= 4.0 && !meter.Idle) readings.Add(meter.LagMs);
+            }
+        }
+
+        try { await client.GoodbyeAsync(ValenceWire.GoodbyeNormalClosure, CancellationToken.None); } catch { }
+        await Task.Delay(300, CancellationToken.None);
+        cts.Cancel();
+        try { await recvTask; } catch (OperationCanceledException) { }
+        try { if (ws.State == WebSocketState.Open) await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "lag done", CancellationToken.None); } catch { }
+
+        Console.WriteLine();
+        Console.WriteLine($"[result] segments sent={sends}  STATE frames={stateCount}  NACKs={nackCount}");
+        Console.WriteLine($"[result] window read back {winMin:F1}..{winMax:F1} mm");
+        if (readings.Count == 0)
+        {
+            Console.WriteLine("[result] meter never left idle -- nothing rendered to correlate against.");
+            return 1;
+        }
+        readings.Sort();
+        double median = readings[readings.Count / 2];
+        Console.WriteLine($"[result] lag readings (settled): n={readings.Count} min={readings[0]:+0.0;-0.0} "
+            + $"median={median:+0.0;-0.0} max={readings[readings.Count - 1]:+0.0;-0.0} ms");
+        Console.WriteLine($"[result] final: {meter.Summary}");
+        Console.WriteLine();
+        Console.WriteLine("Compare against: python tools/lag_probe.py --ip " + ip
+            + " --segments --seconds 14 --force-home 50 --window 0 50   (Nucleus repo)");
+        return nackCount == 0 ? 0 : 1;
+    }
+
+    // Minimal mirror of ValenceConnect.cs's AcquireTokenAsync, mint-only rung (this
     // harness has no PIN box to try first). GET /uitoken has no CORS headers by
     // design (RFC-029 §4) — that property only matters to a browser, so a
     // console client just reads the body directly. Rate-limited server-side to

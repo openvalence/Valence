@@ -1,5 +1,5 @@
-#:name Valence
-#:version 0.4.7
+#:name Valence Connect
+#:version 0.5.0
 #:author ValenceDrive
 #:description Streams a MultiFunPlayer axis to a Nucleus machine over the native Valence protocol (device-shadow + capability negotiation, WebSocket + CBOR).
 #:url https://github.com/AtlanticTM
@@ -34,9 +34,9 @@ using NLog;
 using Stylet;
 
 // =============================================================================
-// Valence — MultiFunPlayer plugin: the first external client of the Valence
-// protocol (spec/SPEC.md). It reads an MFP device axis at a fixed rate
-// and streams it to a Nucleus machine as native Valence STREAM bundles on
+// Valence Connect — the MultiFunPlayer plugin: the first external client of
+// the Valence protocol (spec/SPEC.md). It reads an MFP device axis at a fixed
+// rate and streams it to a Nucleus machine as native Valence STREAM bundles on
 // device channel 0x2100 "motion-input" (RFC-047 grid; was 0x0084).
 //
 // This ONE file is the entire plugin (MFP compiles each .cs as a single plugin
@@ -78,14 +78,14 @@ using Stylet;
 //     override)") — never silently ignored.
 // =============================================================================
 
-public class Valence : PluginBase
+public class ValenceConnect : PluginBase
 {
     // Bumped on EVERY edit and LOGGED on connect. MFP compiles the plugin at
     // load, so "is my change live?" is otherwise unanswerable from the log --
     // it cost two misread test runs before this existed. Keep in sync with the
     // #:version directive at the top of the file; MFP parses that one for its
     // UI and cannot see this one.
-    public const string PluginVersion = "0.4.7";
+    public const string PluginVersion = "0.5.0";
 
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
@@ -175,6 +175,24 @@ public class Valence : PluginBase
     public string Uptime { get => _uptime; set => SetAndNotify(ref _uptime, value); }
     public long SegmentsSent { get => _segmentsSent; set => SetAndNotify(ref _segmentsSent, value); }
     public string DivergenceWarning { get => _divergenceWarning; set => SetAndNotify(ref _divergenceWarning, value); }
+
+    // ---- End-to-end lag meter (see LagMeter) --------------------------------
+    // READ-ONLY INSTRUMENT. LagText is displayed and logged and read by nothing
+    // else: it never reaches the scheduler, the lookahead, or the operator's
+    // sync offset. Setting that offset stays the operator's call, which is the
+    // whole reason the number is shown at all.
+    private readonly LagMeter _lagMeter = new();
+    private string _lagText;
+    public string LagText { get => _lagText; set => SetAndNotify(ref _lagText, value); }
+
+    /// <summary>The hub's OWN declared scheduling latency, shown beside the
+    /// measured lag so the operator can tell "the hub says it delays by X" from
+    /// "I measured Y".
+    /// TODO(RFC-059): read `schedule_latency_us` off the granted_publishes
+    /// entry once that RFC is ruled on and its CBOR key is allocated (49-63 are
+    /// free). No hub can send it until then, and inventing the number here
+    /// would be a wire number with no registry home.</summary>
+    public string HubScheduleText => "hub: n/a";
 
     // ---- Device readback (GROUND TRUTH — written only from STATE / ECHO) ----
     private string _catalogInfo;
@@ -642,7 +660,7 @@ public class Valence : PluginBase
         var pin = PairingPin ?? "";
         if (pin.Length == ValenceWire.TokenBytes * 2 && IsHex(pin))
         {
-            Logger.Info("Valence credential: paired token from the PIN field");
+            Logger.Info("Valence Connect credential: paired token from the PIN field");
             return FromHex(pin);
         }
 
@@ -662,7 +680,7 @@ public class Valence : PluginBase
                 {
                     // 403 = the operator disabled /uitoken (the lockdown posture).
                     // That is a configuration choice, not a fault: say what to do.
-                    Logger.Warn("Valence /uitoken refused ({0}) — pair this client and paste its token in the PIN field", res.StatusCode);
+                    Logger.Warn("Valence Connect /uitoken refused ({0}) — pair this client and paste its token in the PIN field", res.StatusCode);
                     return null;
                 }
                 var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -670,7 +688,7 @@ public class Valence : PluginBase
                 var tok = (string)j?["token"];
                 if (j?["ok"]?.ToObject<bool>() == true && tok != null && tok.Length == ValenceWire.TokenBytes * 2 && IsHex(tok))
                 {
-                    Logger.Info("Valence credential: /uitoken mint (control tier)");
+                    Logger.Info("Valence Connect credential: /uitoken mint (control tier)");
                     return FromHex(tok);
                 }
                 return null;
@@ -678,7 +696,7 @@ public class Valence : PluginBase
             catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
-                Logger.Debug("Valence /uitoken attempt {0} failed: {1}", attempt, e.Message);
+                Logger.Debug("Valence Connect /uitoken attempt {0} failed: {1}", attempt, e.Message);
                 await Task.Delay(200, ct).ConfigureAwait(false);
             }
         }
@@ -713,9 +731,9 @@ public class Valence : PluginBase
         // Disconnect are idempotent guards on the task handle. PluginBase tracks
         // these and auto-unregisters them on dispose. Marshaled to the UI thread
         // because they mutate the same _task/_cancellationSource the view does.
-        RegisterAction("Valence::Connection::Toggle", () => Ui(OnConnectClick));
-        RegisterAction("Valence::Connection::Connect", () => Ui(() => { if (_task == null) OnConnectClick(); }));
-        RegisterAction("Valence::Connection::Disconnect", () => Ui(() => { if (_task != null) OnConnectClick(); }));
+        RegisterAction("ValenceConnect::Connection::Toggle", () => Ui(OnConnectClick));
+        RegisterAction("ValenceConnect::Connection::Connect", () => Ui(() => { if (_task == null) OnConnectClick(); }));
+        RegisterAction("ValenceConnect::Connection::Disconnect", () => Ui(() => { if (_task != null) OnConnectClick(); }));
     }
 
     protected override void OnDispose()
@@ -827,7 +845,7 @@ public class Valence : PluginBase
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
                 {
-                    Logger.Warn(ex, "Valence session ended: {0}", ex.Message);
+                    Logger.Warn(ex, "Valence Connect session ended: {0}", ex.Message);
                 }
 
                 // A session that ran a good while before dropping earned a fresh
@@ -889,7 +907,7 @@ public class Valence : PluginBase
         ws.Options.KeepAliveInterval = TimeSpan.Zero;
         var uri = new Uri($"ws://{Address}:{Port}/");
         await ws.ConnectAsync(uri, token);
-        Logger.Info("Valence plugin v{0} — WS connected to {1} (subprotocol {2})", PluginVersion, uri, ValenceWire.WsSubprotocol);
+        Logger.Info("Valence Connect v{0} — WS connected to {1} (subprotocol {2})", PluginVersion, uri, ValenceWire.WsSubprotocol);
 
         var client = new HubClient(ws, _instanceId, Logger);
 
@@ -906,7 +924,7 @@ public class Valence : PluginBase
         // would present as "connects, plays nothing". See AcquireTokenAsync.
         byte[] token16 = await AcquireTokenAsync(Address, token).ConfigureAwait(false);
         if (token16 == null)
-            Logger.Warn("Valence connecting WITHOUT a credential — viewer tier: telemetry and e-stop work, playback will not");
+            Logger.Warn("Valence Connect connecting WITHOUT a credential — viewer tier: telemetry and e-stop work, playback will not");
 
         // Samples mode wishes 0x2100 only (unchanged). Segments mode ALSO wishes
         // 0x2100 (the dense-sample fallback path stays granted) PLUS 0x2101.
@@ -966,7 +984,7 @@ public class Valence : PluginBase
         WelcomeInfo welcome;
         if (mode == StreamMode.Segments)
         {
-            welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence",
+            welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
                 new (ushort ch, double rate, double burst, byte curveFamily)[]
                 {
                     (ValenceWire.ChMotionInput, wishHz, 0.0, ValenceWire.CurveUnspecified),
@@ -976,7 +994,7 @@ public class Valence : PluginBase
         }
         else
         {
-            welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence",
+            welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
                 new (ushort ch, double rate)[] { (ValenceWire.ChMotionInput, wishHz) },
                 token16, token, subWishes, cached?.Etag);
         }
@@ -1052,7 +1070,13 @@ public class Valence : PluginBase
         if (limitsChannels.Count > 0)
         {
             await client.SubscribeAsync(
-                limitsChannels.ConvertAll(ch => ((ushort)ch, 0.0, ValenceWire.PriorityNormal)), token);
+                // On-change for the config-shaped roles; the channel carrying
+                // telemetry.position asks for a RATE, because the rail and the
+                // lag meter both read a moving value and on-change leaves the
+                // cadence entirely to the hub.
+                limitsChannels.ConvertAll(ch => ((ushort)ch,
+                    _rolePosition != null && _rolePosition.ChannelId == ch ? MotionStateRateHz : 0.0,
+                    ValenceWire.PriorityNormal)), token);
             Logger.Info("SUBSCRIBEd to role-located channel(s): {0}",
                 string.Join(", ", limitsChannels.ConvertAll(c => $"0x{c:X4}")));
         }
@@ -1097,6 +1121,9 @@ public class Valence : PluginBase
             catch { /* connection may already be gone — nothing more to do */ }
             _client = null;
             _intentQueue.Clear();
+            // The meter's two rings are stamped in THIS session's clock offset;
+            // carrying them across a reconnect would correlate two time bases.
+            _lagMeter.Reset();
             Ui(ClearDeviceReadback);
         }
 
@@ -1357,6 +1384,20 @@ public class Valence : PluginBase
         if (wMin == null && wMax == null && spd == null && acc == null && jrk == null &&
             pos == null && tgt == null && vel == null && maxT == null && measT == null) return;
 
+        // Feed the lag meter the RENDERED half, mapped onto the stroke window
+        // exactly as a target is mapped onto it (the inverse of the rail's
+        // HasAxisOverlay math), stamped with hub time at receipt. The window
+        // bounds are read here without a lock: they are written on the UI
+        // thread from this same STATE path, so the worst case is one frame of
+        // staleness on a meter that averages over three seconds.
+        var client = _client;
+        if (pos.HasValue && client != null)
+        {
+            double lo = _windowMinMm, hi = _windowMaxMm;
+            if (!double.IsNaN(lo) && !double.IsNaN(hi) && hi - lo > 1e-6)
+                _lagMeter.NoteRendered(client.HubNowUs(), (pos.Value - lo) / (hi - lo));
+        }
+
         Ui(() =>
         {
             if (wMin.HasValue) WindowMinMm = wMin.Value;
@@ -1397,6 +1438,7 @@ public class Valence : PluginBase
         MaxTravelMm = MeasuredTravelMm = double.NaN;
         WindowStatus = null;
         HomeStatus = null;
+        LagText = null;
         _windowPending = _homePending = false;
         _windowDirty = false;
         NotifyDraft();
@@ -1551,6 +1593,7 @@ public class Valence : PluginBase
         var connectedAt = DateTime.UtcNow;
         double lastStatsMs = 0;
         double lastResyncMs = 0;
+        double lastLagLogMs = 0;
         long localBundles = 0;
 
         while (!token.IsCancellationRequested)
@@ -1596,7 +1639,11 @@ public class Valence : PluginBase
             prevX = x;
             prevMs = nowMs;
 
-            await client.SendStreamSampleAsync(client.HubNowUs(), x, vel, token);
+            // A bare point's INTENDED time is its own stamp; the lag meter gets
+            // the same number the wire does.
+            uint stampUs = client.HubNowUs();
+            _lagMeter.NoteIntent(stampUs, x);
+            await client.SendStreamSampleAsync(stampUs, x, vel, token);
             localBundles++;
 
             // Operator intents (Home / stroke window) queued by the UI thread.
@@ -1624,8 +1671,25 @@ public class Valence : PluginBase
                     LastTarget = targetSnapshot;
                     Uptime = $"{(int)up.TotalMinutes:D2}:{up.Seconds:D2}";
                 });
+                PumpLagMeter(client, nowMs, ref lastLagLogMs);
             }
         }
+    }
+
+    // The lag meter's 1 Hz recompute plus its 10 s INFO line. Called from both
+    // stream loops off their existing throttle, so the meter costs one
+    // correlation per second and nothing per sample (T27: a probe is judged by
+    // its call rate, not its correctness).
+    private const double LagLogIntervalMs = 10_000.0;
+
+    private void PumpLagMeter(HubClient client, double nowMs, ref double lastLogMs)
+    {
+        if (!_lagMeter.Update(client.HubNowUs())) return;
+        string summary = _lagMeter.Summary;
+        Ui(() => LagText = summary);
+        if (nowMs - lastLogMs < LagLogIntervalMs) return;
+        lastLogMs = nowMs;
+        Logger.Info("lag meter: {0} ({1})", summary, HubScheduleText);
     }
 
     // =========================================================================
@@ -1823,6 +1887,7 @@ public class Valence : PluginBase
         double lastResyncMs = 0;
         double lastStatsMs = 0;
         double lastDivergeMs = 0;
+        double lastLagLogMs = 0;
         double lastBeatInfoMs = -SegBeatInfoEveryMs;   // first beat always logs at Info
         int divergeStreak = 0;
 
@@ -1891,6 +1956,7 @@ public class Valence : PluginBase
                         SegmentsSent = segSnapshot;
                         Uptime = $"{(int)up.TotalMinutes:D2}:{up.Seconds:D2}";
                     });
+                    PumpLagMeter(client, nowMs, ref lastLagLogMs);
                 }
 
                 try { await Task.Delay(SegTickMs, token); }
@@ -2346,9 +2412,16 @@ public class Valence : PluginBase
 
         uint due = unchecked(baseClientUs + (uint)offSigned);
         ExtendChain(due, durMs);
+        // The INTENDED time of this target is the segment's END, not its start.
+        NoteIntent(client, due, durMs, target);
         return client.SendSegmentSampleAsync(client.HubUsFromClientUs(due),
                                              new SegmentSample(target, durMs, 0.0, false), token);
     }
+
+    // One segment's contribution to the lag meter: the hub time this client
+    // MEANT the target to be reached at.
+    private void NoteIntent(HubClient client, uint dueClientUs, int durMs, double target) =>
+        _lagMeter.NoteIntent(client.HubUsFromClientUs(unchecked(dueClientUs + (uint)(durMs * 1000))), target);
 
     private Task SendSegmentAsync(HubClient client, KeyframeCollection kf, int i,
                                   double axisPos, double speed, uint baseClientUs,
@@ -2399,6 +2472,7 @@ public class Valence : PluginBase
         Ui(() => LastTarget = target);
         uint due = unchecked(baseClientUs + offUs);
         ExtendChain(due, durMs);
+        NoteIntent(client, due, durMs, target);
         return client.SendSegmentSampleAsync(client.HubUsFromClientUs(due),
                                              new SegmentSample(target, durMs, endVel, sentinel), token);
     }
@@ -2679,7 +2753,7 @@ public class Valence : PluginBase
                     foreach (var d in found)
                         DiscoveredDevices.Add(d);
                 });
-                Logger.Info("Valence discovery: {0} device(s) found", found.Count);
+                Logger.Info("Valence Connect discovery: {0} device(s) found", found.Count);
             }
             catch (Exception ex)
             {
@@ -2721,6 +2795,232 @@ public readonly struct SegmentSample
     public SegmentSample(double target, int durationMs, double endVel, bool sentinel)
     {
         Target = target; DurationMs = durationMs; EndVel = endVel; Sentinel = sentinel;
+    }
+}
+
+// =============================================================================
+// LagMeter -- end-to-end lag between the timeline this client MEANT and the
+// position the hub reports having rendered.
+//
+// Constraints:
+// - A METER, NEVER A CONTROLLER. Nothing it produces reaches the scheduler, the
+//   lookahead, or the operator's sync offset. A detector reports; it does not
+//   adjudicate. It exists so the operator can read the true number and set
+//   their own offset from it.
+// - Both rings are stamped in HUB microseconds, from the plugin's own clock
+//   offset. One time base for the intended series and the rendered series is
+//   what makes the two comparable at all.
+// - CROSS-CORRELATION, never a waveform fit: an arbitrary funscript reads as
+//   well as a bench sine, which a sine fit cannot do.
+// - Every public member is callable from any task: the intent ring is written
+//   by the connection task, the rendered ring by the receive loop.
+// =============================================================================
+public sealed class LagMeter
+{
+    // Search window and its step. +-300 ms covers every lag this path can
+    // produce; 5 ms is the reported resolution.
+    public const int MaxShiftMs = 300;
+    public const int ShiftStepMs = 5;
+    // Both series resample onto this grid before correlating.
+    private const double GridMs = 10.0;
+    // Correlated span: a stroke or two at funscript rates, short enough that
+    // the answer tracks a live session.
+    private const double WindowMs = 3000.0;
+    private const double IntervalMs = 1000.0;
+    // Below this intended peak-to-peak (fraction of the stroke window) the
+    // correlation is fitting noise, so the meter says "idle" instead of a
+    // number. A held position is not a measurement.
+    private const double MinPeakToPeak = 0.05;
+    private const double EmaAlpha = 0.3;
+    // Ring guard only. Pruning is Update's job; this bounds a stalled meter.
+    private const int MaxRing = 4096;
+
+    private readonly object _lock = new();
+    private readonly List<(double ms, double v)> _intent = new();
+    private readonly List<(double ms, double v)> _rendered = new();
+    private double[] _scratch = new double[1];
+
+    // Ring stamps are ms relative to _epochUs. Update re-bases the epoch onto
+    // the oldest sample it keeps, so the stored numbers stay a few seconds wide
+    // and the hub clock's 32-bit wrap never reaches this arithmetic.
+    private uint _epochUs;
+    private bool _haveEpoch;
+    private double _lastUpdateMs = double.NaN;
+
+    private double _lagMs = double.NaN;
+    private double _ampRatio = double.NaN;
+    private bool _idle = true;
+
+    public double LagMs { get { lock (_lock) return _lagMs; } }
+    public double AmpRatio { get { lock (_lock) return _ampRatio; } }
+    public bool Idle { get { lock (_lock) return _idle; } }
+
+    /// <summary>One compact row: "+14 ms - amp 0.97", or "idle" when the
+    /// intended series is not moving enough to measure against.</summary>
+    public string Summary
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_idle || double.IsNaN(_lagMs)) return "idle";
+                return string.Format("{0:+0;-0} ms · amp {1:F2}", _lagMs, _ampRatio);
+            }
+        }
+    }
+
+    /// <summary>A segment or sample this client just committed: the hub time it
+    /// MEANT that target to be reached at (segments: t_base + t_off + duration;
+    /// samples: the sample's own stamp), and the target, normalized 0..1.</summary>
+    public void NoteIntent(uint intendedHubUs, double targetNorm) => Push(_intent, intendedHubUs, targetNorm);
+
+    /// <summary>A rendered position decoded off a motion STATE frame, stamped
+    /// with the hub time at receipt and normalized through the stroke window
+    /// the same way a target is mapped onto it.</summary>
+    public void NoteRendered(uint hubUsAtReceipt, double posNorm) => Push(_rendered, hubUsAtReceipt, posNorm);
+
+    public void Reset()
+    {
+        lock (_lock)
+        {
+            _intent.Clear(); _rendered.Clear();
+            _haveEpoch = false; _lastUpdateMs = double.NaN;
+            _lagMs = _ampRatio = double.NaN; _idle = true;
+        }
+    }
+
+    private void Push(List<(double ms, double v)> ring, uint hubUs, double v)
+    {
+        if (double.IsNaN(v) || double.IsInfinity(v)) return;
+        lock (_lock)
+        {
+            if (!_haveEpoch) { _epochUs = hubUs; _haveEpoch = true; }
+            ring.Add((ValenceWire.WrapDiff(hubUs, _epochUs) / 1000.0, v));
+            if (ring.Count > MaxRing) ring.RemoveRange(0, ring.Count - MaxRing / 2);
+        }
+    }
+
+    /// <summary>Recompute at most once per IntervalMs. Returns true on the ticks
+    /// that actually recomputed, so a caller can log the fresh value.</summary>
+    public bool Update(uint hubNowUs)
+    {
+        lock (_lock)
+        {
+            if (!_haveEpoch) return false;
+            double nowMs = ValenceWire.WrapDiff(hubNowUs, _epochUs) / 1000.0;
+            if (!double.IsNaN(_lastUpdateMs) && nowMs - _lastUpdateMs < IntervalMs) return false;
+            _lastUpdateMs = nowMs;
+
+            // Keep the correlated window plus a full shift of context on each
+            // side; the intent ring runs AHEAD of now by the lookahead.
+            double keepFrom = nowMs - (WindowMs + MaxShiftMs + GridMs);
+            Prune(_intent, keepFrom);
+            Prune(_rendered, keepFrom);
+            Compute(nowMs);
+            Rebase(nowMs);
+            return true;
+        }
+    }
+
+    private static void Prune(List<(double ms, double v)> ring, double keepFrom)
+    {
+        int drop = 0;
+        while (drop < ring.Count && ring[drop].ms < keepFrom) drop++;
+        if (drop > 0) ring.RemoveRange(0, drop);
+    }
+
+    // Slide the epoch onto the oldest sample still held, so the stored ms stay
+    // a few seconds wide however long the session runs.
+    private void Rebase(double nowMs)
+    {
+        double oldest = nowMs;
+        if (_intent.Count > 0) oldest = Math.Min(oldest, _intent[0].ms);
+        if (_rendered.Count > 0) oldest = Math.Min(oldest, _rendered[0].ms);
+        if (oldest <= 0.0) return;
+        for (int i = 0; i < _intent.Count; i++) _intent[i] = (_intent[i].ms - oldest, _intent[i].v);
+        for (int i = 0; i < _rendered.Count; i++) _rendered[i] = (_rendered[i].ms - oldest, _rendered[i].v);
+        _epochUs = unchecked(_epochUs + (uint)(long)(oldest * 1000.0));
+        _lastUpdateMs -= oldest;
+    }
+
+    private void Compute(double nowMs)
+    {
+        int n = (int)(WindowMs / GridMs) + 1;
+        double t0 = nowMs - WindowMs;
+        if (_scratch.Length < n * 2) _scratch = new double[n * 2];
+
+        // The rendered series is the fixed side; the intended series slides.
+        // Two halves of one buffer: [0, n) rendered, [n, 2n) the shifted intent.
+        Resample(_rendered, t0, n, _scratch, 0);
+
+        // Idle gate, measured on what we MEANT to do over the span the
+        // correlation can see. A held target has no phase to recover.
+        double lo = double.MaxValue, hi = double.MinValue;
+        foreach (var e in _intent)
+        {
+            if (e.ms < t0 - MaxShiftMs || e.ms > nowMs + MaxShiftMs) continue;
+            if (e.v < lo) lo = e.v;
+            if (e.v > hi) hi = e.v;
+        }
+        if (hi - lo < MinPeakToPeak) { _idle = true; return; }
+
+        double bestCorr = double.NaN, bestSlope = double.NaN;
+        int bestShift = 0;
+        for (int shift = -MaxShiftMs; shift <= MaxShiftMs; shift += ShiftStepMs)
+        {
+            // rendered(t) is compared against intent(t - shift), so a POSITIVE
+            // shift means the rendered motion arrives AFTER it was intended.
+            Resample(_intent, t0 - shift, n, _scratch, n);
+            if (!Correlate(_scratch, 0, _scratch, n, n, out double corr, out double slope)) continue;
+            if (double.IsNaN(bestCorr) || corr > bestCorr) { bestCorr = corr; bestShift = shift; bestSlope = slope; }
+        }
+        if (double.IsNaN(bestCorr)) { _idle = true; return; }
+
+        _idle = false;
+        _lagMs = double.IsNaN(_lagMs) ? bestShift : EmaAlpha * bestShift + (1.0 - EmaAlpha) * _lagMs;
+        _ampRatio = double.IsNaN(_ampRatio) ? bestSlope : EmaAlpha * bestSlope + (1.0 - EmaAlpha) * _ampRatio;
+    }
+
+    // Linear resample of a time-ordered series onto [t0, t0 + (n-1)*GridMs].
+    // Grid points outside the series' own span are NaN, never extrapolated: an
+    // invented sample is exactly the kind of lie this meter exists to find.
+    private static void Resample(List<(double ms, double v)> src, double t0, int n, double[] dst, int dstOff)
+    {
+        int c = 0;
+        for (int i = 0; i < n; i++)
+        {
+            double t = t0 + i * GridMs;
+            if (src.Count < 2 || t < src[0].ms || t > src[src.Count - 1].ms) { dst[dstOff + i] = double.NaN; continue; }
+            while (c + 1 < src.Count - 1 && src[c + 1].ms < t) c++;
+            var a = src[c];
+            var b = src[c + 1];
+            double span = b.ms - a.ms;
+            dst[dstOff + i] = span <= 0.0 ? b.v : a.v + (b.v - a.v) * ((t - a.ms) / span);
+        }
+    }
+
+    // Zero-mean normalized cross-correlation over the grid points where both
+    // series carry real values, plus the least-squares gain of y on x, which is
+    // the amplitude ratio at the matching shift.
+    private static bool Correlate(double[] y, int yOff, double[] x, int xOff, int n,
+                                  out double corr, out double slope)
+    {
+        corr = slope = double.NaN;
+        int m = 0;
+        double sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+        for (int i = 0; i < n; i++)
+        {
+            double a = y[yOff + i], b = x[xOff + i];
+            if (double.IsNaN(a) || double.IsNaN(b)) continue;
+            m++; sx += b; sy += a; sxx += b * b; syy += a * a; sxy += a * b;
+        }
+        // Half the window must overlap, or it is not a measurement.
+        if (m < n / 2) return false;
+        double vx = sxx - sx * sx / m, vy = syy - sy * sy / m, cxy = sxy - sx * sy / m;
+        if (vx <= 1e-12 || vy <= 1e-12) return false;
+        corr = cxy / Math.Sqrt(vx * vy);
+        slope = cxy / vx;
+        return true;
     }
 }
 

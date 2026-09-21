@@ -23,9 +23,9 @@
                           be, and a window draft the machine has not echoed.
       Square corners and a 2px radius are that same identity, not an oversight.
 
-      RAIL TRACK WIDTH IS 372 AND IS COUPLED TO Valence.cs's RailTrackPx. The
+      RAIL TRACK WIDTH IS 372 AND IS COUPLED TO ValenceConnect.cs's RailTrackPx. The
       view model computes every marker offset in pixels against that number, so
-      the two must agree; see the RAIL block in Valence.cs for why the geometry
+      the two must agree; see the RAIL block in ValenceConnect.cs for why the geometry
       lives there rather than in a converter.
     -->
 
@@ -45,7 +45,7 @@
           put drag handlers in.
 
           IT RUNS ON A FIXED 0..1 DOMAIN. Maximum is never bound to the rail
-          length - see WindowMinFrac in Valence.cs for the coercion bug that
+          length - see WindowMinFrac in ValenceConnect.cs for the coercion bug that
           cost, which collapsed the stroke window to 0-1 mm.
 
           THE 20px THUMB AND THE 392px WIDTH ARE THE ALIGNMENT. A Track gives its
@@ -351,6 +351,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Granted" Opacity="0.6"/>
@@ -382,6 +383,18 @@
                             <TextBlock Text=" · rtt " Opacity="0.6"/>
                             <TextBlock Text="{Binding RttUs}"/>
                         </StackPanel>
+
+                        <!-- END-TO-END LAG (LagMeter). A METER, NOT A CONTROL:
+                             it is displayed and logged and drives nothing. The
+                             operator sets their own sync offset from it. The
+                             "hub:" cell is the hub's OWN declared scheduling
+                             latency and reads n/a until RFC-059 lands. -->
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Lag" Opacity="0.6"
+                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding LagText}"
+                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="6" Text="{Binding HubScheduleText}" Opacity="0.6"
+                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
                     </Grid>
 
                     <!-- Divergence warning (Segments mode): visible only when set. -->
