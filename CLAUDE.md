@@ -1,7 +1,7 @@
 # Valence -- THE SPEC REPO
 
 Protocol truth is RATIFIED here, never discovered here. Discovery happens in
-the reference implementation (Valence Drive, sibling checkout) and arrives as
+the reference implementation (Nucleus, sibling checkout) and arrives as
 RFCs in `spec/RFC-QUEUE.md`, ruled by the operator: approve / deny / modify.
 
 Law of the land:
@@ -20,7 +20,7 @@ Law of the land:
 - Skills: `valence-canon` (distilled spec, citation-anchored),
   `registry-workflow` (allocation/regen/tagging), `advisor` (read-only design
   counsel). Beads board here is the RFC BOARD (`rfc-` prefix): RFC lifecycle
-  tracking only, no implementation dev work (that lives on Valence Drive's
+  tracking only, no implementation dev work (that lives on Nucleus's
   dev board).
 
 ## Compact Instructions

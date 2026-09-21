@@ -423,7 +423,7 @@ class LogMonitor(threading.Thread):
 
 
 # UiWsMonitor (ws://ip:81/ws/ui) removed at M5c: UiSocket and the :81 WebUI
-# telemetry plane no longer exist in Valence Drive's firmware (its own M5c
+# telemetry plane no longer exist in Nucleus's firmware (its own M5c
 # milestone, machine repo). If a
 # WebUI-side liveness watcher is needed again, it belongs on the Valence
 # plane (0x1110 plan-strip / 0x4100 anomaly), not a resurrected :81 socket.

@@ -111,7 +111,7 @@ Who this hub is. There is exactly one home for hub identity.
 
 | Sub-key | Name | Notes |
 |---|---|---|
-| `1` | `product` | tstr: product/model identifier, e.g. 'valence-drive' (<=32 B) |
+| `1` | `product` | tstr: product/model identifier, e.g. 'nucleus' (<=32 B) |
 | `2` | `fw_version` | tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3). |
 | `3` | `hub_name` | tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one. |
 | `4` | `info` | map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap. |

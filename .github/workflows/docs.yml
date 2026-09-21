@@ -4,7 +4,7 @@ name: docs
 #
 # The site is Material for MkDocs, published to GitHub Pages, versioned with
 # `mike`. There is deliberately no PlatformIO here: PIO exists in the
-# Valence Drive machine repo to build FIRMWARE; a documentation build needs
+# Nucleus machine repo to build FIRMWARE; a documentation build needs
 # neither a toolchain download nor a framework it cannot use, and this repo
 # has no firmware in it at all.
 #

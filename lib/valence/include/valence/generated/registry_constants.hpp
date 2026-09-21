@@ -170,7 +170,7 @@ inline constexpr uint8_t rtt_ms = 4;  // measured round-trip time, ms
 }  // namespace probe_result
 
 namespace identity {
-inline constexpr uint8_t product = 1;  // tstr: product/model identifier, e.g. 'valence-drive' (<=32 B)
+inline constexpr uint8_t product = 1;  // tstr: product/model identifier, e.g. 'nucleus' (<=32 B)
 inline constexpr uint8_t fw_version = 2;  // tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3).
 inline constexpr uint8_t hub_name = 3;  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one.
 inline constexpr uint8_t info = 4;  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap.

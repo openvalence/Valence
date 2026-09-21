@@ -39,7 +39,7 @@ It should also cover the authoring rules that are easy to get wrong:
 ## Source material
 
 - [Appendix D](../spec/appendices.md#appendix-d) of `spec/SPEC.md`: the initial device catalog sketch.
-- Valence Drive's `include/comms/ValenceCatalog.h` (machine repo): the
+- Nucleus's `include/comms/ValenceCatalog.h` (machine repo): the
   catalog a real device actually publishes. Prefer this over the appendix
   where they differ. It is what ships.
 - [Catalog schema (CDDL)](../spec/schema.md): the normative catalog encoding,

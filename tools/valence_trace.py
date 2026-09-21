@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-valence_trace.py -- Valence Trace, the motion-pipeline oscilloscope for Valence Drive.
+valence_trace.py -- Valence Trace, the motion-pipeline oscilloscope for Nucleus.
 
 WHAT IT IS FOR
     Graph the RAW COMMANDED INPUT arriving over Valence, scaled into the

@@ -4,7 +4,7 @@
  * This is the THIRD reference client of the Valence protocol (after
  * tools/valence_probe.py and clients/mfp/Valence.cs). It speaks a hub's
  * native plane — ws://<host>:<port>, subprotocol 'valence.v1', 8-byte LE
- * frame header + deterministic CBOR (SPEC §5.3). Valence Drive's WebUI
+ * frame header + deterministic CBOR (SPEC §5.3). Nucleus's WebUI
  * refactor (its own docs/REFACTOR-ROADMAP.md §5, machine repo, not here)
  * wires its cards onto this client, replacing its legacy :81 UiSocket plane.
  *
@@ -25,7 +25,7 @@
  *   const s = createSession({
  *     host: location.hostname,           // device serves this bundle
  *     clientKind: 'webui',
- *     clientName: 'ValenceDrive WebUI',
+ *     clientName: 'Nucleus WebUI',
  *     subscriptions: [                    // [channelId, rateHz, priority]
  *       [CH.SAFETY,     0,  PRIORITY.critical],  // on-change, never shed
  *       [CH.MOTION,     20, PRIORITY.elevated],  // live carriage feed

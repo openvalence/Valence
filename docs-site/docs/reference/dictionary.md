@@ -35,7 +35,7 @@ Valence has one authority per machine and any number of peers talking to it. The
 **The single authoritative endpoint of one machine.**
 
 The hub owns machine state, the catalog, and every grant. There is
-exactly one hub per machine. On Valence Drive the hub is the ESP32-S3
+exactly one hub per machine. On Nucleus the hub is the ESP32-S3
 main controller.
 
 The hub is the only party that decides anything. A client asks; the
@@ -890,7 +890,7 @@ See also: [Segment](#segment), [Stream kind](#stream-kind), [Shedding](#shedding
 A segment is not a point on a continuous curve. A dropped segment is
 a permanently lost **command**, not a recoverable interpolation gap.
 
-On Valence Drive one segment becomes one quintic waveform command,
+On Nucleus one segment becomes one quintic waveform command,
 which is roughly two to four packets per second for a scripted
 session, instead of a dense sample stream.
 
@@ -1353,7 +1353,7 @@ Matching all three at both ends makes the joins continuous in
 acceleration, so the boundary jerk spikes of a lower-order fit
 disappear.
 
-On Valence Drive each commanded segment becomes exactly one quintic
+On Nucleus each commanded segment becomes exactly one quintic
 over the commanded duration, which reproduces the sender's own
 spline rather than approximating it with a stretched
 accelerate-cruise-decelerate profile.

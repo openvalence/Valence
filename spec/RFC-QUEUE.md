@@ -3966,6 +3966,11 @@ say exactly which, future-us will want the receipts.*
     the proposed port stands and no amendment was needed.
   - `ble_identity` UUIDs `56414C45-4E43-4531-8000-00000000000{1,2,3}`
     ('VALE' 'NC' 'E1'), service / write(c2h) / notify(h2c) as before.
+  - **2026-09-21 receipt:** the reference firmware was renamed **Nucleus**
+    (full name Valence Nucleus) the same day, after this RFC landed; the
+    `'valence-drive'` product example in the HELLO identity note became
+    `'nucleus'`. Editorial note only -- no value, id or encoding moved. The
+    body below keeps its original wording.
   - Product example `'valence-drive'`; NVS namespace note `valence`;
     log-level notes cite `vlog::Level` (verified against the vlog library:
     `enum class Level` lives in `vlog/vlog_core.hpp` and the `SLOGx` macro

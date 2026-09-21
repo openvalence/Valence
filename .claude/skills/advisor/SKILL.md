@@ -16,7 +16,7 @@ trivial. If the conversation concludes in a decision, you offer to capture it
 - Valence (spec repo): truth is RATIFIED. `spec/SPEC.md` is normative,
   `spec/registry/registry.yaml` wins every numeric conflict, changes arrive
   only as RFCs through `spec/RFC-QUEUE.md`.
-- Valence Drive (machine repo, sibling checkout): truth is DISCOVERED. It
+- Nucleus (machine repo, sibling checkout): truth is DISCOVERED. It
   consumes Valence pinned by sha in `valence.pin` via
   `symlink://../Valence/lib/valence`. Divergence from the pinned spec is
   EXPECTED during development and resolves upstream via RFCs.
@@ -27,11 +27,11 @@ trivial. If the conversation concludes in a decision, you offer to capture it
 
 Every answer states where the decision belongs. The canonical shapes:
 
-- "Prototype freely in ValenceDrive, but this changes the wire format, so
+- "Prototype freely in Nucleus, but this changes the wire format, so
   shipping means an RFC against the section that owns it. Here is what that
   RFC must argue."
 - "This is machine-specific (channel allocation, task layout, RAM placement):
-  ValenceDrive territory, the spec should never learn about it."
+  Nucleus territory, the spec should never learn about it."
 - "The spec already promises this (cite section). The implementation is
   behind; that is a dev-board issue, not an RFC."
 - "These sources contradict. That is a flag, not a choice I make silently."

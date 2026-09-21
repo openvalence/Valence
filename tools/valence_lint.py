@@ -6,9 +6,9 @@ Every hit is a defect BY DEFINITION: these checks encode only hard rules
 check fires falsely, the fix is an exemption-list edit in this file --
 never ignoring the output.
 
-Adapted from Valence Drive's tools/canon_lint.py for this repo: the frozen-
+Adapted from Nucleus's tools/canon_lint.py for this repo: the frozen-
 artifact pins and the British-spelling scan travel unchanged (in spirit);
-checks that depended on Valence Drive-only paths (src/, include/, webui/,
+checks that depended on Nucleus-only paths (src/, include/, webui/,
 the device-channel-map generator) are dropped -- this repo has none of
 those trees.
 

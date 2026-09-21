@@ -1,7 +1,7 @@
 # Valence — MultiFunPlayer plugin
 
 Streams a [MultiFunPlayer](https://github.com/Yoooi0/MultiFunPlayer) (MFP) axis to a
-**Valence Drive** machine over its native **Valence** protocol — the device-shadow +
+**Nucleus** machine over its native **Valence** protocol — the device-shadow +
 capability-negotiation sync protocol the firmware speaks on a binary WebSocket.
 
 This is the first external client implementation of Valence. Its wire bytes are a
@@ -302,7 +302,7 @@ old publish-only golden is kept as a regression guard alongside the new shapes.
 ### Live wire test (against Valence Bench, a simulator, or a real device)
 
 **Requires a running hub to connect to** — this is the one test in this repo
-that is not self-contained. `hub/bench/` (this repo) or Valence Drive's
+that is not self-contained. `hub/bench/` (this repo) or Nucleus's
 `sim/valencesim` (machine repo, real device catalog) both work with no hardware;
 against real hardware, see the safety gate note below.
 

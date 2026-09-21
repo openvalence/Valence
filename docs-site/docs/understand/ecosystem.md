@@ -129,7 +129,7 @@ the community as a tool.**
 That stance is what makes the rest of this page mean anything, so it is stated
 plainly and mechanically enforced where it can be.
 
-- **No firmware is the reference firmware.** Valence Drive is where Valence
+- **No firmware is the reference firmware.** Nucleus is where Valence
   was written and where it is proven on hardware. That makes it the first
   implementation, not the privileged one.
 - **No vendor gets a reserved number.** The registry allocates in the open, by

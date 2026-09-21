@@ -1,4 +1,4 @@
-// bench — the "be anything" Valence test hub (Valence Drive's LEDGER.md
+// bench — the "be anything" Valence test hub (Nucleus's LEDGER.md
 // "Morning ruling batch" item 3). A dumb, config-file-driven conformant hub:
 // point it at a .bench file and it serves exactly the catalog that file
 // describes, with a generic INTENT-clamp/echo/STATE-mirror write plane and

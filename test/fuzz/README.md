@@ -31,7 +31,7 @@ compiling against the repo over the mount:
 
 ```bash
 # inside WSL
-R=/mnt/c/Users/Atlan/Documents/Valence Drive
+R=/mnt/c/Users/Atlan/Documents/Nucleus
 mkdir -p ~/fuzz && cd ~/fuzz
 
 # build every target (mirrors build.sh; run it from ~/fuzz, not from /mnt/c)

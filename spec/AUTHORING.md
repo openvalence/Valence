@@ -199,7 +199,7 @@ statically known — conformance tooling flags it, SPEC §9.1).
   consistency (this repo).
 - [`tools/gen_registry_header.py`](../tools/gen_registry_header.py)
   `--check` — generated vocabularies in sync with the registry.
-- `tools/catalog_lint.py` (machine repo, Valence Drive) — the shipped
+- `tools/catalog_lint.py` (machine repo, Nucleus) — the shipped
   catalog's annotation coverage.
 - The reference hub pins its catalog etag in a native test; an unintended
   wire change fails the build before it ships.

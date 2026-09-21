@@ -1,7 +1,7 @@
 // =============================================================================
 // LiveWireTest — exercises the REAL Valence.cs protocol classes (HubClient,
 // ValenceWire, CborWriter/Reader, MdnsDiscovery, WelcomeInfo) against a live
-// Valence Drive device over its actual WebSocket. This is NOT a codec
+// Nucleus device over its actual WebSocket. This is NOT a codec
 // self-test (see WireSelfTest.cs, which deliberately re-implements the codec
 // to golden-byte-check it) — it links and drives the plugin's own classes,
 // unmodified, exactly as Valence.cs's SessionAsync does.

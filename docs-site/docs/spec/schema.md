@@ -295,6 +295,6 @@ store-descriptor = {
 
 - [§8 Catalog](catalog.md#s8) — the prose companion, and the etag rules.
 - [Channel catalog reference](../reference/channel-catalog.md) — the
-  Valence Drive catalog that this schema describes, entry by entry.
+  Nucleus catalog that this schema describes, entry by entry.
 - [Catalog vocabulary](../reference/registry/catalog-vocabulary.md) — the
   generated view of every enumeration named above.

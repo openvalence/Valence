@@ -53,11 +53,11 @@ protocol for a single machine and was pulled out into its own repository to
 be the first-class source of truth once it stood on its own. Fresh git
 history — no filter-repo surgery.
 
-## Relationship to Valence Drive
+## Relationship to Nucleus
 
-Valence Drive is the reference *hub* implementation: a real motion machine
+Nucleus is the reference *hub* implementation: a real motion machine
 that consumes Valence (this repo, pinned to a version) rather than defining
-it. Valence Drive also owns the device-specific channel allocations for its
+it. Nucleus also owns the device-specific channel allocations for its
 own hardware — Valence defines the channel-space *convention*
-(`spec/CHANNEL-GRID.md`) that any hub, including Valence Drive, allocates its
+(`spec/CHANNEL-GRID.md`) that any hub, including Nucleus, allocates its
 own device channels within.

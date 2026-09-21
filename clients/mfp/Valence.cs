@@ -1,7 +1,7 @@
 #:name Valence
 #:version 0.4.7
 #:author ValenceDrive
-#:description Streams a MultiFunPlayer axis to a Valence Drive machine over the native Valence protocol (device-shadow + capability negotiation, WebSocket + CBOR).
+#:description Streams a MultiFunPlayer axis to a Nucleus machine over the native Valence protocol (device-shadow + capability negotiation, WebSocket + CBOR).
 #:url https://github.com/AtlanticTM
 
 #:reference System.Net.WebSockets.Client
@@ -36,7 +36,7 @@ using Stylet;
 // =============================================================================
 // Valence — MultiFunPlayer plugin: the first external client of the Valence
 // protocol (spec/SPEC.md). It reads an MFP device axis at a fixed rate
-// and streams it to a Valence Drive machine as native Valence STREAM bundles on
+// and streams it to a Nucleus machine as native Valence STREAM bundles on
 // device channel 0x2100 "motion-input" (RFC-047 grid; was 0x0084).
 //
 // This ONE file is the entire plugin (MFP compiles each .cs as a single plugin

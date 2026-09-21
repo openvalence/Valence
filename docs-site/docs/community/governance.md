@@ -18,7 +18,7 @@ practice.
 
 ## What that means in practice
 
-**No firmware is the reference firmware.** Valence Drive happens to be where
+**No firmware is the reference firmware.** Nucleus happens to be where
 Valence was written and where it is proven on hardware. That makes it the
 first implementation. It does not make it the privileged one. A conforming hub
 is a conforming hub.

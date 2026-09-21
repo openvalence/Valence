@@ -305,7 +305,7 @@ export const PROBE_RESULT_K = {
 
 // ---- identity_keys -------------------------------------------------
 export const IDENTITY_K = {
-  product: 1,  // tstr: product/model identifier, e.g. 'valence-drive' (<=32 B)
+  product: 1,  // tstr: product/model identifier, e.g. 'nucleus' (<=32 B)
   fw_version: 2,  // tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made
   hub_name: 3,  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where
   info: 4,  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr;

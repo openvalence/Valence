@@ -5,16 +5,16 @@ file and it serves exactly the catalog that file describes, with a generic
 INTENT-clamp/echo/STATE-mirror write plane and a configurable fake delay
 between accepting a write and reflecting it in STATE.
 
-## Division of labor (Valence Drive's LEDGER.md, machine repo, "Morning ruling batch" item 3)
+## Division of labor (Nucleus's LEDGER.md, machine repo, "Morning ruling batch" item 3)
 
-- **Valence Drive's `sim/valencesim`** is the 1:1 device twin: it embeds the real device catalog
-  (`--profile device`) and reproduces Valence Drive's actual behavior,
+- **Nucleus's `sim/valencesim`** is the 1:1 device twin: it embeds the real device catalog
+  (`--profile device`) and reproduces Nucleus's actual behavior,
   including the real `vmotion::Engine`. Parity is one-way — the firmware
   is never edited to close a sim gap.
 - **Valence Bench** is the opposite role: no fixed catalog, no motion engine, no
   device semantics. It builds whatever catalog a config file describes and
   applies one generic write-plane rule to all of it. Use Valence Bench to test a
-  client/widget against catalog shapes Valence Drive will never produce
+  client/widget against catalog shapes Nucleus will never produce
   (extra archetypes, alien channel domains, deliberately slow echoes) without
   waiting on a firmware change.
 
@@ -150,7 +150,7 @@ headless or not).
   mirrored field, one animated field, zero echo delay.
 - **`configs/alien.bench`** — every device-range channel sits in a reserved
   *domain* nibble (`spec/CHANNEL-GRID.md`'s 0xCDSS grid: 3=auxiliary,
-  4=playback, 5=automation, 8-F=parked for multi-axis) that Valence Drive
+  4=playback, 5=automation, 8-F=parked for multi-axis) that Nucleus
   itself never allocates, one of each class (STATE/INTENT/EVENT/STORE/
   STREAM), and an explicit non-zero echo delay.
 - **`configs/kitchen-sink.bench`** — every field type, both animation kinds,

@@ -1,6 +1,6 @@
 # Build output. Per-tree build dirs are listed explicitly: a bare `build/`
 # rule silently swallows docs-site/docs/build/ (authored pages, not build
-# product) — the same trap Valence Drive's Phase G pass had to fix.
+# product) — the same trap Nucleus's Phase G pass had to fix.
 .pio/
 /build/
 hub/bench/build/

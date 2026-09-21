@@ -1,9 +1,9 @@
-# alien.bench — a conformant hub that shares NOTHING with Valence Drive's own
+# alien.bench — a conformant hub that shares NOTHING with Nucleus's own
 # allocation. Every device-range id below sits in a RESERVED domain nibble
 # (spec/CHANNEL-GRID.md: 3=auxiliary, 4=playback, 5=automation,
 # 8-F=parked for multi-axis) that the real device never allocates, per the
 # 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE). A
-# client that hardcoded Valence Drive's channel ids anywhere breaks visibly
+# client that hardcoded Nucleus's channel ids anywhere breaks visibly
 # against this hub.
 
 hub

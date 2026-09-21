@@ -58,7 +58,7 @@ real debugging time:
 - `hub/bench/` (this repo) — a working, machine-agnostic composition
   root and WebSocket transport adapter, config-file-driven rather than
   wired to real hardware.
-- Valence Drive's `src/comms/ValenceHubService.*` and `ValenceWsTransport.*`
+- Nucleus's `src/comms/ValenceHubService.*` and `ValenceWsTransport.*`
   (machine repo) — a working composition root and transport adapter wired
   to real hardware.
 

@@ -2,7 +2,7 @@
 
 A repo declares its tools in `valencetool.toml` at its root. Valence Tool reads
 manifests and spawns processes; it knows nothing else. Governing rules are
-Valence Drive `docs/canon/DOCTRINE.md` §10 — the short form:
+Nucleus `docs/canon/DOCTRINE.md` §10 — the short form:
 
 * Adding a tool is a manifest entry and **zero** lines of Valence Tool code.
 * Every tool stays runnable from a plain shell. The `run` array IS that

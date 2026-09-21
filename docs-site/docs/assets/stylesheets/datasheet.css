@@ -472,7 +472,7 @@ body,
    INSTRUMENT LAYER — the machine's own visual language, brought to the docs.
    =========================================================================
 
-   The Valence Drive web interface (webui/src/style.css, webui/src/core/theme.js)
+   The Nucleus web interface (webui/src/style.css, webui/src/core/theme.js)
    encodes MEANING in two colors, and this site reuses that meaning exactly:
 
        reality (blue)   measured truth. What the machine actually did, applied,

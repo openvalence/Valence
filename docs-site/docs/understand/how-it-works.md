@@ -28,7 +28,7 @@ Every diagram on this site uses one visual language. Learn it once here.
 <span class="ss-key"><b>▶ START</b>Where a flowchart begins. Every flowchart on this site marks it.</span>
 </div>
 
-The two colors are not decoration. They are the two colors the Valence Drive
+The two colors are not decoration. They are the two colors the Nucleus
 machine paints on its own screen: blue for what the machine measured or
 applied, purple for what a person asked for. They mean the same thing in a
 diagram, in a table and on the machine. Amber and red are safety, in the

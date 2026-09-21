@@ -297,7 +297,7 @@ SOURCE_LINKS: dict[str, tuple[str, str]] = {
     "SPEC.md#66-liveness-deadman-and-idle-reaping": ("page", "session.md#s6-6"),
     "SPEC.md#84-transfer-the-catalog-is-blob-namespace-0": ("page", "catalog.md#s8-4"),
     "SPEC.md#173-behavioral-checklists": ("page", "conformance.md#s17-3"),
-    # CHANNEL-MAP.md is Valence Drive's device map (machine repo, not here);
+    # CHANNEL-MAP.md is Nucleus's device map (machine repo, not here);
     # not published by docs-site.
     "CHANNEL-MAP.md": ("strip", ""),
     # RENDERING.md is a normative companion (§19), same tier as SPEC.md itself,
@@ -820,7 +820,7 @@ def build_cddl(page: Page, text: str, src_display: str) -> str:
     p("## Related {#related}\n\n")
     p("- [§8 Catalog](catalog.md#s8) — the prose companion, and the etag rules.\n")
     p("- [Channel catalog reference](../reference/channel-catalog.md) — the\n")
-    p("  Valence Drive catalog that this schema describes, entry by entry.\n")
+    p("  Nucleus catalog that this schema describes, entry by entry.\n")
     p("- [Catalog vocabulary](../reference/registry/catalog-vocabulary.md) — the\n")
     p("  generated view of every enumeration named above.\n")
     return w.getvalue().rstrip("\n") + "\n"

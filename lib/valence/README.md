@@ -60,7 +60,7 @@ Tests: `test/native/test_valence_*` (doctest, `pio test -e native`) — ~150
 cases implementing the golden-vector manifest
 ([`vectors/manifest.yaml`](../../spec/vectors/manifest.yaml)).
 A narrated end-to-end desktop demo (real `Hub`/`Client`, real wire bytes,
-no hardware) lives in Valence Drive's `examples/valence_demo/` — this repo
+no hardware) lives in Nucleus's `examples/valence_demo/` — this repo
 does not carry a demo binary of its own yet.
 
 ## Conformance
@@ -70,5 +70,5 @@ id order, form rules). The frozen fixture `conformance/mini_catalog.hpp` pins
 the protocol's reference etag (`F4 A2 8F BB 58 CE D1 6A`) — if your
 implementation reproduces it byte-for-byte, your catalog codec is correct.
 
-License: MIT. Valence Drive is the reference hub implementation consuming
+License: MIT. Nucleus is the reference hub implementation consuming
 this library; it does not own the protocol — see `spec/` in this repo.
