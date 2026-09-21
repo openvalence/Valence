@@ -1668,7 +1668,7 @@ public class Valence : PluginBase
     // many seconds; a bucket sized to the old "measured ~25/s worst case burst"
     // starves them, defers segments (see the token-starve branch in SegTickAsync),
     // erodes the 120 ms lookahead, and triggers the hub's settle brake mid-script
-    // (vmotion maybeSettle, 2026-07-29 field report: "settling mid motion").
+    // (kinetic maybeSettle, 2026-07-29 field report: "settling mid motion").
     // The wish stays an HONEST declaration per RFC-013 — the hub still grants
     // what it grants; this is not a lie to buy depth like the pre-RFC-013 30.0.
     private const double SegmentWishHz = 20.0;
@@ -1761,13 +1761,13 @@ public class Valence : PluginBase
     // RFC-008 says the MACHINE owns motion processing, so a client-side shape
     // limiter is the wrong side of the line on principle.
     //
-    // THE HUB GUARD HAS NOW LANDED (fw 2.1.53 / vmotion 0.7.0, milestone
+    // THE HUB GUARD HAS NOW LANDED (fw 2.1.53 / kinetic 0.7.0, milestone
     // M4d): VMotion bounds an inbound segment's end velocity against the
     // FOLLOWING segment's chord using this exact Fritsch–Carlson rule, with
     // the lookahead taken from the Valence pacing ring, and reports every
     // bounded handoff as a `handoff_bounded` anomaly (0x0089 EVENT + 0x0088
-    // counter + /api/vmotion). Machine-side k is live-tunable via
-    // POST /api/vmotion {"handoff_k": ...}, where 0 disables it.
+    // counter + /api/kinetic). Machine-side k is live-tunable via
+    // POST /api/kinetic {"handoff_k": ...}, where 0 disables it.
     //
     // THIS FLAG IS THEREFORE NOW SAFE TO FLIP TO FALSE — that is milestone
     // M5d's A/B: run a Makima axis against valencesim (or the machine) with

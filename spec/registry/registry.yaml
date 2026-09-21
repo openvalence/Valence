@@ -398,7 +398,7 @@ session_event_kinds:
 # §9.4/§16.2) — a per-channel "dropped" kind here would duplicate that home,
 # the same one-home reasoning RFC-016 already applied to fw_version. VLog's
 # OWN ring-level loss count (a record dropped before it ever became a wire
-# EVENT — `vlog::Record::lost`) is carried honestly as a `body` field on
+# EVENT — `geiger::Record::lost`) is carried honestly as a `body` field on
 # the next entry that DOES get published (mirroring what SerialSink already
 # prints, "(+N lost)") — that is catalog-schema territory, not a registry
 # event_kind.
@@ -460,21 +460,21 @@ trust_states:
 # ---------------------------------------------------------------------------
 # Log severity levels (u8) — log channel (0x0008) `body.level` (RFC-017).
 #
-# MIRRORS lib/vlog's `vlog::Level` enum NUMBER-FOR-NUMBER so the
+# MIRRORS lib/geiger's `geiger::Level` enum NUMBER-FOR-NUMBER so the
 # firmware bridge (AppLog -> log EVENT) is a straight `uint8_t(level)` cast,
-# never a translation table. `vlog::Level` also declares `Off = 6`, but
+# never a translation table. `geiger::Level` also declares `Off = 6`, but
 # Off is a FLOOR sentinel (setFloor() / a sink's floor argument) — push()/
 # logf() reject any record at or above it, so no wire record's level field
 # can ever read 6. It is deliberately NOT registered here: registering it
 # would imply a log line can arrive "at Off", which is a contradiction.
 # ---------------------------------------------------------------------------
 log_levels:
-  0: { name: trace, note: "vlog::Level::Trace (SLOGT)" }
-  1: { name: debug, note: "vlog::Level::Debug (SLOGD)" }
-  2: { name: info,  note: "vlog::Level::Info (SLOGI)" }
-  3: { name: warn,  note: "vlog::Level::Warn (SLOGW)" }
-  4: { name: error, note: "vlog::Level::Error (SLOGE)" }
-  5: { name: fatal, note: "vlog::Level::Fatal (SLOGF)" }
+  0: { name: trace, note: "geiger::Level::Trace (GLOGT)" }
+  1: { name: debug, note: "geiger::Level::Debug (GLOGD)" }
+  2: { name: info,  note: "geiger::Level::Info (GLOGI)" }
+  3: { name: warn,  note: "geiger::Level::Warn (GLOGW)" }
+  4: { name: error, note: "geiger::Level::Error (GLOGE)" }
+  5: { name: fatal, note: "geiger::Level::Fatal (GLOGF)" }
 
 # ---------------------------------------------------------------------------
 # safety-intents channel (0x0005) op codes — `value` map key 1 (§11).

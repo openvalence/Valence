@@ -21,7 +21,7 @@
 //
 // HARDWARE-FREE: this header knows nothing about VLog, FreeRTOS or serial.
 // The firmware bridge (milestone 5) is one call — Hub::publishLog() — made
-// from an application-side vlog::ISink. The library never allocates, never
+// from an application-side geiger::ISink. The library never allocates, never
 // blocks and never formats: the bridge hands over an already-formatted line.
 #pragma once
 

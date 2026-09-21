@@ -1423,12 +1423,12 @@ def scenario_stream(ctx):
             with client.lock:
                 client.m["stream_bundles_sent"] += sent
 
-    sm_before = _vmotion(ctx.args.ip)
+    sm_before = _kinetic(ctx.args.ip)
     pub.start_loop(streamer=streamer)
     s0 = now()
     time.sleep(args.stream_duration)
     s1 = now()
-    sm_after = _vmotion(ctx.args.ip)
+    sm_after = _kinetic(ctx.args.ip)
 
     sent = pub.m["stream_bundles_sent"]
     for c in watchers + [pub]:
@@ -1608,8 +1608,8 @@ def _current_norm_position(ip):
     return max(0.0, min(1.0, (float(pos) - lo) / (hi - lo)))
 
 
-def _vmotion(ip):
-    _dt, body, err = http_get("http://%s/api/vmotion" % ip, timeout=6.0)
+def _kinetic(ip):
+    _dt, body, err = http_get("http://%s/api/kinetic" % ip, timeout=6.0)
     if err or not body:
         return None
     try:
@@ -1760,7 +1760,7 @@ def main():
     t_start = now()
     print("valence_soak: device %s fw %s, label %r, scenarios: %s"
           % (args.ip, fw, args.label, ", ".join(want)))
-    sm_before = _vmotion(args.ip)
+    sm_before = _kinetic(args.ip)
 
     scenarios = []
     try:
@@ -1783,7 +1783,7 @@ def main():
             pass
         ctx.stop_monitors()
 
-    sm_after = _vmotion(args.ip)
+    sm_after = _kinetic(args.ip)
     verdict = "PASS"
     if any(r["verdict"] == "FAIL" for r in scenarios):
         verdict = "FAIL"
@@ -1802,8 +1802,8 @@ def main():
         "heap": ctx.log.heap_summary(),
         "http_overall": ctx.http.window(t_start, t_end),
         "device_log_totals": ctx.log.evidence_counts(),
-        "vmotion_before": (sm_before or {}).get("sync"),
-        "vmotion_after": (sm_after or {}).get("sync"),
+        "kinetic_before": (sm_before or {}).get("sync"),
+        "kinetic_after": (sm_after or {}).get("sync"),
         "verdict": verdict,
     }
 

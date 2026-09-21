@@ -78,12 +78,12 @@ the bridge is a cast and never a translation table.
 
 | Value | Level | Notes |
 |---|---|---|
-| `0` | `trace` | vlog::Level::Trace (SLOGT) |
-| `1` | `debug` | vlog::Level::Debug (SLOGD) |
-| `2` | `info` | vlog::Level::Info (SLOGI) |
-| `3` | `warn` | vlog::Level::Warn (SLOGW) |
-| `4` | `error` | vlog::Level::Error (SLOGE) |
-| `5` | `fatal` | vlog::Level::Fatal (SLOGF) |
+| `0` | `trace` | geiger::Level::Trace (GLOGT) |
+| `1` | `debug` | geiger::Level::Debug (GLOGD) |
+| `2` | `info` | geiger::Level::Info (GLOGI) |
+| `3` | `warn` | geiger::Level::Warn (GLOGW) |
+| `4` | `error` | geiger::Level::Error (GLOGE) |
+| `5` | `fatal` | geiger::Level::Fatal (GLOGF) |
 
 There is no wire value for `off`. `off` is a floor sentinel, so no record
 can arrive at that level.

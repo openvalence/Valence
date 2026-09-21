@@ -406,7 +406,7 @@ ANOMALY_KINDS = {
     4: "deadline_stretched", 5: "waveform_fallback", 6: "waveform_scaled",
     7: "waveform_centered",
     8: "handoff_bounded",   # M4d / RFC-008 -- the hub-side handoff sanity guard
-    9: "waveform_smoothed", # vmotion 0.8.0 -- the budgeted policies' own kind
+    9: "waveform_smoothed", # kinetic 0.8.0 -- the budgeted policies' own kind
 }
 # 0x4100's `body` (40) sub-map keys — the CHANNEL'S OWN schema keys, which is
 # the whole v1.0 EVENT grammar: a device names its own event fields without a
@@ -419,7 +419,7 @@ CHANNEL_NAMES = {
     CH_SAFETY: "safety", CH_MOTION: "motion", CH_MACHINE_CONFIG: "machine-config",
     CH_PATTERN_STATE: "pattern-state", CH_ODOMETER: "odometer",
     CH_MOTION_INPUT: "motion-input", CH_MOTION_SEGMENT: "motion-segment",
-    CH_PLAN_STRIP: "plan-strip", CH_POWER: "power", CH_MOTION_DIAG: "vmotion-diag",
+    CH_PLAN_STRIP: "plan-strip", CH_POWER: "power", CH_MOTION_DIAG: "kinetic-diag",
     CH_MOTION_ANOMALY: "motion-anomaly",
 }
 
@@ -929,7 +929,7 @@ DIAG_STRUCT = struct.Struct("<IIIBB%dIIIfIIIIIH" % _N_KINDS)
 
 def decode_motion_diag(payload):
     if len(payload) < DIAG_STRUCT.size:
-        raise ValueError("vmotion-diag(0x1111) payload too short: %d bytes (need >= %d)"
+        raise ValueError("kinetic-diag(0x1111) payload too short: %d bytes (need >= %d)"
                           % (len(payload), DIAG_STRUCT.size))
     v = DIAG_STRUCT.unpack_from(payload, 0)
     return {
@@ -1443,10 +1443,10 @@ def _safety_op_roundtrip(ws, args, op_name, next_intent_id, expect_modes_bit=Non
 
 
 def _await_sync_counters(ws, args):
-    """Wait for a FRESH vmotion-diag(0x1111) STATE push and return its
+    """Wait for a FRESH kinetic-diag(0x1111) STATE push and return its
     decoded sync block, or (fallback) the stale last-seen one, or None.
 
-    IN-BAND replacement for the old GET /api/vmotion side-call: every value
+    IN-BAND replacement for the old GET /api/kinetic side-call: every value
     those steps reported (bundles / seg_bundles / samples / enqueued / dropped)
     rides the 0x1111 channel this probe is already granted at 1 Hz, so the
     counters arrive on the SAME socket the keepalives ride. The HTTP call it
@@ -2089,12 +2089,12 @@ def _run_session(ws, args):
 
     diag = _last(CH_MOTION_DIAG)
     if diag is None:
-        bad("motion_diag", "vmotion-diag(0x1111) STATE never observed")
+        bad("motion_diag", "kinetic-diag(0x1111) STATE never observed")
     else:
         try:
             d = decode_motion_diag(diag)
             nonzero = {k: v for k, v in d["by_kind"].items() if v}
-            ok("motion_diag", "vmotion-diag(0x1111) decodes (%d B): plans=%d failures=%d "
+            ok("motion_diag", "kinetic-diag(0x1111) decodes (%d B): plans=%d failures=%d "
                "anomalies=%d reset_gen=%d bundles=%d samples=%d dropped=%d; by_kind=%s"
                % (len(diag), d["plans"], d["failures"], d["anomalies"], d["reset_gen"],
                   d["sync_bundles"], d["sync_samples"], d["sync_dropped"],
@@ -2108,7 +2108,7 @@ def _run_session(ws, args):
             else:
                 ok("motion_diag_sum", "per-kind anomaly counts are consistent with the total")
         except ValueError as e:
-            bad("motion_diag", "vmotion-diag(0x1111) decode error: %s" % e)
+            bad("motion_diag", "kinetic-diag(0x1111) decode error: %s" % e)
 
     odo = _last(CH_ODOMETER)
     if odo is None:
@@ -2300,13 +2300,13 @@ def _run_session(ws, args):
             ok("stream_send", "sent %d single-sample STREAM bundle(s) over %.1fs @ %.0fHz"
                % (n_sent, args.stream, STREAM_HZ))
 
-            # ---- Step 5.6: sync counters (vmotion-diag 0x1111, in-band) --
-            # Formerly GET /api/vmotion on hardcoded port 80 -- see
+            # ---- Step 5.6: sync counters (kinetic-diag 0x1111, in-band) --
+            # Formerly GET /api/kinetic on hardcoded port 80 -- see
             # _await_sync_counters for why that was a session-killer.
-            scene("Step 5.6: sync counters (vmotion-diag 0x1111, in-band)")
+            scene("Step 5.6: sync counters (kinetic-diag 0x1111, in-band)")
             d, fresh = _await_sync_counters(ws, args)
             if d is None:
-                bad("sync_counters", "no decodable vmotion-diag(0x1111) STATE -- the sync "
+                bad("sync_counters", "no decodable kinetic-diag(0x1111) STATE -- the sync "
                     "counters are unobservable in-band")
             else:
                 ok("sync_counters", "bundles=%d seg_bundles=%d samples=%d enqueued=%d dropped=%d%s"
@@ -2373,10 +2373,10 @@ def _run_session(ws, args):
                % (n_sent, args.segments))
 
             # ---- Step 5.8: sync counters after segments (0x1111, in-band) --
-            scene("Step 5.8: sync counters (vmotion-diag 0x1111, in-band)")
+            scene("Step 5.8: sync counters (kinetic-diag 0x1111, in-band)")
             d, fresh = _await_sync_counters(ws, args)
             if d is None:
-                bad("segment_counters", "no decodable vmotion-diag(0x1111) STATE -- the sync "
+                bad("segment_counters", "no decodable kinetic-diag(0x1111) STATE -- the sync "
                     "counters are unobservable in-band")
             else:
                 ok("segment_counters", "bundles=%d seg_bundles=%d samples=%d enqueued=%d dropped=%d "

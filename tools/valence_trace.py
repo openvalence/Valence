@@ -41,7 +41,7 @@ RELATIONSHIP TO tools/valence_probe.py
 DISCOVERY IS BY ROLE AND NAME, NEVER BY CHANNEL ID
     Nothing in this file hardcodes 0x1100/0x1000/0x1110/0x1111/0x4100 (RFC-047
     Phase C4; motion/machine-config/motion-anomaly never moved, plan-strip and
-    vmotion-diag did — see CHANNEL-MAP.md for the renumber). The
+    kinetic-diag did — see CHANNEL-MAP.md for the renumber). The
     stroke window is resolved by the registry field_roles `window.min` /
     `window.max`; the position/velocity fields by `telemetry.position` /
     `telemetry.velocity`; the rest by the catalog's own declared entry and

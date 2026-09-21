@@ -393,8 +393,8 @@ the copy a third-party implementer reads.
   (`end_vel` bounding against the *current* segment's chord alone is NOT
   sufficient: the measured pathology was sane relative to its own span and only
   absurd relative to the next one.)
-  **LANDED — milestone M4d, fw 2.1.53 / vmotion 0.7.0.**
-  `vmotion::boundHandoffVelocity` is the bound; `Command::next_chord` /
+  **LANDED — milestone M4d, fw 2.1.53 / kinetic 0.7.0.**
+  `kinetic::boundHandoffVelocity` is the bound; `Command::next_chord` /
   `has_next_chord` is the lookahead; `ValenceHubService::drainMotionStream`
   supplies it from `PacingRing::peekOldest()` at the latest possible moment
   before the command crosses to Core 1. `chord_in` is measured from the
@@ -402,10 +402,10 @@ the copy a third-party implementer reads.
   than any sender's script geometry. Every bounded handoff is a
   `HandoffBounded` (kind 8) anomaly: VLog `motion` tag via the existing
   Core-1 drain, a per-kind counter on 0x0088 `anom_handoff_bounded` and in
-  `GET /api/vmotion`, and an EVENT on 0x0089 — so a client can SEE that its
-  content is being reshaped. `handoff_k` (POST /api/vmotion, 0 = off) is the
+  `GET /api/kinetic`, and an EVENT on 0x0089 — so a client can SEE that its
+  content is being reshaped. `handoff_k` (POST /api/kinetic, 0 = off) is the
   live A/B switch. Verified: 561,599 new property-sweep assertions, all six
-  `vmotion_traces` scenarios byte-identical (the guard cannot fire without a
+  `kinetic_traces` scenarios byte-identical (the guard cannot fire without a
   lookahead, so no existing motion changed), and an end-to-end run against
   valencesim producing `event_kind=8 target=0.900 detail=0.0083`.
   **Two honest limits of the landed guard**, recorded so nobody re-discovers
@@ -847,7 +847,7 @@ the copy a third-party implementer reads.
   INTENT** — the reference device's counter resets still ride their legacy HTTP
   keys and feed `reset_gen` from there. The vocabulary shipped; the verb did
   not. SPEC §18-18.
-- **Origin:** coverage audit: `reset_stats`, `reset_peaks`, vmotion
+- **Origin:** coverage audit: `reset_stats`, `reset_peaks`, kinetic
   `reset_stats`, `ap_reset` are ACTIONS, not values — [RFC-009](#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) is explicitly
   a value metamodel, and today three different reset verbs ride bespoke
   HTTP keys.
@@ -1527,7 +1527,7 @@ operator ruling — it is at the bottom, alone.*
 - **019/011 reset classification:** an action that restores
   configuration values bumps `cfg_gen` AND `reset_gen` (`ap_reset` is
   this); an action that clears counters bumps `reset_gen` only
-  (`reset_stats`/`reset_peaks`/vmotion).
+  (`reset_stats`/`reset_peaks`/kinetic).
 - **022.10 scoped:** applied-within-advertised-range applies to ECHO
   `applied` maps and `setting_key`-bearing fields; effective/read-only
   fields lawfully exceed a paired setting's range and declare their own
@@ -1694,7 +1694,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
   key 45 on publishes/granted_publishes entries; the GRANT echoes the
   **EFFECTIVE** family via `HubDelegate::effectiveCurveFamily` (answers M-2's
   "honored vs silently downgraded" open question — a ForceC1/C2 machine
-  reports the forced family, never parrots); `vmotion::Command::
+  reports the forced family, never parrots); `kinetic::Command::
   client_curve_family` resolves `CurvePolicy::FollowClient` at last (c1_cubic
   → cubic reconstruction; everything else = pre-RFC quintic); firmware stamps
   each pacing-ring segment with its session's granted family. Test SI-23.
@@ -1751,7 +1751,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
 - **Compatibility:** Fully additive — a new registry enum, one optional
   descriptor field, one optional INTENT. Absent = `unspecified` = current
   behavior, so no existing client, catalog or golden vector changes. The
-  device-side consumer already exists (`vmotion::CurvePolicy`), which is why
+  device-side consumer already exists (`kinetic::CurvePolicy`), which is why
   this is a wire proposal and not a feature proposal.
 
 ---
@@ -2899,7 +2899,7 @@ STATE/roster channel, or the sole INTENT verb for a single-writer family),
 and every non-zero member is a related channel within that family (a tuning
 card, a modifier lane, a preset-store twin). The **mirror rule**: a channel
 and its paired writer/twin across class bands share domain+family+member
-exactly — `0x1120` vmotion-limits (STATE) and `0x3120` vmotion-set
+exactly — `0x1120` kinetic-limits (STATE) and `0x3120` kinetic-set
 (INTENT) are both domain=motion, family=2, member=0. **Family `0xF` is
 admin/meta in every band** — `0x30F0` machine-admin (clear-fault, scan,
 save, reboot) is the machine domain's admin family. **Named reserves** hold
@@ -3141,19 +3141,19 @@ exactly Phase D and needed no new spec work — LEDGER.md's own note).
   - **(c), the pinned constant, landed.** The firmware's independently
     hardcoded `1.5f` default (`SystemState.h`'s `sm_tune_handoff_k`) now
     reads `valence::limits::segment_handoff_k` — the ONE remaining
-    duplicate this RFC's own Problem section named. `lib/vmotion`'s own
+    duplicate this RFC's own Problem section named. `lib/kinetic`'s own
     `Config::handoff_chord_factor` default is intentionally left as a bare
     `1.5f`: that library is zero-dependency and protocol-agnostic by
     doctrine (DOCTRINE.md §9), so it does not gain a `lib/valence` include
     for its own standalone default — only the firmware GLUE that wires the
     registry value in was carrying the duplication this RFC flagged.
   - **(c), the scheduling-depth backstop, EVALUATED AND NOT LANDED.** A
-    variant of `vmotion::Engine::commitWaveform()`'s [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) handoff guard
+    variant of `kinetic::Engine::commitWaveform()`'s [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client) handoff guard
     — falling `chord_out` back to the segment's own `chord_in` when no
     lookahead (`Command::has_next_chord`) is available, instead of skipping
     the guard per [RFC-008](#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client)'s original tail-case exemption — was implemented
     and then REVERTED after it measurably regressed this library's own
-    `test_vmotion` regression bench
+    `test_kinetic` regression bench
     ("Mixed feasible/infeasible chain settles centered and STAYS there," the
     operator's real 26.8 mm-off-center bench case): the centering-OFF
     baseline defect shrank from -23.6 mm to -9.4 mm purely as a side effect
@@ -3164,7 +3164,7 @@ exactly Phase D and needed no new spec work — LEDGER.md's own note).
     rule (three-strikes-then-report): a correct fix needs a signal that can
     tell "a successor is coming, just not yet queued" apart from "this is
     genuinely the last segment," which `chord_in` alone cannot provide.
-    Recorded in `vmotion.hpp`'s `commitWaveform()` comment beside the
+    Recorded in `kinetic.hpp`'s `commitWaveform()` comment beside the
     guard, and in `Command::has_next_chord`'s doc comment, so the rejected
     approach is not silently retried.
 
@@ -3791,12 +3791,12 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** DRAFT (Valence Drive bench, 2026-09-02). Ruling pending (rfc-zj1).
 - **Receipt 2026-09-03 (Valence Drive fw 2.5.2, after the RP-owns-motion port
-  and the vmotion refactor of the same day).** What the reference does
+  and the kinetic refactor of the same day).** What the reference does
   now, item by item: (1) the sentinel value is unchanged and still lives only
   in the reference catalog comment and the MFP plugin's hand copy; the
   registry limit is still the ask. (2) NOT implemented as written: the
   reference resolves `unspecified` to a stream-velocity estimate whenever
-  the stream reads dense (`vmotion.hpp`, `commitWaveform`, the
+  the stream reads dense (`kinetic.hpp`, `commitWaveform`, the
   `has_end_vel` fallback), with or without a scheduled successor, and to
   rest only on a sparse stream. The field does not hit it because the
   reference client sends explicit rest before every hold and gap (MFP
@@ -3873,7 +3873,7 @@ say exactly which, future-us will want the receipts.*
      segment settles the machine, as §6.6 already says.
 - **Compatibility.** Additive. The sentinel VALUE is what already ships, so
   no bytes change; the reference hub already implements items 2 and 3
-  (fw 2.4.105+, `vmotion` dwell rule). One registry table gains two
+  (fw 2.4.105+, `kinetic` dwell rule). One registry table gains two
   limits. Verify whether any golden vector encodes a 0x2101-shaped
   end-velocity field before claiming "no vector changes".
 - **Test of the doctrine (RFC-008).** Would every conforming client have to
@@ -3946,7 +3946,7 @@ say exactly which, future-us will want the receipts.*
 - **Compatibility.** Purely additive: one optional CBOR key on an entry map
   (§4.3 requires decoders to ignore unknown keys) and one optional role. No
   packed layout, frame type, or vector changes. The reference hub can
-  populate it today from `vmotion` constants it already owns.
+  populate it today from `kinetic` constants it already owns.
 
 ## RFC-060 -- Rename: SlopSync becomes Valence
 
@@ -3972,8 +3972,8 @@ say exactly which, future-us will want the receipts.*
     `'nucleus'`. Editorial note only -- no value, id or encoding moved. The
     body below keeps its original wording.
   - Product example `'valence-drive'`; NVS namespace note `valence`;
-    log-level notes cite `vlog::Level` (verified against the vlog library:
-    `enum class Level` lives in `vlog/vlog_core.hpp` and the `SLOGx` macro
+    log-level notes cite `geiger::Level` (verified against the geiger library:
+    `enum class Level` lives in `geiger/geiger_core.hpp` and the `GLOGx` macro
     names are UNCHANGED, so only the enum's qualification moved).
   - Wire-visible catalog text: the JS client's captured-catalog fixture
     carried `"Motion bundles accepted over SlopSync."` and five
@@ -3994,7 +3994,7 @@ say exactly which, future-us will want the receipts.*
   queue.** The ecosystem is being renamed ahead of its first public tag:
   the protocol is **Valence**, the reference machine firmware is **Valence
   Drive** (repo ValenceDrive, the ESP32-P4 OSSM Flagship), the reference
-  client is **Phosphor**, and the libraries are vmotion / vglow / vlog. The
+  client is **Phosphor**, and the libraries are kinetic / flux / geiger. The
   code-level renames are each repo's own business; the strings a peer can
   observe on the wire are not, because they are registry facts (§5.7) and
   T11 makes every one of them a protocol change. This entry is the ONE
@@ -4036,7 +4036,7 @@ say exactly which, future-us will want the receipts.*
   4. **Notes and examples.** Product example becomes `'valence-drive'`;
      the NVS namespace note becomes `valence` (the P4 reference already
      stores under that name); `sloplog::Level` citations become
-     `vlog::Level`. Values are untouched; these are identifier renames in
+     `geiger::Level`. Values are untouched; these are identifier renames in
      prose that codegen copies into headers.
   5. **Wire-visible catalog text.** Every reference catalog description
      that names the protocol is respelled (T11), and the affected etags,
@@ -4067,6 +4067,10 @@ say exactly which, future-us will want the receipts.*
   saying "client" and "reference implementation". A parked name, **Valence
   Bond**, is reserved for the pairing ceremony and trust ledger and is NOT
   spent here.
+- **Receipt 2026-09-21 (evening).** The reference libraries were renamed the same day:
+  kinetic (was vmotion), flux (was vglow), geiger (was vlog); log macros GLOG*. The
+  five `vmotion-*` channel names in the reference catalogs and the JS fixture became
+  `kinetic-*` (same byte lengths), fixture etag 1f0244534f758694 -> 0d6b06067f5ed837.
 - **Compatibility.** Breaking at the string level for anything built
   against `slopsync.v1`, `SLOP`, or the old UUIDs, and allowed because
   nothing is tagged (never-renumber binds from the v1.0 tag forward). Order

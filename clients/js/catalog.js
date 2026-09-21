@@ -161,7 +161,7 @@ export class BlobReassembler {
   //
   // THIS CAP SILENTLY BROKE THE CLIENT. The device catalog was 11,659 B, i.e.
   // 629 bytes under the old ceiling, and nothing anywhere was watching that
-  // margin. Adding the vmotion tuning cards took it to 15,817 B, the
+  // margin. Adding the kinetic tuning cards took it to 15,817 B, the
   // reassembler refused the transfer header, and the session then went LIVE
   // WITH NO CATALOG -- so every STATE frame arrived undecodable and the UI
   // simply showed nothing. No error, no NACK, no dropped-frame warning: a

@@ -9,7 +9,7 @@ between accepting a write and reflecting it in STATE.
 
 - **Nucleus's `sim/valencesim`** is the 1:1 device twin: it embeds the real device catalog
   (`--profile device`) and reproduces Nucleus's actual behavior,
-  including the real `vmotion::Engine`. Parity is one-way — the firmware
+  including the real `kinetic::Engine`. Parity is one-way — the firmware
   is never edited to close a sim gap.
 - **Valence Bench** is the opposite role: no fixed catalog, no motion engine, no
   device semantics. It builds whatever catalog a config file describes and

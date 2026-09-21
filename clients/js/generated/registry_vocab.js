@@ -444,12 +444,12 @@ export const SAFETY_EVENT_KIND_NAME = {
 
 // ---- log_levels ----------------------------------------------------
 export const LOG_LEVEL = {
-  trace: 0,  // vlog::Level::Trace (SLOGT)
-  debug: 1,  // vlog::Level::Debug (SLOGD)
-  info: 2,  // vlog::Level::Info (SLOGI)
-  warn: 3,  // vlog::Level::Warn (SLOGW)
-  error: 4,  // vlog::Level::Error (SLOGE)
-  fatal: 5,  // vlog::Level::Fatal (SLOGF)
+  trace: 0,  // geiger::Level::Trace (GLOGT)
+  debug: 1,  // geiger::Level::Debug (GLOGD)
+  info: 2,  // geiger::Level::Info (GLOGI)
+  warn: 3,  // geiger::Level::Warn (GLOGW)
+  error: 4,  // geiger::Level::Error (GLOGE)
+  fatal: 5,  // geiger::Level::Fatal (GLOGF)
 };
 export const LOG_LEVEL_NAME = {
   0: 'trace',

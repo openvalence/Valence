@@ -260,12 +260,12 @@ inline constexpr uint8_t stop_cleared = 4;  // one or more of STOP / HOLD / PAUS
 }  // namespace safety_events
 
 namespace log_levels {
-inline constexpr uint8_t trace = 0;  // vlog::Level::Trace (SLOGT)
-inline constexpr uint8_t debug = 1;  // vlog::Level::Debug (SLOGD)
-inline constexpr uint8_t info = 2;  // vlog::Level::Info (SLOGI)
-inline constexpr uint8_t warn = 3;  // vlog::Level::Warn (SLOGW)
-inline constexpr uint8_t error = 4;  // vlog::Level::Error (SLOGE)
-inline constexpr uint8_t fatal = 5;  // vlog::Level::Fatal (SLOGF)
+inline constexpr uint8_t trace = 0;  // geiger::Level::Trace (GLOGT)
+inline constexpr uint8_t debug = 1;  // geiger::Level::Debug (GLOGD)
+inline constexpr uint8_t info = 2;  // geiger::Level::Info (GLOGI)
+inline constexpr uint8_t warn = 3;  // geiger::Level::Warn (GLOGW)
+inline constexpr uint8_t error = 4;  // geiger::Level::Error (GLOGE)
+inline constexpr uint8_t fatal = 5;  // geiger::Level::Fatal (GLOGF)
 }  // namespace log_levels
 
 namespace safety_ops {

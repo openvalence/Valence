@@ -103,7 +103,7 @@ It prints how it found every channel, which is worth reading once:
   resolve planned     field name match on 0x0080 layout -> 'tgt_10um'
   resolve asked       field name match on 0x0080 layout -> 'raw_10um'
 [valence_trace] grants: safety=on-change, motion=60.0Hz, machine-config=on-change,
-            plan-strip=45.0Hz, vmotion-diag=1.0Hz, motion-anomaly=on-change
+            plan-strip=45.0Hz, kinetic-diag=1.0Hz, motion-anomaly=on-change
 [valence_trace] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -> run.jsonl
 ```
 

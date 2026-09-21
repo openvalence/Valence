@@ -61,8 +61,8 @@ safe to call, not as an open tracking board.
 | `/api/log` | **[RFC-017](RFC-QUEUE.md#rfc-017--device-log-channel)** | spec-core log EVENT channel + ring-tail backfill; serial-quiet re-binds to first grant |
 | `/api/mode` GET/POST | **DEAD** | operator ruling: transport-mode switching is obsolete — Valence is the replacement |
 | `/api/clients` GET/POST | **[RFC-018](RFC-QUEUE.md#rfc-018--session-roster--admin-eviction)** | 0x0002 roster + session-admin evict |
-| `/api/vmotion` — 14 tuning knobs | **[RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) + AUTHOR** | textbook typed settings (`flags: advanced`), device channel pair |
-| `/api/vmotion` — stats/anomaly counters, plan bench | **LANDED (M5a)** | 0x1102 vmotion-diag STATE (84 B: plans/failures/9 per-kind counters/plan-time bench/5 ingress counters — the 9th, `anom_handoff_bounded`, arrived with M4d) + [RFC-019](RFC-QUEUE.md#rfc-019--action-intents--observable-resets) `reset_gen`, fed by the existing HTTP reset. The reset ACTION INTENT still wants [RFC-019](RFC-QUEUE.md#rfc-019--action-intents--observable-resets) proper |
+| `/api/kinetic` — 14 tuning knobs | **[RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) + AUTHOR** | textbook typed settings (`flags: advanced`), device channel pair |
+| `/api/kinetic` — stats/anomaly counters, plan bench | **LANDED (M5a)** | 0x1102 kinetic-diag STATE (84 B: plans/failures/9 per-kind counters/plan-time bench/5 ingress counters — the 9th, `anom_handoff_bounded`, arrived with M4d) + [RFC-019](RFC-QUEUE.md#rfc-019--action-intents--observable-resets) `reset_gen`, fed by the existing HTTP reset. The reset ACTION INTENT still wants [RFC-019](RFC-QUEUE.md#rfc-019--action-intents--observable-resets) proper |
 | `/api/machine` GET | **AUTHOR** | backend/bus-health STATE channel |
 | `/api/machine/commit` (backend switch + deferred reboot) | **[RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) + [RFC-020](RFC-QUEUE.md#rfc-020--procedures-long-running-guarded-operations--reboot-commit)** | `restart_required` setting + reboot-commit handshake (`REBOOTING` GOODBYE) |
 | `/api/machine/homeoverride` (bench fake-home) | **[RFC-025](RFC-QUEUE.md#rfc-025--safety-semantics-completion-incl-overridebypass-ruling)** | home 0x3101 ops 2/3 (safety-reviewed — op 2 clears an e-stop latch) |
@@ -71,7 +71,7 @@ safe to call, not as an open tracking board.
 | :81 0x01 TELE `raw` ("asked" line) + per-sample `i_bus_mA` | **LANDED (M5a)** | `raw_10um` APPENDED to 0x1100 (7 → 9 B): asked / planned / achieved in ONE frame, one seq, one timestamp. `i_bus_mA` went to 0x1001 instead — bus current is background diagnostics and did not belong on the 60 Hz channel |
 | :81 0x02 STATUS bus_mV/die_c10/peak_mA | **LANDED (M5a)** | 0x1001 power STATE, ≤10 Hz, background. FEATURE-GATED on `hasCurrentSensor()`/`hasPowerMonitor()`: a machine without the hardware does not advertise the channel, and that absence IS the capability answer ([RFC-016](RFC-QUEUE.md#rfc-016--in-band-hub-identity-capabilities--catalog-introspection)) |
 | :81 0x02 STATUS link fields | **[RFC-026](RFC-QUEUE.md#rfc-026--strings-on-the-wire-operator-ordered) + AUTHOR** | same link-status channel as above |
-| :81 0x04 INTERP plan-strip (~45 Hz) | **LANDED (M5a)** | 0x1101 plan-strip STATE, 45 Hz, elevated, 18 B — flags/style/start/end/cur/vel/duration/elapsed, straight off vmotion::Snapshot |
+| :81 0x04 INTERP plan-strip (~45 Hz) | **LANDED (M5a)** | 0x1101 plan-strip STATE, 45 Hz, elevated, 18 B — flags/style/start/end/cur/vel/duration/elapsed, straight off kinetic::Snapshot |
 | :81 0x05 ANOMALY | **LANDED (M5a)** | 0x4100 motion-anomaly EVENT — the FIRST device-authored EVENT channel, and therefore the proof that the M3b `body` (40) sub-map grammar works: it named its own fields with no registry change. Core 1 hands edges to Core 0 through an SPSC ring; the dead legacy feed is replaced, not revived |
 | :81 0x06 STATS energy_mwh + session_ms | **LANDED (M5a)** | `energy_wh` (f32 Wh, not the legacy fixed-point mWh — the wire is self-describing) + `session_ms` appended to 0x1002 (12 → 20 B) |
 | :81 0x10/0x11 CMD/ECHO (20 ops) | **LIVE / [RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) / [RFC-010](RFC-QUEUE.md#rfc-010--client-assertable-e-stop-over-valence) / [RFC-025](RFC-QUEUE.md#rfc-025--safety-semantics-completion-incl-overridebypass-ruling)** | per-op mapping follows the rows above |
@@ -140,10 +140,10 @@ channels now have a named consumer and should be prioritized accordingly.
   Do not extend it, do not add sibling limiters.
 
 ### Hub-side handoff sanity guard ([RFC-008](RFC-QUEUE.md#rfc-008--doctrine-the-machine-owns-motion-processing-not-the-client)'s "concrete first consequence")
-**LANDED — milestone M4d (fw 2.1.53 / vmotion 0.7.0).** "Plan for the
+**LANDED — milestone M4d (fw 2.1.53 / kinetic 0.7.0).** "Plan for the
 worst" is machine-side doctrine, so the guard lives in the motion engine,
 not in any client.
-- **The bound:** `vmotion::boundHandoffVelocity(end_vel, chord_in,
+- **The bound:** `kinetic::boundHandoffVelocity(end_vel, chord_in,
   chord_out, k)` → `|end_vel| ≤ k·min(|chord_in|, |chord_out|)`, k = 1.5
   (the Fritsch–Carlson shape-preserving value). Sign preserved; in-bounds
   input returned bit-for-bit unchanged.
@@ -156,11 +156,11 @@ not in any client.
   real position, better ground truth than the sender's script geometry.
 - **Observability:** `AnomalyType::HandoffBounded` (kind 8) → VLog
   `motion` tag through the existing Core-1 drain, `anom_handoff_bounded` on
-  0x1102 vmotion-diag (80 → 84 B) and in `GET /api/vmotion`
+  0x1102 kinetic-diag (80 → 84 B) and in `GET /api/kinetic`
   `anomalies_by_kind`, and an EVENT on 0x4100 motion-anomaly with the label
   `handoff_bounded` — so a client can see its content being reshaped, which
   is the whole point.
-- **The knob:** `POST /api/vmotion {"handoff_k": k}`, applied value
+- **The knob:** `POST /api/kinetic {"handoff_k": k}`, applied value
   echoed, clamped [0, 8]; **0 disables the guard**, which is the machine
   half of the M5d A/B against the plugin's own limiter.
 - **The tail case, decided:** no successor in the ring → NO bound, accept as
@@ -208,7 +208,7 @@ around.
 Every surface above lands in exactly one of LIVE / RFC / AUTHOR / DEAD /
 OTA — **zero uncovered surfaces** once [RFC-001](RFC-QUEUE.md#rfc-001--nack-cannot-be-correlated-to-a-specific-in-flight-intent)…029 land. The AUTHOR pile
 (power/thermal, link-status, plan-strip, anomaly events, arbiter-diag,
-servo mirror, vmotion-diag — ~7 new device channels) requires no spec
+servo mirror, kinetic-diag — ~7 new device channels) requires no spec
 changes at all: it is catalog authoring on machinery that already exists,
 gated on the catalog-capacity restructure ([RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis) action item, sized by
 the 2026-07-25 feasibility pass) and — for the anomaly channel — on the
@@ -218,7 +218,7 @@ keys.
 
 **M5a device-authoring pass (2026-07-26) — CLOSED 8 of the AUTHOR pile's
 rows.** Four new device channels (0x1101 plan-strip, 0x1001 power, 0x1102
-vmotion-diag, 0x4100 motion-anomaly), four append-only layout extensions
+kinetic-diag, 0x4100 motion-anomaly), four append-only layout extensions
 (0x1100 `raw_10um`, 0x1000 `enabled_mask`, 0x1200 `enabled_mask`, 0x1002
 `energy_wh`+`session_ms`), and the whole settings surface annotated per
 [RFC-009](RFC-QUEUE.md#rfc-009--settings-metamodel-per-field-catalog-annotations-for-generic-self-building-uis). Device catalog 21 → 25 entries; its etag moved, as expected.

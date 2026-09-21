@@ -101,7 +101,7 @@ export const CH_MOTION_INPUT = 0x2100; // ch::motion_input (STREAM c2h)
 export const CH_MOTION_SEGMENT = 0x2101; // ch::motion_segment (STREAM c2h)
 export const CH_PLAN_STRIP = 0x1110; // ch::plan_strip (STATE, 45 Hz diagnostics)
 export const CH_POWER = 0x1010; // ch::power (STATE, only when the hardware exists)
-export const CH_MOTION_DIAG = 0x1111; // ch::motion_diag (STATE, vmotion counters)
+export const CH_MOTION_DIAG = 0x1111; // ch::motion_diag (STATE, kinetic counters)
 export const CH_MOTION_ANOMALY = 0x4100; // ch::motion_anomaly (EVENT)
 // M5b: the four MODE settings the legacy :81/HTTP plane owned. A separate
 // category from 0x1000 because that channel's RFC-009 enabled_mask is a

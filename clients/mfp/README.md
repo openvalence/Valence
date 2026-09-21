@@ -314,7 +314,7 @@ no copies) into a console harness and runs the full session: mDNS discovery,
 HELLO→WELCOME publish grant, **BLOB_REQ catalog fetch + local SHA-256 verify +
 CATALOG_READY**, **RFC-006(b) role lookup and live role-value decode**, CLOCK sync, a
 role-resolved stroke-window INTENT round trip (**simulator only**), 5 s of STREAM @ 50 Hz,
-then diffs the target's `/api/vmotion` ingress counters.
+then diffs the target's `/api/kinetic` ingress counters.
 
 **Safety gate.** On real hardware it reads `/api/status` and **refuses to run if the
 machine is homed or e-stopped** (unhomed = every sample is dropped at the HOMED safety

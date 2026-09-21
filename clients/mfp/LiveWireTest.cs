@@ -54,7 +54,7 @@ internal static class LiveWireTest
         // ---- SAFETY GATE ----------------------------------------------------
         // On real hardware: /api/status must say unhomed + not e-stopped, or we
         // refuse to open a socket at all. On valencesim there is no /api/status
-        // (its HTTP facade is capabilities + vmotion only) and nothing
+        // (its HTTP facade is capabilities + kinetic only) and nothing
         // physical to move, so `sim: true` in /api/capabilities is an explicit
         // waiver. An endpoint we cannot read on a machine that is NOT a
         // declared sim is an ABORT — "unknown machine state" is never a pass.
@@ -101,9 +101,9 @@ internal static class LiveWireTest
         }
         Console.WriteLine();
 
-        // ---- Baseline /api/vmotion sync counters --------------------------
+        // ---- Baseline /api/kinetic sync counters --------------------------
         var (baseBundles, baseSamples, baseEnqueued, baseDropped) = await ReadSyncCounters(http, baseUrl);
-        Console.WriteLine("[baseline] /api/vmotion sync block:");
+        Console.WriteLine("[baseline] /api/kinetic sync block:");
         Console.WriteLine($"    bundles={baseBundles} samples={baseSamples} enqueued={baseEnqueued} dropped={baseDropped}");
         Console.WriteLine();
 
@@ -479,7 +479,7 @@ internal static class LiveWireTest
         long dEnqueued = afterEnqueued - baseEnqueued;
         long dDropped = afterDropped - baseDropped;
 
-        Console.WriteLine("[after] /api/vmotion sync block:");
+        Console.WriteLine("[after] /api/kinetic sync block:");
         Console.WriteLine($"    bundles={afterBundles} samples={afterSamples} enqueued={afterEnqueued} dropped={afterDropped}");
         Console.WriteLine($"[diff]  bundles={dBundles} samples={dSamples} enqueued={dEnqueued} dropped={dDropped}");
         Console.WriteLine();
@@ -560,7 +560,7 @@ internal static class LiveWireTest
 
     private static async Task<(long bundles, long samples, long enqueued, long dropped)> ReadSyncCounters(HttpClient http, string baseUrl)
     {
-        var body = await http.GetStringAsync($"{baseUrl}/api/vmotion");
+        var body = await http.GetStringAsync($"{baseUrl}/api/kinetic");
         var obj = JObject.Parse(body);
         var sync = obj["sync"];
         long bundles = sync?.Value<long?>("bundles") ?? 0;

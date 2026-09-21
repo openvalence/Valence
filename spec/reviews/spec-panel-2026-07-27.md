@@ -48,7 +48,7 @@ Note on the input: the task framing says 16 readers, but the REPORTS array actua
 ### Segment handoff sanity bound (H11) only catches pathological end-velocity when the successor segment is already scheduled — long, sparse segments have no backstop  
 **6/15 readers** — sections: §9.6, H11, §18-1
 
-> **PARTIALLY RESOLVED** by [RFC-049](../RFC-QUEUE.md#rfc-049--spec-fresh-eyes-panel-omnibus-small-normative-fixes)(c): the `k = 1.5` constant is now the registry-pinned `segment_handoff_k` (first half, landed). The scheduling-depth backstop itself (second half) was implemented, then reverted — it measurably worsened a characterized motion defect via an unverified control-loop interaction. Left open; see `vmotion.hpp`'s `commitWaveform()` comment.
+> **PARTIALLY RESOLVED** by [RFC-049](../RFC-QUEUE.md#rfc-049--spec-fresh-eyes-panel-omnibus-small-normative-fixes)(c): the `k = 1.5` constant is now the registry-pinned `segment_handoff_k` (first half, landed). The scheduling-depth backstop itself (second half) was implemented, then reverted — it measurably worsened a characterized motion defect via an unverified control-loop interaction. Left open; see `kinetic.hpp`'s `commitWaveform()` comment.
 
 > This is a real correctness gap (long segments from sparse senders can violate the guard) accepted because the alternative is worse... Stating it is good; accepting it still feels like a limitation left in place.
 
