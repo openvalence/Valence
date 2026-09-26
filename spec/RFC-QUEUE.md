@@ -4883,3 +4883,50 @@ say exactly which, future-us will want the receipts.*
      here?
   2. Is `input.velocity` worth a role, or is a samples-kind velocity hint a
      device extension a generic client should leave at its default?
+
+## RFC-072 -- Discovery identity: a durable id in mDNS TXT, a pinned scan-response company id
+
+- **Status:** DRAFT (Phosphor shell audit, 2026-09-25). Ruling pending
+  (rfc-uvh).
+- **Origin:** Phosphor ph-vdk.25 (mDNS browse beside the §13.8 UDP probe)
+  and ph-vdk.16 (reading `ble_adv_flags` for the BLE-to-WS upgrade).
+- **Problem.**
+  1. **mDNS TXT carries no durable identity.** §13.7 lists `v`, `name`,
+     `etag` and `pairing`. §13.8 gave the UDP reply `hub_instance_id`
+     precisely so a client can deduplicate one hub across reboots (the
+     RFC-048 correction). A client merging mDNS and UDP results can only
+     match on address and port, which splits a multi-homed hub into two rows
+     and loses a hub whose lease moved, and an mDNS-only hub has no key a
+     client can remember between launches.
+  2. **The TXT keys live only in prose.** The registry pins `mdns_service`
+     (under `limits`) but not the key set, so no generator emits them and no
+     drift gate can check a client's copy.
+  3. **The flags byte's company identifier is unpinned.** §13.4 puts
+     `ble_adv_flags` in a 5-byte Manufacturer-Specific-Data record in the
+     scan response but names no company id. The retired S3 reference used
+     `0xFFFF`, the Bluetooth SIG's testing id. A client must guess which MSD
+     entry is Valence's, and an implementation that picks another id is
+     invisible to every client.
+- **Proposed change.**
+  1. **TXT `id`.** `id=<hub_instance_id>` as 16 lowercase hex digits, SHOULD
+     whenever the hub carries `identity.hub_instance_id` (§6.3). The same
+     value as the UDP reply and WELCOME. Clients deduplicate mDNS and UDP
+     results on it and treat it as untrusted display data (§13.7).
+  2. **Registry block `mdns_txt`** holding the TXT keys (`v`, `name`,
+     `etag`, `pairing`, `id`) and their value forms, so the codegen can emit
+     them. Whether `mdns_service` moves beside it is the registry owner's
+     call.
+  3. **Pin the MSD layout.** `ble_adv_flags` gains `company_id: 0xFFFF` and
+     the record layout `company_id:u16le + flags:u8`. A client reads the
+     flags byte only from that company id's record.
+- **Wire impact.** Additive. TXT gains one key; item 3 pins what the
+  reference hub already sent.
+- **Registry impact.** New `mdns_txt`; `ble_adv_flags` gains `company_id`.
+- **Conformance impact.** A hub that carries `hub_instance_id` advertises the
+  same value in WELCOME, the UDP reply and TXT `id`.
+- **Open questions.**
+  1. `0xFFFF` is reserved by the SIG for testing. Ship on it, apply for an
+     assigned id, or move the byte into Service Data under the Valence
+     service UUID (a 19-byte record that does not fit beside the full name)?
+  2. Should TXT also carry `fw`, so an mDNS-only row can show a firmware
+     version the way a UDP row does?
