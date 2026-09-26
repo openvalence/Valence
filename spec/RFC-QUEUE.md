@@ -5555,3 +5555,164 @@ say exactly which, future-us will want the receipts.*
   4. May a declaration carry STORE entries (presets held on the accessory)?
   5. Should the hub rewrite an accessory's entry `group` strings to its
      hub-authored name, or leave naming to the `accessories` record alone?
+
+## RFC-077 -- Live catalog growth: announcing a new etag to live sessions
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
+  (rfc-cou). Consequence of
+  [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space);
+  item 7 (capacity) gates every join RFC-076 describes. Item 8 needs an
+  explicit operator ruling before the reference library can carry more than
+  a token accessory.
+- **Origin:** operator rulings 2026-09-26: once paired, an accessory's
+  channels join the hub's catalog. The orchestrator's read, recorded with the
+  rulings: the catalog therefore changes at runtime, and the spec needs a
+  rule for live growth and a mid-session re-announce. Capacity facts from
+  the Nucleus planner: the reference library instantiates its catalog as
+  `Catalog32 = BasicCatalog<48, 200, 160, 192, 4>` (48 entries, 200 layout
+  fields, 160 schema fields; `lib/valence/include/valence/channel/catalog.hpp`)
+  and encodes it into `kCatalogScratchBytes` = 32768 (`hub.hpp`); Nucleus uses
+  189 of the 200 layout fields today.
+- **Problem.**
+  1. **§8.6 forbids it.** "The set of channels and fields is enumerated at
+     connect and is never created or destroyed at runtime."
+  2. **The half that exists blinds a live session.** §4.2 rule 3 already
+     says a hub whose catalog changes without reboot MUST publish the new
+     etag on the `catalog` STATE channel (`0x0001`), and clients MUST
+     "re-enter SYNCING". Re-entering SYNCING drops readiness (§6.4): no STATE
+     and no STREAM reach the session, including `safety`, and its INTENTs are
+     refused `NOT_READY`. Pairing a pump would blind every connected
+     controller to the safety latch and stall every motion stream for a
+     catalog transfer, over a change that touched none of their channels.
+  3. **No rule for grants on channels that vanish**, or for channels that
+     appear.
+  4. **Nothing confines the change**, so a client cannot know which of its
+     cached layouts survive.
+  5. **Capacity is unbounded on paper and tiny in practice.** RFC-076's slice
+     has room for 126 channels; the reference library has 11 spare layout
+     fields. Nothing tells a client or an accessory how much room a hub has,
+     or what refusal looks like.
+- **Proposed change.**
+  1. **Only the user space changes at runtime.** §8.6 is amended: entries in
+     the core and device ranges are fixed per firmware boot; entries in the
+     user space (RFC-076 item 1) MAY be added, replaced or removed at
+     runtime, and only by an accessory join, a declaration replacement, or a
+     forget. An accessory going offline changes nothing (RFC-076 item 6), so
+     a flapping link can never churn the catalog. **Every core and device
+     entry a session decoded under the old etag is byte-identical under the
+     new one.** A hub that changes anything outside the user space without a
+     reboot (a simulator, a host hub) keeps §4.2 rule 3 exactly as written.
+  2. **Announcement reuses `catalog` (`0x0001`).** No CATALOG_CHANGED frame:
+     the hub publishes `0x0001` carrying the new etag, which §4.2 rule 3
+     already requires. A client that wants to track growth MUST subscribe to
+     `0x0001`; every client SHOULD.
+  3. **A user-space change does not revoke readiness.** §4.2 rule 3's
+     "re-enter SYNCING" and §6.4's gate are narrowed to changes outside the
+     user space. A LIVE session stays ready across a user-space change: the
+     hub keeps pushing every granted STATE and STREAM, keeps accepting its
+     INTENTs and bundles, and records per session the etag it last
+     acknowledged. The client fetches the new catalog over BLOB `ns = 0` in
+     the background, verifies SHA-256, and sends CATALOG_READY with the new
+     etag (§6.4, idempotent as ever). SUBSCRIBE, PUBLISH and INTENT are
+     validated against the hub's current catalog, as always. **A client that
+     cannot accept the grown catalog** (its `total_bytes` exceeds the
+     client's reassembly budget) MAY stay LIVE on its old etag, degraded as
+     §8.5(a) describes, instead of GOODBYE `BLOB_REFUSED`: item 1 makes its
+     old knowledge exactly correct for everything it had.
+  4. **Channels that vanish.** On removal the hub, for every session:
+     1. drops every subscription and publication grant on the removed ids and
+        discards their retained values;
+     2. sends **one NACK `CHANNEL_WITHDRAWN`** (new code, range `0x02`)
+        carrying `channel_id` per withdrawn grant. Silence is not an option
+        (§4.5, §6.7): a subscription that silently stops presents as a
+        rendering bug;
+     3. answers later INTENTs on a removed id `UNKNOWN_CHANNEL`, and drops and
+        counts later bundles on one (§9.2).
+     Removed accessory channels are never motion sources, so no ownership
+     moves; relationships targeting them are disabled per
+     [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine)
+     item 3.
+  5. **Channels that appear.** Nothing is delivered until a session
+     subscribes (§10.2). No implicit grant, including for a live session
+     whose HELLO wish-list named the id (wishes are evaluated once, at
+     HELLO).
+  6. **Transfers in flight.** A catalog transfer running when the etag
+     changes is aborted with the one NACK §8.4 already specifies for an item
+     whose generation moved (`CHUNK_UNAVAILABLE`); the etag change counts as
+     that generation change. The client restarts against the new etag.
+  7. **Capacity.** A hub that hosts accessories declares its budgets, and
+     refuses honestly past them.
+     1. **Per-accessory budget:** the most entries, layout fields and schema
+        fields one declaration may use on this hub. At most 127 entries
+        (RFC-076's slice, the status entry included); in practice far fewer.
+     2. **User-space budget:** the total entries, layout fields, schema
+        fields and encoded catalog bytes the hub can add beyond its own
+        catalog, across all accessories.
+     3. **Advertised remaining capacity.** RFC-076 item 10's
+        `accessories-roster` gains tail fields (§5.4): `per_accessory_entries
+        u8, free_entries u16, free_layout_fields u16, free_schema_fields u16,
+        free_catalog_bytes u16`. On-change, like the rest of the roster, so a
+        client can say "room for about one more small accessory" before
+        anyone presses a button. A hub MUST NOT advertise room it lacks.
+     4. **Refusal.** A declaration that would exceed either budget is refused
+        with JOIN_REPLY `capacity` (RFC-076 item 4). This clarifies RFC-076:
+        a JOIN_REPLY with `declaration_needed` set is provisional, and the
+        final JOIN_REPLY follows validation and the capacity check. The
+        refusal is also emitted on `pairing-events` (`0x000B`) as a new kind,
+        `accessory_refused` `{accessory_id, result}`, so the operator who
+        opened the window learns why nothing appeared. The `accessory-admin`
+        op `window_open` is answered NACK `ACCESSORY_CAPACITY` (new code) when
+        the hub has no free slice, no free peer entry, or less budget than the
+        smallest legal declaration (the status entry plus one channel).
+  8. **The reference library limit is a frozen-API change.** Raising
+     `Catalog32`'s capacities or `kCatalogScratchBytes` reshapes the frozen
+     `hub.hpp`/`catalog.hpp` public API. That needs the operator's explicit
+     "yes, break compatibility" under the frozen-list rule, and this RFC does
+     not presume it. Until that ruling, the reference hub's user-space budget
+     is the headroom it has (on Nucleus: 11 layout fields) and it MUST
+     advertise exactly that under item 7.3. The "up to about 128 channels per
+     accessory" of the rulings is RFC-076's address space; whether any
+     reference hub can fill it is this item's open ruling.
+  9. **Etag and reconnect are unchanged.** The etag covers the whole catalog,
+     user entries included (§8.3); sorted by id, user entries follow every
+     device entry. A reconnecting client with a stale etag runs §6.8 SYNCING
+     normally.
+  10. **Hub-served page and hosted clients: no implication.** The catalog is
+      a renderer's only input (RENDERING §1), so Phosphor and a hub-served
+      page both re-render from the new catalog with no asset change. A
+      client SHOULD re-render in place, MUST keep user layouts keyed on stable
+      ids (RENDERING §13 law 10), and MUST show an offline accessory's
+      channels stale (law 8), never remove them.
+- **Wire impact.** No new frame. Two NACK codes (`CHANNEL_WITHDRAWN`,
+  `ACCESSORY_CAPACITY`), one pairing event kind, roster tail fields.
+  Behavioral rules: §8.6 amended, §4.2 rule 3 and §6.4 narrowed.
+- **Registry impact.** `nack_codes` gains the two codes; `pairing_event_kinds`
+  gains `accessory_refused`; `core_channels` `0x0001` note: announces
+  user-space growth without revoking readiness; the `accessories-roster`
+  note gains the tail fields. No limit changes: budgets are per hub and
+  advertised, not registered.
+- **Conformance impact.** (1) A LIVE session subscribed to `safety` and one
+  accessory STATE; an accessory joins: `safety` pushes continue with no gap,
+  `0x0001` carries the new etag, the client fetches and sends CATALOG_READY,
+  and its INTENTs are never refused `NOT_READY`. (2) Diff the encoded core
+  and device entries before and after: byte-identical. (3) Forget: one
+  `CHANNEL_WITHDRAWN` per withdrawn grant; the next INTENT on the id gets
+  `UNKNOWN_CHANNEL`. (4) A catalog transfer in flight across a join is
+  aborted by one NACK. (5) A declaration one field over `free_layout_fields`
+  is refused `capacity`, an `accessory_refused` event fires, and the etag
+  does not move. (6) Remaining-capacity fields drop by exactly the admitted
+  declaration's use. (7) A client over its reassembly budget stays LIVE
+  degraded.
+- **Open questions.**
+  1. Static-profile clients (§8.5) see an etag mismatch after every pairing.
+     Add a second, "base" etag over the non-user entries so a pinned client
+     matches exactly, or accept degraded mode as the answer?
+  2. `CHANNEL_WITHDRAWN` as an unsolicited NACK (proposed), or an unsolicited
+     GRANT at rate 0?
+  3. Should subscribing to `0x0001` become a MUST for every client, not only
+     for those that track growth?
+  4. May a hub put other runtime-discovered hardware (not accessories) in the
+     user space, or is the user space accessories only?
+  5. The item 8 ruling: raise the reference library's catalog limits (a
+     compatibility break), make them a build-time parameter of the hub, or
+     keep them and ship tiny accessories only?
