@@ -4930,3 +4930,110 @@ say exactly which, future-us will want the receipts.*
      service UUID (a 19-byte record that does not fit beside the full name)?
   2. Should TXT also carry `fw`, so an mDNS-only row can show a firmware
      version the way a UDP row does?
+
+## RFC-073 -- Store item encoding: a registered CBOR map, a kind namespace, and an optional per-item digest
+
+- **Status:** DRAFT (Nucleus pattern-engine port, 2026-09-25). Ruling pending
+  (rfc-019).
+- **Origin:** Nucleus commit 631f31d, `flagship_p4/src/hub/ValenceDevice.cpp`
+  `encodePresetItem`/`readBlob` and `PatternPresetStore.h` (val-091.12), first
+  live store-item transfer against the pattern-presets store (`store_id` 2,
+  `kind` `"pattern.frayd"`; measured 73-byte item). The same gap surfaced
+  independently on the client side: rfc-0d9's close stamp notes
+  "SPEC §8.7 advertises no per-item digest, so status 1 for a store item
+  needs a caller-supplied `expectDigest`."
+- **Problem.**
+  1. **§8.7 names a store item's fields and gives them no byte layout.**
+     "Items are `{slot, name, kind, payload}`" is prose, not a registered
+     CBOR map. Every field except `payload` already has a home in
+     `blob_keys` (3, 5, 6) because BLOB_REQ and the CRUD intents carry them
+     too, but nothing says the item's own on-wire document — the bytes a
+     BLOB_CHUNK stream for `ns = 1 (store)` actually reassembles into — IS
+     that same map. Two conforming hubs could disagree on the encoding
+     (a bare 4-element array, a different key numbering, `payload` first)
+     and still each satisfy §8.7's prose, breaking interop on the one thing
+     the blob verb exists to move.
+  2. **Nucleus's own fix is the answer, unregistered.** `encodePresetItem`
+     builds a 4-key CBOR map keyed `blob::slot` (3), `blob::name` (5),
+     `blob::kind` (6), `blob::payload` (7) — reusing the registry's own
+     `blob_keys` sub-map rather than inventing a parallel one. That is the
+     right call (one key space for one concept, not two), but it exists only
+     as a comment ("keyed by the registry's `blob_keys` in ascending
+     order") in one implementation.
+  3. **`kind` is a string with no registered shape.** §8.7 gives two
+     examples, `"pattern.frayd"` and `"trust.ledger"`, both already
+     `<domain>.<variant>`, but nothing requires the pattern. An unstructured
+     `kind` gives a generic client (one that cannot decode `payload`, by
+     design) nothing to group or icon-select on, and invites collision
+     between two independent devices' item kinds.
+  4. **RFC-050's `BLOB_DONE` `status = 1` (hash-mismatch) has nothing to
+     check against for a store item.** The catalog namespace's equivalent
+     check is the client's own SHA-256 over the whole decoded catalog
+     (§6.4); a store item carries no analogous value anywhere in its own
+     encoding, so a receiver can only report mismatch when some caller
+     supplies an expected digest out of band — not from the wire.
+- **Proposed change.**
+  1. **Register the store item as a CBOR map reusing `blob_keys`.** A store
+     item, wherever it appears as a self-contained document — the bytes a
+     `BLOB_CHUNK` stream for `ns = 1` reassembles into, and a `save`
+     intent's import `payload` when the import carries a full item rather
+     than a bare `payload` bstr — is a CBOR map with keys drawn from
+     `blob_keys`: `3 (slot)`, `5 (name)`, `6 (kind)`, `7 (payload)`,
+     REQUIRED, plus the new `11 (digest)` below, OPTIONAL. No new key space;
+     ratifies Nucleus's choice rather than replacing it.
+  2. **Register `blob_keys` key 11, `digest`** — `bstr`, SHA-256 (32 B) over
+     `payload` alone, OPTIONAL. Present, it is what [RFC-050](#rfc-050--blob-transfer-backpressure--completion-acknowledgment)'s
+     receiver checks locally to decide `BLOB_DONE` `status` (0 vs 1) for a
+     store transfer, the same role the catalog's own SHA-256 plays for
+     namespace 0 — without it a receiver has no wire-carried expectation and
+     MAY still omit `BLOB_DONE` per §8.4's existing carve-out. A hub that
+     never computes one omits the key; nothing downstream requires it.
+  3. **Register the `kind` namespace convention.** `kind` MUST be
+     `<domain>.<variant>` (already the shape of both existing examples): a
+     protocol- or convention-recognized `<domain>` (`pattern`, `trust`,
+     and any future spec-named category) followed by a device- or
+     format-chosen `<variant>`. Opacity of `payload` is unaffected — `kind`
+     is a label, never a schema selector the protocol interprets.
+  4. **Size bounds are the declaring STORE entry's own fields, restated as
+     the item map's governing limits, not new registry entries.** `name`
+     MUST fit the store's `name_max`; `payload` MUST fit its `per_item_max`
+     (§8.7, defaulting to `preset_item_max_bytes`). No new `limits` key: the
+     per-store descriptor already carries both, and this RFC only states
+     that the item document's own fields are the thing they bound.
+  5. **The trust ledger is unaffected.** `"trust.ledger"`-kind stores keep
+     `trust_ledger_keys` (§12.6) as their registered item grammar, per
+     §8.7's own carve-out; this RFC's map governs every other `kind`.
+- **Wire impact.** Additive. `blob_keys` gains one optional key (11); no
+  existing key renumbers, no existing hub or client that ignores `digest`
+  changes behavior. Hubs already encoding items as Nucleus does need no wire
+  change at all, only the registration catching up to what they emit.
+- **Registry impact.** `blob_keys` gains `11: digest`. §8.7 gains the
+  normative item-map citation (which keys, which are required) in place of
+  the current field-name prose, plus the `kind` namespace convention.
+  `schema/catalog.cddl` gains a `store-item` map type for `blob_keys` 3/5/6/7
+  (required) + 11 (optional).
+- **Conformance impact.** Fixture: a `BLOB_CHUNK` reassembly for a
+  registered-shape store item decodes as the map above; a digest present in
+  the item and a payload that fails to verify against it drives `BLOB_DONE`
+  `status = 1`; a `kind` fixture rejects a string with no `.` separator from
+  the conformance linter (advisory, not a wire NACK — `kind` validation is
+  hub-side per §8.7's existing `INVALID_VALUE` rule, unaffected here).
+- **Origin implementation, ratified vs. changed:** Nucleus's key reuse
+  (3/5/6/7) and its `<domain>.<variant>` `kind` (`pattern.frayd`) are
+  RATIFIED as the normative shape. CHANGED: Nucleus's `encodePresetItem`
+  carries no `digest` today and will need one to make its own `BLOB_DONE`
+  usable for status-1 detection; this RFC does not require backfilling it
+  before the RFC lands.
+- **Open questions.**
+  1. `digest` over `payload` alone, or over the whole 4-field map (`slot`,
+     `name`, `kind`, `payload`)? Payload-only means renaming a slot's item
+     (`rename`) never invalidates a digest a client cached from a prior
+     read; whole-map means a digest also proves the label wasn't corrupted
+     in transit. This RFC proposes payload-only, on the reasoning that
+     `slot`/`name`/`kind` already ride the same reassembled bytes §8.4
+     already integrity-covers by chunk indexing, and RFC-050 status 1 is
+     about content, not addressing.
+  2. Should `kind` domains be a registry-enumerated list (closed set,
+     `INVALID_VALUE` for an unrecognized `<domain>`) or open (`<domain>` is
+     advisory grouping only, never validated)? This RFC assumes open,
+     consistent with `kind` staying a label the protocol never schema-checks.
