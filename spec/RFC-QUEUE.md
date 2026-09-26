@@ -4361,3 +4361,72 @@ say exactly which, future-us will want the receipts.*
   2. Other EVENT purposes worth registering pre-tag (a procedure-completion
      stream, RFC-020)? This RFC registers only the one with a shipping
      instance.
+
+## RFC-066 -- Advanced-generator lanes are catalog-declared instances
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-0sm).
+- **Origin:** Phosphor ph-vdk.11. Building the REQUIRED `generator-advanced`
+  pattern (RENDERING §10) against the reference hub, whose shape disagrees
+  with the spec's.
+- **Problem.**
+  1. **Four in the spec, six on the wire.** RENDERING §2.2 defines the
+     advanced generator as "master state + four modifier lanes (in-speed,
+     out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait,
+     offset}`)"; §10 and the registry `widget_patterns` note repeat "four".
+     The reference hub (Nucleus) emits SIX lanes, one STATE channel each
+     (speed-in, speed-out, accel-in, accel-out, depth-1, depth-2), and its
+     lane field set is `{amplitude, in_step, in_wait, out_step, out_wait,
+     offset}`, not the spec's five fields. A renderer built to RENDERING
+     draws four lanes and drops two; one built to the hub is not
+     RENDERING-conformant.
+  2. **Nothing identifies a lane.** No field role exists for any lane field
+     or for the advanced generator at all, so a renderer can bind the
+     pattern only by channel or field name, which law 6 forbids. Law 7 then
+     makes the REQUIRED pattern undeclarable in conformance terms: its
+     essential bindings have no names a client may use.
+  3. **The role cardinality rule blocks the obvious fix.** SPEC §8.8: "A
+     registered role SHOULD appear on at most one field per catalog". A lane
+     role repeats once per lane by construction.
+- **Proposed change.**
+  1. **One lane shape.** A *lane* is the field set `{amplitude, in_step,
+     in_wait, out_step, out_wait, offset}`, each field carrying a registered
+     lane role (proposed `lane.amplitude`, `lane.in_step`, `lane.in_wait`,
+     `lane.out_step`, `lane.out_wait`, `lane.offset`). The shape is the one
+     the only implementation ships; RENDERING §2.2's `{ctrl, amplitude, step,
+     wait, offset}` is replaced.
+  2. **A lane instance is a channel.** A STATE entry carrying all six lane
+     roles is one lane. A client binds a lane only when all six are present
+     (law 7); a partial set falls through to generic rendering. The lane's
+     display label is its fields' `group`.
+  3. **Cardinality is per channel for lane roles.** Lane roles are exempt
+     from §8.8's per-catalog cardinality SHOULD; each MUST appear at most
+     once per entry. The §8.8 first-in-catalog-order tiebreak applies
+     within an entry.
+  4. **Count is declared, not fixed.** An advanced generator declares at
+     least four lanes. A renderer MUST draw every declared lane, ascending
+     by channel id (§8.9 item 4), and MUST NOT cap the count. Fewer than
+     four lanes is not the advanced-generator interface; its channels render
+     through `settings-card`.
+  5. **Text corrected.** RENDERING §2.2 and §10 `generator-advanced`, and the
+     registry `widget_patterns` note, say "four or more catalog-declared
+     modifier lanes" and point here.
+- **Wire impact.** None beyond role strings, which are catalog text: an
+  adopting hub's etag moves (T11). Reference cost: 36 role annotations
+  across six lane entries, roughly 90 bytes per entry, far inside
+  `catalog_max_entry_bytes`.
+- **Registry impact.** `field_roles` gains six `lane.*` values and a
+  convention line making lane roles per-channel. `widget_patterns`
+  `generator-advanced` note text. No number moves.
+- **Conformance impact.** Fixture: an advanced-generator catalog with six
+  lanes and one decoy channel carrying five of the six roles; assert six
+  lanes drawn in id order, the decoy rendered generically.
+- **Open questions.**
+  1. RENDERING's `ctrl` field has no counterpart on the wire. If it meant
+     "which base control this lane modulates", should a lane carry a
+     machine-readable link to that control (so a renderer can co-locate
+     them) rather than only a label?
+  2. The advanced generator's master controls carry no registered roles
+     either. Register a master role set in the same pass, or separately?
+  3. Role family name: `lane.*` is short but generic (a `scope` pattern
+     also has lanes). The 24-byte role cap rules out long prefixes.
