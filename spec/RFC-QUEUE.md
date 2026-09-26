@@ -4244,3 +4244,46 @@ say exactly which, future-us will want the receipts.*
   2. `source.background_run` false-to-true (RENDERING §10.1 rule 2) stays
      confirm-gated by role, not by this flag, so no hub can forget it.
      Confirm that split.
+
+## RFC-064 -- Index-0 filler applies to op selects only
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-8pk).
+- **Origin:** Phosphor ph-vdk.3, implementing generic select rendering from
+  both documents at once.
+- **Problem -- the two documents contradict.** SPEC §8.9 (the paragraph
+  [RFC-034](#rfc-034--placeholder-entries-in-options-lists) landed) scopes
+  the filler rule exactly: "For a `schema` select field carrying an
+  `action.*` role, wire value 0 is NOT an operation unless the governing op
+  table registers an op at 0". RENDERING §8.4 `select` drops the scope:
+  "index 0 is a filler label (SPEC §8.9) and MUST NOT render as
+  actionable", i.e. on every select. Followed literally, RENDERING breaks
+  ordinary settings: the reference hub's `pattern.select` field has index 0
+  = "Simple Stroke", its factory default, and a client obeying RENDERING
+  §8.4 can never select the default pattern. Read-only selects break the
+  same way (the reference `plan_kind` readout's index 0 `none` is a real
+  state). RENDERING yields to the registry on conflict, but neither document
+  says which wins against the other, so a client author must guess.
+- **Proposed change.**
+  1. **The rule binds op selects only.** An *op select* is a `schema` field
+     carrying an `action.*` role and `options`. On an op select, index 0 is
+     filler unless the governing op table registers op 0, and MUST NOT be
+     rendered as actionable. SPEC §8.9 wording stands unchanged.
+  2. **Every other select treats index 0 as a real value.** A layout field
+     with `options` (writable or read-only) and a schema field with
+     `options` and no `action.*` role render index 0's label, offer it as a
+     choice where writable, and adopt it from ground truth like any other
+     value.
+  3. **RENDERING §8.4 `select` note corrected** to: "Index-aligned. On an op
+     select (SPEC §8.9) index 0 is filler and MUST NOT render as actionable;
+     on every other select index 0 is a real value."
+  4. **Authoring note (informative).** A settings select that wants a
+     "none" choice declares it at index 0 as a real, selectable option.
+- **Wire impact.** None.
+- **Registry impact.** `ui_archetypes` `select` note gains "index 0 is filler
+  only on op selects (SPEC §8.9)". No number moves.
+- **Conformance impact.** Fixture: one settings select, one read-only select
+  and one op select, each with a meaningful label at index 0; assert index 0
+  is selectable, displayed, and not actionable respectively.
+- **Open questions.** None. This is a correction, not a design choice; it is
+  queued because RENDERING is normative and changes to it ride the queue.
