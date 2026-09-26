@@ -4081,6 +4081,59 @@ say exactly which, future-us will want the receipts.*
   Sequencing note from the bench: land AFTER the val-091.13 lag A/B, since a
   pin bump mid-measurement muddies the comparison.
 
+## RFC-061 -- TCode passthrough adapter conventions: ingest port, L0 mapping, loopback
+
+- **Status:** DRAFT (Phosphor plugin surface, 2026-09-25). Ruling pending
+  (rfc-b9m). Rides on [RFC-044](#rfc-044--client-onramp-doctrine-tcode-passthrough-as-a-client-side-adapter),
+  itself Draft and deprioritized; this entry is useless without it and asks
+  for no ruling ahead of it.
+- **Origin -- the first adapter needed a port and found none.** Phosphor's
+  example `tcode-adapter` plugin (`plugins/examples/tcode-adapter/`) is the
+  "Phosphor kernel module" SPEC §9.6 names, shipped as a tier-2 plugin. To
+  receive TCode from an existing app it opens a TCP listener, and neither
+  RFC-044 nor SPEC §9.6 says where. It took **8000**, the ecosystem's
+  convention: MultiFunPlayer's default network endpoint is
+  `tcode.local:8000`, chosen to match the TCode ESP32 firmware. That is
+  folklore, the shape [RFC-059](#rfc-059----hub-advertised-scheduling-latency)
+  already calls out, and the planned C# helper would have to rediscover it.
+- **Problem.** RFC-044 promises "criminally easy" passthrough, and an adapter
+  pair that disagrees on the port (or on what `L05` means) makes an MFP
+  profile work against one Valence client and not another. Two adapters fed
+  the same line must produce the same motion, and today nothing says what
+  that motion is.
+- **Proposed change.** All three items bind ADAPTERS; no hub duty changes.
+  1. **Default ingest port.** An adapter that accepts TCode over TCP SHOULD
+     listen on **8000** by default, user-configurable. Recorded once as a
+     registry constant (e.g. `tcode_adapter.default_port`) and emitted by
+     codegen, so no adapter hand-copies it (the T20 lesson). It is NOT a
+     wire number in the §4.4 sense: no hub opens it.
+  2. **L0 mapping.** Magnitude digits are a fraction (`L05` = `L0500` = 0.5).
+     0 maps to the hub's `window.min`, 1 to `window.max` (roles, never
+     field names); when the hub publishes no window, the target field's own
+     catalog bounds. An `I<ms>` suffix is the segment duration. `S` suffixes,
+     other axes and device commands (`D*`, `$*`) are ignored unless a later
+     entry maps them to roles. A window not yet reported yields no target,
+     never a guessed one ([RENDERING.md](RENDERING.md) §13 law 9).
+  3. **Loopback by default.** The ingest socket is an unauthenticated path
+     onto a session that may hold control tier. An adapter MUST bind
+     loopback by default; widening it is an explicit user act, and the
+     adapter SHOULD say so where the user enables it.
+- **Receipt -- the interim path, so nobody reads the example as the target.**
+  RFC-044 names segments or samples as the translation. The reference JS
+  client cannot publish a STREAM yet (no publish wishes in HELLO, no STREAM
+  sender; rfc-ts3), so Phosphor's adapter submits through its model's
+  motion-input door, which today sends a `command.position` setpoint
+  ([RFC-032](#rfc-032--command-and-telemetrytarget-make-commanded-motion-discoverable))
+  and drops the `I` duration. That is a client limitation, not a proposal:
+  once clients/js publishes, the same door emits segments and item 2's
+  duration survives.
+- **What this deliberately does NOT propose.** Any hub-side channel or
+  parser (RFC-044's correction stands). A UDP binding (MFP also speaks UDP;
+  add it when an adapter needs it). A normative L0 mapping for hubs (§15.1
+  legacy edges keep whatever mapping their hub already uses).
+- **Compatibility.** Additive. One optional registry constant, no frame,
+  key, layout or vector changes.
+
 ## RFC-062 -- Live renderer-class selection
 
 - **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
