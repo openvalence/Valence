@@ -5037,3 +5037,85 @@ say exactly which, future-us will want the receipts.*
      `INVALID_VALUE` for an unrecognized `<domain>`) or open (`<domain>` is
      advisory grouping only, never validated)? This RFC assumes open,
      consistent with `kind` staying a label the protocol never schema-checks.
+
+## RFC-074 -- STOP semantics for streams: refused while latched, re-armed only by an explicit command
+
+- **Status:** DRAFT (Nucleus val-2w2, 2026-09-25). Ruling pending
+  (rfc-2ly). Nucleus implements clauses 1, 2 and 4 today because they are the
+  reading of §11.1 that fails safe; clause 3 is proposed only and no hub
+  codes against it before acceptance.
+- **Origin:** val-2w2 in Nucleus, found landing val-cu2. The 0x0005 `stop`
+  op halted the pattern generator and braked the plan in flight, but a
+  client still streaming 0x2100 samples replanned the machine on its next
+  bundle, straight past the brake, while `safety` still showed STOP latched.
+- **Problem.**
+  1. **§11.1 is silent on whether a stream sample is "a new accepted motion
+     intent".** STOP "clears by any new accepted motion intent from an
+     authorized source" and its source is "deactivated". §9.3 says streams
+     are not intents, and the reference hub stopped letting a bundle clear
+     STOP when [RFC-045](#rfc-045--retire-deadman-as-safety-session-liveness-is-bookkeeping-not-motion-control)
+     retired the deadman latch. Nothing says what happens to the bundle
+     itself while STOP holds, so the reference hub delivered it and the
+     delegate planned it.
+  2. **The result is a safety word that lies.** `safety` reports STOP while
+     the machine moves under the stream that STOP was sent to halt. That is
+     a ground-truth violation on the one channel that must never lie
+     (§9.4's event/state duality rests on it).
+  3. **STOP exists for a client that will not stop on its own.** A stream
+     that keeps feeding through STOP is exactly that client; honoring its
+     next sample makes STOP a one-tick brake that a 50 Hz sender overrides
+     in 20 ms.
+  4. **Streams have no start verb.** §11.4 acquires a stream source on its
+     first accepted bundle, and §6.7 PUBLISH is the only per-channel act a
+     streaming client performs before sending. So "an explicit restart"
+     has no stream-native spelling today.
+- **Proposed change.**
+  1. **While STOP is latched, a hub MUST NOT act on c2h motion-input
+     bundles** (`samples` or `segments` kind, any channel the application
+     maps to a source, §11.4). Each such bundle is dropped whole and
+     counted, exactly as §9.2's ingress drops are. It is NEVER NACKed: a
+     per-bundle NACK at stream rate is the storm §9.2 carve-outs exist to
+     avoid, and the latched `safety` snapshot is the signal (§9.4).
+  2. **A stream sample never clears STOP.** §11.1's "new accepted motion
+     intent" means an INTENT (§9.3) on a channel mapped to a source: a
+     manual point move, a generator start. That is the reference hub's
+     behavior since RFC-045; this makes it normative.
+  3. **Stream re-arm: a PUBLISH that grants a source-mapped c2h channel
+     clears STOP**, as an INTENT on a mapped channel does, with the same
+     `safety` republish and `stop_cleared` edge. PUBLISH is the one
+     deliberate, per-channel act a streaming client already performs, so
+     re-arming costs no new frame and no new op. A PUBLISH that grants
+     nothing, or only unmapped channels, clears nothing.
+  4. **The drop counter is the hub's existing stream-drop counter.** A hub
+     that publishes one (the Nucleus `kinetic-diag` `sync_dropped`) counts
+     STOP drops there; no new registry counter.
+  5. **ESTOP is unchanged and stricter.** It refuses every source until the
+     §11.2 explicit clear, and a clear re-arms nothing on its own.
+- **Wire impact.** None. No new frame, key or op; clause 3 attaches a
+  latch effect to an existing frame.
+- **Registry impact.** None.
+- **Conformance impact.**
+  - **Hubs:** a test streams samples, sends `stop`, keeps streaming, and
+    asserts position holds and `safety` STOP stays latched; then re-arms
+    (an INTENT move, and after acceptance a PUBLISH) and asserts the next
+    bundle moves the machine. The Nucleus sim run under val-2w2 is the
+    reference shape: 87 of 87 samples sent under STOP refused and counted,
+    position range 0.000 mm over 2 s, motion resumed after a 0x3100 move.
+  - **Clients:** a client streaming through STOP MUST expect its bundles to
+    be dropped silently and MUST re-arm explicitly to resume. A client
+    SHOULD subscribe `safety` so it can show the operator why its stream
+    went still, and MUST NOT re-arm automatically on seeing STOP latch;
+    re-arming is an operator act, or STOP is decorative.
+- **Open questions.**
+  1. **Is PUBLISH the right re-arm, or should it be an op?** An op on the
+     motion source (a `stream_arm` on `safety-intents`, `control`) is more
+     explicit and auditable than a side effect of renegotiating a grant;
+     PUBLISH is cheaper and needs no catalog entry. A re-PUBLISH sent only
+     to change rate would also re-arm under clause 3.
+  2. **Which intents clear STOP.** The reference hub clears on ANY accepted
+     intent on a mapped channel, so a `pattern_cmd` write that does not
+     start the generator clears STOP too. Should the clear be limited to
+     intents that start motion?
+  3. **Does HOLD refuse streams the same way?** HOLD's source is
+     "suspended" until RESUME; this RFC reads that as the same drop rule
+     with RESUME as the only clear, but no hub implements HOLD yet.
