@@ -639,6 +639,69 @@ export function decodePacked(payload, layout) {
   return out;
 }
 
+const PACKED_RANGE = {
+  [PACKED.u8]: [0, 0xff], [PACKED.i8]: [-0x80, 0x7f],
+  [PACKED.u16]: [0, 0xffff], [PACKED.i16]: [-0x8000, 0x7fff],
+  [PACKED.u32]: [0, 0xffffffff], [PACKED.i32]: [-0x80000000, 0x7fffffff],
+  [PACKED.bitfield8]: [0, 0xff],
+};
+
+/**
+ * Encode one packed sample (a STREAM c2h sample) from physical values keyed by
+ * layout field name: wire = round(physical * scale), rounding half away from
+ * zero exactly as lib/valence's packField (std::lround) does. The inverse of
+ * decodePacked for the numeric types.
+ *
+ * Throws instead of guessing: a missing field, a non-finite value, a value
+ * outside the packed type's range (the C++ codec wraps silently; a wrapped
+ * motion target is a different position), a string type (§5.4: STREAM layouts
+ * carry none) or a packed type this build predates.
+ *
+ * @param {Object<string, number>} values field name -> physical value
+ * @param {Array<{name,type,scale}>} layout the channel's catalog layout
+ * @returns {Uint8Array}
+ */
+export function encodePacked(values, layout) {
+  let size = 0;
+  for (const f of layout) {
+    const s = PACKED_SIZE[f.type];
+    if (s == null) throw new Error('encodePacked: field "' + f.name + '" has packed type ' + f.type + ' this build cannot encode');
+    size += s;
+  }
+  const out = new Uint8Array(size);
+  const dv = new DataView(out.buffer);
+  let off = 0;
+  for (const f of layout) {
+    const v = values[f.name];
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error('encodePacked: field "' + f.name + '" needs a finite number, got ' + v);
+    }
+    if (f.type === PACKED.f32) {
+      dv.setFloat32(off, v * (f.scale || 1), true);
+      off += 4;
+      continue;
+    }
+    const range = PACKED_RANGE[f.type];
+    if (!range) throw new Error('encodePacked: field "' + f.name + '" is ' + f.typeName + ', not a numeric type');
+    const scaled = f.type === PACKED.bitfield8 ? v : v * (f.scale || 1);
+    const raw = Math.sign(scaled) * Math.round(Math.abs(scaled));
+    if (raw < range[0] || raw > range[1]) {
+      throw new RangeError('encodePacked: field "' + f.name + '" = ' + v + ' encodes to ' + raw +
+        ', outside ' + f.typeName + ' [' + range[0] + ', ' + range[1] + ']');
+    }
+    switch (f.type) {
+      case PACKED.u8: case PACKED.bitfield8: dv.setUint8(off, raw); break;
+      case PACKED.i8: dv.setInt8(off, raw); break;
+      case PACKED.u16: dv.setUint16(off, raw, true); break;
+      case PACKED.i16: dv.setInt16(off, raw, true); break;
+      case PACKED.u32: dv.setUint32(off, raw, true); break;
+      case PACKED.i32: dv.setInt32(off, raw, true); break;
+    }
+    off += PACKED_SIZE[f.type];
+  }
+  return out;
+}
+
 /**
  * Decode an EVENT's scoped `body` (key 40) sub-map against the channel's OWN
  * catalog schema (§9.4 + the v1.0 grammar fix). Kind-specific fields used to

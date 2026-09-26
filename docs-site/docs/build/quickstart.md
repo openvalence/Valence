@@ -167,6 +167,24 @@ const { applied } = await s.sendConfigSet({ 1: windowMinMm, 2: windowMaxMm });
 await s.sendMove(targetMm);
 ```
 
+Motion input is not an intent. It is a c2h STREAM you publish: find the
+channel in the catalog, ask the hub for a grant, then send samples keyed by the
+layout's own field names. Every refusal (not granted, over the granted rate,
+a malformed bundle, a segment scheduled too far ahead) throws a `PublishError`
+with a `PUBLISH_ERROR` code; nothing is dropped silently.
+
+```javascript
+import { CHANNEL_CLASS, STREAM_KIND } from './clients/js/index.js';
+
+const input = s.catalog.find((e) => e.cls === CHANNEL_CLASS.STREAM &&
+  e.dirName === 'c2h' && e.streamKind === STREAM_KIND.samples);
+await s.publish([[input.id, 50]]);          // [channelId, rateHz, burst?, curveFamily?]
+s.publishSamples(input.id, { target_norm: 0.5, vel_norm: 0 });  // stamped hub-now
+s.publishSegment(segmentChannelId,           // a segments-kind channel
+  { target_norm: 0.8, duration_ms: 120, end_vel_norm: 0 },
+  { anchor: s.hubNowUs() + 60000 });         // execution start, in hub time
+```
+
 Prove your build against a real hub before you trust it, running the full
 read-only session **twice back to back** -- the
 [mandatory pattern](local-testing.md#the-pattern-that-is-mandatory) for

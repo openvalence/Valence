@@ -39,6 +39,10 @@
  *   'ready'        ({etag, cached})                — readiness declared/inherited
  *   'live'         ()                              — SYNCING → LIVE (§2.2)
  *   'grant'        (grants[])                      — SUBSCRIBE grants applied
+ *   'publishGrant' (grantedPublishes[])            -- publish grants applied
+ *                                                      (WELCOME, a PUBLISH
+ *                                                      answer, or an
+ *                                                      unsolicited re-grant)
  *   'state'        (channelId, decodedSample, tsMs)— a STATE push (packed-decoded)
  *   'echo'         (decodedEcho)                    — intent APPLIED echo
  *   'nack'         ({code, name, channel, detail, intentId, intentSeq})
@@ -81,12 +85,13 @@ import {
   CH_SAFETY, CH_SAFETY_INTENTS,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
+  STREAM_KIND, HEADER_BYTES, encodeBundle,
 } from './frames.js';
 import {
   buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody, schemaByKey,
-  optionAccessFor, canUseOption,
+  optionAccessFor, canUseOption, encodePacked,
 } from './catalog.js';
 import { catalogEtag, bytesEqual, toHex, fromHex } from './sha256.js';
 
@@ -99,6 +104,30 @@ export const SESSION_STATE = {
   SYNCING: 'SYNCING',
   LIVE: 'LIVE',
 };
+
+/** Why a STREAM send was refused. Every refusal throws; nothing is dropped silently. */
+export const PUBLISH_ERROR = Object.freeze({
+  NOT_LIVE: 'NOT_LIVE', // session not LIVE: the hub drops pre-ready bundles without a word (§9.2)
+  UNKNOWN_CHANNEL: 'UNKNOWN_CHANNEL', // not in this hub's catalog
+  NOT_PUBLISHABLE: 'NOT_PUBLISHABLE', // not a c2h STREAM channel
+  WRONG_STREAM_KIND: 'WRONG_STREAM_KIND', // publishSamples on a segments channel or vice versa
+  NOT_GRANTED: 'NOT_GRANTED', // no granted_publishes entry for the channel (§6.2)
+  NO_CLOCK: 'NO_CLOCK', // no CLOCK reply yet, so no anchor can be expressed in hub time (§7.1)
+  BAD_SAMPLE: 'BAD_SAMPLE', // a sample does not encode against the catalog layout
+  BAD_BUNDLE: 'BAD_BUNDLE', // violates a §5.4 cap or the negotiated max_frame
+  SCHEDULE_TOO_FAR: 'SCHEDULE_TOO_FAR', // segment anchor beyond max_future_schedule_ms: the hub drops it
+  RATE_EXCEEDED: 'RATE_EXCEEDED', // would overdraw the granted-rate token bucket (§10.5)
+  NOT_SENT: 'NOT_SENT', // socket not open
+});
+
+export class PublishError extends Error {
+  constructor(code, channel, message) {
+    super(code + ' ch=0x' + (channel >>> 0).toString(16) + ': ' + message);
+    this.name = 'PublishError';
+    this.code = code;
+    this.channel = channel;
+  }
+}
 
 /** monotonic microsecond clock, truncated to u32 (CLOCK t0/t3 domain, §7.1). */
 function clientNowUs() {
@@ -195,6 +224,10 @@ function defaultCatalogStore() {
  *        special; absent just means "hub default").
  * @param {Array<[number, number, number]>} [opts.subscriptions] [ch, rateHz, priority] wishes to
  *        (re)issue automatically after each WELCOME
+ * @param {Array<[number, number, number?, number?]>} [opts.publishes] [ch, rateHz, burst?, curveFamily?]
+ *        STREAM publish wishes carried in HELLO (key 11, §6.2). The ids must
+ *        be known before the catalog is; a client that finds its channel in
+ *        the catalog calls publish() once LIVE instead.
  * @param {boolean} [opts.autoCatalog] fetch the catalog when the etag misses (default true)
  * @param {boolean} [opts.autoReconnect] reconnect with backoff on drop (default true)
  * @param {Object} [opts.catalogStore] {load(host), save(host, etag, bytes), clear(host)}
@@ -227,6 +260,7 @@ export function createSession(opts = {}) {
   const WSImpl = opts.WebSocketImpl || (typeof WebSocket !== 'undefined' ? WebSocket : null);
   const log = opts.log || (() => {});
   const subscribeWishes = opts.subscriptions || [];
+  const publishWishes = opts.publishes || [];
 
   // ---- listener registry --------------------------------------------------
   const listeners = new Map();
@@ -272,8 +306,9 @@ export function createSession(opts = {}) {
     deadmanPolicy: null,
     limits: {},
     grants: new Map(), // channelId -> {rate, priority}
-    grantedPublishes: new Map(),
+    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily}
     clockOffsetUs: 0,
+    clockSynced: false, // a CLOCK reply has landed this session, so anchors mean something
   };
 
   let catalogEntries = null;
@@ -303,6 +338,12 @@ export function createSession(opts = {}) {
   let estopNextSeq = 1;
   let estopAttempts = 0;
   let lastEstopSendMs = 0;
+
+  // STREAM sender bookkeeping per granted channel: the u16 seq (per channel per
+  // direction, §7.3) and a token bucket mirroring the hub's (§10.5).
+  const pubTx = new Map(); // channelId -> {seq, tokens, lastMs}
+  const pendingPublish = []; // FIFO of {resolve, reject, timer}
+  let lastClockSyncMs = 0;
 
   // TX-silence PING keepalive (§6.5)
   let lastTxMs = 0;
@@ -340,9 +381,8 @@ export function createSession(opts = {}) {
 
   function buildHello() {
     // keys ascending: proto_ver(1) < client_kind(2) < client_name(3) <
-    // instance_id(4) < [token(5)] < [catalog_etag(8)] < [deadman_wish_ms(44)].
-    // No publish wishes (11): the browser SUBSCRIBEs h2c channels, it does not
-    // publish a stream.
+    // instance_id(4) < [token(5)] < [catalog_etag(8)] < [publishes(11)] <
+    // [deadman_wish_ms(44)].
     //
     // catalog_etag is RFC-015's fast path: presenting an etag the hub agrees
     // with IS proof of possession, so the hub marks us ready in WELCOME and
@@ -356,6 +396,7 @@ export function createSession(opts = {}) {
     ];
     if (liveToken) pairs.push([K.token, cbBstr(liveToken)]);
     if (cachedCatalog) pairs.push([K.catalog_etag, cbBstr(cachedCatalog.etag)]);
+    if (publishWishes.length) pairs.push([K.publishes, encodePublishWishes(publishWishes)]);
     // RFC-038: ask for a browser-honest deadman window. The hub clamps into
     // [deadman_min_ms, deadman_max_ms] and echoes the APPLIED value on the
     // EXISTING WELCOME key 24 — handleWelcome() adopts ONLY that echo, never
@@ -380,6 +421,161 @@ export function createSession(opts = {}) {
         [K.channel_id, cbUint(ch)],
       ]));
     sendFrame(FRAME.SUBSCRIBE, 0, cbMap([[K.subscriptions, cbArray(entries)]]));
+  }
+
+  // ---- PUBLISH (§6.2 / §6.7) ----------------------------------------------
+  // Entry keys ascending: rate_hz(12) < channel_id(15) < [burst(42)] <
+  // [curve_family(45)]. rate_hz and burst are f32 on the wire; the hub's
+  // decoder rejects an integer there.
+  function encodePublishWishes(wishes) {
+    return cbArray(wishes.map(([ch, rate, burst, family]) => {
+      const pairs = [[K.rate_hz, cbF32(rate)], [K.channel_id, cbUint(ch)]];
+      if (burst != null) pairs.push([K.burst, cbF32(burst)]);
+      if (family != null) pairs.push([K.curve_family, cbUint(family)]);
+      return cbMap(pairs);
+    }));
+  }
+
+  /**
+   * Add, change or drop (rate 0) STREAM publications mid-session (§6.7).
+   * Resolves with the applied grants from the answering GRANT. A wished
+   * channel absent from the answer was refused and is no longer publishable
+   * from this client.
+   * @param {Array<[number, number, number?, number?]>} wishes [ch, rateHz, burst?, curveFamily?]
+   * @param {Object} [o] {timeoutMs}
+   * @returns {Promise<Array<Object>>} the granted publish records
+   */
+  function publish(wishes, o = {}) {
+    if (!state.welcomed) return Promise.reject(new Error('publish: no session (WELCOME not received)'));
+    return new Promise((resolve, reject) => {
+      const req = { channels: wishes.map((w) => w[0]), resolve, reject, timer: null };
+      req.timer = setTimeout(() => {
+        const i = pendingPublish.indexOf(req);
+        if (i >= 0) pendingPublish.splice(i, 1);
+        reject(new Error('publish: no GRANT answered the PUBLISH'));
+      }, o.timeoutMs || 3000);
+      pendingPublish.push(req);
+      if (!sendFrame(FRAME.PUBLISH, 0, cbMap([[K.publishes, encodePublishWishes(wishes)]]))) {
+        clearTimeout(req.timer);
+        pendingPublish.splice(pendingPublish.indexOf(req), 1);
+        reject(new Error('publish: not sent (socket not open)'));
+      }
+    });
+  }
+
+  function adoptPublishGrant(e) {
+    const ch = e.get(K.channel_id);
+    const rec = {
+      channel: ch,
+      rate: e.get(K.granted_rate_hz),
+      burst: e.has(K.burst) ? e.get(K.burst) : null,
+      curveFamily: e.has(K.curve_family) ? e.get(K.curve_family) : null,
+      requestedCurveFamily: e.has(K.requested_curve_family) ? e.get(K.requested_curve_family) : null,
+    };
+    state.grantedPublishes.set(ch, rec);
+    // The hub rebuilds this channel's bucket full on every grant (session.hpp
+    // addPublishGrant); mirror it. The seq keeps counting: same session.
+    const tx = pubTx.get(ch);
+    pubTx.set(ch, { seq: tx ? tx.seq : 0, tokens: bucketCapacity(rec), lastMs: Date.now() });
+    return rec;
+  }
+
+  // The hub meters samples at uint32(granted_rate) floored at 1, with capacity
+  // = burst when echoed, else the rate (session.hpp addPublishGrant).
+  function bucketRate(rec) { return Math.max(1, Math.floor(rec.rate)); }
+  function bucketCapacity(rec) { return rec.burst != null ? rec.burst : bucketRate(rec); }
+
+  // ---- STREAM sender (§5.4 / §9.2) ----------------------------------------
+  function refuse(code, ch, msg) { throw new PublishError(code, ch, msg); }
+
+  // Validates, encodes and sends ONE bundle. Every refusal throws PublishError;
+  // the seq advances only for a bundle that reached the socket.
+  function sendStream(channelId, kind, values, tOffsUs, anchorUs) {
+    if (state.phase !== SESSION_STATE.LIVE) refuse(PUBLISH_ERROR.NOT_LIVE, channelId, 'session is ' + state.phase);
+    const entry = channelMap && channelMap.get(channelId);
+    if (!entry) refuse(PUBLISH_ERROR.UNKNOWN_CHANNEL, channelId, 'not in this hub\'s catalog');
+    if (entry.cls !== CHANNEL_CLASS.STREAM || entry.dirName !== 'c2h') {
+      refuse(PUBLISH_ERROR.NOT_PUBLISHABLE, channelId, entry.clsName + ' ' + entry.dirName + ', not a c2h STREAM');
+    }
+    if (entry.streamKind !== kind) {
+      refuse(PUBLISH_ERROR.WRONG_STREAM_KIND, channelId, 'channel stream_kind is ' + entry.streamKind + ', sender needs ' + kind);
+    }
+    const grant = state.grantedPublishes.get(channelId);
+    if (!grant) refuse(PUBLISH_ERROR.NOT_GRANTED, channelId, 'no granted publish; call publish() first');
+    if (!state.clockSynced) refuse(PUBLISH_ERROR.NO_CLOCK, channelId, 'no CLOCK reply yet');
+
+    let payload;
+    try {
+      payload = encodeBundle(anchorUs, tOffsUs, values.map((v) => encodePacked(v, entry.layout || [])));
+    } catch (e) {
+      refuse(e instanceof RangeError && /^bundle/.test(e.message) ? PUBLISH_ERROR.BAD_BUNDLE : PUBLISH_ERROR.BAD_SAMPLE,
+        channelId, e.message);
+    }
+    const maxFrame = state.limits.max_frame;
+    if (maxFrame && HEADER_BYTES + payload.length > maxFrame) {
+      refuse(PUBLISH_ERROR.BAD_BUNDLE, channelId, (HEADER_BYTES + payload.length) + ' B frame exceeds max_frame ' + maxFrame);
+    }
+    if (kind === STREAM_KIND.segments) {
+      const aheadUs = wrapDiff(anchorUs >>> 0, hubNowUs());
+      if (aheadUs > LIMITS.max_future_schedule_ms * 1000) {
+        refuse(PUBLISH_ERROR.SCHEDULE_TOO_FAR, channelId, 'anchor is ' + aheadUs + ' us ahead, cap ' + LIMITS.max_future_schedule_ms + ' ms');
+      }
+    }
+
+    const tx = pubTx.get(channelId);
+    const nowMs = Date.now();
+    const cap = bucketCapacity(grant);
+    tx.tokens = Math.min(cap, tx.tokens + Math.max(0, nowMs - tx.lastMs) / 1000 * bucketRate(grant));
+    tx.lastMs = nowMs;
+    if (tx.tokens < values.length) {
+      refuse(PUBLISH_ERROR.RATE_EXCEEDED, channelId, values.length + ' sample(s) against ' + tx.tokens.toFixed(2) +
+        ' tokens at the granted ' + grant.rate + ' Hz');
+    }
+    const seq = tx.seq;
+    if (!sendFrame(FRAME.STREAM, channelId, payload, seq)) refuse(PUBLISH_ERROR.NOT_SENT, channelId, 'socket not open');
+    tx.tokens -= values.length;
+    tx.seq = (seq + 1) & 0xffff;
+    return { seq, n: values.length };
+  }
+
+  /**
+   * Send dense samples on a `samples`-kind c2h STREAM channel (§9.2). Each
+   * sample is {layoutFieldName: physicalValue}, scaled per the catalog layout.
+   * Timestamps are OBSERVATIONAL: sample i describes hub time anchor + t_off[i].
+   * @param {number} channelId
+   * @param {Object|Object[]} samples 1..bundle_max_samples samples
+   * @param {Object} [o] {anchor: u32 hub-µs of sample[0] (default hubNowUs()),
+   *        offsetsUs: explicit t_off[] | periodUs: spacing (default 1/granted rate)}
+   * @returns {{seq:number, n:number}} the bundle's frame seq and sample count
+   * @throws {PublishError}
+   */
+  function publishSamples(channelId, samples, o = {}) {
+    const values = Array.isArray(samples) ? samples : [samples];
+    let offs = o.offsetsUs;
+    if (!offs) {
+      const grant = state.grantedPublishes.get(channelId);
+      const period = o.periodUs != null ? o.periodUs : (grant ? Math.round(1e6 / grant.rate) : 0);
+      offs = values.map((_, i) => i * period);
+    }
+    const anchor = o.anchor != null ? o.anchor : hubNowUs();
+    return sendStream(channelId, STREAM_KIND.samples, values, offs, anchor);
+  }
+
+  /**
+   * Send ONE timed segment on a `segments`-kind c2h STREAM channel (§9.2/§9.6).
+   * `segment` is {layoutFieldName: physicalValue}. The anchor is the segment's
+   * intended EXECUTION START in hub time (§5.4); the hub drops a bundle
+   * anchored more than max_future_schedule_ms ahead, so that is refused here.
+   * One segment per bundle: a segment's own duration dwarfs the 20 ms span cap.
+   * @param {number} channelId
+   * @param {Object} segment
+   * @param {Object} [o] {anchor: u32 hub-µs execution start (default hubNowUs())}
+   * @returns {{seq:number, n:number}}
+   * @throws {PublishError}
+   */
+  function publishSegment(channelId, segment, o = {}) {
+    const anchor = o.anchor != null ? o.anchor : hubNowUs();
+    return sendStream(channelId, STREAM_KIND.segments, [segment], [0], anchor);
   }
 
   // ---- CATALOG (BLOB namespace 0) -----------------------------------------
@@ -553,10 +749,12 @@ export function createSession(opts = {}) {
           const offset = Math.floor((wrapDiff(reply.t1, reply.t0e) + wrapDiff(reply.t2, t3)) / 2);
           const rtt = wrapDiff(t3, reply.t0e) - wrapDiff(reply.t2, reply.t1);
           state.clockOffsetUs = offset;
+          state.clockSynced = true;
           emit('clock', { offsetUs: offset, rttUs: rtt });
           resolve({ offsetUs: offset, rttUs: rtt });
         },
       };
+      lastClockSyncMs = Date.now();
       sendFrame(FRAME.CLOCK, 0, buf);
     });
   }
@@ -845,12 +1043,16 @@ export function createSession(opts = {}) {
     // §6.7: snapshot adoption is mandatory — discard everything and rebuild it
     // only from what follows this WELCOME.
     state.grants.clear();
+    state.grantedPublishes.clear();
+    pubTx.clear();
+    state.clockSynced = false;
     adoptedChannels = new Set();
     requiredRetained = state.limits.retained_pending || 0;
     for (const g of (w.get(K.grants) || [])) {
       const ch = g.get(K.channel_id);
       state.grants.set(ch, { channel: ch, rate: g.get(K.granted_rate_hz), priority: g.get(K.priority) });
     }
+    const welcomePublishes = (w.get(K.granted_publishes) || []).map(adoptPublishGrant);
 
     const info = {
       sessionId: state.sessionId,
@@ -867,6 +1069,7 @@ export function createSession(opts = {}) {
     };
     setPhase(SESSION_STATE.SYNCING);
     emit('welcome', info);
+    if (welcomePublishes.length) emit('publishGrant', welcomePublishes);
 
     // ---- RFC-015 readiness gate -------------------------------------------
     readyPending = false;
@@ -929,6 +1132,22 @@ export function createSession(opts = {}) {
     // The hub may re-issue `roles` (an AUTH upgrade); adopt it as ground truth.
     if (g.has(K.roles)) state.roles = g.get(K.roles);
     emit('grant', applied);
+
+    // §10.2: a PUBLISH is answered by a GRANT whose `granted_publishes` may be
+    // empty, and the reference hub omits an empty key 36 entirely, leaving a
+    // bare `grants: []`. So either shape answers the oldest pending PUBLISH;
+    // a key-36 GRANT with nothing pending is an unsolicited re-grant.
+    const pubs = g.has(K.granted_publishes) ? g.get(K.granted_publishes).map(adoptPublishGrant) : null;
+    const req = (pubs || (!arr.length && !g.has(K.roles))) ? pendingPublish.shift() : null;
+    if (req) {
+      clearTimeout(req.timer);
+      const got = new Set((pubs || []).map((r) => r.channel));
+      for (const ch of req.channels) {
+        if (!got.has(ch)) { state.grantedPublishes.delete(ch); pubTx.delete(ch); }
+      }
+      req.resolve(pubs || []);
+    }
+    if (pubs || req) emit('publishGrant', pubs || []);
   }
 
   function handleState(header, payload) {
@@ -1086,6 +1305,11 @@ export function createSession(opts = {}) {
       pumpCatalogReady(now);
       pumpBlobRepair(now);
       pumpEstopRepeat(now);
+      // §7.1: a publisher resyncs the clock every clock_resync_interval_s.
+      if (state.grantedPublishes.size && !pendingClock &&
+          now - lastClockSyncMs >= LIMITS.clock_resync_interval_s * 1000) {
+        syncClock().catch(() => {});
+      }
       if (now - lastTxMs >= pingIntervalMs()) sendFrame(FRAME.PING, 0, new Uint8Array(0));
     }, 50);
   }
@@ -1170,6 +1394,9 @@ export function createSession(opts = {}) {
       // fail every in-flight intent (§6.7: the library NEVER blind-retransmits;
       // the app reconciles against the truth the next session reports).
       for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(new Error('socket closed')); pending.delete(id); }
+      for (const req of pendingPublish.splice(0)) { clearTimeout(req.timer); req.reject(new Error('socket closed')); }
+      state.grantedPublishes.clear();
+      pubTx.clear();
       const willReconnect = autoReconnect && !intentionalClose;
       emit('close', { code: ev && ev.code, reason: ev && ev.reason, willReconnect });
       if (willReconnect) scheduleReconnect();
@@ -1207,6 +1434,10 @@ export function createSession(opts = {}) {
     off,
     // read-plane actions
     subscribe,
+    // c2h STREAM publishing (explicit; never auto-fired). Senders throw PublishError.
+    publish,
+    publishSamples,
+    publishSegment,
     requestCatalog,
     syncClock,
     hubNowUs,

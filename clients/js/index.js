@@ -56,11 +56,24 @@
  *   await s.assertEstop();   // RFC-010: a REAL e-stop, not a decel-stop —
  *                            // falls back to the raw 0xE5 frame pre-LIVE
  *
+ * ── Phase C (c2h STREAM publishing, §6.2/§9.2) ──────────────────────────────
+ * Find the channel in the catalog, ask for a grant, then send. Samples are
+ * {layoutFieldName: physicalValue}; the catalog layout scales them. Every
+ * refusal throws PublishError with a PUBLISH_ERROR code, never a silent drop.
+ *
+ *   const input = s.catalog.find((e) => e.cls === CHANNEL_CLASS.STREAM &&
+ *     e.dirName === 'c2h' && e.streamKind === STREAM_KIND.samples);
+ *   await s.publish([[input.id, 50]]);        // -> granted records (rate, burst, ...)
+ *   s.publishSamples(input.id, { target_norm: 0.5, vel_norm: 0 });
+ *   s.publishSegment(segId, { target_norm: 0.8, duration_ms: 120, end_vel_norm: 0 },
+ *     { anchor: s.hubNowUs() + 60000 });      // execution start, hub time
+ *   s.state.grantedPublishes                  // Map<ch, {rate, burst, curveFamily, ...}>
+ *
  * Nothing above fires until you call it; page load should ADOPT device state
  * from STATE/ECHO, never push defaults.
  */
 
-export { createSession, SESSION_STATE } from './session.js';
+export { createSession, SESSION_STATE, PublishError, PUBLISH_ERROR } from './session.js';
 
 // wire codec (for tests / advanced integrators)
 export {
@@ -86,7 +99,7 @@ export {
   PAIRING_MODE, PAIRING_MODE_NAME, PAIRING_EVENT_KIND,
   LIMITS, nackName,
   PROTO_VER, WS_SUBPROTOCOL, MDNS_SERVICE, HEADER_BYTES,
-  encodeFrame, decodeFrameHeader, parseFrames, encodeEstopFrame, crc32,
+  encodeFrame, decodeFrameHeader, parseFrames, encodeEstopFrame, crc32, encodeBundle,
   // channel ids
   CH_CATALOG, CH_SESSION_ROSTER, CH_SAFETY, CH_CONTROL_OWNER, CH_SAFETY_INTENTS,
   CH_HUB_STATUS, CH_SESSION_EVENTS, CH_LOG, CH_SESSION_ADMIN, CH_SAFETY_EVENTS,
@@ -100,7 +113,7 @@ export {
 export {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair,
   BlobReassembler, parseBlobChunk, BLOB_CHUNK_HEADER_BYTES, BLOB_CHUNK_PAYLOAD,
-  decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody,
+  decodeCatalog, catalogChannelMap, decodePacked, encodePacked, decodeEventBody,
   schemaByKey, optionAccessFor, canUseOption, entriesOfClass, hasChannel,
 } from './catalog.js';
 

@@ -1,0 +1,224 @@
+/**
+ * valence-publish.test.mjs -- c2h STREAM publishing: publish wishes, grant
+ * tracking, the bundle sender, and its refusals.
+ *
+ * Golden bytes come from lib/valence's own C++ encoders via
+ * test/fixtures/gen_publish_golden.cpp (build and run command in its header).
+ * spec/vectors carries no STREAM or publish vector files yet (manifest D-04,
+ * P-01..P-04 are ids without bytes), so the reference encoder is the oracle.
+ *
+ * Run:  node clients/js/test/valence-publish.test.mjs   (exits 1 on any failure)
+ */
+
+import { readFileSync } from 'node:fs';
+import { cbUint, cbF32, cbBstr, cbMap, cbArray } from '../cbor.js';
+import { K, FRAME, WELCOME_LIMITS_K, encodeFrame, encodeBundle, decodeFrameHeader } from '../frames.js';
+import { encodePacked } from '../catalog.js';
+import { createSession, PublishError, PUBLISH_ERROR, SESSION_STATE } from '../session.js';
+import { fromHex } from '../sha256.js';
+
+let failures = 0;
+const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+function check(name, actual, expectedHex) {
+  const ok = hex(actual) === expectedHex;
+  console.log('  [' + (ok ? 'PASS' : 'FAIL') + '] ' + name);
+  if (!ok) { console.log('        expected: ' + expectedHex + '\n        actual:   ' + hex(actual)); failures++; }
+}
+function assert(name, cond) {
+  console.log('  [' + (cond ? 'PASS' : 'FAIL') + '] ' + name);
+  if (!cond) failures++;
+}
+function refusal(name, fn, code) {
+  let got = null;
+  try { fn(); } catch (e) { got = e; }
+  assert(name + ' -> ' + code, got instanceof PublishError && got.code === code);
+  if (got && !(got instanceof PublishError && got.code === code)) console.log('        got: ' + got.message);
+}
+
+// ---- golden bytes (gen_publish_golden.cpp output) ---------------------------
+const G = {
+  HELLO_FRAME: '0000000000003D00A501010264746573740366676F6C64656E044801020304050607080B82A20CFA424800000F192100A40CFA41A000000F192101182AFA42200000182D01',
+  PUBLISH_FRAME: '1800000000001800A10B81A40CFA41A000000F192101182AFA42200000182D02',
+  GRANT_PUBLISH_PAYLOAD: 'A2182380182481A50EFA41A000000F192101182AFA42200000182D01183002',
+  GRANT_EMPTY_PAYLOAD: 'A1182380',
+  WELCOME_PAYLOAD: 'AC0101061A01020304071A0A0B0C0D08480000000000000000090716A3010002000300170118181907D0181900181D480000000000000000182380182481A20EFA424800000F192100',
+  STREAM_SAMPLES_FRAME: '0C0000210700120078563412020000001027881306FF4C1D7D00',
+  STREAM_SEGMENT_FRAME: '0C000121FFFF0E0000FFFFFF01000000C40978000CFE',
+};
+
+// Layouts shaped like the reference device's 0x2100 / 0x2101 (the generator's).
+const U16 = 2, I16 = 3;
+const INPUT_LAYOUT = [
+  { name: 'target_norm', type: U16, typeName: 'u16', scale: 10000 },
+  { name: 'vel_norm', type: I16, typeName: 'i16', scale: 1000 },
+];
+const SEG_LAYOUT = [
+  { name: 'target_norm', type: U16, typeName: 'u16', scale: 10000 },
+  { name: 'duration_ms', type: U16, typeName: 'u16', scale: 1 },
+  { name: 'end_vel_norm', type: I16, typeName: 'i16', scale: 1000 },
+];
+
+console.log('valence-js publish test (golden bytes from lib/valence via gen_publish_golden.cpp):');
+
+// ---- pure encoders ----------------------------------------------------------
+check('STREAM samples frame == C++ BundleWriter + packField',
+  encodeFrame(FRAME.STREAM, 0x2100, encodeBundle(0x12345678, [0, 10000], [
+    encodePacked({ target_norm: 0.5, vel_norm: -0.25 }, INPUT_LAYOUT),
+    encodePacked({ target_norm: 0.75, vel_norm: 0.125 }, INPUT_LAYOUT),
+  ]), 7), G.STREAM_SAMPLES_FRAME);
+check('STREAM segment frame == C++ (t_base near the u32 wrap, seq 0xFFFF)',
+  encodeFrame(FRAME.STREAM, 0x2101, encodeBundle(0xFFFFFF00, [0], [
+    encodePacked({ target_norm: 0.25, duration_ms: 120, end_vel_norm: -0.5 }, SEG_LAYOUT),
+  ]), 0xffff), G.STREAM_SEGMENT_FRAME);
+const s4 = encodePacked({ target_norm: 0, vel_norm: 0 }, INPUT_LAYOUT);
+const throws = (fn) => { try { fn(); return false; } catch (e) { return true; } };
+assert('bundle: 33 samples rejected', throws(() => encodeBundle(0, [...Array(33).keys()], Array(33).fill(s4))));
+assert('bundle: 21 ms span rejected', throws(() => encodeBundle(0, [0, 21000], [s4, s4])));
+assert('bundle: t_off[0] != 0 rejected', throws(() => encodeBundle(0, [5], [s4])));
+assert('bundle: repeated t_off rejected', throws(() => encodeBundle(0, [0, 100, 100], [s4, s4, s4])));
+assert('bundle: exactly 20 ms span accepted', !throws(() => encodeBundle(0, [0, 20000], [s4, s4])));
+assert('packed: out-of-range u16 refused, never wrapped', throws(() => encodePacked({ target_norm: 7, vel_norm: 0 }, INPUT_LAYOUT)));
+assert('packed: missing field refused', throws(() => encodePacked({ target_norm: 0.5 }, INPUT_LAYOUT)));
+
+// ---- a scripted WebSocket ---------------------------------------------------
+class FakeWS {
+  static last = null;
+  constructor() { this.readyState = 0; this.sent = []; FakeWS.last = this; }
+  send(b) { this.sent.push(new Uint8Array(b)); }
+  close() { this.readyState = 3; if (this.onclose) this.onclose({ code: 1000 }); }
+  open() { this.readyState = 1; this.onopen(); }
+  recv(type, payload, channel = 0, seq = 0) {
+    const f = encodeFrame(type, channel, payload, seq);
+    this.onmessage({ data: f.buffer.slice(f.byteOffset, f.byteOffset + f.byteLength) });
+  }
+  framesOf(type) {
+    return this.sent.filter((b) => b[0] === type).map((b) => ({ header: decodeFrameHeader(b), bytes: b }));
+  }
+}
+const memStore = (cat) => ({ load: () => cat, save() {}, clear() {} });
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+// ---- HELLO publish wishes: byte-exact against encodeHello -------------------
+{
+  const s = createSession({
+    host: 't1', clientKind: 'test', clientName: 'golden', deadmanWishMs: null,
+    instanceId: Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8), autoReconnect: false,
+    publishes: [[0x2100, 50], [0x2101, 20, 40, 1]],
+    catalogStore: memStore(null), WebSocketImpl: FakeWS,
+  });
+  s.connect();
+  FakeWS.last.open();
+  check('HELLO with publish wishes (plain + burst/curve_family) == C++ encodeHello', FakeWS.last.sent[0], G.HELLO_FRAME);
+
+  // WELCOME from the C++ encoder: granted_publishes (36) adopted.
+  let evt = null;
+  s.on('publishGrant', (g) => { evt = g; });
+  FakeWS.last.recv(FRAME.WELCOME, fromHex(G.WELCOME_PAYLOAD));
+  const gp = s.state.grantedPublishes.get(0x2100);
+  assert('WELCOME granted_publishes -> state.grantedPublishes (0x2100 @ 50 Hz, no burst)',
+    !!gp && gp.rate === 50 && gp.burst === null && gp.curveFamily === null);
+  assert('WELCOME grant emits publishGrant', Array.isArray(evt) && evt.length === 1);
+
+  // PUBLISH: byte-exact, and the C++ GRANT answer resolves it.
+  const p = s.publish([[0x2101, 20, 40, 2]]);
+  check('PUBLISH frame == C++ encodePublish', FakeWS.last.framesOf(FRAME.PUBLISH)[0].bytes, G.PUBLISH_FRAME);
+  FakeWS.last.recv(FRAME.GRANT, fromHex(G.GRANT_PUBLISH_PAYLOAD));
+  const res = await p;
+  const seg = s.state.grantedPublishes.get(0x2101);
+  assert('PUBLISH resolves with the applied grant (rate 20, burst 40)',
+    res.length === 1 && res[0].rate === 20 && res[0].burst === 40);
+  assert('effective curve_family 1 and requested 2 both kept (downgrade visible)',
+    seg.curveFamily === 1 && seg.requestedCurveFamily === 2);
+
+  // A PUBLISH answered by the reference hub's empty GRANT: nothing granted.
+  const drop = s.publish([[0x2101, 0]]);
+  FakeWS.last.recv(FRAME.GRANT, fromHex(G.GRANT_EMPTY_PAYLOAD));
+  const dropped = await drop;
+  assert('empty GRANT answers the PUBLISH and the channel is no longer granted',
+    dropped.length === 0 && !s.state.grantedPublishes.has(0x2101) && s.state.grantedPublishes.has(0x2100));
+  s.close();
+}
+
+// ---- the sender, against the real device catalog fixture --------------------
+{
+  const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/valencesim-catalog.bin', import.meta.url)));
+  const etag = fromHex(readFileSync(new URL('./fixtures/valencesim-catalog.etag', import.meta.url), 'utf8').trim());
+  const s = createSession({
+    host: 't2', autoReconnect: false, deadmanWishMs: null,
+    catalogStore: memStore({ etag, bytes: catBytes }), WebSocketImpl: FakeWS,
+  });
+  s.connect();
+  const ws = FakeWS.last;
+  ws.open();
+  refusal('before WELCOME', () => s.publishSamples(0x2100, { target_norm: 0.5, vel_norm: 0 }), PUBLISH_ERROR.NOT_LIVE);
+
+  const welcome = cbMap([
+    [K.proto_ver, cbUint(1)], [K.session_id, cbUint(9)], [K.boot_id, cbUint(3)],
+    [K.catalog_etag, cbBstr(etag)], [K.cfg_gen, cbUint(1)],
+    [K.limits, cbMap([[WELCOME_LIMITS_K.max_frame, cbUint(512)], [WELCOME_LIMITS_K.retained_pending, cbUint(0)]])],
+    [K.roles, cbUint(1)], [K.deadman_ms, cbUint(2000)],
+    [K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(50)], [K.channel_id, cbUint(0x2100)]])])],
+  ]);
+  ws.recv(FRAME.WELCOME, welcome);
+  assert('cached catalog + zero retained -> LIVE', s.phase === SESSION_STATE.LIVE);
+
+  const one = { target_norm: 0.5, vel_norm: 0 };
+  refusal('before the CLOCK reply', () => s.publishSamples(0x2100, one), PUBLISH_ERROR.NO_CLOCK);
+  const clockOut = ws.framesOf(FRAME.CLOCK)[0].bytes;
+  const t0 = new DataView(clockOut.buffer, clockOut.byteOffset + 8).getUint32(0, true);
+  const reply = new Uint8Array(12);
+  const rdv = new DataView(reply.buffer);
+  rdv.setUint32(0, t0, true); rdv.setUint32(4, (t0 + 5000000) >>> 0, true); rdv.setUint32(8, (t0 + 5000000) >>> 0, true);
+  ws.recv(FRAME.CLOCK, reply);
+  assert('CLOCK reply marks the session clock synced', s.state.clockSynced === true);
+
+  refusal('ungranted channel', () => s.publishSegment(0x2101, { target_norm: 0.5, duration_ms: 100, end_vel_norm: 0 }), PUBLISH_ERROR.NOT_GRANTED);
+  refusal('segment on a samples channel', () => s.publishSegment(0x2100, { target_norm: 0.5, duration_ms: 100, end_vel_norm: 0 }), PUBLISH_ERROR.WRONG_STREAM_KIND);
+  refusal('STATE channel', () => s.publishSamples(0x1100, one), PUBLISH_ERROR.NOT_PUBLISHABLE);
+  refusal('unknown channel', () => s.publishSamples(0x7777, one), PUBLISH_ERROR.UNKNOWN_CHANNEL);
+  refusal('missing layout field', () => s.publishSamples(0x2100, { target_norm: 0.5 }), PUBLISH_ERROR.BAD_SAMPLE);
+  refusal('target outside u16 after scale', () => s.publishSamples(0x2100, { target_norm: 9, vel_norm: 0 }), PUBLISH_ERROR.BAD_SAMPLE);
+  refusal('span over 20 ms', () => s.publishSamples(0x2100, [one, one], { periodUs: 25000 }), PUBLISH_ERROR.BAD_BUNDLE);
+  assert('refusals put nothing on the wire', ws.framesOf(FRAME.STREAM).length === 0);
+
+  // Sequence continuity: per channel, from 0, one per bundle that went out.
+  const seqs = [0, 1, 2].map(() => s.publishSamples(0x2100, one).seq);
+  const out = ws.framesOf(FRAME.STREAM);
+  assert('seq 0,1,2 returned and on the wire', seqs.join() === '0,1,2' && out.map((f) => f.header.seq).join() === '0,1,2');
+  assert('header.channel is the target channel', out.every((f) => f.header.channel === 0x2100));
+  const anchor = new DataView(out[2].bytes.buffer, out[2].bytes.byteOffset + 8).getUint32(0, true);
+  assert('default anchor is hub time (client clock + CLOCK offset)', Math.abs(((anchor - s.hubNowUs()) | 0)) < 100000);
+
+  // Token bucket at the granted 50 Hz: 3 spent, 32 more fit, the next 32 do not.
+  const burst = Array(32).fill(one);
+  s.publishSamples(0x2100, burst, { periodUs: 600 });
+  refusal('overdrawing the granted rate', () => s.publishSamples(0x2100, burst, { periodUs: 600 }), PUBLISH_ERROR.RATE_EXCEEDED);
+  const seqAfter = s.publishSamples(0x2100, one).seq;
+  assert('a refused bundle does not consume a seq', seqAfter === 4);
+
+  // Segments: grant via PUBLISH, then the §5.4 scheduling ceiling.
+  const p = s.publish([[0x2101, 20]]);
+  ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2101)]])])]]));
+  await p;
+  const segv = { target_norm: 0.8, duration_ms: 120, end_vel_norm: 0 };
+  refusal('segment anchored 300 ms ahead', () => s.publishSegment(0x2101, segv, { anchor: (s.hubNowUs() + 300000) >>> 0 }), PUBLISH_ERROR.SCHEDULE_TOO_FAR);
+  assert('segment anchored 100 ms ahead goes out, seq 0 on its own channel',
+    s.publishSegment(0x2101, segv, { anchor: (s.hubNowUs() + 100000) >>> 0 }).seq === 0);
+
+  // Unsolicited re-grant (§10.2): a key-36 GRANT with nothing pending updates the rate.
+  ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(25)], [K.channel_id, cbUint(0x2100)]])])]]));
+  assert('unsolicited re-grant adopted', s.state.grantedPublishes.get(0x2100).rate === 25);
+
+  s.close();
+  refusal('after close', () => s.publishSamples(0x2100, one), PUBLISH_ERROR.NOT_LIVE);
+  assert('close forgets the grants', s.state.grantedPublishes.size === 0);
+}
+
+await tick();
+console.log('');
+if (failures === 0) { console.log('ALL PASS'); process.exit(0); }
+console.log(failures + ' FAILED');
+process.exit(1);

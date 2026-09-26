@@ -20,7 +20,7 @@
 // Locally bound because the code below reads them; `export ... from` re-exports
 // without creating a local binding.
 import {
-  CORE_CHANNEL, NACK, NACK_NAME, SAFETY_OP, HEADER_BYTES,
+  CORE_CHANNEL, NACK, NACK_NAME, SAFETY_OP, HEADER_BYTES, LIMITS,
 } from './generated/registry_vocab.js';
 
 export {
@@ -231,6 +231,43 @@ export function encodeEstopFrame(cause, origin, seq) {
  * @param {number} [off]
  * @returns {{type:number, flags:number, channel:number, seq:number, len:number}|null}
  */
+// ---- STREAM bundle (§5.4) -------------------------------------------------
+// t_base:u32 | n:u8 | reserved:u8 | t_off[n]:u16 | n packed samples, all LE.
+// Enforces the same caps as lib/valence's BundleWriter, because the hub drops a
+// violating bundle WHOLE and silently (§9.2): refusing here is the only way the
+// sender ever hears about it.
+
+/**
+ * @param {number} tBaseUs u32 hub-time µs of sample[0]
+ * @param {number[]} tOffsUs per-sample µs offsets: [0] == 0, strictly increasing,
+ *        last <= bundle_max_span_ms * 1000
+ * @param {Uint8Array[]} samples packed sample structs, all the same size
+ * @returns {Uint8Array} the bundle payload (no frame header)
+ */
+export function encodeBundle(tBaseUs, tOffsUs, samples) {
+  const n = samples.length;
+  if (n < 1 || n > LIMITS.bundle_max_samples) throw new RangeError('bundle: n=' + n + ' outside 1..' + LIMITS.bundle_max_samples);
+  if (tOffsUs.length !== n) throw new RangeError('bundle: ' + tOffsUs.length + ' offsets for ' + n + ' samples');
+  const size = samples[0].length;
+  for (let i = 0; i < n; i++) {
+    const t = tOffsUs[i];
+    if (!Number.isInteger(t) || (i === 0 ? t !== 0 : t <= tOffsUs[i - 1])) {
+      throw new RangeError('bundle: t_off must start at 0 and strictly increase, got [' + tOffsUs.join(',') + ']');
+    }
+    if (samples[i].length !== size) throw new RangeError('bundle: sample ' + i + ' is ' + samples[i].length + ' B, not ' + size);
+  }
+  if (tOffsUs[n - 1] > LIMITS.bundle_max_span_ms * 1000) {
+    throw new RangeError('bundle: span ' + tOffsUs[n - 1] + ' us exceeds ' + LIMITS.bundle_max_span_ms + ' ms');
+  }
+  const out = new Uint8Array(6 + 2 * n + size * n);
+  const dv = new DataView(out.buffer);
+  dv.setUint32(0, tBaseUs >>> 0, true);
+  dv.setUint8(4, n);
+  for (let i = 0; i < n; i++) dv.setUint16(6 + 2 * i, tOffsUs[i], true);
+  for (let i = 0; i < n; i++) out.set(samples[i], 6 + 2 * n + size * i);
+  return out;
+}
+
 export function decodeFrameHeader(buf, off = 0) {
   if (buf.length - off < HEADER_BYTES) return null;
   const dv = new DataView(buf.buffer, buf.byteOffset + off, HEADER_BYTES);

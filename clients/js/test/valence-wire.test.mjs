@@ -8,11 +8,10 @@
  *
  * Run:  node clients/js/test/valence-wire.test.mjs   (exits 1 on any failure)
  *
- * NOTE: the browser session's own HELLO deliberately omits the publish wish
- * (key 11) — the WebUI SUBSCRIBEs h2c channels, it does not publish a stream.
- * To prove the CBOR codec against the C# golden HELLO (which DOES carry a
- * publish wish), we reconstruct that with-publish HELLO from the same cbor.js
- * primitives here. SUBSCRIBE / GOODBYE / PING / CLOCK use the real builders.
+ * The HELLO below is rebuilt from cbor.js primitives to match the C# golden;
+ * the session's own publish-wish HELLO is checked byte-exact against the C++
+ * encoder in valence-publish.test.mjs. SUBSCRIBE / GOODBYE / PING / CLOCK use
+ * the real builders.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
