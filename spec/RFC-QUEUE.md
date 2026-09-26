@@ -4172,3 +4172,75 @@ say exactly which, future-us will want the receipts.*
      Should this document RECOMMEND boundary values, informatively and in
      physical length, so two clients at the same size pick the same class?
   2. Does a hub ever need to know a client's class? This RFC assumes not.
+
+## RFC-063 -- A wire carrier for the `destructive` flag
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-c5u).
+- **Origin:** Phosphor ph-vdk.4 and ph-vdk.3. Building the confirm layer
+  RENDERING requires, the reference client found that the flag it is told
+  to confirm on cannot arrive.
+- **Problem.**
+  1. **A MUST with no carrier.** RENDERING §8.2 row 6 ("destructive flag ⇒
+     mandatory confirm, every class"), §8.4 `trigger` ("`destructive` flag
+     ⇒ mandatory confirm, every class, no exception"), §10.1 rule 2
+     ("exactly as a `destructive`-flagged `trigger`") and the registry
+     `ui_archetypes` `trigger` note all bind client behavior to a
+     `destructive` flag. SPEC §8.8 defines `flags` as the `setting_flags`
+     bitmask with three bits (`advanced`, `restart_required`, `secret`), and
+     the catalog CDDL has no other carrier. No hub can set the flag and no
+     client can read it, so the confirm rule is unimplementable, and a
+     client that tries anyway guesses from labels, which law 6 forbids.
+  2. **Op selects need per-op granularity.** Most verbs ride op selects: one
+     `action.*` schema field whose `options` are the ops (the SPEC §8.8
+     `option_access` rationale). One field-level flag cannot say that
+     `clear_fault` is harmless and a factory reset is not.
+  3. **A dangling pointer.** RENDERING §5.4 sends the reset confirm to "the
+     destructive-trigger contract (§8.7)"; RENDERING has no §8.7.
+- **Proposed change.**
+  1. **`setting_flags` gains `destructive`.** On a schema field carrying an
+     `action.*` role it means: invoking this verb loses state the operator
+     cannot restore from the client (configuration, stored items, counters,
+     sessions, uptime). On a writable layout field (`setting_key` present)
+     it means: writing this setting has that effect.
+  2. **Per-option mask for op selects.** A new optional schema-field key,
+     `destructive_options`: a uint bitmask whose bit *i* marks option *i*
+     destructive. Options past bit 63 cannot be marked; an op table that
+     needs more splits across fields. A scalar keeps the field map inside
+     the §8.1 depth-4 budget.
+  3. **Resolution.** An invocation is destructive iff the field carries the
+     `destructive` flag, or the invoked option's bit is set in
+     `destructive_options`, or the field's role is `action.reboot` or
+     `action.reset`. The two tags imply it because their registry notes
+     already require confirmation; a hub need not restate it.
+  4. **Client rule (MUST).** A client MUST confirm-gate every destructive
+     invocation on every class with the §8.3 primitive (long-press on
+     `glance`, modal confirm otherwise), rendered in the `overlay` region
+     (§9). The confirm names the op by its catalog label. A client MUST NOT
+     infer destructiveness from labels, names, or `desc`.
+  5. **Hub rule.** The flag is rendering metadata. A hub MUST NOT change
+     wire behavior on it and MUST NOT assume a confirm happened: the confirm
+     protects an operator from a mis-tap, not a hub from a client.
+  6. **Pointers repaired.** RENDERING §5.4's "(§8.7)" becomes "(§8.4
+     `trigger`)". §8.2 row 6 and §8.4 `trigger` cite SPEC §8.8 for the
+     carrier.
+- **Wire impact.** Additive: one new bit in an existing bitmask and one new
+  optional schema-field key. Per SPEC §8.9 item 8 an older client renders an
+  unknown flag generically, i.e. without a confirm, which is today's
+  behavior; nothing gets worse. Etags move only for catalogs that adopt it.
+- **Registry impact.** `setting_flags` gains `destructive`; the registry
+  owner allocates the bit. The catalog CDDL `schema-field` gains
+  `destructive_options`; the registry owner allocates the key. The
+  `ui_archetypes` `trigger` note cites the new bit. No existing number
+  moves.
+- **Conformance impact.** RENDERING §8.2 row 6 and §8.4 become testable: a
+  fixture catalog with a flagged trigger, a masked op select and an
+  `action.reboot` field, asserting a confirm for exactly the destructive
+  invocations and for no others. Reference-hub authoring follow-up: flag
+  the destructive admin and preset ops.
+- **Open questions.**
+  1. Should `destructive` also be legal at entry level, gating every
+     writable field of a channel? This RFC says no: per field keeps one home.
+  2. `source.background_run` false-to-true (RENDERING §10.1 rule 2) stays
+     confirm-gated by role, not by this flag, so no hub can forget it.
+     Confirm that split.
