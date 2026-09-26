@@ -4287,3 +4287,77 @@ say exactly which, future-us will want the receipts.*
   is selectable, displayed, and not actionable respectively.
 - **Open questions.** None. This is a correction, not a design choice; it is
   queued because RENDERING is normative and changes to it ride the queue.
+
+## RFC-065 -- Event-channel purpose roles and event-kind labels
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-x3n). Closes SPEC §18 item 2 on landing.
+- **Origin:** Phosphor ph-vdk.7 and ph-vdk.14. The reference client finds
+  the anomaly channel by regex over the entry NAME, which law 6 forbids,
+  because nothing else identifies it; it then prints anomaly kinds as bare
+  numbers except where the hub smuggles a label in. The reference hub
+  (Nucleus, `motion-anomaly`) mirrors `event_kind` (33) into `body` key 1 as
+  a select field with `options`, and says why in its catalog source: "the
+  catalog has no vocabulary for LABELING event kinds, and `options` on a
+  schema field is the one registered mechanism for turning a number into a
+  name."
+- **Problem.**
+  1. **No identity for a device-authored EVENT channel.** Field roles
+     (SPEC §8.8) are per field; an EVENT's purpose is a property of the
+     whole entry. Spec-core EVENT channels are bound by id (law 2), but a
+     device-authored anomaly channel has only its name, so every client
+     either name-matches (law 6 violation) or shows it as one more generic
+     stream in `diagnostic` rank, where an operator misses it.
+  2. **No labels for device-authored kinds.** SPEC §18 item 2 states the gap
+     and defers it: "The fix is an additive entry-level annotation and is
+     deliberately deferred rather than guessed at." The body-mirror
+     workaround duplicates the discriminator (two homes for one number) and
+     does not generalize to a kind whose body has no room for it.
+- **Proposed change.**
+  1. **Entry-level purpose role.** A new optional entry key `role` (tstr,
+     at most 24 bytes) naming a registered *channel role*, a new
+     string-valued registry vocabulary with the `field_roles` doctrine:
+     unregistered values are legal, recognition is an opportunity, generic
+     fallback is mandatory. This RFC registers one value, for EVENT entries:
+     `events.anomaly`: edges reporting that the machine did something other
+     than what it was asked (a clamped command, a planner fallback, a
+     rejected plan). Its latched counters, where present, are the §9.4
+     STATE twin. Unlike a field role, a channel role MAY appear on more than
+     one entry; a client renders each, ascending by id.
+  2. **Binding rule (MUST).** A client that gives anomaly events a
+     dedicated surface (RENDERING §10 `event-stream`, a safety-adjacent
+     log) MUST select the channels by `events.anomaly` or by core identity,
+     never by name. A channel without the role renders as an ordinary
+     `event-stream`.
+  3. **Entry-level `event_kinds` label table.** A new optional EVENT-entry
+     key: a map uint to tstr (label at most 24 bytes), labeling that
+     channel's `event_kind` values. Depth: entry, map, tstr = 2. Counts
+     against `catalog_max_entry_bytes`.
+     - **Append-only (MUST).** Across firmware versions a released kind
+       value is never reassigned a different meaning; a retired kind keeps
+       its entry.
+     - **One home.** The table MUST be absent on spec-core channels, whose
+       kinds are registry tables (`session_event_kinds`, `log_event_kinds`,
+       `pairing_event_kinds`, `safety_event_kinds`).
+  4. **Rendering (MUST).** A client renders an event's kind by its label;
+     a kind with no label (or a channel with no table) renders as its
+     decimal number. Never dropped, never guessed from `body`.
+  5. **The workaround retires.** A hub MAY keep mirroring the kind into
+     `body`; a client MUST take the kind from `event_kind` (33) and its
+     label from the table.
+- **Wire impact.** Additive: two optional entry-level catalog keys. Decoders
+  skip unknown keys (§4.3). Etags move only for catalogs that adopt them. No
+  frame changes.
+- **Registry impact.** New string vocabulary section (proposed name
+  `channel_roles`) with `events.anomaly`. Catalog CDDL `entry` gains `role`
+  and `event_kinds`; the registry owner allocates both keys. SPEC §18 item 2
+  struck; §9.4 gains one paragraph pointing here.
+- **Conformance impact.** Fixture: a device EVENT entry carrying both keys,
+  one kind labeled and one not; assert the channel is found with its name
+  changed, the labeled kind renders by label, the unlabeled one by number.
+- **Open questions.**
+  1. Should the STATE twin carry a role too (for example
+     `anomaly.summary`) so the event log and its counters bind together?
+  2. Other EVENT purposes worth registering pre-tag (a procedure-completion
+     stream, RFC-020)? This RFC registers only the one with a shipping
+     instance.
