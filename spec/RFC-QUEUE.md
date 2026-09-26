@@ -5716,3 +5716,192 @@ say exactly which, future-us will want the receipts.*
   5. The item 8 ruling: raise the reference library's catalog limits (a
      compatibility break), make them a build-time parameter of the hub, or
      keep them and ship tiny accessories only?
+
+## RFC-078 -- Accessory conformance profile and the hub relationship engine
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
+  (rfc-j5f). Builds on
+  [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip)
+  (still PROPOSED): if RFC-056 is refused, the duty lists below still stand
+  as profile text in §17.1. Companion to
+  [RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories),
+  [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)
+  and
+  [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions).
+- **Origin:** operator rulings 2026-09-26. Isotope, the reference accessory
+  firmware, is ESPHome-shaped: a declarative config goes through a generator
+  to an image. An accessory driven by the machine (a pump following stroke
+  speed, a vibrator following position, a stand following machine angle) is
+  a **relationship**, and relationships are **hub policy**: evaluated on the
+  hub, surviving the client closing.
+- **Problem.**
+  1. **No profile fits an accessory.** RFC-056 defines a hub as a set of
+     duties but names no subset. The full hub profile (sessions, tiers, the
+     trust ledger, BLE GATT, several bindings) is absurd for a pump, and
+     nothing says which of it an accessory may omit.
+  2. **No duty set names what a hub owes its accessories.**
+  3. **A client-side relationship dies with the client.** A client can drive
+     a pump from machine speed only while it is connected, and every client
+     would reimplement the mapping: the §9.6 write-once argument applies
+     verbatim.
+  4. **Nothing stops accessories.** STOP and ESTOP stop the machine (§11.1).
+     A relationship keeps driving a pump from a stopped machine's stale
+     speed, and a direct client write can start one mid e-stop.
+- **Proposed change.**
+  1. **The `accessory` profile (new, §17.1).** An accessory is a hub whose
+     only peer is its accessory host, over the RFC-075 spoke. It MUST:
+     - satisfy parser totality (§5.8) and encode its frames golden-vector
+       exact (§5.1 header, §5.3 CBOR profile, §5.4 layouts);
+     - declare itself as a §8.1 catalog with relative ids, `safe` values and
+       the item 5 validation rules of RFC-076, and serve it as blob namespace
+       0 over BLOB_REQ/BLOB_CHUNK with §8.4 pacing;
+     - answer every INTENT with ECHO or NACK, post-clamp and key-complete
+       (§9.3), keeping idempotency over at least its most recent `intent_id`
+       (stop-and-wait, §13.3, allows one outstanding control frame per
+       direction);
+     - accept c2h STREAM bundles on its declared stream channels, validating
+       the §5.4 caps and dropping violators whole;
+     - push each declared STATE channel to its host at its declared
+       `max_rate_hz` (on change for 0) with no SUBSCRIBE: the host is its
+       sole, implicit subscriber;
+     - carry the registered **accessory-status** STATE at relative id `0x01`:
+       `{state u8, fault u8, beacon_seq u16}` = 4 bytes, `state` from a new
+       `accessory_states` table (0 `live`, 1 `safe_joined` (joined, awaiting
+       its first command), 2 `safe_deadman`, 3 `safe_goodbye`, 4
+       `safe_estop`, 5 `safe_fault`), `fault` device-defined (0 none),
+       `beacon_seq` the header seq of the last BEACON it accepted. Pushed on
+       change and at least every `spoke_beacon_interval_ms`;
+     - honor every RFC-075 duty: channel follow, the deadman and the safe
+       state, clamping, the 250-byte budget, no ESTOP rebroadcast;
+     - keep a durable `accessory_id` and join per RFC-076.
+     **Absent, never required of an accessory:** HELLO/WELCOME and the rest
+     of the session layer, the readiness gate, SUBSCRIBE/UNSUBSCRIBE/GRANT/
+     PUBLISH, PROBE, CLOCK, access tiers, pairing tokens, AUTH, HUB_SIG, the
+     trust ledger, every core channel from `0x0001` to `0x000E`, control
+     ownership (its host is its only caller), multiple peers, BLE GATT,
+     WebSocket, mDNS and UDP discovery, and the rendering annotations
+     (`category`, `rank` and the rest stay optional).
+  2. **The `accessory-host` duty set (new, for hubs).** A hub that sets
+     BEACON `accessory_host` MUST: beacon, answer probes and broadcast ESTOP
+     per RFC-075; run the join, declaration fetch, validation, persistence and
+     sticky slices of RFC-076, with its three core channels; grow its catalog
+     per RFC-077 and advertise its capacity; and:
+     - **proxy, never expose.** Clients never address an accessory. The host
+       serves client subscriptions to accessory STATE from its retained copy.
+       It forwards a client INTENT on an accessory channel only after its own
+       checks (tier, declared range, the ownership rule of item 3, the
+       interlock of item 4), under its own spoke `intent_id`, and answers the
+       client with an ECHO carrying the **accessory's** applied values: the
+       accessory is the ground truth (§1.2), not the forward. No answer after
+       §13.3's retransmits: NACK `ACCESSORY_OFFLINE`. c2h bundles are
+       forwarded the same way under the client's publication grant.
+     - **the sole-caller rule extends to accessories** (§11.4): the host is
+       the only thing that commands one.
+     - **never widen access.** An actuating accessory channel is at least
+       `control` in the host's catalog whatever its declaration says, the
+       same obligation §11.2 places on `estop_clear`; the host MAY raise any
+       declared floor further.
+     - run the relationship engine (item 3) and the interlock (item 4).
+  3. **Relationships are hub policy.** A relationship maps one source field
+     to one target field:
+     - **source:** a numeric field of an h2c STATE or STREAM layout anywhere
+       in the host's catalog (core, device, or another accessory's user
+       space), named by `(channel id, layout index)`;
+     - **target:** a value-bearing field of an accessory's INTENT schema or
+       c2h STREAM layout, named by `(absolute channel id, schema key or layout
+       index)`;
+     - **map:** from a registered `relationship_maps` table. This RFC
+       registers 1 `linear_clamp`: `out = out_min + (clamp(in, in_min, in_max)
+       - in_min) * (out_max - out_min) / (in_max - in_min)`, with `in_min !=
+       in_max`, then clamped into the target's declared `min`/`max`. All four
+       bounds are in each field's physical units (post-`scale`). Others are
+       open question 1.
+     **Evaluation.** On the host, on every source update, writing the target
+     only when the mapped output moved by at least the target field's `step`
+     (any change if none is declared), no faster than the target channel's
+     `max_rate_hz` and, for an INTENT target, within
+     `intent_ingress_default_per_s`. Writes take the proxy path of item 2, so
+     the accessory's ECHO is the truth the relationship reports.
+     **Persistence and independence.** Relationships are stored in the host's
+     non-volatile storage and survive every session ending and every reboot;
+     no session owns one, and evaluation never depends on any session
+     existing. Each carries a persisted `enabled` and a volatile **`armed`**,
+     which is false at every boot: a reboot re-arms nothing (item 4).
+     **Ownership.** An enabled, armed relationship owns its target field: a
+     client write to that field gets NACK `SOURCE_CONFLICT` (§11.4's code,
+     reused) until the relationship is disarmed or disabled. One target field
+     has at most one enabled relationship; a second is refused
+     `INVALID_VALUE`.
+     **Degradation.** Source or target removed (RFC-077 item 4, RFC-076 item
+     8): the relationship is disabled and its target, where it still exists,
+     set to its `safe` value. Target accessory offline: the relationship
+     idles; on rejoin, if still armed, the host sends the current mapped
+     value.
+     **Storage and authoring.** A core STORE `relationships`, `kind`
+     `"relationship.map"`, `watch` access, with a registered item grammar
+     (`relationship_keys`: `rel_id`, `name`, `source_channel`,
+     `source_field`, `target_channel`, `target_field`, `map`, `in_min`,
+     `in_max`, `out_min`, `out_max`, `enabled`); §8.7's carve-out applies
+     because the hub interprets the item. Its roster STATE
+     `relationships-roster`: `{generation u16, count u8, capacity u8, armed
+     2 x bitfield8, faulted 2 x bitfield8}`, bit *i* for `rel_id` *i*,
+     `capacity` at most `relationships_max` (16). A core INTENT
+     `relationship-admin` with op select `action.relationship` over
+     `relationship_admin_ops`: `put` (create or replace, the item's fields in
+     the value), `delete`, `enable`/`disable` (`configure`, per-op `access`),
+     `arm`/`disarm` (`control`). Names and relationships are authored from a
+     client, per the rulings; the host only stores and evaluates them.
+  4. **Safety interlock (MUST).**
+     - While ESTOP is latched in `safety` (`0x0003`): every relationship is
+       disarmed; every relationship target is driven to its `safe` value (the
+       accessories also self-safe on the broadcast ESTOP frame, RFC-075 item
+       8); client writes to actuating accessory fields are refused
+       `ESTOP_ACTIVE`.
+     - On STOP latching: every relationship is disarmed and every target
+       driven to its `safe` value, once. STOP does not refuse later direct
+       client writes (open question 3).
+     - **Nothing re-arms on its own.** An ESTOP clear re-arms nothing (§11.2:
+       "clearing never restarts motion", applied to accessories). STOP's
+       ordinary clear (the next accepted motion intent, §11.1) re-arms
+       nothing either: relationships resume only on an explicit `arm`, the
+       same operator-act principle
+       [RFC-074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command)
+       applies to streams.
+     - The interlock is hub policy and never depends on a client session,
+       exactly as the relationships it governs.
+- **Wire impact.** No new frame. New core channels (`relationships` STORE,
+  `relationships-roster` STATE, `relationship-admin` INTENT), the registered
+  accessory-status layout, and new vocabularies. No existing behavior moves
+  for a hub that is not an accessory host.
+- **Registry impact.** §17.1 gains profiles `accessory` and
+  `accessory-host`. New `accessory_states`, `relationship_maps`
+  (`1 linear_clamp`), `relationship_keys`, `relationship_admin_ops`;
+  `action_tags` gains `relationship`; `core_channels` gains the three
+  entries (ids from `0x000F` headroom); an `accessory_status` layout entry
+  for relative id `0x01`; `limits` gains `relationships_max` (16).
+- **Conformance impact.** Accessory profile: a harness over the §13.6
+  in-process binding drives a declared accessory through join, declaration
+  fetch, INTENT/ECHO with clamping, a STREAM bundle over the caps, and every
+  RFC-075 safe-state entry; it asserts the status snapshot's `state` at each
+  step. Host: (1) close every session, move the source: the target follows.
+  (2) Latch ESTOP: every target reaches `safe`, statuses read `safe_estop`,
+  a client write is refused `ESTOP_ACTIVE`. (3) Clear ESTOP: targets stay
+  `safe` until `arm`. (4) Reboot: relationships persist, `enabled` intact,
+  `armed` false. (5) A client write to an armed target: `SOURCE_CONFLICT`.
+  (6) Forget the target accessory: the relationship is disabled, one
+  `CHANNEL_WITHDRAWN` per grant (RFC-077). (7) A declaration asking for
+  `watch` on an actuating channel is served at `control`.
+- **Open questions.**
+  1. Which maps beyond `linear_clamp`: invert, piecewise table, threshold
+     with hysteresis, smoothing or slew limit, speed-to-duty?
+  2. HOLD and PAUSE: should they disarm relationships like STOP, or leave
+     them running (the machine is parked, not stopped)?
+  3. Under a latched STOP, refuse direct client writes to accessories as
+     ESTOP does, or accept them as the operator's own act (proposed)?
+  4. STREAM bundles carry hub-timebase stamps (§7.1) and an accessory runs
+     no CLOCK: apply them on arrival with relative offsets only, or give the
+     spoke a minimal time sync?
+  5. Author relationships through RFC-067's store verbs instead of a
+     dedicated `relationship-admin` channel, if RFC-067 lands?
+  6. May an accessory field be a source for another accessory's target
+     (chains), and must the host reject feedback loops?
