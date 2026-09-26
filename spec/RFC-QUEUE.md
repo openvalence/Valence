@@ -6035,3 +6035,145 @@ say exactly which, future-us will want the receipts.*
   4. Is the advertisement bit enough, or does a client that reconnects from a
      bonded address without scanning need an in-session config-mode
      indicator (a field role on `hub-status`)?
+
+## RFC-080 -- User-authored surfaces and presentation choice
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Phosphor builder). Ruling
+  pending (rfc-94c). Amends RENDERING.md only; no wire change.
+- **Origin:** operator rulings 2026-09-26 for the Phosphor UI builder
+  (Phosphor ph-e82.1). Phosphor becomes a builder: a user places controls on
+  a grid, where a control is one catalog field with a chosen presentation
+  (knob, slider, stepper or toggle for a writable field; number, bar, bulb
+  or graph for a readout), and saves named layouts per user per client. The
+  Phosphor builder plan raised a flag against RENDERING §13 law 10 (layout
+  keys); this RFC carries the operator's resolution.
+- **Problem.**
+  1. **RENDERING has no user-authored surface.** §11 says pages "are
+     **derived from the catalog**, never designed per app", and §9 says "a
+     pattern's region assignment (§10) is part of its spec definition, never
+     a per-app choice". Read literally, a saved layout is non-conformant.
+  2. **Nothing separates what a user may choose from what they may not.**
+     §8.2 derives the archetype by first match; nothing says whether a user
+     may change it, or only how it looks.
+  3. **No rule for per-placement ranges.** A user wants a slider over 0 to
+     40 % of a 0 to 100 % field. Nothing says whether a placement may narrow,
+     widen, or re-default a field, or what it shows when the hub's value lies
+     outside the narrowed range.
+  4. **No rule for momentary toggles**, a control whose release writes.
+  5. **Law 10 blocks keying.** "Key persisted client layout on stable ids,
+     never on indices or wire vocabulary." A field with no `role` has no
+     stable semantic id beyond its channel id and its name, and law 6
+     forbids binding by name.
+- **Proposed change.**
+  1. **Two kinds of surface.** The **catalog-built UI** is the derived page
+     tree of §11 with the region assignment of §9, unchanged and still
+     REQUIRED of every client claiming RENDERING conformance. It earns its
+     keep on hardware remotes and embedded processors with a screen and
+     buttons, where no user will ever author anything. A client MAY
+     **additionally** offer **user-authored surfaces**: saved layouts the
+     user composes. A user-authored surface is not the catalog-built UI and
+     never replaces it: **every field MUST stay reachable through the
+     derived pages** whatever any layout contains or omits. §11's
+     consistency invariant ("the same catalog yields the same page tree")
+     binds the derived tree only. RENDERING §11 and §9 gain one sentence each
+     saying so.
+  2. **What a user-authored surface may never do.**
+     - remove, cover or displace the `persistent` region (§9 placement
+       invariants) or the `stop` archetype (law 1): a surface always carries
+       a stop affordance the user cannot remove (the Phosphor top strip is
+       the reference form, operator ruling);
+     - change what a placement binds to: the user chooses how a field looks,
+       never which field it is (laws 6 and 7);
+     - suspend the universal interaction contract (§8.1): every writing
+       presentation shows the four-state write ladder (law 5), grays with a
+       reason rather than hiding, and renders only values the wire sent;
+     - place a composite without all its essential bindings (law 7): it
+       declines, exactly as on a derived page.
+  3. **Archetype fixed, presentation chosen.** The archetype is the §8.2
+     first match (including an explicit `archetype` annotation, row 1) and
+     is not user-editable. Within it the user picks a **presentation** by
+     read/write class:
+     - a **writable** field (one that writes, per §8.2 rows 3 and 6 to 11)
+       may take any writable presentation: knob, slider, stepper,
+       segmented, toggle and the like;
+     - a **read-only** field may take any read-only presentation: number,
+       bar, bulb, graph, hero numeral and the like;
+     - a writable field MAY ALSO be placed with a read-only presentation, as
+       a **display-only instance** (the set speed shown as a hero numeral).
+       It writes nothing and shows the applied value.
+     Presentations are client vocabulary, not registered. The `stop`
+     archetype (row 2) is bound by identity and takes no presentation
+     choice beyond the client's own rendering of it.
+  4. **Per-placement range parameters.** A placement with a range
+     presentation MAY set `min`, `max`, `step` and `default`, each inside the
+     catalog's own bounds: a placement may **narrow, never widen**; `step`
+     MUST be a whole multiple of the catalog `step` where one is declared;
+     `default` (the placement's return value) MUST lie inside the placement's
+     own range. The narrowing is a UI constraint only: the hub stays the
+     referee (SPEC §8.8, "validation is hub-side"). **Ground truth wins over
+     the narrowing:** when the applied value lies outside a placement's
+     range (another client set it, or the hub clamped differently), the
+     placement MUST show the true value and mark it out of range, never pin
+     it silently to its own edge.
+  5. **Toggle placements.** A toggle placement on any writable field (not
+     only a `bool`) is configured one of two ways:
+     - **two values**: each press writes the other of values A and B, both
+       inside the field's range;
+     - **momentary, override and return**: press writes A; release restores
+       the value that was **applied on the hub** when the press began, read
+       from adopted state, never from the client's own last request. The
+       restore is an ordinary write, pending until its ECHO (law 5), and
+       SHOULD carry `precondition` = the `cfg_gen` from the press's ECHO
+       (§9.3), so a value someone else changed mid-press is not clobbered
+       (on `CONFLICT` the placement shows the conflict and restores nothing).
+       **If the link drops mid-press, the hub's own value stands**: the
+       client assumes nothing, and on reconnect adopts whatever the hub
+       reports (§6.8), which is A if the restore never landed. Momentary is
+       a client construct, not a hub deadman; the honest consequence is
+       open question 1 below.
+  6. **Saved layout keys, and a scoped amendment to law 10.** A saved
+     layout keys each placement on stable identity:
+     - the hub, by `hub_instance_id` (§6.1) where present;
+     - the field, by its registered `role` where it has one;
+     - otherwise by **channel id plus field name** (for a schema field, its
+       name; the CBOR key is not stable across a re-authored schema).
+     Law 10 is amended: "Key persisted client layout on stable ids, never on
+     indices or wire vocabulary. **For user-authored surfaces only**, a field
+     with no role MAY be keyed on channel id plus field name." This is a
+     storage key for re-finding a placement the user made, not semantic
+     binding, so law 6 still holds: no client ever infers what a field means
+     from its name. A key that no longer resolves after a firmware update
+     (field renamed or removed) leaves the placement **orphaned and shown as
+     missing**; it MUST NOT be rebound to a different field by guess.
+     Channels in the user space (RFC-076) are keyed by their absolute id,
+     which RFC-076 item 6 keeps stable while the accessory stays paired.
+     Resolves the Phosphor builder plan's law-10 flag.
+  7. **Layouts live on the client.** Named layouts are stored per user per
+     client, locally (operator ruling; sync later, maybe). Nothing about them
+     reaches the hub or the wire.
+- **Wire impact.** None.
+- **Registry impact.** None. RENDERING.md amended: §9 and §11 (one sentence
+  each, item 1), §8 (presentation choice, items 3 to 5), §13 law 10 (item
+  6).
+- **Conformance impact.** Client tests: (1) a catalog whose every field is
+  also reachable on the derived pages while a user surface omits most of
+  them; (2) a user surface cannot remove the stop affordance or cover
+  `persistent`; (3) a narrowed placement shows an applied value outside its
+  range as out of range; (4) a placement cannot widen past the catalog
+  `max`; (5) momentary press with the link cut mid-press: after reconnect the
+  placement shows A, never the pre-press value; (6) a restore meeting a
+  changed `cfg_gen` shows `CONFLICT` and writes nothing; (7) a firmware
+  update renaming an unroled field orphans its placement, which is shown as
+  missing and never silently rebound.
+- **Open questions.**
+  1. Momentary release on link loss leaves A applied on the hub. For fields
+     where that matters (an accessory pump held on), should the protocol
+     offer a hub-side hold-to-run (a write that reverts unless refreshed),
+     rather than a client construct?
+  2. Should presentations become a registered vocabulary, so a saved layout
+     can move between clients (a portable layout format), or stay client
+     craft?
+  3. Single fields placeable anywhere on a surface, or only inside nests
+     (undecided in the rulings)?
+  4. Should a display-only instance of a writable field render its pending
+     writes from elsewhere (the ladder), or only the settled applied value?
