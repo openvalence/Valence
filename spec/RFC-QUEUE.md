@@ -4583,3 +4583,92 @@ say exactly which, future-us will want the receipts.*
      assumes the whole pattern or a single archetype instance.
   2. Does anything about substitution need to reach the wire (a hub
      wanting to know its operator's UI is third-party)? This RFC says no.
+
+## RFC-069 -- Client-pushed WiFi provisioning over BLE
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-qf5). Companion to
+  [RFC-054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff),
+  which is still PROPOSED.
+- **Origin:** Phosphor ph-vdk.24 (the provisioning `wizard`, RENDERING §10).
+  RFC-054 frames only one direction: a hub that already knows its WiFi
+  credentials disclosing them to a BLE client. The first-run case runs the
+  other way. A factory-fresh hub has no network; the operator's phone has
+  the credentials and a BLE link (the hardware-hub conformance floor, §13).
+  No conformant surface carries credentials INTO a hub, so the wizard
+  pattern has nothing to drive.
+- **Problem.**
+  1. **No discoverable writer.** The settings metamodel could carry an SSID
+     and a `secret` passphrase, but nothing lets a generic client find that
+     channel on a hub it has never met without a role or core identity, and
+     the first run is exactly the hub it has never met.
+  2. **The outcome is later than the write.** A join takes seconds and can
+     fail (wrong passphrase, no such network). §9.3's ECHO means "applied";
+     the procedure pattern that handles long operations reports its outcome
+     on a broadcast STATE channel.
+  3. **The secret-echo rule is underspecified.** SPEC §8.8: "ECHO confirms
+     application **without echoing the value**". §9.3: "a key **absent** from
+     the ECHO means NOT applied". A hub cannot satisfy both without an
+     encoding neither section gives.
+  4. **The gate is unstated.** RFC-054's security floor (configure tier,
+     pairing window, BLE link security, never STATE, never broadcast, never
+     logged) is written for disclosure only.
+- **Proposed change.**
+  1. **A core provisioning channel.** A new spec-core INTENT channel,
+     `provisioning` (id allocated by the registry owner), `configure`
+     access, with an op select (`action.provision`) over a registered op
+     table `provisioning_ops`. This RFC registers op `wifi_join`; RFC-054's
+     disclosure op, if accepted, joins the same table. A core id, not a
+     device channel plus role, because the first-run client binds by
+     identity (law 2's reasoning) and a headless hub has no other surface.
+  2. **`wifi_join` schema:** `op`, `ssid` (tstr), `passphrase` (tstr, MAY be
+     empty for an open network). Both credential fields carry the `secret`
+     flag. Schema keys allocated with the channel.
+  3. **Gate (MUST).** The hub accepts `wifi_join` only when all hold: the
+     session holds `configure`; a §12.3 pairing association window is open,
+     or the hub is factory-fresh (zero `configure` tokens, §12.3c); the
+     frame arrived on a BLE GATT, serial, or in-process binding. Otherwise
+     NACK `ACCESS_DENIED`. A network binding is refused because it rides the
+     network being changed and is cleartext (H4); BLE requires physical
+     proximity. A hub SHOULD require LE Secure Connections on the link
+     (§12.9).
+  4. **Unicast-only result.** The hub defers the reply until the join
+     attempt concludes or `provision_join_timeout_ms` (new limit) elapses.
+     Success: ECHO, whose `applied` carries `op`, carries each credential key
+     with the CBOR value `true` in place of its value (the general encoding
+     of §8.8's "without echoing the value", which this RFC makes normative for
+     every `secret` field), and carries the resulting `ipv4` and `ws_port`
+     under their channel-schema keys. Failure: NACK with a new code,
+     `NETWORK_JOIN_FAILED`, whose `detail` MUST NOT contain either
+     credential. ECHO and NACK already go to the sender only (§9.3). A
+     duplicate `intent_id` during the attempt joins it; it MUST NOT start a
+     second attempt.
+  5. **No stranding (MUST).** A hub that already has working credentials
+     keeps them until the new ones join successfully; a failed join leaves
+     the prior configuration in effect.
+  6. **Never disclosed (MUST).** Credentials never appear in STATE, in any
+     EVENT (including the log channel, §16.2), in GOODBYE or NACK `detail`,
+     in any diagnostic surface, or in the ECHO of any other session. Public
+     consequences are not secret and ride their existing homes: `ipv4` and
+     `ws_port` in WELCOME (§6.3), `ble_adv_flags.ws_available` (§13.4). A
+     client MUST NOT log or persist the credentials beyond the send.
+  7. **Then the upgrade.** On success the client SHOULD perform the §6.3
+     BLE-to-WS migration using the returned endpoint.
+- **Wire impact.** Additive: one core INTENT channel, one op table, one NACK
+  code, one limit. The secret-ECHO encoding is a clarification that binds
+  existing `secret` fields; no shipped hub is known to echo one today.
+- **Registry impact.** `core_channels` gains `provisioning` (INTENT);
+  new `provisioning_ops` (`wifi_join`); `action_tags` gains `provision`;
+  `nack_codes` gains `NETWORK_JOIN_FAILED`; `limits` gains
+  `provision_join_timeout_ms`. All numbers and the timeout value are the
+  registry owner's to allocate. The `setting_flags` `secret` note gains the
+  ECHO encoding.
+- **Conformance impact.** Behavioral tests: refused over WS; refused with
+  the window closed; success ECHO carries `true` for both credentials;
+  failure leaves prior credentials in effect; the log ring and every STATE
+  snapshot captured during the run contain neither credential bytes.
+- **Open questions.**
+  1. ESP-NOW material (RFC-054 item 2) in the same op table, or later?
+  2. Should the hub scan and publish visible SSIDs for the wizard to offer?
+     A scan list is not secret but is a privacy surface; this RFC leaves
+     SSID entry to the client.
