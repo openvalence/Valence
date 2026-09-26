@@ -5349,3 +5349,209 @@ say exactly which, future-us will want the receipts.*
   4. Should BEACON also carry STOP latched, or is `estop_latched` the only
      safety bit the spoke needs (STOP reaches accessories through RFC-078's
      interlock as commanded safe values)?
+
+## RFC-076 -- Accessory join and declaration: accessory channels in the user channel space
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
+  (rfc-7bq). Rides the spoke of
+  [RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories);
+  its catalog consequences are
+  [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions),
+  which also owns capacity; the duty sets are
+  [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine).
+- **Origin:** operator rulings 2026-09-26. Pairing: the operator holds the
+  hub's pairing button to open a window; an accessory in pairing state
+  broadcasts a join request; the hub accepts during the window, assigns a
+  channel slice, and stores it. The accessory is **self-describing**: its
+  channels, types, ranges and deadman are baked in at flash time and
+  declared to the hub on join; the hub mirrors them into its store. Only
+  hub-side things (names, relationships) are authored from a client. Once
+  paired, the accessory "lives in user space on the machine": its definition
+  is saved to hub flash, loaded at boot, and its channels join the hub's
+  catalog, up to roughly 128 channels per accessory.
+- **Problem.**
+  1. **No channel space exists for channels that arrive at runtime.** Core
+     ids are spec-governed, and the device range (`0x0080`-`0x7FFF`) is the
+     hub firmware's own allocation (CHANNEL-GRID.md). Neither can take ids a
+     third party brings at runtime without colliding with a later firmware.
+  2. **No join handshake.** §12.3's ceremony ends in a client token; an
+     accessory holds no session and wants no token.
+  3. **No declaration grammar, and there must not be a second one.** §8.1's
+     channel entry already describes kinds, packed types, ranges, units and
+     roles. A parallel "accessory descriptor" would fork the vocabulary every
+     renderer reads.
+  4. **Nothing names what survives a reboot of either side**, or what
+     identifies an accessory across reflashes and address changes.
+  5. **A generic client cannot see or forget accessories** without a
+     hub-specific screen, which RENDERING §13 law 6 forbids.
+- **Proposed change.**
+  1. **The user channel space.** `channel_id_ranges` gains `0x8000-0xBFFF`,
+     name `user`, carved from the reserved `0x8000`-`0xFFFF`
+     (`0xC000`-`0xFFFF` stays reserved). It is divided into 128 **slices**
+     of `0x80` ids; slice *k* has base `0x8000 + 0x80 * k`. Slices are
+     assigned by the hub at join (item 6), never allocated by hub firmware.
+     An accessory declares **relative** ids: relative id *r* maps to absolute
+     id `base + r` in the hub's catalog. `r = 0x00` is never a channel (on the
+     spoke it is the session-scoped channel BEACON, ACKMASK and GOODBYE ride);
+     `r = 0x01` is the registered accessory-status STATE (RFC-078 item 1);
+     `r = 0x02` to `0x7F` are the accessory's own, 126 at most. On the spoke
+     the header carries the relative id; everywhere else, the absolute one.
+     Slice membership (`id & 0xFF80`) is how a client groups one accessory's
+     channels: a structural rule, not name matching. How many of those ids a
+     given hub can actually carry is RFC-077 item 7's capacity question; the
+     slice width is an address space, not a promise.
+  2. **The pairing window.** Accessory joins use the §12.3 association window
+     ([RFC-027](#rfc-027--capability-agnostic-pairing--tiered-access-operator-ordered)
+     lineage): one window, one timer (`pairing_window_default_s`), reported by
+     BEACON flag bit0 (RFC-075 item 3) and `ble_adv_flags` bit0. It opens by
+     the hub's pairing control (a physical button bound per §12.3(c)) or by
+     the `window_open` op (item 10). **An accepted join is the window's single
+     grant**, exactly as a push-to-pair knock is: the window closes after it.
+     One press, one device.
+  3. **JOIN_REQ (new frame, raw, accessory to hub, unicast).** An accessory
+     enters pairing state by its own local gesture (device-defined) or, when
+     factory-fresh, on its own. It scans per RFC-075 item 4 for any BEACON
+     with `accessory_host` and `pairing_window_open`, then sends JOIN_REQ to
+     that beacon's source address, once per BEACON received, until answered.
+     A paired accessory sends the same frame to its stored hub on every
+     reacquisition (item 8). Payload (little-endian): `accessory_id:u64 +
+     proto_ver:u8 + declaration_etag:8B + deadman_ms:u16 + flags:u8 +
+     fw_version:str16 + product:str16` = 52 bytes. `deadman_ms` is the
+     accessory's declared deadman window (0 = `spoke_deadman_ms`), bounded
+     per RFC-075 item 5. `flags` bit0 `pairing_state` (this accessory is
+     asking to pair, as opposed to rejoining); bits 1 to 7 zero.
+  4. **JOIN_REPLY (new frame, raw, hub to accessory, unicast).** Payload:
+     `hub_instance_id:u64 + accessory_id:u64` (echoed) `+ result:u8 +
+     flags:u8` = 18 bytes. `result` from a new `join_results` table:
+     0 `accepted`; 1 `window_closed` (unknown accessory, no window open);
+     2 `capacity` (no free slice, no peer entry, or the declaration would
+     exceed the hub's advertised capacity, RFC-077 item 7); 3 `unsupported`
+     (`proto_ver`); 4 `declaration_invalid` (item 5); 5 `not_paired` (a
+     rejoin from an accessory the hub has forgotten). `flags` bit0
+     `declaration_needed` (the hub holds no declaration with this etag and is
+     about to fetch it). **Every JOIN_REQ is answered** (§4.5); answers to
+     unknown accessories are rate-limited per source address at the
+     `udp_discovery.reply_rate_limit_per_source_s` posture.
+  5. **The declaration IS the accessory's catalog.** An accessory's
+     declaration is a §8.1 catalog: the same CDDL (Appendix C), the same
+     deterministic encoding, the same etag (§8.3), with relative ids. It
+     moves over the blob verb as the accessory's own namespace 0: on
+     `declaration_needed` the hub sends BLOB_REQ (`ns = 0`), the accessory
+     answers BLOB_CHUNK with §8.4 pacing, the hub verifies SHA-256 against
+     JOIN_REQ's `declaration_etag` and sends BLOB_DONE
+     ([RFC-050](#rfc-050--blob-transfer-backpressure--completion-acknowledgment)).
+     No second grammar exists. One addition, usable in any catalog and
+     REQUIRED in a declaration:
+     - **`safe`** (new field annotation, layout-field and schema-field map
+       key 24, allocated by the registry owner): the value the field takes in
+       the accessory's safe state (RFC-075 item 5); same type as the field;
+       within its `min`/`max`. REQUIRED on every value-bearing field of every
+       INTENT schema and every c2h STREAM layout in a declaration. A field
+       whose `role` is `action.<name>` (a verb) is exempt: entering the safe
+       state abandons a verb in progress.
+     Kinds, packed types, ranges, units, roles, `desc`, `options` and every
+     other annotation keep their §8.1/§8.8 meanings unchanged. A declaration
+     SHOULD carry `category` on its entries (`auxiliary`, 7, is the natural
+     home for a secondary actuator).
+     **Validation (hub MUST; on failure JOIN_REPLY `declaration_invalid` and
+     nothing is stored):** every id in `0x01`-`0x7F`; the `r = 0x01` entry
+     matches RFC-078's registered layout exactly; every STATE layout fits
+     `min_transport_payload` (§9.1); every INTENT and EVENT schema's
+     worst-case encoded frame fits 250 bytes (RFC-075 item 6); every
+     `setting_channel` names an id inside the declaration; every entry fits
+     `catalog_max_entry_bytes`; the whole declaration fits
+     `accessory_declaration_max_bytes` (new limit); every required `safe` is
+     present and in range; no STORE entries (open question 4).
+  6. **What the hub persists, and slice stickiness.** Per accessory, in
+     non-volatile storage: `accessory_id`, peer address, slice index,
+     declaration bytes and etag, `deadman_ms`, the hub-authored name, and the
+     relationships that reference it (RFC-078). **A slice is sticky:** the
+     accessory keeps it across reboots of either side and across declaration
+     replacement until it is forgotten, so an absolute id a client layout or
+     a relationship stored stays valid (RENDERING §13 law 10). A forgotten
+     slice MUST NOT be reassigned while any never-used slice remains. At
+     boot the hub rebuilds its catalog from persisted declarations before
+     admitting sessions, so the etag is stable across hub reboots for an
+     unchanged accessory set. **A paired accessory that is absent keeps its
+     channels in the catalog**: it is offline, not gone; the hub stops
+     pushing its STATE (clients show it stale, RENDERING §13 law 8) and
+     answers writes to it with NACK `ACCESSORY_OFFLINE` (new code).
+  7. **Accessory identity.** `accessory_id` is a u64 the accessory generates
+     randomly at first boot and persists, unchanged by reboots and firmware
+     updates: the accessory twin of `hub_instance_id` (§6.1). The radio
+     address is a transport address, not identity: the hub keys records on
+     `accessory_id` and updates the stored address on rejoin. An accessory
+     whose storage is wiped is a new accessory and must pair again. The
+     accessory persists its hub's `hub_instance_id` and address; it needs no
+     slice number, because it speaks relative ids.
+  8. **Re-join after power loss, no window.** An accessory with a stored hub
+     scans (RFC-075 item 4) for that `hub_instance_id` and sends JOIN_REQ. A
+     hub holding a record for that `accessory_id` accepts whether or not a
+     window is open. Equal `declaration_etag`: no transfer (the §6.4
+     etag-match pattern). Different etag (the accessory was reflashed, same
+     identity): the hub refetches, revalidates and replaces the declaration
+     in the same slice; the catalog changes per RFC-077; relationships whose
+     target field no longer exists are disabled (RFC-078 item 3). After any
+     join the accessory is in its safe state until its hub commands it. A hub
+     reboot needs nothing extra: every accessory's deadman fires, it rescans,
+     it rejoins.
+  9. **Leave and forget.** **Forgetting is hub-side only.** The
+     `accessory-admin` op `forget` (`configure`): the hub sends the accessory
+     GOODBYE `NORMAL_CLOSURE`, deletes its record and every relationship
+     targeting it, frees the slice, and removes its channels (RFC-077). A
+     later JOIN_REQ from it is answered `not_paired`; the accessory MAY then
+     clear its stored hub. An accessory's own GOODBYE, or its local unpair
+     gesture, marks it offline and deletes nothing: spoke frames are
+     unauthenticated (H13), so an accessory-originated delete would let a
+     forged frame wipe a record.
+  10. **Core surfaces for generic clients.** Three spec-core channels (ids
+      from `0x000F` headroom, allocated by the registry owner):
+      - `accessories`, STORE, `kind` `"accessory.record"`, `watch` access,
+        with a **registered item grammar** (`accessory_record_keys`:
+        `accessory_id`, `slice`, `name`, `product`, `fw_version`,
+        `declaration_etag`). §8.7's carve-out applies for the trust ledger's
+        reason: this is protocol content every client must read the same way.
+      - `accessories-roster`, STATE, `watch`: `{generation u16, count u8,
+        capacity u8, online 16 x bitfield8, safe 16 x bitfield8,
+        unconfirmed_estop 16 x bitfield8}` = 52 bytes, bit *k* of each mask
+        being slice *k*. `capacity` is the hub's accessory capacity (at most
+        19 over ESP-NOW, RFC-075 item 9). One tiny snapshot answers "which
+        accessory is online, which is safe, which has not confirmed an
+        e-stop" without re-enumerating the store.
+      - `accessory-admin`, INTENT, `configure`, one op select with role
+        `action.accessory` over `accessory_admin_ops`: `window_open` (the
+        in-band twin of the pairing button, open question 3), `forget
+        {accessory_id}`, `rename {accessory_id, name}`.
+- **Wire impact.** Two new frame types (JOIN_REQ, JOIN_REPLY) in the
+  `0x21`-`0x3F` spec range; a new channel-id range; one field annotation key;
+  three core channels; one item grammar; one NACK code. Nothing existing
+  moves.
+- **Registry impact.** `frame_types` gains JOIN_REQ and JOIN_REPLY (numbers
+  the owner's) with their raw layouts; `channel_id_ranges` gains
+  `0x8000-0xBFFF` `user`; `catalog.cddl` gains `? 24 => setting-default`
+  (`safe`) on `layout-field` and `schema-field`; new `join_results`,
+  `accessory_record_keys`, `accessory_admin_ops`; `action_tags` gains
+  `accessory`; `core_channels` gains the three entries; `nack_codes` gains
+  `ACCESSORY_OFFLINE`; `limits` gains `accessory_declaration_max_bytes` and
+  `accessory_slice_ids` (`0x80`). CHANNEL-GRID.md gains the user-space row.
+- **Conformance impact.** (1) Happy path: window open, JOIN_REQ, JOIN_REPLY
+  `accepted` with `declaration_needed`, BLOB_REQ/CHUNK/DONE, entries appear
+  at `base + r`, window closes. (2) Unknown accessory, window closed:
+  `window_closed`, nothing stored. (3) Known accessory, window closed, same
+  etag: accepted, no BLOB_REQ sent. (4) Same `accessory_id`, new etag:
+  refetch, same slice. (5) A declaration missing one `safe`:
+  `declaration_invalid`, catalog etag unchanged. (6) Slice and etag stable
+  across a hub reboot. (7) `forget`: GOODBYE sent, entries removed, the next
+  join from a fresh accessory gets a never-used slice. (8) A forged GOODBYE
+  from the accessory's address deletes nothing. (9) A write to an offline
+  accessory: `ACCESSORY_OFFLINE`.
+- **Open questions.**
+  1. Carve the user space from the reserved `0x8000`-`0xFFFF` (proposed), or
+     from unused device-range domains?
+  2. One join per window (single grant, proposed), or a window that admits
+     several accessories until it times out?
+  3. May a `configure` session open the accessory window in-band, or only the
+     physical control (RFC-027's presence proof)?
+  4. May a declaration carry STORE entries (presets held on the accessory)?
+  5. Should the hub rewrite an accessory's entry `group` strings to its
+     hub-authored name, or leave naming to the `accessories` record alone?
