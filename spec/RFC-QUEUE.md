@@ -4499,3 +4499,87 @@ say exactly which, future-us will want the receipts.*
   2. Nothing links a STORE entry to its CRUD channel; the reference hub
      borrows `setting_channel` on the roster STATE. Specify that link here,
      or in a separate RFC?
+
+## RFC-068 -- Substituted-widget conformance: bindings, host-owned regions, one intent path
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-8qh). Companion to
+  [RFC-061](#rfc-061----tcode-passthrough-adapter-conventions-ingest-port-l0-mapping-loopback),
+  drafted the same day from the Phosphor plugin surface: that entry fixes
+  what an input-adapter plugin must agree on; this one fixes what any
+  third-party rendering component must obey. The RFC-061 adapter already
+  follows item 4 below (it submits through the host's motion-input door).
+- **Origin:** Phosphor ph-vdk.20, from DESIGN §2 (the Prime Rule: "Plugins
+  add features through Valence, not around it") and §3 (a Tier-2 plugin
+  widget renders instead of the Tier-0/1 rendering for a channel). The
+  reference client is landing a plugin host now (`src/plugins/host.js`:
+  plugins write fields and submit motion only through host calls, each
+  behind a declared permission).
+- **Problem.** RENDERING §10 defines each widget pattern's bindings, region,
+  extra states and projection, and §13 lists the laws a *client* obeys.
+  Neither says what holds when a client lets a third-party component
+  replace a pattern or an archetype instance. Three failure shapes follow,
+  each a safety defect under §13:
+  1. A substitute that binds fewer roles than the pattern requires renders
+     a partial instrument (law 7), or drops the pattern's extra states (a
+     `pattern-panel` without its `source.background_run` toggle, §10.1).
+  2. A substitute that can draw anywhere can cover the `stop` affordance
+     (laws 1, 11; §9 "No `content` may ever obscure or displace
+     `persistent`") or draw its own confirm, forging or suppressing one.
+  3. A substitute with its own path to the hub bypasses pending-to-echo
+     display (law 5), access gating (SPEC §8.9 gray-never-hide), destructive
+     confirms and the §9.3 intent ingress limit.
+  A client's conformance claim is meaningless if loading one component can
+  void it.
+- **Proposed change.** New RENDERING §10.2 "Substituted widgets". Terms: the
+  *host* is the conformant client; a *substituted widget* is any rendering
+  component, not authored as part of the host, that the host renders in
+  place of a §10 pattern or an §8 archetype instance.
+  1. **Inherited contract (MUST).** A substituted widget inherits, from the
+     pattern or archetype it replaces, every essential binding, every extra
+     state, its region, and every §13 law. The host MUST NOT mount a
+     substitute whose declared bindings do not cover the replaced pattern's
+     essential bindings; it renders the pattern itself instead (law 7:
+     decline, never partial).
+  2. **Host-owned regions (MUST).** The `persistent` and `overlay` regions
+     (§9) belong to the host. A substituted widget MUST NOT render into
+     them, over them, or in any way that obscures or displaces them, and the
+     host MUST enforce this structurally (the widget is given a bounded
+     surface inside `primary` or `content`, never the page). Confirms are
+     host-rendered: a widget requests an invocation, and the host applies
+     the destructive rule (RFC-063) and its own confirm.
+  3. **Safety bindings stay the host's (MUST).** The `stop` archetype and
+     the `safety-strip` pattern cannot be substituted. Law 2 binds them to
+     core identity; a substitute is an annotation-level choice by
+     construction.
+  4. **One intent path (MUST).** A substituted widget sends intents and
+     stream input only through the host's intent path, which applies
+     access gating, the destructive confirm, the §8.1 write lifecycle and
+     rate limiting exactly as for host-rendered controls. It MUST NOT hold a
+     transport, a socket, or any channel to the hub of its own. It reads
+     state only from the host's shadow of the catalog and STATE (ground
+     truth, law 4), never from a private copy it can let drift.
+  5. **Failure is a fallback (MUST).** If a substituted widget fails (throws,
+     fails to mount, or stops rendering), the host unmounts it and renders
+     the replaced pattern or archetype itself. In-flight intents keep their
+     lifecycle state, as across a class switch
+     ([RFC-062](#rfc-062----live-renderer-class-selection) item 6).
+  6. **Conformance claim.** A host that enforces items 1 to 5 structurally
+     keeps its RENDERING conformance claim with any set of substituted
+     widgets loaded. A host that cannot enforce them for some component
+     (for example, one given unrestricted page access) MUST NOT claim
+     conformance while that component is loaded.
+- **Wire impact.** None. Nothing here is visible to a hub; a hub cannot
+  tell a substituted widget's intent from the host's, which is the point.
+- **Registry impact.** None. `widget_patterns` notes unchanged.
+- **Conformance impact.** New RENDERING §10.2; one sentence in §13 pointing
+  at it. Testable device-free with a hostile fixture widget that tries to
+  draw over `persistent`, open its own confirm, and bind a partial role
+  set; assert each attempt is contained and the stop affordance stays
+  reachable.
+- **Open questions.**
+  1. Should a substitute be allowed to replace only part of a pattern (one
+     lane of `generator-advanced`), or always the whole pattern? This RFC
+     assumes the whole pattern or a single archetype instance.
+  2. Does anything about substitution need to reach the wire (a hub
+     wanting to know its operator's UI is third-party)? This RFC says no.
