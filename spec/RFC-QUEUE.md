@@ -4820,3 +4820,66 @@ say exactly which, future-us will want the receipts.*
      forward (closing the gap for good) or stay optional indefinitely for
      hubs that never co-render store and roster? This RFC assumes optional,
      consistent with every other RFC-048 rendering annotation.
+
+## RFC-071 -- Motion-input field roles: find the stream target without a name
+
+- **Status:** DRAFT (clients/js STREAM sender, 2026-09-25). Ruling pending
+  (rfc-xul).
+- **Origin:** rfc-ts3, the reference JS client's publish path. Proving it
+  live against the Nucleus sim (0.1.5-p4hub) meant finding the motion-input
+  channel and its target field from the catalog. The channel is findable
+  structurally (class STREAM, direction c2h, `stream_kind`), but nothing
+  says which layout field is the target, which is the duration, or which is
+  the end velocity. The run had to key the target on `unit_id` `normalized`
+  and zero-fill every other field by position, which is a guess that happens
+  to match this hub.
+- **Problem.**
+  1. **§9.6 names the vocabulary and no field carries it.** Native segments
+     are "timed `{target, duration, end_velocity}` commands", native samples
+     are dense points, and a client "SHALL be able to send its content as
+     authored". It cannot send `target` on a hub it has never met without
+     knowing that hub's field name for it. Nucleus names them `target_norm`,
+     `duration_ms`, `end_vel_norm`, `vel_norm`; another hub may not.
+  2. **The only working method is name matching**, which RENDERING §13 law 6
+     forbids for conformant clients. [RFC-032](#rfc-032--command-and-telemetrytarget-make-commanded-motion-discoverable)
+     closed the same gap for the INTENT side (`command.position`) and
+     `plan.*` ([RFC-035](#rfc-035--a-role-vocabulary-for-motion-plan-telemetry))
+     for plan telemetry; the STREAM input side is the one motion surface
+     still reachable only by hardcoding.
+  3. **It blocks the onramp.** [RFC-044](#rfc-044--client-onramp-doctrine-tcode-passthrough-as-a-client-side-adapter)'s
+     TCode adapter and [RFC-061](#rfc-061----tcode-passthrough-adapter-conventions-ingest-port-l0-mapping-loopback)
+     item 2 map `L0` to a target and `I<ms>` to a duration. Without roles
+     the adapter cannot be hub-agnostic, which is the whole point of doing
+     the translation client-side.
+- **Proposed change.**
+  1. **Four `field_roles`, for layout fields of a c2h STREAM entry:**
+     - `input.target`: the commanded position of the sample or segment, in
+       the field's own unit and scale.
+     - `input.velocity`: a `samples`-kind point's instantaneous velocity
+       hint.
+     - `input.duration`: a `segments`-kind sample's commanded time extent.
+     - `input.end_velocity`: a `segments`-kind sample's velocity at its
+       end, the §9.6 handoff.
+  2. **A c2h STREAM entry that accepts motion MUST tag `input.target`.**
+     The other three are tagged where the layout has the field. A client
+     finds the motion-input channel as the c2h STREAM entry of the wanted
+     `stream_kind` carrying an `input.target` field; a c2h STREAM with no
+     `input.target` is some other input, never motion.
+  3. **An untagged field is filled with its own "absent" value**, which is
+     the open question below, never with a guessed zero.
+- **Wire impact.** None on frames or layouts. Tagging a field adds one
+  annotation key the entry already supports, so an adopting hub's etag
+  moves (T11).
+- **Registry impact.** `field_roles` gains the four `input.*` names.
+- **Conformance impact.** A catalog check: every c2h STREAM entry whose
+  `stream_kind` is `segments` tags `input.target` and `input.duration`.
+  A client test: a hub whose motion-input fields are renamed still receives
+  the correct target.
+- **Open questions.**
+  1. The "absent" encoding for an untagged or unused field is
+     [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)'s
+     sentinel question (Nucleus uses -32768 on `end_vel_norm`, stated only in
+     a catalog comment). Rule it there, or carry a per-field `absent` value
+     here?
+  2. Is `input.velocity` worth a role, or is a samples-kind velocity hint a
+     device extension a generic client should leave at its default?
