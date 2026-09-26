@@ -5119,3 +5119,233 @@ say exactly which, future-us will want the receipts.*
   3. **Does HOLD refuse streams the same way?** HOLD's source is
      "suspended" until RESUME; this RFC reads that as the same drop rule
      with RESUME as the only clear, but no hub implements HOLD yet.
+
+## RFC-075 -- ESP-NOW spoke binding: an unencrypted hub-and-spoke profile for accessories
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
+  (rfc-2lo). First of five companion entries:
+  [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)
+  (join and declaration),
+  [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions)
+  (live catalog growth),
+  [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine)
+  (conformance and relationships) and
+  [RFC-079](#rfc-079----config-mode-and-the-setup-category) (config mode). No
+  hub or accessory codes against any of them before acceptance.
+- **Origin:** operator rulings 2026-09-26. Accessories (a peristaltic pump, a
+  vibrator, a motorized stand) run a small accessory firmware (Isotope, the
+  reference accessory) and attach to the hub over ESP-NOW in a star: the hub
+  is the center, each accessory is a spoke, and no accessory ever talks to a
+  client. ESP-NOW is natively a star, runs beside station-mode WiFi on the
+  same radio, and needs no router. The rulings fix five properties: no
+  encryption, a 20-peer ceiling (typical deployment 3), a 1 Hz hub beacon the
+  accessory scans for, a fail-safe on beacon loss or goodbye, and
+  self-describing accessories.
+- **Problem.**
+  1. **§13.3 is a client-session binding.** It gives per-peer sessions, the
+     ACKMASK reliability layer, and a BEACON (`0x17`) sent "every 500 ms
+     **only while a pairing window is open**" (§13.7). An accessory is not a
+     client session and has nothing that tells it, outside a pairing window,
+     that its hub is still alive.
+  2. **The channel is invisible.** ESP-NOW transmits only on the radio's
+     current channel (ESP-IDF: "the channel must be set as the channel that
+     the local device is on"). A hub in station mode sits on its access
+     point's channel, which the accessory cannot know and which moves when the
+     access point moves.
+  3. **Nothing obliges a spoke to fail safe.**
+     [RFC-045](#rfc-045--retire-deadman-as-safety-session-liveness-is-bookkeeping-not-motion-control)
+     retired the session deadman as a safety mechanism because a
+     command-driven machine settles to rest by construction (§11.3). An
+     accessory does not: a pump or a motor holds its last commanded output
+     forever. The argument that retired the machine-side deadman is exactly
+     the argument for keeping one on the spoke.
+  4. **The security posture is unstated.** §12.9 permits unencrypted ESP-NOW
+     "for `watch`-class traffic". Accessory traffic actuates things.
+  5. **The frame budget is unstated for small peers.** An accessory is a
+     small MCU; §5.6 fragmentation and reassembly is cost it should not pay.
+- **Proposed change.**
+  1. **A spoke profile, new §13.3.1 "ESP-NOW spoke".** Two roles: the
+     **accessory host** (a hub) and the **accessory** (RFC-078 defines both
+     duty sets). Topology is a star: frames flow only between the host and
+     each accessory, never accessory to accessory, and no client session runs
+     on the spoke. The §13.3 client-session binding is unchanged and MAY run
+     beside the spoke on the same radio. Spoke frames are ordinary Valence
+     frames (§5.1 header) carried one per ESP-NOW payload; channel ids on the
+     spoke are accessory-relative (RFC-076 item 1). **ESP-NOW v1 framing is
+     pinned:** a spoke frame MUST NOT exceed 250 bytes, even where the
+     silicon supports ESP-NOW v2 payloads (up to 1470 bytes, ESP-IDF
+     `ESP_NOW_MAX_DATA_LEN_V2`), so v1-only silicon interoperates.
+  2. **Unencrypted, by ruling. New HONESTY CLAUSE (H13).** Spoke frames carry
+     no ESP-NOW encryption and no Valence authentication. The accepted threat
+     model, stated so no UI can imply otherwise: anyone within radio range
+     holding an ESP32 can (a) read every spoke frame; (b) forge a BEACON,
+     ESTOP, GOODBYE, INTENT or STREAM bundle that an accessory will act on;
+     (c) forge accessory telemetry to the host; (d) keep an accessory alive
+     after its real hub has died by forging beacons; (e) jam the channel
+     (H12). Why it is accepted (operator ruling): the setting is private, the
+     range is a room or a house, comparable consumer accessories are open BLE
+     today, and per-peer ESP-NOW encryption would cap the peer list at 17
+     (default 7, ESP-IDF) and add a key-distribution ceremony. What bounds the
+     consequences, as obligations:
+     - an accessory MUST clamp every received actuating value into its
+       declared `min`/`max` (RFC-076), so a forged command can do nothing a
+       legitimate one could not;
+     - a host MUST NOT treat accessory telemetry as safety-grade input: no
+       accessory value may clear a safety latch, satisfy an interlock, or gate
+       machine motion;
+     - a client MUST NOT present spoke traffic as authenticated or private.
+     The item 5 deadman protects against a dead or departed hub. It is not a
+     defense against an attacker (clause (d)), and it is not a substitute for
+     hardware interlocks on the accessory itself (H1 applies to accessories
+     verbatim). §12.9's ESP-NOW paragraph gains: "The spoke profile (§13.3.1)
+     is unencrypted at every tier; see H13."
+  3. **BEACON is the hub heartbeat.** The registry already carries `0x17`
+     BEACON; this RFC reuses it rather than allocating a second beacon, and
+     pins its raw payload (little-endian, tail-extensible per §5.4):
+     `boot_id:u32 + catalog_etag:8B + flags:u8 + hub_instance_id:u64 +
+     wifi_channel:u8` = 22 bytes (a 30-byte frame). The first three fields
+     are the §13.7 prefix unchanged. Header channel is `0x0000`; the header
+     `seq` is the beacon sequence, incremented once per beacon per boot and
+     compared per §7.3.
+     - `flags`: bit0 `pairing_window_open` (unchanged meaning); bit1
+       `datagram_estop` (the mirror bit
+       [RFC-053](#rfc-053--estop-over-connectionless-datagrams-udp-broadcast--esp-now-opt-in)
+       item 2b reserved, ratified here); bit2 `accessory_host` (this hub runs
+       the spoke and accepts accessory joins); bit3 `estop_latched` (this
+       hub's `safety` snapshot shows ESTOP latched right now). Bits 4 to 7
+       MUST be zero.
+     - `hub_instance_id` is the §6.1 durable identity. A hub without one MUST
+       NOT act as an accessory host: accessories bind to it (RFC-076 item 7).
+     - `wifi_channel` is the primary channel the hub transmits on (1 to 14).
+       An accessory that hears a beacon leaked from an adjacent channel
+       retunes to the named one.
+     - **Cadence.** An accessory host MUST broadcast BEACON every
+       `spoke_beacon_interval_ms` (1000) for as long as the spoke is up,
+       whether or not a pairing window is open, and every 500 ms while one is
+       (the §13.7 cadence, never slower). §13.7's "only while a pairing window
+       is open" is amended to bind only hubs that are not accessory hosts.
+  4. **Channel follow.** The host never changes channel for its accessories;
+     it follows its access point. The accessory does the searching:
+     1. At boot, and on every deadman fire (item 5), the accessory scans
+        channels 1 to 13 (a hub-region subset is permitted). On each channel
+        it broadcasts one DISCOVER_PROBE (`0x1E`, the §13.8 raw payload
+        unchanged) and listens `spoke_scan_dwell_ms` (150) for a BEACON from
+        its hub: source address and `hub_instance_id` both match its stored
+        pairing, or, for an accessory in pairing state (RFC-076 item 3), any
+        BEACON with `accessory_host` and `pairing_window_open` set.
+     2. An accessory host that receives a DISCOVER_PROBE on the spoke MUST
+        answer with an immediate, out-of-cadence **broadcast** BEACON, at most
+        one per `spoke_scan_dwell_ms`. Broadcast, because a unicast answer to
+        an unknown address would spend a peer-list entry (item 9).
+     3. **Two scan modes, both conformant.** Active (probe, then listen):
+        about 150 ms per channel, 13 x 150 ms, about 2 s cold join, which is
+        the ruled figure. Passive (listen only, no probe): about one beacon
+        interval per channel, up to 13 x 1 s, about 13 s. An accessory
+        SHOULD scan actively; a host MUST answer probes (step 2). The probe
+        only finds the hub: the beacon alone remains the deadman's heartbeat
+        (item 5).
+     4. Rescan after beacon loss is the same code path as boot. No BLE
+        channel hint exists (ruled out).
+  5. **The accessory deadman (normative duty).** An accessory MUST enter its
+     **safe state** when any of these holds:
+     1. no BEACON from its hub (source address and `hub_instance_id` match)
+        has arrived for its deadman window: `spoke_deadman_ms` (5000, five
+        missed beacons at the idle cadence) or the shorter window its
+        declaration carries (RFC-076 item 3), which MUST NOT be below
+        2 x `spoke_beacon_interval_ms`;
+     2. it receives any GOODBYE frame (`0x11`) from its hub, whatever its
+        code and even if the payload fails to decode: safe immediately;
+     3. it receives a valid ESTOP frame (§5.5, CRC-checked) from **any**
+        source, or a BEACON from its hub with `estop_latched` set: safe
+        immediately;
+     4. a local fault it can detect.
+     **Only BEACON refreshes the deadman.** Unicast commands do not, so one
+     clock answers "is my hub alive" and a hub whose beacon task has died is
+     treated as dead even if a stale command path still runs.
+     **The safe state** is: every actuating field (every value-bearing field
+     of a declared INTENT schema or c2h STREAM layout) held at the `safe`
+     value its declaration carries (RFC-076 item 5, REQUIRED there), and any
+     verb in progress abandoned.
+     **Leaving it.** From deadman, GOODBYE or fault: only on a fresh
+     actuating command from its hub received after a matching BEACON. From
+     ESTOP: only after a BEACON with `estop_latched` clear, and then only on a
+     fresh command. An accessory MUST NOT restore its pre-safe values on its
+     own. A host SHOULD broadcast GOODBYE (`REBOOTING` or `NORMAL_CLOSURE`) on
+     the spoke before a planned reboot or spoke shutdown.
+  6. **Frame budget: MUST fit.** Every spoke frame MUST fit one ESP-NOW v1
+     payload (250 bytes including the 8-byte header). §5.6 fragmentation MUST
+     NOT be used on the spoke, so an accessory never implements reassembly.
+     Anything larger moves only over the blob verb (§8.4), which is chunked by
+     construction (`catalog_chunk_payload` 192 plus headers). RFC-076 item 5
+     makes this a declaration-validation rule.
+  7. **Reliability.** §13.3's ACKMASK loss signal and stop-and-wait control
+     retransmit (3 x 100 ms) apply to each host-accessory link unchanged. STATE
+     and STREAM are not retransmitted.
+  8. **ESTOP on the spoke.**
+     [RFC-053](#rfc-053--estop-over-connectionless-datagrams-udp-broadcast--esp-now-opt-in)
+     item 2 is unchanged: a host accepts a valid ESTOP frame from any peer on
+     its channel, so a fob that follows item 4 is heard. In addition, on
+     latching ESTOP the host MUST broadcast the ESTOP frame on the spoke,
+     repeating at `estop_repeat_interval_ms` up to `estop_repeat_max` (§11.2),
+     and MUST keep `estop_latched` set in every BEACON while the latch holds,
+     which is the 1 Hz loss-recovery path for an accessory that missed every
+     repeat. The acknowledgment is the accessory's status snapshot reporting
+     `safe_estop` (RFC-078 item 1); the host stops repeating once every
+     joined accessory has reported it, and shows any that have not as
+     unconfirmed on its accessory roster (RFC-076 item 10). An accessory MUST
+     NOT rebroadcast an ESTOP frame: the spoke has no relay role.
+  9. **Peer limit.** ESP-IDF caps the peer list at 20 entries ("The maximum
+     number of paired devices is 20"), and "a device with a broadcast MAC
+     address must be added before sending broadcast data", so the broadcast
+     entry the beacon needs takes one of them. Receiving broadcast and
+     unencrypted unicast needs no entry. **A host therefore addresses at most
+     19 accessories by unicast**, fewer if the §13.3 client binding shares
+     the same list. A host declares its accessory capacity (RFC-076 item 10);
+     rotating peer entries to exceed it is permitted and not required.
+  10. **Radio coexistence.** The spoke rides the station interface on the
+      access point's channel. An accessory host MUST NOT operate a softAP
+      while the spoke is up (operator ruling; see
+      [RFC-079](#rfc-079----config-mode-and-the-setup-category) item 1).
+  11. **Implementation risks (informative, not spec matters).** Where the
+      radio sits on a co-processor behind esp_hosted (the reference Flagship
+      pairs an ESP32-P4 host with an ESP32-C6), ESP-NOW reaches the host
+      through a shim bridging `esp_now_*` over esp_hosted CustomRpc (esphome
+      PR 17712). That shim has three open bugs a host implementer must guard
+      against: a send can stall; the peer table goes stale after a
+      co-processor restart; a full peer table reports success. The deadman
+      makes the first two fail safe on the accessory side; the third
+      silently caps item 9's capacity, so a host SHOULD count its own peer
+      entries rather than trust the add result.
+- **Wire impact.** No new frame type. BEACON's payload is pinned and
+  tail-extended from 13 to 22 bytes, with flag bits 2 and 3 new and bit 1
+  ratified; no shipped hub sends BEACON today, so pinning is free.
+  DISCOVER_PROBE gains an ESP-NOW use with its payload unchanged.
+- **Registry impact.** `frame_types` `0x17` note: the pinned layout and the
+  spoke cadence; `0x1E` note: the spoke use. New `beacon_flags` table (bits 0
+  to 3). `limits` gains `spoke_beacon_interval_ms` (1000),
+  `spoke_deadman_ms` (5000) and `spoke_scan_dwell_ms` (150); values are the
+  registry owner's to confirm. §1.5 gains H13. The task list's "beacon frame
+  type" resolves to the existing `0x17`.
+- **Conformance impact.** Accessory tests run over the §13.6 in-process
+  binding with loss injection and a simulated channel number:
+  (1) beacons stop: safe state within the deadman window plus one beacon
+  interval, every actuating field at its `safe` value; (2) GOODBYE with a
+  garbage payload: safe within one frame; (3) ESTOP from an unpaired
+  address: safe; (4) BEACON with `estop_latched`: safe; (5) leaves safe only
+  on a fresh command, never by restoring the prior value; (6) hub on channel
+  11 found within 13 x `spoke_scan_dwell_ms`; (7) a BEACON carrying another
+  `hub_instance_id` never refreshes the deadman; (8) no emitted frame over
+  250 bytes; (9) an out-of-range forged INTENT is clamped. Host tests: beacon
+  at 1000 ms with the window closed and 500 ms with it open; a probe draws
+  one broadcast BEACON; `estop_latched` tracks `safety`; ESTOP is broadcast
+  on latch and repeats stop when every accessory reports `safe_estop`.
+- **Open questions.**
+  1. Active scan (DISCOVER_PROBE reused, ~2 s) as proposed, or passive only
+     (13 s worst case, zero host work)?
+  2. Should unicast host traffic also refresh the deadman? Proposed no: one
+     clock.
+  3. Regional channel sets: scan 1 to 13 everywhere, or follow the
+     accessory's configured region (12 to 14 vary)?
+  4. Should BEACON also carry STOP latched, or is `estop_latched` the only
+     safety bit the spoke needs (STOP reaches accessories through RFC-078's
+     interlock as commanded safe values)?
