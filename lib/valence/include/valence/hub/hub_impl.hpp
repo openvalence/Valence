@@ -1254,6 +1254,14 @@ inline std::optional<GrantedPublish> Hub::grantPublishWish(Slot& slot, const Pub
     // A wish is granted iff the channel exists, is class STREAM, is direction
     // c2h, is within the session's role, and clamps to a positive rate. Any
     // failure -> omit (no NACK, §6.2) — identical in HELLO and PUBLISH.
+    // A wish rate of 0 (or anything not positive, NaN included) DROPS the
+    // publication (§6.7): the grant is removed before validation, so it goes
+    // even if the channel would no longer validate. In HELLO there is nothing
+    // to remove yet, so the wish is simply omitted as before.
+    if (!(wish.rate_hz > 0.0f)) {
+        slot.session.removePublishGrant(wish.channel_id);
+        return std::nullopt;
+    }
     const CatalogEntry* entry = _catalog.find(wish.channel_id);
     if (!entry) return std::nullopt;                                  // unknown -> absent
     if (entry->cls != ChannelClass::STREAM) return std::nullopt;      // wrong class -> absent
@@ -1338,6 +1346,7 @@ inline void Hub::handlePublish(Slot& slot, std::span<const std::byte> payload, u
     // same key, same entry shape WELCOME uses, so a client needs exactly one
     // publish-grant decoder for the handshake and every renegotiation.
     GrantMsg batch{};
+    batch.has_granted_publishes = true;  // §10.2: key 36 present even when empty
     for (uint32_t i = 0; i < m.publishes_count; ++i) {
         auto gp = grantPublishWish(slot, m.publishes[i], nowMs);
         if (!gp) continue;  // §6.2: silently omitted, exactly as in HELLO

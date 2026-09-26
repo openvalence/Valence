@@ -85,10 +85,10 @@ import {
   CH_SAFETY, CH_SAFETY_INTENTS,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
-  STREAM_KIND, HEADER_BYTES, encodeBundle,
+  STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK,
 } from './frames.js';
 import {
-  buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
+  buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody, schemaByKey,
   optionAccessFor, canUseOption, encodePacked,
@@ -96,6 +96,30 @@ import {
 import { catalogEtag, bytesEqual, toHex, fromHex } from './sha256.js';
 
 const DEFAULT_BACKOFF_MS = [500, 1000, 2000, 5000];
+
+/** Why a fetchBlob() rejected. Every failure rejects with a BlobError carrying one of these. */
+export const BLOB_ERROR = Object.freeze({
+  BAD_REQUEST: 'BAD_REQUEST', // ns 0 (use requestCatalog), or ns/storeId/slot not a u8
+  NOT_READY: 'NOT_READY', // socket not open, or no catalog adopted yet to resolve the store against
+  UNKNOWN_STORE: 'UNKNOWN_STORE', // ns 1 and no STORE entry in this hub's catalog declares storeId
+  UNAVAILABLE: 'UNAVAILABLE', // NACK CHUNK_UNAVAILABLE: empty slot, or the item moved mid-transfer
+  REFUSED: 'REFUSED', // any other NACK (ACCESS_DENIED, BUSY + retryAfterMs, INVALID_NAMESPACE); `nack` attached
+  HASH_MISMATCH: 'HASH_MISMATCH', // reassembled whole but not the caller's expectDigest; `bytes` attached
+  TIMEOUT: 'TIMEOUT', // not reassembled within frag_reassembly_timeout_ms of the request (§8.4)
+  ABORTED: 'ABORTED', // caller's AbortSignal, a catalog transfer superseding it, or the socket closed
+});
+
+export class BlobError extends Error {
+  constructor(code, id, message, extra = {}) {
+    super(code + ' ns=' + id.ns + ' store=' + id.storeId + ' slot=' + id.slot + ': ' + message);
+    this.name = 'BlobError';
+    this.code = code;
+    this.ns = id.ns;
+    this.storeId = id.storeId;
+    this.slot = id.slot;
+    Object.assign(this, extra);
+  }
+}
 
 /** Session states, mirroring ClientSessionState in client/client.hpp (§2.2). */
 export const SESSION_STATE = {
@@ -315,6 +339,7 @@ export function createSession(opts = {}) {
   let channelMap = null; // Map<id, entry>
   let catalogBytes = null;
   const blob = new BlobReassembler();
+  let catalogInFlight = false; // BLOB_REQ ns 0 sent, not yet reassembled: the hub's one cursor is the catalog's
 
   // RFC-015 readiness bookkeeping (mirrors Client::pumpCatalogReady)
   let readyPending = false;
@@ -581,6 +606,10 @@ export function createSession(opts = {}) {
   // ---- CATALOG (BLOB namespace 0) -----------------------------------------
   function requestCatalog() {
     blob.reset();
+    catalogInFlight = true; // before the abort below, so it cannot start the next store fetch
+    if (storeFetches.length && storeFetches[0].seqs.size) {
+      abortFetch(storeFetches[0], 'superseded by a catalog transfer'); // the hub's cursor moves to ns 0
+    }
     sendFrame(FRAME.BLOB_REQ, 0, buildCatalogRequest());
   }
 
@@ -629,8 +658,8 @@ export function createSession(opts = {}) {
    * retry timer. It reports an outcome and never asks for a resend; wanting one
    * means a fresh BLOB_REQ, which is what requestCatalog() below already does.
    */
-  function sendBlobDone(status) {
-    try { sendFrame(FRAME.BLOB_DONE, 0, buildBlobDone(status)); } catch (e) { /* gone */ }
+  function sendBlobDone(status, id) {
+    try { sendFrame(FRAME.BLOB_DONE, 0, buildBlobDone(status, id)); } catch (e) { /* gone */ }
   }
 
   function pumpBlobRepair(nowMs) {
@@ -688,10 +717,9 @@ export function createSession(opts = {}) {
   function handleBlobChunk(payload) {
     const h = parseBlobChunk(payload);
     if (!h) return;
-    // This session transfers exactly one namespace: the catalog. A store chunk
-    // belongs to that fetch's own reassembler; dropping it here is what keeps
-    // the two from corrupting each other.
-    if (h.ns !== 0) return;
+    // Each transfer owns its reassembler: ns 0 is `blob`, every other
+    // namespace routes to the store fetch it belongs to (or is dropped).
+    if (h.ns !== BLOB_NS.catalog) { handleStoreChunk(h); return; }
     if (h.chunkCount === 0 || h.chunkIndex >= h.chunkCount) return;
 
     const now = Date.now();
@@ -704,6 +732,7 @@ export function createSession(opts = {}) {
 
     const bytes = blob.assembled().slice();
     blob.reset();
+    catalogInFlight = false;
 
     const digest = catalogEtag(bytes, LIMITS.etag_bytes);
     const verified = !!state.catalogEtag && bytesEqual(digest, state.catalogEtag);
@@ -723,6 +752,138 @@ export function createSession(opts = {}) {
     if (verified) catalogStore.save(host, state.catalogEtag, bytes);
     sendCatalogReady(verified ? state.catalogEtag : digest);
     checkLiveTransition();
+  }
+
+  // ---- STORE items and other non-catalog blobs (§8.7) ---------------------
+  // The hub runs ONE blob transfer per session and a newer BLOB_REQ supersedes
+  // the one in flight (Hub::handleBlobReq), so fetches queue here: only the
+  // head is on the wire, and never while the catalog transfer owns the cursor.
+  // That, plus repairs capped at 32 indices once per gap interval, is all the
+  // receiver can do for the sender's blob_chunks_in_flight budget.
+  const storeFetches = []; // FIFO; [0] is on the wire once its seqs is non-empty
+
+  const isU8 = (v) => Number.isInteger(v) && v >= 0 && v <= 0xff;
+
+  /**
+   * Fetch one blob item: BLOB_REQ -> BLOB_CHUNK reassembly -> BLOB_DONE.
+   * Resolves {ns, storeId, slot, generation, bytes}; `bytes` is the item's
+   * OPAQUE encoding (§8.7), never decoded here. Rejects with a BlobError.
+   * @param {Object} o
+   * @param {number} [o.ns] BLOB_NS.store (default) or a device-defined 128..255
+   * @param {number} o.storeId the store descriptor's storeId (catalog entry `.store.storeId`)
+   * @param {number} o.slot item index
+   * @param {number} [o.generation] roster generation to send in the request
+   * @param {Uint8Array} [o.expectDigest] leading bytes of the item's SHA-256;
+   *   §8.7 advertises no per-item digest, so without this a whole reassembly
+   *   reports BLOB_DONE status 0 and a mismatch (status 1) is unreachable
+   * @param {AbortSignal} [o.signal]
+   * @returns {Promise<{ns:number,storeId:number,slot:number,generation:number,bytes:Uint8Array}>}
+   */
+  function fetchBlob(o = {}) {
+    const f = {
+      ns: o.ns == null ? BLOB_NS.store : o.ns, storeId: o.storeId, slot: o.slot,
+      reqGeneration: o.generation, generation: null, expectDigest: o.expectDigest || null,
+      rx: new BlobReassembler(), seqs: new Set(), startMs: 0, resolve: null, reject: null,
+    };
+    return new Promise((resolve, reject) => {
+      f.resolve = resolve;
+      f.reject = reject;
+      const fail = (code, msg) => reject(new BlobError(code, f, msg));
+      if (f.ns === BLOB_NS.catalog) return fail(BLOB_ERROR.BAD_REQUEST, 'the catalog is requestCatalog(), not fetchBlob()');
+      if (![f.ns, f.storeId, f.slot].every(isU8)) return fail(BLOB_ERROR.BAD_REQUEST, 'ns, storeId and slot must be integers 0..255');
+      if (!ws || ws.readyState !== 1 || !catalogEntries) return fail(BLOB_ERROR.NOT_READY, 'no open session with an adopted catalog');
+      if (f.ns === BLOB_NS.store && !catalogEntries.some((e) => e.store && e.store.storeId === f.storeId)) {
+        return fail(BLOB_ERROR.UNKNOWN_STORE, 'no STORE entry in this catalog declares that store_id');
+      }
+      if (o.signal) {
+        if (o.signal.aborted) return fail(BLOB_ERROR.ABORTED, 'aborted by caller');
+        o.signal.addEventListener('abort', () => abortFetch(f, 'aborted by caller'), { once: true });
+      }
+      storeFetches.push(f);
+      pumpStoreFetch(Date.now());
+    });
+  }
+
+  function blobIdOf(f) {
+    const generation = f.generation != null ? f.generation : (f.reqGeneration || 0);
+    return { ns: f.ns, storeId: f.storeId, slot: f.slot, generation };
+  }
+
+  /** Conclude a fetch exactly once; `doneStatus` null sends no BLOB_DONE. */
+  function finishFetch(f, doneStatus, err, value) {
+    const i = storeFetches.indexOf(f);
+    if (i < 0) return;
+    storeFetches.splice(i, 1);
+    if (doneStatus != null) sendBlobDone(doneStatus, blobIdOf(f));
+    if (err) f.reject(err); else f.resolve(value);
+    pumpStoreFetch(Date.now());
+  }
+
+  function abortFetch(f, why) {
+    // A request never sent armed nothing on the hub, so it has no transfer to report.
+    finishFetch(f, f.seqs.size ? BLOB_DONE_STATUS.ABORTED : null, new BlobError(BLOB_ERROR.ABORTED, f, why));
+  }
+
+  function sendStoreReq(f, chunks) {
+    intentSeq = (intentSeq % 0xffff) + 1; // shared with intents so a NACK's intent_seq names one request
+    f.seqs.add(intentSeq);
+    sendFrame(FRAME.BLOB_REQ, 0, buildBlobReq({
+      ns: f.ns, storeId: f.storeId, slot: f.slot, generation: f.reqGeneration, chunks,
+    }), intentSeq);
+  }
+
+  function pumpStoreFetch(nowMs) {
+    const f = storeFetches[0];
+    if (!f) return;
+    if (!f.seqs.size) {
+      if (catalogInFlight || !ws || ws.readyState !== 1) return;
+      f.startMs = nowMs;
+      sendStoreReq(f, null);
+      return;
+    }
+    if (nowMs - f.startMs >= LIMITS.frag_reassembly_timeout_ms) {
+      finishFetch(f, BLOB_DONE_STATUS.ABORTED, new BlobError(BLOB_ERROR.TIMEOUT, f,
+        'not reassembled within ' + LIMITS.frag_reassembly_timeout_ms + ' ms'));
+      return;
+    }
+    if (!f.rx.gapElapsed(nowMs)) return;
+    const missing = f.rx.missingIndices();
+    if (missing.length) {
+      sendStoreReq(f, missing.slice(0, 32));
+      f.rx.noteRepairSent(nowMs);
+    }
+  }
+
+  function handleStoreChunk(h) {
+    const f = storeFetches[0];
+    // Not the head's identity: a superseded or stray transfer, never mixed in.
+    if (!f || !f.seqs.size || h.ns !== f.ns || h.storeId !== f.storeId || h.slot !== f.slot) return;
+    if (h.chunkCount === 0 || h.chunkIndex >= h.chunkCount) return;
+    const now = Date.now();
+    const rx = f.rx;
+    if (!rx.active || rx.chunkCount !== h.chunkCount || rx.totalBytes !== h.totalBytes || f.generation !== h.generation) {
+      if (h.totalBytes > rx.maxTotalBytes) { refuseBlob(h.totalBytes); return; }
+      if (!rx.begin(h, now)) return;
+      f.generation = h.generation;
+    }
+    if (!rx.insert(h, now) || !rx.complete()) return;
+
+    const bytes = rx.assembled().slice();
+    if (f.expectDigest && !bytesEqual(catalogEtag(bytes, f.expectDigest.length), f.expectDigest)) {
+      finishFetch(f, BLOB_DONE_STATUS.HASH_MISMATCH, new BlobError(BLOB_ERROR.HASH_MISMATCH, f,
+        'reassembled bytes do not match expectDigest', { generation: f.generation, bytes }));
+      return;
+    }
+    finishFetch(f, BLOB_DONE_STATUS.VERIFIED_COMPLETE, null, { ...blobIdOf(f), bytes });
+  }
+
+  /** A NACK for a fetch's BLOB_REQ ends it; the hub has already dropped the transfer. */
+  function nackStoreFetch(info) {
+    const f = storeFetches[0];
+    if (!f || info.intentSeq == null || !f.seqs.has(info.intentSeq)) return false;
+    const code = info.code === NACK.CHUNK_UNAVAILABLE ? BLOB_ERROR.UNAVAILABLE : BLOB_ERROR.REFUSED;
+    finishFetch(f, null, new BlobError(code, f, 'NACK ' + info.name, { nack: info }));
+    return true;
   }
 
   // ---- CLOCK sync (§7.1) --------------------------------------------------
@@ -1134,9 +1295,9 @@ export function createSession(opts = {}) {
     emit('grant', applied);
 
     // §10.2: a PUBLISH is answered by a GRANT whose `granted_publishes` may be
-    // empty, and the reference hub omits an empty key 36 entirely, leaving a
-    // bare `grants: []`. So either shape answers the oldest pending PUBLISH;
-    // a key-36 GRANT with nothing pending is an unsolicited re-grant.
+    // empty. Hubs built on lib/valence before rfc-3t4 omit an empty key 36,
+    // leaving a bare `grants: []`, so either shape answers the oldest pending
+    // PUBLISH; a key-36 GRANT with nothing pending is an unsolicited re-grant.
     const pubs = g.has(K.granted_publishes) ? g.get(K.granted_publishes).map(adoptPublishGrant) : null;
     const req = (pubs || (!arr.length && !g.has(K.roles))) ? pendingPublish.shift() : null;
     if (req) {
@@ -1208,6 +1369,7 @@ export function createSession(opts = {}) {
       retryAfterMs: n.has(K.retry_after_ms) ? n.get(K.retry_after_ms) : null,
     };
     emit('nack', info);
+    if (nackStoreFetch(info)) return;
 
     // ---- correlation, best evidence first ---------------------------------
     // 1) intent_id (18): the hub sets it whenever a decodable INTENT provoked
@@ -1304,6 +1466,7 @@ export function createSession(opts = {}) {
       const now = Date.now();
       pumpCatalogReady(now);
       pumpBlobRepair(now);
+      pumpStoreFetch(now);
       pumpEstopRepeat(now);
       // §7.1: a publisher resyncs the clock every clock_resync_interval_s.
       if (state.grantedPublishes.size && !pendingClock &&
@@ -1395,6 +1558,8 @@ export function createSession(opts = {}) {
       // the app reconciles against the truth the next session reports).
       for (const [id, p] of pending) { clearTimeout(p.timer); p.reject(new Error('socket closed')); pending.delete(id); }
       for (const req of pendingPublish.splice(0)) { clearTimeout(req.timer); req.reject(new Error('socket closed')); }
+      for (const f of storeFetches.splice(0)) f.reject(new BlobError(BLOB_ERROR.ABORTED, f, 'socket closed'));
+      catalogInFlight = false;
       state.grantedPublishes.clear();
       pubTx.clear();
       const willReconnect = autoReconnect && !intentionalClose;
@@ -1439,6 +1604,7 @@ export function createSession(opts = {}) {
     publishSamples,
     publishSegment,
     requestCatalog,
+    fetchBlob,
     syncClock,
     hubNowUs,
     // pairing (RFC-027 §12.2) — fire-and-forget; outcome arrives via 'pairGrant'/'nack'/'event'

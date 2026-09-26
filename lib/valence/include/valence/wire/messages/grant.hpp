@@ -11,9 +11,9 @@
 // is answering a mid-session PUBLISH (0x18) — same key, same entry shape, same
 // meaning as WELCOME's, so a client has exactly one publish-grant decoder for
 // both the session-start batch and every renegotiation. Both arrays are
-// optional here (a GRANT answering SUBSCRIBE carries only `grants`; one
-// answering PUBLISH carries only `granted_publishes`), and a GRANT with
-// neither is not emitted at all.
+// optional here: a GRANT answering SUBSCRIBE carries only `grants`; one
+// answering PUBLISH carries `granted_publishes` EVEN WHEN EMPTY (§10.2), which
+// the caller requests with `has_granted_publishes`.
 #pragma once
 
 #include <array>
@@ -52,8 +52,12 @@ struct GrantMsg {
     uint32_t grants_count = 0;
     std::array<Grant, kGrantMsgMaxGrants> grants{};
 
-    // RFC-013 publish-grant results (key 36). Emitted ONLY when non-empty, so
-    // a SUBSCRIBE answer is byte-identical to a pre-RFC-013 hub's GRANT.
+    // RFC-013 publish-grant results (key 36). Emitted when non-empty or when
+    // `has_granted_publishes` is set; a PUBLISH answer sets it so an empty
+    // result is still on the wire (§10.2). A SUBSCRIBE answer leaves it clear
+    // and stays byte-identical to a pre-RFC-013 hub's GRANT. Decode sets it
+    // whenever key 36 is present.
+    bool has_granted_publishes = false;
     uint32_t granted_publishes_count = 0;
     std::array<GrantedPublish, kWelcomeMaxGrantedPublishes> granted_publishes{};
 };
@@ -64,7 +68,7 @@ inline size_t encodeGrant(const GrantMsg& m, std::span<std::byte> out) {
     if (m.grants_count > kGrantMsgMaxGrants) return 0;
     if (m.granted_publishes_count > kWelcomeMaxGrantedPublishes) return 0;
 
-    const bool hasGrantedPublishes = m.granted_publishes_count > 0;
+    const bool hasGrantedPublishes = m.has_granted_publishes || m.granted_publishes_count > 0;
 
     CborWriter w(out);
     w.mapHeader(1 + uint32_t(hasGrantedPublishes) + uint32_t(m.has_roles));
@@ -226,6 +230,7 @@ inline Result<GrantMsg, DecodeError> decodeGrant(std::span<const std::byte> in) 
                     m.granted_publishes[j] = gp;
                 }
                 m.granted_publishes_count = cR.value();
+                m.has_granted_publishes = true;
                 // Optional key — deliberately NOT part of the required set.
                 break;
             }

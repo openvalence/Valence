@@ -71,8 +71,10 @@ int main() {
     n = encodeGrant(g, buf);
     dump("GRANT_PUBLISH_PAYLOAD", std::span(buf.data(), n));
 
-    // GRANT answering a PUBLISH that granted nothing (what the reference hub emits).
+    // GRANT answering a PUBLISH that granted nothing (what the reference hub emits:
+    // key 36 present and empty, §10.2).
     GrantMsg empty;
+    empty.has_granted_publishes = true;
     n = encodeGrant(empty, buf);
     dump("GRANT_EMPTY_PAYLOAD", std::span(buf.data(), n));
 

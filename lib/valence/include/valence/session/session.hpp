@@ -138,6 +138,11 @@ struct HubSession {
         }
         return nullptr;
     }
+    // Drops the granted publish for `channel_id` (§6.7 rate-0 PUBLISH); a
+    // later STREAM on it then fails the grant gate. No-op when never granted.
+    void removePublishGrant(uint16_t channel_id) {
+        if (PublishGrant* pg = publishGrantFor(channel_id)) pg->used = false;
+    }
     // Records (or overwrites) a granted publish. `nowMs` seeds the bucket so a
     // fresh grant is burst-ready from its first bundle (like the intent
     // limiter). `granted_burst` is the APPLIED (already hub-clamped) bucket

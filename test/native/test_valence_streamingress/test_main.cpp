@@ -1600,3 +1600,85 @@ TEST_CASE("SI-24: setIdentity() serves product/fw_version/hub_name on WELCOME ke
     CHECK(w->identity.fw_version == "9.9.9");
     CHECK(w->identity.hub_name == "test rig");
 }
+
+// ---- SI-25 ------------------------------------------------------------------
+// §10.2: a PUBLISH that grants nothing is still answered, and the answer
+// carries key 36 as an EMPTY array, not a bare `grants: []`.
+TEST_CASE("SI-25: a PUBLISH granting nothing answers with an empty granted_publishes (key 36)") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(125);
+    StreamHubDelegate del;
+    del.mapSource = false;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 25, true, {});
+
+    writePublish(link.endpointB(), {PublishWish{kUnknownCh, 10.0f}});
+    auto replies = tickAndDrain(hub, clock, link.endpointB());
+
+    const DecodedReply* grant = nullptr;
+    for (const auto& r : replies) {
+        if (r.type == FrameType::GRANT) grant = &r;
+    }
+    REQUIRE(grant != nullptr);
+    // {35: [], 36: []} in deterministic CBOR.
+    const std::vector<std::byte> expected{std::byte{0xA2}, std::byte{0x18}, std::byte{0x23}, std::byte{0x80},
+                                          std::byte{0x18}, std::byte{0x24}, std::byte{0x80}};
+    CHECK(grant->payload == expected);
+    auto g = decodeGrant(std::span<const std::byte>(grant->payload));
+    REQUIRE(g);
+    CHECK(g.value().has_granted_publishes);
+    CHECK(g.value().granted_publishes_count == 0);
+}
+
+// ---- SI-26 ------------------------------------------------------------------
+// §6.7: a rate-0 PUBLISH drops the publication. The answer omits the channel,
+// and a following bundle on it fails the grant gate: silently dropped and
+// counted, never NACKed (§9.2).
+TEST_CASE("SI-26: a rate-0 PUBLISH drops the grant; a following STREAM on that channel is dropped") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(126);
+    StreamHubDelegate del;
+    del.mapSource = false;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 26, true, {PublishWish{kStreamCh, 200.0f}});
+    REQUIRE(w.granted_publishes_count == 1);
+
+    writeValidBundle(link.endpointB(), kStreamCh, 4, /*tBase=*/1000);
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(del.bundles.size() == 1);
+
+    writePublish(link.endpointB(), {PublishWish{kStreamCh, 0.0f}});
+    auto replies = tickAndDrain(hub, clock, link.endpointB());
+    auto g = findGrant(replies);
+    REQUIRE(g.has_value());
+    CHECK(g->has_granted_publishes);
+    CHECK(g->granted_publishes_count == 0);
+
+    writeValidBundle(link.endpointB(), kStreamCh, 4, /*tBase=*/2000);
+    auto after = tickAndDrain(hub, clock, link.endpointB());
+    CHECK(del.bundles.size() == 1);  // nothing new delivered
+    CHECK(hub.streamIngressCounters(0).accepted == 1);
+    CHECK(hub.streamIngressCounters(0).dropped == 1);
+    int nacks = 0;
+    for (const auto& r : after) nacks += (r.type == FrameType::NACK);
+    CHECK(nacks == 0);
+
+    // The drop is a real removal, not a zero-rate entry: re-publishing grants afresh.
+    writePublish(link.endpointB(), {PublishWish{kStreamCh, 20.0f}});
+    auto regrant = findGrant(tickAndDrain(hub, clock, link.endpointB()));
+    REQUIRE(regrant.has_value());
+    REQUIRE(regrant->granted_publishes_count == 1);
+    CHECK(regrant->granted_publishes[0].channel_id == kStreamCh);
+}

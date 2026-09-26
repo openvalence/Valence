@@ -900,8 +900,9 @@ private:
     void emitHubSig(Slot& slot, std::span<const std::byte> sig);
     void handleSubscribe(Slot& slot, std::span<const std::byte> payload, uint32_t nowMs);
     void handleUnsubscribe(Slot& slot, std::span<const std::byte> payload);
-    // §6.6/RFC-013: mid-session publish renegotiation. Adds/replaces publish
-    // grants and answers with a GRANT carrying `granted_publishes`.
+    // §6.7/RFC-013: mid-session publish renegotiation. Adds/replaces publish
+    // grants, drops one on a rate-0 wish, and answers with a GRANT carrying
+    // `granted_publishes` even when empty (§10.2).
     void handlePublish(Slot& slot, std::span<const std::byte> payload, uint32_t nowMs);
     // The ONE place §6.2's publish-wish validation + rate/burst clamping
     // lives, shared verbatim by HELLO and PUBLISH (they must never drift).
