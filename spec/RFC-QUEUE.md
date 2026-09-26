@@ -5905,3 +5905,133 @@ say exactly which, future-us will want the receipts.*
      dedicated `relationship-admin` channel, if RFC-067 lands?
   6. May an accessory field be a source for another accessory's target
      (chains), and must the host reject feedback loops?
+
+## RFC-079 -- Config mode and the setup category
+
+- **Status:** DRAFT (operator rulings 2026-09-26, Isotope and provisioning).
+  Ruling pending (rfc-ewm). Gives
+  [RFC-069](#rfc-069----client-pushed-wifi-provisioning-over-ble) (client-pushed
+  WiFi provisioning) the hub state it assumes; places
+  [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)'s
+  accessory pairing control; interacts with
+  [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip)
+  item 2 (item 1 below). Prerequisite on the reference hub: Nucleus has no
+  BLE today.
+- **Origin:** operator rulings 2026-09-26. First-time WiFi provisioning:
+  boot the machine with the pairing button held and it enters **config
+  mode**: pairing window open, BLE advertising with the window flag, no WiFi,
+  configuration over BLE. A hub in config mode appears in a client's
+  discovery list like any hub, and the client offers a different set of
+  options. No softAP, ever: the ESP-NOW spoke
+  ([RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories))
+  shares the radio and must follow the access point's channel. The
+  orchestrator's read, recorded with the rulings: the session lands at
+  `configure`, and the catalog exposes a setup category that a client renders
+  generically, with the wizard pattern as polish.
+  **CANON FLAG, for the hardware repo to resolve (this RFC does not):**
+  `hardware/flagship/SPEC.md` (decision row 2026-09-23) reads "SW2 PAIR (hold
+  = pair, **held at power-on = AP config mode**, press TBD)". "AP config
+  mode" means a softAP, which tonight's ruling forbids. This entry is written
+  against the 2026-09-26 ruling (BLE only, no softAP); the Flagship SPEC row
+  needs the operator's correction in its own repository.
+- **Problem.**
+  1. **No state reliably offers provisioning.** RFC-069's `wifi_join` gate
+     needs an open window and a BLE link. The §12.3(c) power-cycle gesture
+     opens a window on a hub that is otherwise running normally, and nothing
+     defines a mode in which a factory-fresh hub, or one moved to a new network, waits, safely,
+     for credentials.
+  2. **The common ESP32 answer is barred.** SoftAP captive portals (Improv,
+     WiFiManager) pin the radio to the softAP's own channel, which an
+     accessory following RFC-075 cannot rely on, and the ruling forbids it.
+  3. **A generic client cannot find first-run controls.** The provisioning
+     intent belongs in `network` (11), pairing in `session` (12), the machine
+     name in `system` (13). A client that meets a hub it has never seen must
+     either assemble a first-run flow from three tabs or show a hub-specific
+     screen, which RENDERING §13 law 6 forbids.
+  4. **Discovery cannot show "needs setup".** `ble_adv_flags` says a window
+     is open, which is also true of an ordinary pairing press.
+- **Proposed change.**
+  1. **Config mode (new §13.4.1).** Entered by booting with the hub's
+     pairing control held (a hub with a pairing button binds this gesture;
+     the §12.3(c) power-cycle gesture is unchanged and does not enter config
+     mode). In config mode the hub:
+     - opens the §12.3 association window at boot
+       (`pairing_window_default_s`); the pairing control re-opens it;
+     - advertises BLE GATT (§13.4) with `ble_adv_flags` bit0
+       `pairing_window_open` while the window is open and new bit2
+       `config_mode` for the whole mode;
+     - does **not** associate to WiFi and runs no WebSocket listener
+       (`ws_available` clear);
+     - MUST NOT operate a softAP. This binds every mode, not only this one:
+       an accessory host never runs a softAP (RFC-075 item 10).
+     A hub that offers config mode MUST implement BLE GATT; under RFC-056's
+     proposed demotion of BLE to SHOULD, config mode is the condition that
+     makes it MUST again. Config mode does not wipe anything: factory reset
+     stays the deliberately harder gesture §12.3(c) requires.
+  2. **Leaving config mode.** On a successful RFC-069 `wifi_join` the hub
+     SHOULD leave config mode without a reboot: bring up the station and the
+     WebSocket listener, set `ws_available`, clear `config_mode`, so the
+     client can migrate per §6.3. A hub MAY instead commit by rebooting
+     (ECHO `reboot_in_ms`, §9.3). A reboot without the gesture always leaves
+     config mode.
+  3. **The session lands at `configure`.** Booting with the control held is
+     a physical-presence proof (§12.3(c)), and physical access is outside the
+     threat model (§12.1). In config mode the window's single grant is
+     `configure` **whether or not `configure` tokens already exist**; this
+     amends §12.3's grant rule for this gesture only. The mechanism is the
+     existing one, with no new wire: the client connects at `watch`, sends a
+     bare PAIR_REQ, receives PAIR_GRANT `{token, configure}`, presents the
+     token by AUTH (§12.4), and holds `configure`. It keeps a durable token,
+     so its later WebSocket session after migration is `configure` too.
+     Sessions that did not win the grant stay `watch`.
+  4. **The `setup` ui category.** `ui_categories` gains **15 `setup`**:
+     "first-run and re-provisioning: network credentials, machine name,
+     accessory pairing". A hub that offers config mode SHOULD place there:
+     - RFC-069's `provisioning` channel;
+     - the settings channel carrying `identity.name` (the writable machine
+       name, RFC-026; its read-only twin is WELCOME `identity.hub_name`,
+       [RFC-016](#rfc-016--in-band-hub-identity-capabilities--catalog-introspection)),
+       split into its own channel if it shares one with unrelated settings,
+       because `category` is entry-level;
+     - RFC-076's `accessory-admin` channel (its `window_open` op is the
+       accessory pairing control).
+     It MAY add other first-run settings. Categories are static: these
+     entries carry `setup` in every mode, and the catalog does not change
+     with the mode (§8.6 invariance holds).
+  5. **Client conformance.** A client connected to a hub whose advertisement
+     carried `config_mode` SHOULD open on the `setup` category, presented
+     with the `wizard` widget pattern (RENDERING §10): one step per entry in
+     authoring order (§8.9 item 4), the provisioning step showing RFC-069's
+     ECHO or NACK outcome, ending with the §6.3 BLE-to-WS migration. It MUST
+     render the category generically from the catalog: never a hub-specific
+     screen, never a channel found by name (RENDERING §13 law 6). A client
+     that does not know id 15 renders it under `other` (RENDERING §3's
+     graceful-extension rule), so nothing is lost on an older client. A
+     client listing discovered hubs SHOULD mark a `config_mode` hub
+     distinctly ("needs setup"); the presentation is the client's.
+- **Wire impact.** One advertising flag bit; one category id. No frame, no
+  key. Behavioral: §12.3's grant rule gains the config-mode case.
+- **Registry impact.** `ble_adv_flags` bit2 `config_mode`; `ui_categories`
+  15 `setup` (RENDERING §3's table follows). §13.4 gains §13.4.1; §12.3 and
+  §13.1 gain the cross-references above.
+- **Conformance impact.** Hub: booted with the control held, it advertises
+  bits 0 and 2, offers no WebSocket, and a WiFi scan shows no SSID from it;
+  the first knock is granted `configure` even with a `configure` token
+  already stored; the token store survives the mode; a successful
+  `wifi_join` sets `ws_available` and clears `config_mode`. Client: a
+  fixture catalog whose setup entries carry renamed channels still renders
+  the wizard; a client built before id 15 shows those entries under `other`.
+- **Open questions.**
+  1. RENDERING §3 freezes the category set "at the v1.0 tag" and records the
+     ruling that "adding categories later makes things awful". No tag exists,
+     so id 15 is legal today, but it cuts against that intent. A new
+     category, or no category and a `setup` binding over the existing
+     `network`/`session`/`system` entries (a rank, role, or wizard binding)?
+  2. Does the ESP-NOW spoke run in config mode (station started,
+     unassociated, on a fixed channel, accessories finding it by scan), or is
+     accessory pairing deferred until the hub has joined WiFi?
+  3. `configure` for the config-mode grant regardless of existing admins
+     (proposed), or keep §12.3's zero-token rule and grant `control`?
+  4. Is the advertisement bit enough, or does a client that reconnects from a
+     bonded address without scanning need an in-session config-mode
+     indicator (a field role on `hub-status`)?
