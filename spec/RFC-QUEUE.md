@@ -4737,3 +4737,86 @@ say exactly which, future-us will want the receipts.*
   2. Should the hub scan and publish visible SSIDs for the wizard to offer?
      A scan list is not secret but is a privacy surface; this RFC leaves
      SSID entry to the client.
+
+## RFC-070 -- Store-to-roster linkage
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-ind).
+- **Origin:** Phosphor ph-vdk.11. Building the REQUIRED `generator-advanced`
+  pattern's preset store against the reference hub: a renderer that has
+  found a STORE entry and a STATE entry shaped like §8.7's dynamic half
+  still cannot prove one enumerates the other without comparing names.
+- **Problem.**
+  1. **§8.7 defines a pair and no key joining it.** "The dynamic half is a
+     separate tiny STATE channel carrying `{generation, count, capacity}`...
+     Every store in the protocol is this pair of entries," but no field on
+     either entry names the other. RENDERING §8.2 row 5 ("STORE-class
+     channel + its roster STATE pair (SPEC §8.7)" -> `list`) already assumes
+     the pairing is known, which begs the question this RFC answers.
+  2. **The only working method today is name matching**, which law 6
+     forbids ("a conformant client never pattern-matches a channel or field
+     *name*"). The reference hub's own pair, `paired-devices` (0x000C) /
+     `paired-devices-roster` (0x000D), is adjacent-id and suffix-named by
+     convention only; nothing in the catalog says the second is the first's
+     roster rather than an unrelated STATE channel that happens to sit next
+     to it.
+  3. **Consequence for `generator-advanced`.** The preset store's roster
+     cannot be sited inside the store's own card next to its verbs
+     ([RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)'s
+     `action.store` op select); law 7 then makes the pairing undeclarable,
+     so a conformant client renders the roster as a bare, disconnected list
+     with no visible relationship to the store it enumerates.
+- **Proposed change.**
+  1. **A new optional channel-entry key, `store_id`** (channel-entry map key
+     17, the next free entry-level slot after RFC-048's `rank` at 16;
+     `uint`, same u8 vocabulary as `store-descriptor` key 1 / `blob_keys`
+     key 2). Applies to a **STATE**-class entry whose layout is exactly
+     `{generation, count, capacity}` (§8.7's dynamic half). Its value is the
+     `store_id` of the STORE entry it enumerates. `store_id` is unique per
+     hub (`store-descriptor`'s own comment), so the match is exact and
+     never ambiguous, unlike matching by id adjacency or name suffix.
+  2. **Renderer rule.** A client matches a roster-shaped STATE entry
+     carrying `store_id = N` against the STORE-class entry whose
+     `store.store_id = N`. On a match, render `list` (archetype 9) sited
+     inside that store's card, alongside its CRUD verbs when an
+     `action.store` (RFC-067) op select names the same store (via whatever
+     channel the accepted CRUD-linkage RFC settles on -- open question 2
+     below). **A roster-shaped STATE entry with `store_id` absent, or naming
+     no STORE entry in the catalog, renders as a plain, unlinked list**: its
+     `{generation, count, capacity}` fields shown generically, with no
+     assumed relationship to any store. This is the fallback law 7 already
+     requires (decline the composite, never guess it) and keeps a
+     pre-adoption hub (no `store_id` emitted) rendering exactly as it does
+     today, degraded but not broken.
+  3. **RENDERING §8.2 row 5 corrected** to name the trigger precisely:
+     "STORE-class entry whose `store_id` (store-descriptor key 1) is named
+     by a STATE entry's `store_id` (channel-entry key 17)" replaces the
+     vague "its roster STATE pair".
+- **Wire impact.** None beyond one additive optional entry-level key on
+  roster STATE entries; an adopting hub's etag moves (T11), matching every
+  other RFC-048-era rendering annotation.
+- **Registry impact.** SPEC §8.1's entry-level key table gains `store_id`
+  (REQUIRED iff the STATE entry is a store's roster, per item 1 above);
+  `schema/catalog.cddl` gains `? 17 => uint` on `channel-entry` with the
+  same note. `store-descriptor`'s comment on its own `store_id` (key 1)
+  gains a pointer to this key as its roster-side counterpart. No number
+  already in use moves.
+- **Conformance impact.** Fixture: a catalog with one STORE entry
+  (`store_id: 1`) and two STATE entries shaped like a roster, one carrying
+  `store_id: 1` and one carrying no `store_id` at all; assert the first
+  renders `list` inside the store's card and the second renders as a plain,
+  unlinked list, never guessed into the wrong store or into no store at all.
+- **Open questions.**
+  1. Reference-hub follow-up (Nucleus): emit `store_id` on
+     `paired-devices-roster` naming `paired-devices`'s `store_id`, and on the
+     preset store's roster once [RFC-066](#rfc-066----advanced-generator-lanes-are-catalog-declared-instances)/[RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
+     land.
+  2. This RFC links roster to store; it does not link either to the CRUD
+     INTENT channel that writes items. [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)'s
+     own open question 2 flags that gap (the reference hub borrows
+     `setting_channel` on the roster for it). Fold that link into this
+     key's job, or leave it to a third RFC once RFC-067 is ruled on?
+  3. Should `store_id` be REQUIRED on every roster-shaped STATE entry going
+     forward (closing the gap for good) or stay optional indefinitely for
+     hubs that never co-render store and roster? This RFC assumes optional,
+     consistent with every other RFC-048 rendering annotation.
