@@ -4285,8 +4285,20 @@ say exactly which, future-us will want the receipts.*
 - **Conformance impact.** Fixture: one settings select, one read-only select
   and one op select, each with a meaningful label at index 0; assert index 0
   is selectable, displayed, and not actionable respectively.
-- **Open questions.** None. This is a correction, not a design choice; it is
-  queued because RENDERING is normative and changes to it ride the queue.
+- **Open questions.**
+  1. None on the filler rule itself. It is a correction, queued because
+     RENDERING is normative and changes to it ride the queue.
+  2. **The same two documents contradict on the archetype hint (bead
+     rfc-vdc).** RENDERING §8.2 row 1 derives from an "Explicit `archetype`
+     annotation" that "always wins", rows 16-17 depend on it, and §14(c)
+     gives it an unknown-value rule. SPEC §8.9 item 3: "choose the widget
+     from **type + constraints, never from a hint** -- there is no widget
+     field, deliberately", and the catalog CDDL defines no archetype key. No
+     renderer, of any class, can implement §8.2 as written while §8.9
+     forbids the input it starts from. Resolve in this RFC's ruling or a
+     sibling: either register an optional archetype key and amend §8.9
+     item 3, or strike row 1 and give `pad2d`, `color` and `datetime` a
+     role-based trigger.
 
 ## RFC-065 -- Event-channel purpose roles and event-kind labels
 
