@@ -69,11 +69,32 @@
  *     { anchor: s.hubNowUs() + 60000 });      // execution start, hub time
  *   s.state.grantedPublishes                  // Map<ch, {rate, burst, curveFamily, ...}>
  *
+ * ── Phase D (STORE items, BLOB namespace 1, §8.7) ───────────────────────────
+ * A STORE catalog entry's `.store` descriptor names the store; the roster
+ * STATE channel beside it says which slots exist (generation/count/capacity).
+ * fetchBlob returns the item's OPAQUE bytes: decoding them is the caller's
+ * job, never the protocol layer's.
+ *
+ *   const presets = s.catalog.find((e) => e.store && e.store.kind === 'pattern.frayd');
+ *   const item = await s.fetchBlob({ storeId: presets.store.storeId, slot: 3 });
+ *   // item = { ns, storeId, slot, generation, bytes: Uint8Array }
+ *
+ * Options: `generation` (sent in the request), `expectDigest` (leading bytes
+ * of the item's SHA-256; a mismatch sends BLOB_DONE status 1), `signal` (an
+ * AbortSignal; aborting sends BLOB_DONE status 2). Fetches queue: the hub runs
+ * one blob transfer per session, so one is on the wire at a time and none
+ * while the catalog transfers. Rejections are BlobError with a BLOB_ERROR
+ * code: BAD_REQUEST, NOT_READY, UNKNOWN_STORE, UNAVAILABLE (NACK
+ * CHUNK_UNAVAILABLE, e.g. an empty slot), REFUSED (any other NACK, `nack`
+ * attached), HASH_MISMATCH, TIMEOUT (frag_reassembly_timeout_ms), ABORTED.
+ *
  * Nothing above fires until you call it; page load should ADOPT device state
  * from STATE/ECHO, never push defaults.
  */
 
-export { createSession, SESSION_STATE, PublishError, PUBLISH_ERROR } from './session.js';
+export {
+  createSession, SESSION_STATE, PublishError, PUBLISH_ERROR, BlobError, BLOB_ERROR,
+} from './session.js';
 
 // wire codec (for tests / advanced integrators)
 export {
@@ -111,7 +132,7 @@ export {
 
 // blob transfer + catalog decode + packed-STATE decode
 export {
-  buildBlobReq, buildCatalogRequest, buildCatalogRepair,
+  buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk, BLOB_CHUNK_HEADER_BYTES, BLOB_CHUNK_PAYLOAD,
   decodeCatalog, catalogChannelMap, decodePacked, encodePacked, decodeEventBody,
   schemaByKey, optionAccessFor, canUseOption, entriesOfClass, hasChannel,
