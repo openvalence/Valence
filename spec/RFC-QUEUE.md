@@ -4080,3 +4080,95 @@ say exactly which, future-us will want the receipts.*
   archived SlopDrive-32 repo stays at the pre-rename pin and never follows.
   Sequencing note from the bench: land AFTER the val-091.13 lag A/B, since a
   pin bump mid-measurement muddies the comparison.
+
+## RFC-062 -- Live renderer-class selection
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-l8p).
+- **Origin:** Phosphor ph-vdk.5. The reference client runs in a resizable
+  desktop window, on a phone that rotates and splits its screen, and on a
+  tablet that is touch-driven and desktop-sized at once. It has no class
+  model, only a width breakpoint that swaps navigation, because RENDERING
+  §12 says only that a device "between two classes adopts the nearer one"
+  and calls that "a deployment choice". A window is not a deployment: its
+  budget changes while the operator is holding a control.
+- **Problem.**
+  1. **Class is specified as a constant.** RENDERING §12 and the registry
+     `renderer_classes` note assume one display and one input model for
+     life. Nothing says when, or whether, a client re-derives its class, so
+     two conformant clients at the same window size may render different
+     page trees, and §11's consistency invariant ("differing only by class
+     projection") cannot be tested.
+  2. **§8.3 couples the input model to the class.** A large touch tablet is
+     `full` by budget and touch by input; §8.3 gives it pointer primitives,
+     and law 12's touch-target floor then depends on a size breakpoint
+     rather than on the finger.
+  3. **Nothing protects in-flight state across a switch.** A class change
+     rebuilds the page tree. Without a rule, a rebuild can drop a pending
+     write's lifecycle display (law 5), resolve or lose an open confirm,
+     commit a half-finished drag, or move the operator to a different
+     category mid-task.
+  4. **Law 10 keys persisted layout on stable ids but not on class.** A
+     card order arranged on a desktop is applied to the phone projection of
+     the same catalog, where nobody chose it.
+- **Proposed change.** New RENDERING §12.1 "Class selection"; §12's "adopts
+  the nearer one" sentence becomes a pointer to it.
+  1. **Inputs.** Class is a function of two inputs: the *usable viewport*
+     (the area the client may draw in after host chrome, in the host's
+     device-independent length units, never device pixels) and the *primary
+     pointer*: `none` (rotary encoder, keys), `coarse` (touch) or `fine`
+     (mouse, stylus).
+  2. **Selection.** Primary pointer `none` selects `glance`. Otherwise the
+     client compares the usable viewport against two client-chosen
+     boundaries, glance/handheld and handheld/full. This document fixes no
+     boundary values (§1: nothing here is a pixel); a client SHOULD choose
+     them so that every control of the selected class meets law 12's floor
+     at that size.
+  3. **Input primitives follow the pointer, not the class.** §8.3's input
+     columns are selected by the primary pointer: `coarse` gets the
+     `handheld` primitives (tap, modal confirm, touch-target floor) at any
+     class, `fine` gets the `full` primitives, `none` gets the `glance`
+     primitives. The class selects projection and default surfacing (§12
+     table) only.
+  4. **Continuous re-derivation (MUST).** A client whose usable viewport or
+     primary pointer can change at runtime MUST re-derive its class whenever
+     either changes. A client whose inputs never change (an OLED remote)
+     derives once; nothing changes for it.
+  5. **Hysteresis (MUST).** Each boundary has a band. The class moves up
+     only when the viewport exceeds the boundary plus the band, and down
+     only when it falls below the boundary minus the band. The band SHOULD
+     be at least 10 percent of its boundary. A class change MUST be deferred
+     while a gesture is in progress (an uncommitted drag, a held encoder
+     press) and applied when the gesture ends.
+  6. **Invariants across a switch (MUST).**
+     - Reachable content does not change (restates §12).
+     - The active category is preserved: the category page the operator is
+       on remains the active root. On `glance` the menu stack is rebuilt to
+       that category's root.
+     - Pending write state is preserved: every in-flight intent keeps its
+       §8.1 lifecycle state, and the control rendering it after the switch
+       shows that state. A switch MUST NOT send, resend, or cancel an
+       intent, and MUST NOT commit a gesture that was not released.
+     - An open `overlay` confirm either survives the switch with its content
+       or is dismissed as canceled. A switch MUST NOT resolve a confirm as
+       accepted.
+     - The `stop` affordance stays reachable throughout, including during
+       the rebuild (law 1, §9 `persistent`).
+  7. **Persisted layout is per class (MUST).** A client that persists layout
+     keys it on the pair (class, stable id). A layout saved under one class
+     MUST NOT be applied under another; returning to a class restores that
+     class's own layout. Law 10 gains this sentence.
+- **Wire impact.** None. Rendering only; class never crosses the wire.
+- **Registry impact.** `renderer_classes` note text: "A device between
+  budgets adopts the nearer class" becomes a pointer to RENDERING §12.1. No
+  number moves.
+- **Conformance impact.** New RENDERING §12.1; §8.3 reframed (input columns
+  keyed by primary pointer); law 10 extended. Testable device-free: drive a
+  fixture catalog through a viewport sweep in both directions and assert the
+  class sequence, the preserved category, and an in-flight intent's
+  lifecycle state across the switch (Phosphor ph-vdk.9 is that harness).
+- **Open questions.**
+  1. §11's consistency invariant is only as strong as the boundaries.
+     Should this document RECOMMEND boundary values, informatively and in
+     physical length, so two clients at the same size pick the same class?
+  2. Does a hub ever need to know a client's class? This RFC assumes not.
