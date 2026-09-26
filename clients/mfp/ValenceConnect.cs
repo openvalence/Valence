@@ -426,7 +426,7 @@ public class ValenceConnect : PluginBase
     public double RailAxisPx => Px(_windowMinMm + _lastTarget * (_windowMaxMm - _windowMinMm));
 
     // ---- Drag-handle positions, as FRACTIONS of the rail ---------------------
-    // THE SLIDERS BIND TO FRACTIONS, NOT MILLIMETRES, AND THAT IS A BUG FIX.
+    // THE SLIDERS BIND TO FRACTIONS, NOT MILLIMETERS, AND THAT IS A BUG FIX.
     //
     // A Slider COERCES Value into [Minimum, Maximum], and a TwoWay binding
     // writes the coerced value straight back to the source. Binding Maximum to
@@ -440,7 +440,7 @@ public class ValenceConnect : PluginBase
     // is ever destructive, and the mm conversion happens here where the rail
     // being unknown is expressible as "ignore this write" instead of "clamp it".
     //
-    // Rounded to whole millimetres because that is the device's own declared
+    // Rounded to whole millimeters because that is the device's own declared
     // step for the window fields; handing it fractions it will only round anyway
     // would put a value in the box that the machine never agreed to.
     public double WindowMinFrac
@@ -491,7 +491,7 @@ public class ValenceConnect : PluginBase
         NotifyOfPropertyChange(nameof(RailAxisPx));
         NotifyOfPropertyChange(nameof(PositionText));
         // The handles are a FRACTION of the rail, so a rail-length change moves
-        // them even when the draft millimetres did not.
+        // them even when the draft millimeters did not.
         NotifyOfPropertyChange(nameof(WindowMinFrac));
         NotifyOfPropertyChange(nameof(WindowMaxFrac));
         NotifyOfPropertyChange(nameof(RailDraftLeftPx));
@@ -2379,7 +2379,7 @@ public class ValenceConnect : PluginBase
 
     // A gap span rendered as an explicit hold: stay where the previous span
     // left us, for exactly the gap's duration, arriving at rest. Same anchoring
-    // rule as a moving span -- from the mapping, so it tiles with its neighbours.
+    // rule as a moving span -- from the mapping, so it tiles with its neighbors.
     private Task SendHoldAsync(HubClient client, KeyframeCollection kf, int i,
                                double axisPos, double speed, uint baseClientUs,
                                CancellationToken token)

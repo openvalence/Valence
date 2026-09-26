@@ -51,7 +51,7 @@
           THE 20px THUMB AND THE 392px WIDTH ARE THE ALIGNMENT. A Track gives its
           thumb (TrackWidth - ThumbWidth) of travel, so a 392-wide slider moves a
           20-wide thumb across exactly 372 - and offsetting the slider by -10
-          (half a thumb) puts the thumb's CENTRE on the same frac*372 the view
+          (half a thumb) puts the thumb's CENTER on the same frac*372 the view
           model computes for the markers. Change either number and the handles
           stop lining up with the band they are dragging.
 
@@ -412,7 +412,7 @@
                  GROUND-TRUTH DOCTRINE, drawn rather than described: the band and
                  the position marker are DEVICE values (decoded STATE); the draft
                  outline and the drag handles are the operator's DRAFT and are a
-                 different colour for exactly that reason. A drag changes only
+                 different color for exactly that reason. A drag changes only
                  the outline until Apply, so a value the machine would refuse can
                  never sit on the rail pretending to be where the window is.
 

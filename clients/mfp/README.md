@@ -84,7 +84,7 @@ so it is safe, but it *is* a visible interruption mid-scene.
     machine says it is until you press **Apply** — and **Apply/Revert only appear once the
     draft actually differs**, so there is never a lit button with nothing to do. The status
     line then reports the **applied, post-clamp** value the device echoed back, or the NACK
-    that refused it, correlated by `intent_seq`. Handles snap to whole millimetres, which
+    that refused it, correlated by `intent_seq`. Handles snap to whole millimeters, which
     is the device's own declared step for these fields.
   * The rail hides entirely on a hub that advertises no travel roles (drawing it would
     mean inventing the scale every marker is measured against); the numeric window editor
