@@ -4430,3 +4430,72 @@ say exactly which, future-us will want the receipts.*
      either. Register a master role set in the same pass, or separately?
   3. Role family name: `lane.*` is short but generic (a `scope` pattern
      also has lanes). The 24-byte role cap rules out long prefixes.
+
+## RFC-067 -- Store verbs: one registered op select, not split preset tags
+
+- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
+  pending (rfc-2n5).
+- **Origin:** Phosphor ph-vdk.11 and ph-vdk.3; the drift is the reference
+  hub's. Nucleus's `pattern-presets-cmd` INTENT carries its CRUD verb as one
+  op select, `{"reserved", "save", "load", "delete", "rename"}`, tagged
+  `action.preset`. RENDERING §7 and the registry `action_tags` register
+  `preset_save` and `preset_recall` and no `preset`. No catalog in any repo
+  emits either registered tag.
+- **Problem.**
+  1. **The registered tags do not fit the mechanism.** SPEC §8.7 names FOUR
+     store verbs riding INTENT on one device-declared channel: `save`,
+     `load`, `delete`, `rename`. Two tags cover two of them; `delete` and
+     `rename` have none. Both registered verbs carry parameters (`slot`,
+     `name`), so a split field is not "no value payload" and RENDERING §8.2
+     row 6 would not even derive a `trigger` for it.
+  2. **The verbs are named but not numbered.** §8.7 spells the four verbs in
+     prose and no registry table numbers them, so every hub picks its own
+     option order and a client can tell `delete` from `load` only by label,
+     which law 6 forbids. That matters: `delete` is destructive and `load`
+     is not.
+  3. **Presets are one kind of store.** §8.7: "Presets, saved positions,
+     limit profiles, recordings and the trust ledger are all the same
+     machinery." A verb tag scoped to presets must be re-registered for
+     every other kind.
+- **Proposed change (recommended option: register the op-select
+  convention).**
+  1. **Register `store_ops`**, an op table numbering SPEC §8.7's verbs from
+     1: `save` 1, `load` 2, `delete` 3, `rename` 4. Index 0 is op-select
+     filler (SPEC §8.9).
+  2. **Register the action tag `store`.** A schema field with role
+     `action.store` is an op select whose `options` are index-aligned with
+     `store_ops`. It MUST NOT declare options beyond the registered ops; a
+     device-specific store verb rides a separate `action.*` field. The
+     store's `kind` (§8.7), not the tag, says what the store holds.
+  3. **Retire `preset_save` and `preset_recall`** before the tag. They have
+     zero emitters, and "numbers bind from the v1.0 tag forward" (queue
+     standing ruling) makes this the last free moment.
+  4. **`delete` is destructive by registration.** Extending
+     [RFC-063](#rfc-063----a-wire-carrier-for-the-destructive-flag) item 3,
+     `action.store` op `delete` implies `destructive`; a hub need not mask
+     it.
+  5. **Reference-hub follow-up:** one role string, `action.preset` to
+     `action.store`, and its option order already matches.
+- **Why not the split.** Splitting into `preset_save` / `preset_recall`
+  fields leaves `delete` and `rename` untagged, multiplies one channel into
+  several (the §12.7 administration surface chose "one channel, not three"
+  for exactly this: one rate limiter, one idempotency ring, one place a
+  renderer looks), and still does not produce payload-less triggers. The
+  op-select convention is what the safety-intents channel, the admin
+  surface and the reference store writer already do.
+- **Wire impact.** None for bytes on the frame; the reference catalog's role
+  string changes, so its etag moves (T11).
+- **Registry impact.** New op table `store_ops` (four entries); `action_tags`
+  gains `store` and loses `preset_save` / `preset_recall` (pre-tag
+  restructuring). RENDERING §7 table and count ("thirteen") follow;
+  `widget_patterns` `generator-advanced` note says "preset save/recall via
+  `action.store`".
+- **Conformance impact.** Fixture: a STORE pair plus an `action.store` op
+  select; assert four actions rendered by op number, `delete` confirm-gated,
+  index 0 not actionable.
+- **Open questions.**
+  1. Keep the tag name `preset` (zero reference change) instead of `store`?
+     This RFC prefers `store` because the verbs are kind-agnostic.
+  2. Nothing links a STORE entry to its CRUD channel; the reference hub
+     borrows `setting_channel` on the roster STATE. Specify that link here,
+     or in a separate RFC?
