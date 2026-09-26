@@ -6059,7 +6059,7 @@ say exactly which, future-us will want the receipts.*
      40 % of a 0 to 100 % field. Nothing says whether a placement may narrow,
      widen, or re-default a field, or what it shows when the hub's value lies
      outside the narrowed range.
-  4. **No rule for momentary toggles**, a control whose release writes.
+  4. **No rule for toggle placements on non-bool fields** (which two values a toggle writes).
   5. **Law 10 blocks keying.** "Key persisted client layout on stable ids,
      never on indices or wire vocabulary." A field with no `role` has no
      stable semantic id beyond its channel id and its name, and law 6
@@ -6119,18 +6119,13 @@ say exactly which, future-us will want the receipts.*
      only a `bool`) is configured one of two ways:
      - **two values**: each press writes the other of values A and B, both
        inside the field's range;
-     - **momentary, override and return**: press writes A; release restores
-       the value that was **applied on the hub** when the press began, read
-       from adopted state, never from the client's own last request. The
-       restore is an ordinary write, pending until its ECHO (law 5), and
-       SHOULD carry `precondition` = the `cfg_gen` from the press's ECHO
-       (§9.3), so a value someone else changed mid-press is not clobbered
-       (on `CONFLICT` the placement shows the conflict and restores nothing).
-       **If the link drops mid-press, the hub's own value stands**: the
-       client assumes nothing, and on reconnect adopts whatever the hub
-       reports (§6.8), which is A if the restore never landed. Momentary is
-       a client construct, not a hub deadman; the honest consequence is
-       open question 1 below.
+     A momentary override-and-return mode (press writes A, release restores)
+     was drafted and WITHDRAWN by operator ruling 2026-09-26: a client-side
+     restore depends on the client surviving the press, which runs against
+     the principle that policy lives on the hub, and it does not earn its
+     place. A toggle placement is two-valued, full stop. A hub-side
+     hold-to-run (a write that reverts unless refreshed) stays an open
+     question below, as its own future RFC if an accessory ever needs it.
   6. **Saved layout keys, and a scoped amendment to law 10.** A saved
      layout keys each placement on stable identity:
      - the hub, by `hub_instance_id` (§6.1) where present;
@@ -6160,16 +6155,14 @@ say exactly which, future-us will want the receipts.*
   them; (2) a user surface cannot remove the stop affordance or cover
   `persistent`; (3) a narrowed placement shows an applied value outside its
   range as out of range; (4) a placement cannot widen past the catalog
-  `max`; (5) momentary press with the link cut mid-press: after reconnect the
-  placement shows A, never the pre-press value; (6) a restore meeting a
-  changed `cfg_gen` shows `CONFLICT` and writes nothing; (7) a firmware
+  `max`; (5) a firmware
   update renaming an unroled field orphans its placement, which is shown as
   missing and never silently rebound.
 - **Open questions.**
-  1. Momentary release on link loss leaves A applied on the hub. For fields
-     where that matters (an accessory pump held on), should the protocol
-     offer a hub-side hold-to-run (a write that reverts unless refreshed),
-     rather than a client construct?
+  1. Should the protocol offer a hub-side hold-to-run (a write that reverts
+     unless refreshed) for fields where a held state matters, such as an
+     accessory pump? The client-side momentary mode was withdrawn; if the
+     need is real it is a hub duty and its own RFC.
   2. Should presentations become a registered vocabulary, so a saved layout
      can move between clients (a portable layout format), or stay client
      craft?
