@@ -5,8 +5,9 @@
  * drives the full v1.0 session choreography that the reference clients
  * (lib/valence/.../client/client_impl.hpp, tools/valence_probe.py) implement:
  *
- *   connect → HELLO [+ cached catalog etag] → WELCOME (session id, roles,
- *             deadman, grants, hub identity, catalog etag)
+ *   connect → HELLO [+ cached catalog etag, subscription/publish wishes]
+ *           → WELCOME (session id, roles, deadman, grants, hub identity,
+ *             catalog etag)
  *   → READINESS GATE (§8.4 / RFC-015):
  *       etag MATCHED  ⇒ ready already, ZERO extra frames (the 99% reconnect)
  *       otherwise     ⇒ BLOB_REQ → BLOB_CHUNK reassembly → verify the SHA-256
@@ -14,7 +15,7 @@
  *                       operate against, re-declared on the chunk-repair
  *                       cadence until the first STATE proves the gate opened
  *   → CLOCK 0x05 NTP-style offset sync
- *   → SUBSCRIBE → GRANT (rate = min(wish, catalog rate))
+ *   → SUBSCRIBE → GRANT for catalog-resolved channels (rate = min(wish, catalog rate))
  *   → retained STATE on grant, live STATE pushes (packed-decoded per the
  *     CATALOG'S layout — there is no fallback table, by design)
  *   → PING keepalive on TX silence (< deadman window)
@@ -38,7 +39,8 @@
  *   'catalog'      (entries, channelMap, meta)     — catalog adopted (cached or fetched)
  *   'ready'        ({etag, cached})                — readiness declared/inherited
  *   'live'         ()                              — SYNCING → LIVE (§2.2)
- *   'grant'        (grants[])                      — SUBSCRIBE grants applied
+ *   'grant'        (grants[])                      — subscription grants applied
+ *                                                      (WELCOME or GRANT)
  *   'publishGrant' (grantedPublishes[])            -- publish grants applied
  *                                                      (WELCOME, a PUBLISH
  *                                                      answer, or an
@@ -246,8 +248,12 @@ function defaultCatalogStore() {
  *        directly, only the echo is (see handleWelcome). Pass null/false to
  *        omit the key entirely (pre-RFC-038 hub compatibility needs nothing
  *        special; absent just means "hub default").
- * @param {Array<[number, number, number]>} [opts.subscriptions] [ch, rateHz, priority] wishes to
- *        (re)issue automatically after each WELCOME
+ * @param {Array<[number, number, number]>} [opts.subscriptions] [ch, rateHz, priority]
+ *        wishes carried in every HELLO (key 10, §6.2), at most
+ *        LIMITS.max_subscriptions_per_frame. WELCOME's limits.retained_pending
+ *        counts only WELCOME's own grants, so a channel subscribed later is
+ *        not part of the LIVE gate on a fresh session. Catalog-resolved
+ *        channels call subscribe() once the catalog lands.
  * @param {Array<[number, number, number?, number?]>} [opts.publishes] [ch, rateHz, burst?, curveFamily?]
  *        STREAM publish wishes carried in HELLO (key 11, §6.2). The ids must
  *        be known before the catalog is; a client that finds its channel in
@@ -284,6 +290,10 @@ export function createSession(opts = {}) {
   const WSImpl = opts.WebSocketImpl || (typeof WebSocket !== 'undefined' ? WebSocket : null);
   const log = opts.log || (() => {});
   const subscribeWishes = opts.subscriptions || [];
+  if (subscribeWishes.length > LIMITS.max_subscriptions_per_frame) {
+    throw new RangeError('createSession: ' + subscribeWishes.length + ' subscription wishes, HELLO carries at most ' +
+      LIMITS.max_subscriptions_per_frame + '; subscribe() the rest once LIVE');
+  }
   const publishWishes = opts.publishes || [];
 
   // ---- listener registry --------------------------------------------------
@@ -348,9 +358,11 @@ export function createSession(opts = {}) {
   const READY_MAX_ATTEMPTS =
     Math.floor(LIMITS.catalog_ready_timeout_ms / LIMITS.catalog_chunk_gap_timeout_ms);
 
-  // §6.7 snapshot adoption: LIVE once the catalog is adopted and the retained
-  // pushes WELCOME promised have landed.
+  // §6.8 snapshot adoption: LIVE once the catalog is adopted and the retained
+  // pushes WELCOME promised have landed. Only WELCOME's own grants count, the
+  // set retained_pending is computed over; a later SUBSCRIBE's push does not.
   let requiredRetained = 0;
+  let welcomeGrants = new Set();
   let adoptedChannels = new Set();
 
   // pending intents awaiting ECHO/NACK correlation (by intent_id)
@@ -406,8 +418,8 @@ export function createSession(opts = {}) {
 
   function buildHello() {
     // keys ascending: proto_ver(1) < client_kind(2) < client_name(3) <
-    // instance_id(4) < [token(5)] < [catalog_etag(8)] < [publishes(11)] <
-    // [deadman_wish_ms(44)].
+    // instance_id(4) < [token(5)] < [catalog_etag(8)] < [subscriptions(10)] <
+    // [publishes(11)] < [deadman_wish_ms(44)].
     //
     // catalog_etag is RFC-015's fast path: presenting an etag the hub agrees
     // with IS proof of possession, so the hub marks us ready in WELCOME and
@@ -421,6 +433,7 @@ export function createSession(opts = {}) {
     ];
     if (liveToken) pairs.push([K.token, cbBstr(liveToken)]);
     if (cachedCatalog) pairs.push([K.catalog_etag, cbBstr(cachedCatalog.etag)]);
+    if (subscribeWishes.length) pairs.push([K.subscriptions, encodeSubscriptionWishes(subscribeWishes)]);
     if (publishWishes.length) pairs.push([K.publishes, encodePublishWishes(publishWishes)]);
     // RFC-038: ask for a browser-honest deadman window. The hub clamps into
     // [deadman_min_ms, deadman_max_ms] and echoes the APPLIED value on the
@@ -438,14 +451,18 @@ export function createSession(opts = {}) {
    * @param {Array<[number, number, number]>} wishes [channelId, rateHz, priority]
    */
   function subscribe(wishes) {
-    // {10: [{12:rate_hz, 13:priority, 15:channel_id}]} — keys ascending 12<13<15.
-    const entries = wishes.map(([ch, rate, prio]) =>
+    sendFrame(FRAME.SUBSCRIBE, 0, cbMap([[K.subscriptions, encodeSubscriptionWishes(wishes)]]));
+  }
+
+  // [{12:rate_hz, 13:priority, 15:channel_id}], keys ascending 12<13<15; the
+  // same entries ride HELLO key 10 and SUBSCRIBE (§6.2, §6.7).
+  function encodeSubscriptionWishes(wishes) {
+    return cbArray(wishes.map(([ch, rate, prio]) =>
       cbMap([
         [K.rate_hz, cbF32(rate)],
         [K.priority, cbUint(prio == null ? PRIORITY.normal : prio)],
         [K.channel_id, cbUint(ch)],
-      ]));
-    sendFrame(FRAME.SUBSCRIBE, 0, cbMap([[K.subscriptions, cbArray(entries)]]));
+      ])));
   }
 
   // ---- PUBLISH (§6.2 / §6.7) ----------------------------------------------
@@ -1213,6 +1230,7 @@ export function createSession(opts = {}) {
       const ch = g.get(K.channel_id);
       state.grants.set(ch, { channel: ch, rate: g.get(K.granted_rate_hz), priority: g.get(K.priority) });
     }
+    welcomeGrants = new Set(state.grants.keys());
     const welcomePublishes = (w.get(K.granted_publishes) || []).map(adoptPublishGrant);
 
     const info = {
@@ -1230,6 +1248,7 @@ export function createSession(opts = {}) {
     };
     setPhase(SESSION_STATE.SYNCING);
     emit('welcome', info);
+    if (state.grants.size) emit('grant', [...state.grants.values()]);
     if (welcomePublishes.length) emit('publishGrant', welcomePublishes);
 
     // ---- RFC-015 readiness gate -------------------------------------------
@@ -1266,9 +1285,10 @@ export function createSession(opts = {}) {
     // start the deadman-defeating PING/pump loop now that we know the window
     startPump();
 
-    // read-plane bring-up (all safe, no intents): CLOCK, SUBSCRIBE.
+    // read-plane bring-up (safe, no intents). The wishes rode HELLO; a reattach
+    // keeps the session's own grants instead (§6.6 path B), so nothing here
+    // re-SUBSCRIBEs them.
     syncClock().catch(() => {});
-    if (subscribeWishes.length) subscribe(subscribeWishes);
 
     checkLiveTransition();
   }
@@ -1334,7 +1354,7 @@ export function createSession(opts = {}) {
       if (decoded.word_bits.estop) { estopActive = false; }
     }
 
-    if (!adoptedChannels.has(header.channel)) {
+    if (welcomeGrants.has(header.channel) && !adoptedChannels.has(header.channel)) {
       adoptedChannels.add(header.channel);
       checkLiveTransition();
     }
