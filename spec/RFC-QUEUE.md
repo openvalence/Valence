@@ -6388,3 +6388,75 @@ say exactly which, future-us will want the receipts.*
   2. `datetime.moment` presumes the hub has wall time; SPEC §18 item 12 (H7)
      records that the reference hub does not. Is a schedule field on a hub
      without a clock legal, or must such a hub omit it?
+
+## RFC-084 -- Future-anchored `samples` points: an arrival time under the same lead cap
+
+- **Status:** DRAFT (spec gap bead rfc-csn, 2026-10-01). Ruling pending
+  (rfc-csn). No wire numbers; widens one existing limit's scope.
+- **Origin:** Phosphor ph-vdk.26, 2026-09-25, against Nucleus. A client that
+  stamped `samples` points ahead of hub time (a duration lead, to meet the
+  machine at the curve) measured +5.5 % overshoot on a 1 Hz sine at about
+  30 ms send jitter, because the hub delayed the chase by the lead instead
+  of arriving by it. Reference behavior: Nucleus
+  `flagship_p4/src/hub/ValenceDevice.cpp` clamps every c2h sample's lead to
+  `kStreamFarFutureUs` = 250 ms whatever its `stream_kind`, and
+  `lib/kinetic/include/kinetic/kinetic.hpp` `commit()` plans a future
+  anchor as a scheduled start ("A FUTURE anchor is a SCHEDULED PLAN"), for
+  chase points as for segments.
+- **Problem.**
+  1. **No lead cap for `samples`.** SPEC §5.4 binds `max_future_schedule_ms`
+     (250 ms) to `segments` only ("A hub MUST clamp scheduling to at most
+     `max_future_schedule_ms` ... ahead of its own current time"), and the
+     registry note says the same. For `samples` nothing bounds how far
+     ahead a point may be stamped, so a hub's queue depth and a client's
+     lead are folklore again, the exact failure RFC-014 registered the limit
+     to end.
+  2. **The anchor's meaning is unstated for motion input.** §5.4 says a
+     `samples` timestamp is "the instant sample *i* **describes**. It is
+     observational." That reads cleanly for h2c telemetry. For a c2h motion
+     input it can be read two ways: the instant the machine should *be* at
+     the point (an arrival time), or the instant it should *start* toward
+     it (a start time, the `segments` meaning). The reference hub reads the
+     second; the text says the first. The difference is a lead's worth of
+     lag, measured as overshoot.
+- **Proposed change.**
+  1. **Arrival semantics (SPEC §5.4, `samples` bullet).** Appended: "On a
+     c2h motion input, the instant a sample describes is the instant the
+     commanded curve passes through it. A hub SHOULD reach the sample's
+     value at that instant as closely as its ceilings allow, and MUST NOT
+     treat the timestamp as the start of a move toward it; start times are
+     the `segments` meaning, chosen by declaring `stream_kind` `segments`
+     (§9.2)." The hub stays the referee of feasibility (§1.2 principle 6):
+     arrival is a target, not a guarantee.
+  2. **One lead cap for every c2h STREAM.** §5.4's clamp sentence moves out
+     of the `segments` bullet and binds both kinds: a hub MUST clamp a c2h
+     sample's timestamp to at most `max_future_schedule_ms` ahead of its own
+     current time; further out is clamped, not rejected. "Clients SHOULD
+     schedule no further ahead than half that budget" binds both kinds. This
+     is what the reference hub already does.
+  3. **Late samples unchanged.** A sample whose instant has passed is
+     consumed at once under §7.3; this RFC adds nothing for the past.
+- **Wire impact.** None. No frame, field or number changes; a client that
+  stamps samples at arrival time (no lead) sees no difference.
+- **Registry impact.** `limits.max_future_schedule_ms` note text: "for every
+  c2h STREAM channel" in place of "for segment-class STREAM channels", with
+  the arrival semantics for `samples` pointed at §5.4. No number moves.
+- **Conformance impact.** Hub behavioral test: a 1 Hz sine streamed as
+  `samples` with a constant 100 ms lead and injected send jitter; assert
+  the position telemetry (§9.2, its observable truth) lags the stamped curve
+  by no more than the hub's chase-planning budget, not by the lead, and that
+  peak excursion stays within the stamped amplitude plus a stated tolerance.
+  Second test: a point stamped 400 ms ahead is clamped to 250 ms, never
+  rejected. Nucleus follow-up on its own board: `commit()` treats a chase
+  point's future anchor as its arrival time; ph-vdk.26's sine is the
+  regression case.
+- **Open questions.**
+  1. [RFC-059](#rfc-059----hub-advertised-scheduling-latency)'s
+     `schedule_latency_us` (rfc-r4v) is where a client learns how far
+     behind its stamps the hub executes. Under arrival semantics, for
+     `samples` it should state the chase-planning budget the conformance
+     test above bounds. Rule the two together so they agree.
+  2. Cross-check at ruling: [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)
+     (end-velocity semantics) and [RFC-071](#rfc-071----motion-input-field-roles-find-the-stream-target-without-a-name)
+     (motion-input roles) both touch the samples/segments split; neither
+     states an anchor meaning, so no text of theirs moves.
