@@ -4662,7 +4662,18 @@ say exactly which, future-us will want the receipts.*
 - **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
   pending (rfc-qf5). Companion to
   [RFC-054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff),
-  which is still PROPOSED.
+  which is still PROPOSED. **Separable item (2026-10-01, spec
+  contradiction bead rfc-bry):** item 4's secret-ECHO encoding resolves
+  the SPEC §8.8 Secrets vs §9.3 key-completeness contradiction for every
+  `secret` field, not only the credentials, and MAY be accepted alone if
+  the provisioning channel is denied or deferred. Landed alone, §8.8
+  Secrets reads: "ECHO confirms application by carrying the applied key
+  with the CBOR value `true` in place of its value, so §9.3's
+  key-completeness holds; a client decoding `applied` against the schema
+  MUST accept `true` for a `secret`-flagged key whatever the field's
+  type." The registry `setting_flags` `secret` note gains the same
+  sentence; conformance gains one test (a secret write's ECHO carries the
+  key as `true` and never the value).
 - **Origin:** Phosphor ph-vdk.24 (the provisioning `wizard`, RENDERING §10).
   RFC-054 frames only one direction: a hub that already knows its WiFi
   credentials disclosing them to a BLE client. The first-run case runs the
