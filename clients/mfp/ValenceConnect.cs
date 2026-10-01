@@ -58,8 +58,9 @@ using Stylet;
 //     stroke window and kinematic ceilings by their registry `field_roles`
 //     rather than by channel number — the catalog is both the map and the
 //     decoder ring. Search this file for 0x0081: it is not here.
-//   * OPERATOR INTENTS. Home (0x0103 op 1) and a stroke-window editor written
-//     through whatever settings channel + keys the ROLE says to use. INTENT
+//   * OPERATOR INTENTS. Home (the action.home field's "home" op) and a
+//     stroke-window editor, both written through whatever channel + keys the
+//     catalog ROLE says to use. INTENT
 //     frames set header.seq = intent_id so RFC-001's NACK `intent_seq` names
 //     the same number the ECHO does.
 //
@@ -951,15 +952,13 @@ public class ValenceConnect : PluginBase
         _catalogCacheKey = $"{Address}:{Port}";
         var cached = LoadCachedCatalog(_catalogCacheKey);
 
-        // §6.2 subscription wishes ride along in HELLO — one round trip, and
-        // RFC-006's point: a motion producer that subscribes to nothing is
-        // flying blind. The kinematic-limits channel is NOT in this list; it
-        // has no portable number and is only knowable once the catalog is
-        // decoded, so it is a mid-session SUBSCRIBE below.
+        // §6.2 subscription wishes ride along in HELLO. Only safety has a
+        // portable number; the motion telemetry and kinematic-limits channels
+        // are only knowable once the catalog is decoded, so they are a
+        // mid-session SUBSCRIBE below.
         var subWishes = new (ushort ch, double rate, byte prio)[]
         {
             (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical),
-            (ValenceWire.ChMotion, MotionStateRateHz, ValenceWire.PriorityElevated),
         };
 
         // RFC-030: which curve family the 0x2101 stream means. MFP's axis
@@ -1060,23 +1059,27 @@ public class ValenceConnect : PluginBase
             welcome.SessionId, welcome.BootId, mode, granted, wishHz,
             mode == StreamMode.Segments ? $", motion-segment @ {segGranted:F1} Hz" : "");
 
-        // ---- SUBSCRIBE: the role-located limits channel ----------------------
-        // safety(0x0003) + motion(0x0080) were already wished in HELLO. What is
-        // left is whatever channel THIS hub happens to carry the kinematic
-        // roles on — resolved from the catalog, never hardcoded (RFC-006(b)).
-        // A hub that declares none of those roles gets no extra SUBSCRIBE and
-        // the panel says "not advertised", which is the honest answer.
+        // ---- SUBSCRIBE: the role-located telemetry + limits channels ---------
+        // safety(0x0003) was already wished in HELLO. What is left is whatever
+        // channels THIS hub carries the telemetry and kinematic roles on,
+        // resolved from the catalog, never hardcoded (RFC-006(b)). A hub that
+        // declares none of those roles gets no extra SUBSCRIBE and the panel
+        // says "not advertised", which is the honest answer.
         var limitsChannels = RoleChannelsToSubscribe();
         if (limitsChannels.Count > 0)
         {
             await client.SubscribeAsync(
                 // On-change for the config-shaped roles; the channel carrying
-                // telemetry.position asks for a RATE, because the rail and the
-                // lag meter both read a moving value and on-change leaves the
-                // cadence entirely to the hub.
-                limitsChannels.ConvertAll(ch => ((ushort)ch,
-                    _rolePosition != null && _rolePosition.ChannelId == ch ? MotionStateRateHz : 0.0,
-                    ValenceWire.PriorityNormal)), token);
+                // telemetry.position asks for a RATE at elevated priority,
+                // because the rail and the lag meter both read a moving value
+                // and on-change leaves the cadence entirely to the hub.
+                limitsChannels.ConvertAll(ch =>
+                {
+                    bool live = _rolePosition != null && _rolePosition.ChannelId == ch;
+                    return ((ushort)ch,
+                        live ? MotionStateRateHz : 0.0,
+                        live ? ValenceWire.PriorityElevated : ValenceWire.PriorityNormal);
+                }), token);
             Logger.Info("SUBSCRIBEd to role-located channel(s): {0}",
                 string.Join(", ", limitsChannels.ConvertAll(c => $"0x{c:X4}")));
         }
@@ -1222,6 +1225,7 @@ public class ValenceConnect : PluginBase
     private ValenceCatalog.RoleLocator _roleInputSpeed, _roleInputAccel, _roleInputJerk;
     private ValenceCatalog.RoleLocator _rolePosition, _roleTarget, _roleVelocity;
     private ValenceCatalog.RoleLocator _roleMaxTravel, _roleMeasuredTravel;
+    private ValenceCatalog.ActionLocator _actionHome;
 
     private static CachedCatalog LoadCachedCatalog(string key)
     {
@@ -1248,6 +1252,7 @@ public class ValenceConnect : PluginBase
         _roleInputSpeed = _roleInputAccel = _roleInputJerk = null;
         _rolePosition = _roleTarget = _roleVelocity = null;
         _roleMaxTravel = _roleMeasuredTravel = null;
+        _actionHome = null;
 
         byte[] hubEtag = welcome.CatalogEtag;
         if (hubEtag == null || hubEtag.Length != ValenceWire.EtagBytes)
@@ -1323,16 +1328,20 @@ public class ValenceConnect : PluginBase
         _roleVelocity = cat.LocateRole(ValenceWire.RoleTelemetryVelocity);
         _roleMaxTravel = cat.LocateRole(ValenceWire.RoleGeometryMaxTravel);
         _roleMeasuredTravel = cat.LocateRole(ValenceWire.RoleGeometryMeasuredTravel);
+        _actionHome = cat.LocateAction(ValenceWire.RoleActionHome);
 
         Logger.Info("catalog adopted ({0}, etag {1}): window.min={2} window.max={3} " +
                     "limit.input.speed={4} .accel={5} .jerk={6} " +
                     "telemetry.position={7} .target={8} .velocity={9} " +
-                    "geometry.max_travel={10} .measured_travel={11}",
+                    "geometry.max_travel={10} .measured_travel={11} action.home={12}",
             cachedPath ? "cached, zero-frame path" : "fetched + verified", ValenceCatalog.Hex(etag),
             Describe(_roleWindowMin), Describe(_roleWindowMax),
             Describe(_roleInputSpeed), Describe(_roleInputAccel), Describe(_roleInputJerk),
             Describe(_rolePosition), Describe(_roleTarget), Describe(_roleVelocity),
-            Describe(_roleMaxTravel), Describe(_roleMeasuredTravel));
+            Describe(_roleMaxTravel), Describe(_roleMeasuredTravel),
+            _actionHome == null ? "-"
+                : $"0x{_actionHome.ChannelId:X4}.{_actionHome.Key} op '{ValenceWire.HomeOpLabel}'="
+                  + (_actionHome.OpFor(ValenceWire.HomeOpLabel)?.ToString() ?? "unlabeled"));
 
         Ui(() =>
         {
@@ -1357,15 +1366,14 @@ public class ValenceConnect : PluginBase
         void Add(ValenceCatalog.RoleLocator r)
         {
             if (r == null) return;
-            if (r.ChannelId == ValenceWire.ChSafety || r.ChannelId == ValenceWire.ChMotion) return; // already wished
+            if (r.ChannelId == ValenceWire.ChSafety) return; // already wished in HELLO
             if (!set.Contains(r.ChannelId)) set.Add(r.ChannelId);
         }
         Add(_roleWindowMin); Add(_roleWindowMax);
         Add(_roleInputSpeed); Add(_roleInputAccel); Add(_roleInputJerk);
-        // The rail's roles. On this firmware position/target/velocity live on
-        // `motion` (0x0080), which HELLO already wished — Add() skips it — so
-        // the rail costs no extra subscription. The travel roles usually share
-        // the limits channel for the same reason.
+        // The rail's roles. position/target/velocity usually share one motion
+        // channel and the travel roles usually share the limits channel, so the
+        // rail costs at most one extra subscription.
         Add(_rolePosition); Add(_roleTarget); Add(_roleVelocity);
         Add(_roleMaxTravel); Add(_roleMeasuredTravel);
         return set;
@@ -1510,16 +1518,26 @@ public class ValenceConnect : PluginBase
         catch (Exception ex) { Logger.Debug(ex, "CATALOG_READY re-declare failed"); }
     }
 
-    // ---- Home (INTENT 0x0103 op 1) ------------------------------------------
+    // ---- Home (INTENT on the action.home locator) ---------------------------
+    // Channel, key and op value all come from the catalog: the field whose role
+    // is action.home, and the index of its "home" option label.
     public void OnHomeClick()
     {
         if (_client == null) { HomeStatus = "not connected"; return; }
+        var home = _actionHome;
+        if (home == null) { HomeStatus = "home not advertised by this hub"; return; }
+        if (home.OpFor(ValenceWire.HomeOpLabel) is not long op)
+        {
+            HomeStatus = "home op not labeled by this hub";
+            return;
+        }
         _homeIntentId = System.Threading.Interlocked.Increment(ref _intentSeqCounter);
         _homePending = true;
         HomeStatus = "homing requested…";
-        _intentQueue.Enqueue(new PendingIntent(ValenceWire.ChHome, _homeIntentId,
-            new (int, byte[])[] { (1, ValenceWire.CborUInt(ValenceWire.HomeOpHome)) }));
-        Logger.Info("HOME intent queued (intent_id={0})", _homeIntentId);
+        _intentQueue.Enqueue(new PendingIntent(home.ChannelId, _homeIntentId,
+            new (int, byte[])[] { (home.Key, ValenceWire.CborUInt(op)) }));
+        Logger.Info("HOME intent queued (channel=0x{0:X4} key={1} op={2} intent_id={3})",
+            home.ChannelId, home.Key, op, _homeIntentId);
     }
 
     // ---- Stroke window (INTENT on the role's paired settingChannel) ---------
@@ -3204,9 +3222,9 @@ public static class ValenceWire
     public const string RoleLimitUserAccel = "limit.user.accel";
     public const string RoleWindowMin = "window.min";
     public const string RoleWindowMax = "window.max";
-    // Live carriage telemetry + rail extent, for the rail readout. All already
-    // on `motion` (0x0080) / the limits channel this session subscribes to, so
-    // locating them adds no SUBSCRIBE and no wire traffic.
+    // Live carriage telemetry + rail extent, for the rail readout. The channel
+    // carrying telemetry.position is subscribed at MotionStateRateHz; the
+    // others usually share it or the limits channel.
     public const string RoleTelemetryPosition = "telemetry.position";
     public const string RoleTelemetryTarget = "telemetry.target";
     public const string RoleTelemetryVelocity = "telemetry.velocity";
@@ -3217,22 +3235,26 @@ public static class ValenceWire
     public const string RoleGeometryMaxTravel = "geometry.max_travel";
     public const string RoleGeometryMeasuredTravel = "geometry.measured_travel";
 
-    // ---- Device channel ids (include/comms/ValenceCatalog.h) ---------------
+    // `action.<name>` (SPEC §9.3, registry action_tags): an INTENT schema field
+    // that is a verb. Located with ValenceCatalog.LocateAction.
+    public const string RoleActionPrefix = "action.";
+    public const string RoleActionHome = "action.home";
+
+    // The ONLY home op this client sends, found by its option LABEL because op
+    // values are device-defined. force_home CLEARS the e-stop latch and
+    // clear_override drops the homing override: neither is a thing a media
+    // player may do, so never send them from here.
+    public const string HomeOpLabel = "home";
+
+    // ---- Device channel ids --------------------------------------------------
     // NOTE the asymmetry, and it is deliberate: the PUBLISH channels below are
     // this client's compiled-in wire contract (it WRITES those layouts, §8.5
-    // static profile). The channels it READS — limits, window — are NOT
-    // hardcoded anywhere; they are located by field ROLE in the fetched
-    // catalog (see ValenceCatalog.LocateRole). 0x0081 appears nowhere in this file.
+    // static profile). Every channel it READS or sends an operator verb on is
+    // located in the fetched catalog by field role (LocateRole / LocateAction)
+    // and never hardcoded here.
     public const ushort ChSafety = 0x0003;        // channels.safety (STATE, critical)
-    public const ushort ChMotion = 0x0080;        // ch::motion (STATE)
     public const ushort ChMotionInput = 0x2100;   // ch::motion_input (STREAM·motion·00, ≤333 Hz; was 0x0084, RFC-047)
     public const ushort ChMotionSegment = 0x2101; // ch::motion_segment (STREAM·motion·01, ≤50 Hz, timed segments; was 0x0085, RFC-047)
-    public const ushort ChHome = 0x0103;          // ch::home (INTENT, control)
-
-    // 0x0103 `op` (registry home ops). 1 = home; 2 force_home CLEARS the e-stop
-    // latch and 3 clears the override — neither is a thing a media player
-    // should be able to do, so only `home` is exposed.
-    public const int HomeOpHome = 1;
 
     // §0x2101 sentinel: "no end velocity" (INT16_MIN). 0 is a real slope.
     public const short SegmentEndVelSentinel = short.MinValue;   // -32768
@@ -3885,8 +3907,31 @@ public sealed class ValenceCatalog
         public bool Writable => SettingChannel.HasValue && SettingKey.HasValue;
     }
 
+    /// <summary>An `action.&lt;name&gt;` schema field (SPEC §9.3): the INTENT
+    /// channel and key that carry the verb, plus the option labels that name
+    /// its device-defined op values (wire value = array index).</summary>
+    public sealed class ActionLocator
+    {
+        public string Role;
+        public ushort ChannelId;              // the INTENT channel carrying it
+        public int Key;                       // key within that INTENT's `value` map
+        public IReadOnlyList<string> Options; // null when the hub sent no labels
+
+        /// <summary>The op value whose label is <paramref name="label"/>, or null
+        /// when the hub does not name one. Op values are device-defined, so an
+        /// unlabeled op is never guessed.</summary>
+        public long? OpFor(string label)
+        {
+            if (Options == null) return null;
+            for (int i = 0; i < Options.Count; i++)
+                if (string.Equals(Options[i], label, StringComparison.Ordinal)) return i;
+            return null;
+        }
+    }
+
     private readonly Dictionary<ushort, Entry> _entries = new();
     private readonly Dictionary<string, RoleLocator> _roles = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ActionLocator> _actions = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<ushort, Entry> Entries => _entries;
     public int RoleCount => _roles.Count;
@@ -3897,6 +3942,10 @@ public sealed class ValenceCatalog
     /// does not advertise it. Null is a first-class answer — the caller shows
     /// "not advertised", never a guessed channel number.</summary>
     public RoleLocator LocateRole(string role) => _roles.TryGetValue(role, out var r) ? r : null;
+
+    /// <summary>Locate an `action.&lt;name&gt;` INTENT field on THIS hub, or null
+    /// when the hub does not advertise it.</summary>
+    public ActionLocator LocateAction(string role) => _actions.TryGetValue(role, out var a) ? a : null;
 
     /// <summary>Decode a catalog blob (array of channel entries). Returns null
     /// on anything undecodable — the caller treats that as "no decoder ring",
@@ -3957,9 +4006,24 @@ public sealed class ValenceCatalog
             {
                 foreach (var kv in sm)
                 {
-                    if (kv.Value is Dictionary<long, object> sf &&
-                        sf.TryGetValue(ValenceWire.CatFType, out var ty))
+                    if (kv.Value is not Dictionary<long, object> sf) continue;
+                    if (sf.TryGetValue(ValenceWire.CatFType, out var ty))
                         e.SchemaTypes[(int)kv.Key] = (int)Convert.ToInt64(ty);
+
+                    // First declaration of an action role wins, same rule as the
+                    // layout roles below.
+                    if (sf.TryGetValue(ValenceWire.CatFRole, out var ar) &&
+                        ar is string role && role.StartsWith(ValenceWire.RoleActionPrefix, StringComparison.Ordinal) &&
+                        !cat._actions.ContainsKey(role))
+                    {
+                        List<string> options = null;
+                        if (sf.TryGetValue(ValenceWire.CatFOptions, out var op) && op is List<object> ol)
+                            options = ol.ConvertAll(o => o as string ?? "");
+                        cat._actions[role] = new ActionLocator
+                        {
+                            Role = role, ChannelId = e.Id, Key = (int)kv.Key, Options = options,
+                        };
+                    }
                 }
             }
 

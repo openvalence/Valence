@@ -123,7 +123,7 @@
     </plugin:PluginViewBase.Style>
 
     <!-- Toolbar: every mid-session operator action, where the hand already is.
-         Home is INTENT 0x0103 op 1; the mode button RE-NEGOTIATES the session
+         Home is the catalog's action.home INTENT; the mode button RE-NEGOTIATES the session
          (see OnToggleModeClick - stream mode is settled in HELLO and cannot be
          changed on a live one). -->
     <plugin:PluginViewBase.ToolBarContent>
@@ -152,7 +152,7 @@
                     Padding="8"
                     Click="{s:Action OnHomeClick}"
                     IsEnabled="{Binding IsConnected}"
-                    ToolTip="Home the machine (Valence INTENT 0x0103, op 1)">
+                    ToolTip="Home the machine (the hub's action.home INTENT)">
                 <material:PackIcon Kind="HomeImportOutline" Width="19" Height="19"/>
             </Button>
             <!-- The icon IS the mode: a bezier curve for Segments (the machine

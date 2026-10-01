@@ -56,7 +56,7 @@ live device wire test) and must **not** be copied into the Plugins folder.
 Laid out by what you actually touch mid-session. Everything set-once lives behind a
 toolbar button, so the panel costs about half the height it used to.
 
-**Toolbar** — connect/disconnect (▶/■), **Home** (INTENT `0x0103` op 1), the **mode
+**Toolbar** — connect/disconnect (▶/■), **Home** (the `action.home` INTENT, `home` op), the **mode
 toggle**, **limits**, and **setup**. The mode button's icon *is* the mode: a **bezier
 curve** for Segments (the machine renders the sender's own continuous waveform per
 stroke) and a **staircase** for Samples (discrete position points at a fixed rate).
@@ -201,9 +201,10 @@ All of this mirrors `tools/valence_probe.py` and `spec/SPEC.md`.
      (`chunks` key 27) on the 500 ms gap cadence.
 
    `CATALOG_REQ`/`CATALOG_CHUNK` (`0x09`/`0x0A`) are **retired and their numbers burned**.
-3. **SUBSCRIBE** — `safety` (`0x0003`) and `motion` (`0x0080`) already rode in HELLO. What
-   is left is the channel this hub happens to carry the **kinematic field roles** on,
-   which is only knowable once the catalog is decoded — see *Machine limits readback*.
+3. **SUBSCRIBE** — `safety` (`0x0003`) already rode in HELLO. What is left is the
+   channels this hub happens to carry the **telemetry and kinematic field roles** on,
+   which are only knowable once the catalog is decoded — see *Machine limits readback*.
+   The `telemetry.position` channel is subscribed at a rate, elevated priority.
 4. **CLOCK sync** (§7.1) — a few `0x05` exchanges; keeps the best-RTT offset. All STREAM
    timestamps are **hub time**, so the plugin converts local µs → hub µs using this offset,
    and re-syncs every ~10 s (drift between syncs is taken from a monotonic `Stopwatch`).
@@ -239,8 +240,11 @@ All of this mirrors `tools/valence_probe.py` and `spec/SPEC.md`.
    `0x18`, CATALOG_READY `0x19`, BLOB_REQ `0x1A`, BLOB_CHUNK `0x1B`, AUTH `0x1C`,
    HUB_SIG `0x1D`) are named and tolerated; anything else is unknown-means-ignore.
    Malformed frames are logged and skipped, never fatal.
-7. **Operator INTENTs** — the Home button sends `0x0103 {1: 1}`; the stroke-window editor
-   sends the role-resolved config INTENT (`0x0101 {1: min, 2: max}` on this device).
+7. **Operator INTENTs** — the Home button sends the catalog field whose role is
+   `action.home`, with the op value whose option label is `home` (`0x3101 {1: 1}` on
+   Nucleus). A hub that does not advertise or label it gets no frame and the status says
+   so. `force_home` and `clear_override` are never sent from this plugin: the first clears
+   the e-stop latch. The stroke-window editor sends the role-resolved config INTENT.
    Both are queued by the UI thread and sent by the connection task, which owns the
    socket. **`header.seq` is set to `intent_id`** — the hub stamps a NACK's `intent_seq`
    from the *inbound frame header's* seq, so making the two the same number is what turns
@@ -255,9 +259,8 @@ accel and jerk ceilings, and the rail's live position. It finds them the RFC-006
 by scanning the fetched catalog for the registry `field_roles` values `window.min`,
 `window.max`, `limit.input.speed`, `limit.input.accel`, `limit.input.jerk`,
 `telemetry.position`, `telemetry.target`, `telemetry.velocity`, `geometry.max_travel`,
-`geometry.measured_travel` — and *only* those. The rail's roles cost **no extra
-subscription**: on this firmware position/target/velocity live on `motion` (`0x0080`),
-which already rides in HELLO. `geometry.measured_travel` is preferred over
+`geometry.measured_travel` — and *only* those. The rail's roles usually share one motion
+channel, subscribed at a rate because it carries a moving value. `geometry.measured_travel` is preferred over
 `geometry.max_travel` for the rail's length because it is what a real home measured, and
 a zero there is treated as "no home yet", never as a measurement. The
 channel number appears nowhere in the plugin source. On this firmware they resolve to
@@ -295,12 +298,12 @@ processing). The limits are shown to the operator. Full stop.
 - **BLOB_CHUNK raw header (14 B, LE):** `ns u8 | store_id u8 | slot u8 | reserved u8 |
   generation u16 | chunk_index u16 | chunk_count u16 | total_bytes u32`. The reserved
   byte is ignored, never validated.
-- **Channels:** safety `0x0003` (9 B since the `modes` byte was appended), motion `0x0080`,
+- **Channels:** safety `0x0003` (9 B since the `modes` byte was appended),
   motion-input `0x2100` (STREAM·motion·00, STREAM c2h, ≤333 Hz; was `0x0084` pre-RFC-047),
   motion-segment `0x2101` (STREAM·motion·01, STREAM c2h,
-  ≤50 Hz, 6-byte `{target u16, duration_ms u16, end_vel i16}`; was `0x0085`), home `0x0103` (INTENT,
-  op 1 = home). The **config** channel and the **limits/window** STATE channel are NOT
-  listed here on purpose — they are resolved from catalog field roles at runtime.
+  ≤50 Hz, 6-byte `{target u16, duration_ms u16, end_vel i16}`; was `0x0085`). The **motion**, **home**, **config** and
+  **limits/window** channels are NOT listed here on purpose: they are resolved from
+  catalog field roles at runtime.
 - **CBOR profile:** deterministic (§5.3) — definite lengths, shortest-form ints,
   float32-only (`0xFA` + big-endian binary32), map keys ascending.
 

@@ -176,19 +176,19 @@ internal static class LiveWireTest
 
         var client = new HubClient(ws, instanceId, Log);
 
-        // §6.2 subscription wishes ride in HELLO now (RFC-006). This is the
-        // byte shape WireSelfTest's HELLO goldens pin.
+        // §6.2 subscription wishes ride in HELLO (RFC-006). Only safety has a
+        // portable number; the motion channel is role-resolved after the
+        // catalog lands, the same way the plugin does it.
         var subWishes = new (ushort ch, double rate, byte prio)[]
         {
             (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical),
-            (ValenceWire.ChMotion, 20.0, ValenceWire.PriorityElevated),
         };
 
         WelcomeInfo welcome;
         double segGranted = double.NaN;
         if (segments)
         {
-            Console.WriteLine("[hello] subs safety+motion; wishing publish on motion-input (0x2100) @ 50 Hz AND motion-segment (0x2101) @ 10 Hz...");
+            Console.WriteLine("[hello] subs safety; wishing publish on motion-input (0x2100) @ 50 Hz AND motion-segment (0x2101) @ 10 Hz...");
             welcome = await client.HelloAsync("mfp", "LiveWireTest",
                 new (ushort ch, double rate)[] { (ValenceWire.ChMotionInput, 50.0), (ValenceWire.ChMotionSegment, 10.0) },
                 token16, token, subWishes);
@@ -196,7 +196,7 @@ internal static class LiveWireTest
         }
         else
         {
-            Console.WriteLine("[hello] subs safety+motion; wishing publish on motion-input (0x2100) @ 50 Hz...");
+            Console.WriteLine("[hello] subs safety; wishing publish on motion-input (0x2100) @ 50 Hz...");
             welcome = await client.HelloAsync("mfp", "LiveWireTest",
                 new (ushort ch, double rate)[] { (ValenceWire.ChMotionInput, 50.0) },
                 token16, token, subWishes);
@@ -256,15 +256,22 @@ internal static class LiveWireTest
         int rolesFound = locators.Count;
         Console.WriteLine();
 
-        // Mid-session SUBSCRIBE to whatever channel(s) those roles landed on.
+        // Mid-session SUBSCRIBE to whatever channel(s) those roles landed on,
+        // plus the telemetry.position channel at 20 Hz elevated.
         var roleChannels = new List<ushort>();
         foreach (var loc in locators.Values)
-            if (loc.ChannelId != ValenceWire.ChSafety && loc.ChannelId != ValenceWire.ChMotion && !roleChannels.Contains(loc.ChannelId))
+            if (loc.ChannelId != ValenceWire.ChSafety && !roleChannels.Contains(loc.ChannelId))
                 roleChannels.Add(loc.ChannelId);
+        ushort? motionChannel = catalog?.LocateRole(ValenceWire.RoleTelemetryPosition)?.ChannelId;
+        if (motionChannel is ushort mc && mc != ValenceWire.ChSafety && !roleChannels.Contains(mc))
+            roleChannels.Add(mc);
         if (roleChannels.Count > 0)
         {
-            Console.WriteLine($"[subscribe] role-located channel(s): {string.Join(", ", roleChannels.ConvertAll(c => $"0x{c:X4}"))} (on-change, normal)");
-            await client.SubscribeAsync(roleChannels.ConvertAll(c => (c, 0.0, ValenceWire.PriorityNormal)), token);
+            Console.WriteLine($"[subscribe] role-located channel(s): {string.Join(", ", roleChannels.ConvertAll(c => $"0x{c:X4}"))}"
+                + (motionChannel.HasValue ? $" (0x{motionChannel:X4} @ 20 Hz elevated, rest on-change normal)" : " (on-change, normal)"));
+            await client.SubscribeAsync(roleChannels.ConvertAll(c => c == motionChannel
+                ? (c, 20.0, ValenceWire.PriorityElevated)
+                : (c, 0.0, ValenceWire.PriorityNormal)), token);
         }
 
         int nackCount = 0;
@@ -634,8 +641,8 @@ internal static class LiveWireTest
 
         // The plugin's own Segments HELLO: both wishes, RFC-013 burst, RFC-030
         // family, and the safety subscription. The motion STATE subscription is
-        // role-resolved below rather than wished here, because this hub's
-        // motion channel is not the number ChMotion holds.
+        // role-resolved below rather than wished here: no motion channel
+        // number is portable.
         var welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
             new (ushort ch, double rate, double burst, byte curveFamily)[]
             {
