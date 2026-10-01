@@ -4311,7 +4311,8 @@ say exactly which, future-us will want the receipts.*
 ## RFC-064 -- Index-0 filler applies to op selects only
 
 - **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-8pk).
+  pending (rfc-8pk). Open question 2 (the archetype hint, bead rfc-vdc)
+  is carried by [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role).
 - **Origin:** Phosphor ph-vdk.3, implementing generic select rendering from
   both documents at once.
 - **Problem -- the two documents contradict.** SPEC §8.9 (the paragraph
@@ -6310,3 +6311,80 @@ say exactly which, future-us will want the receipts.*
 - **Conformance impact.** None; the change removes a self-contradiction a
   reader could otherwise cite either way.
 - **Open questions.** None.
+
+## RFC-083 -- The archetype hint is struck; `color` and `datetime` bind by role
+
+- **Status:** DRAFT (spec contradiction bead rfc-vdc, 2026-10-01). Ruling
+  pending (rfc-vdc). Carries
+  [RFC-064](#rfc-064----index-0-filler-applies-to-op-selects-only) open
+  question 2. Two options are written out; option B is recommended. No wire
+  numbers under either.
+- **Origin:** board bead rfc-vdc (Phosphor ph-vdk.3 audit), recorded first
+  as RFC-064 open question 2.
+- **Problem -- RENDERING derives from an input SPEC forbids.**
+  1. RENDERING §8.2 row 1: "Explicit `archetype` annotation present -> that
+     archetype (override)". §8 intro: an optional explicit `archetype` hint
+     "exists for overrides only, and always wins". Rows 16 (`color`) and 17
+     (`datetime`) trigger only on an "explicit hint", and the note under the
+     table says row 4 (`pad2d`) "commonly" relies on it. §14(c) gives an
+     "unrecognized archetype hint" degradation rule.
+  2. SPEC §8.9 item 3: "choose the widget from **type + constraints, never
+     from a hint** -- there is no widget field, deliberately". SPEC §1.2
+     principle 7: "no widget hints, no layout, no ordering metadata, no
+     styling, ever". SPEC §19.1: "No widget hint ... is ever wire-visible".
+     `spec/schema/catalog.cddl` defines no archetype key and its
+     annotation-block banner repeats "no widget hints".
+  No hub can send the hint and no client can read it, so rows 16 and 17 can
+  never fire and `color` and `datetime` are unreachable archetypes, frozen
+  into the vocabulary (§14) with no path to them.
+- **Option A -- register the hint.** A new optional layout- and
+  schema-field key `archetype` (uint, a `ui_archetypes` id); §8.9 item 3,
+  §1.2 principle 7, §19.1 and the CDDL banner are amended to carve it out.
+  Cost: reverses a principle stated in four places, and every hub author
+  gains a styling knob the protocol was designed not to have; an archetype
+  chosen by firmware also collides with RFC-080's user presentation choice.
+- **Option B (recommended) -- strike row 1, trigger by role.**
+  1. **Row 1 is struck**, with the §8 intro clause ("an optional explicit
+     `archetype` hint exists for overrides only, and always wins") and the
+     §14(c) "unrecognized archetype hint" clause. SPEC is unchanged: it was
+     right.
+  2. **Row 4 (`pad2d`) is defined by identity**: two `command.position`
+     fields on one INTENT entry. The "commonly relies on the hint" note goes.
+  3. **Row 16 (`color`)** triggers on three writable numeric fields in one
+     `group` carrying the registered roles `color.red`, `color.green` and
+     `color.blue`. All three are essential (law 7); fewer fall through to the
+     fallback composition `slider` + `slider` + `slider` (§8.4), which is
+     what they render as today.
+  4. **Row 17 (`datetime`)** triggers on a writable field carrying the
+     registered role `datetime.moment` (a `u32` count of seconds since the
+     Unix epoch, UTC), or on two fields in one `group` carrying
+     `datetime.start` and `datetime.end` (an interval). A field without the
+     role renders as its type says (§8.2 rows 9 to 13), never as a date.
+  5. **Cardinality.** Like RFC-066's lane roles, `color.*` and `datetime.*`
+     repeat by construction (two lights, two schedules). They are exempt
+     from SPEC §8.8's per-catalog SHOULD and MUST appear at most once per
+     `group`; the §8.8 first-in-order tiebreak applies within a group.
+  6. **The note under the table** becomes: "Rows 4, 16 and 17 trigger on
+     registered roles, never on a hint; SPEC §8.9 item 3 holds for every
+     row."
+- **Wire impact.** Option B: none beyond role strings in adopting catalogs
+  (etag moves, T11). Option A: one new optional field key.
+- **Registry impact.** Option B: `field_roles` gains `color.red`,
+  `color.green`, `color.blue`, `datetime.moment`, `datetime.start`,
+  `datetime.end` (strings, nothing numeric), with a convention line making
+  them per-group; `ui_archetypes` 12 to 14 notes name their triggers. Option
+  A: the registry owner allocates the field key, and the catalog CDDL grows
+  it.
+- **Conformance impact.** Option B fixture: a `color` group with all three
+  roles (assert `color`), the same group missing `color.blue` (assert three
+  sliders), a `datetime.moment` field (assert `datetime`), and an unroled
+  `u32` named `start_time` (assert a numeric control, law 6). RENDERING §8.2
+  becomes implementable as written, which no client can claim today.
+- **Open questions.**
+  1. RGB only, or also an HSV role set? An HSV light could ship
+     `color.hue` / `color.saturation` / `color.value` as a second trigger
+     set; this draft registers RGB only, the shape the over-provisioned
+     lighting accessories (RENDERING §8.4 `color` note) would ship first.
+  2. `datetime.moment` presumes the hub has wall time; SPEC §18 item 12 (H7)
+     records that the reference hub does not. Is a schedule field on a hub
+     without a clock legal, or must such a hub omit it?
