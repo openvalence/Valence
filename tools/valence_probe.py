@@ -407,7 +407,12 @@ ANOMALY_KINDS = {
     7: "waveform_centered",
     8: "handoff_bounded",   # M4d / RFC-008 -- the hub-side handoff sanity guard
     9: "waveform_smoothed", # kinetic 0.8.0 -- the budgeted policies' own kind
+    10: "dwell_zeroed",
 }
+# ANOMALY_KINDS is index-aligned with the hub's own 0x4100 `kind` option labels
+# (catalog `options`, wire value = array index); check_anomaly_vocab() fails
+# the run when they disagree, because the 0x1111 struct width derives from it.
+#
 # 0x4100's `body` (40) sub-map keys — the CHANNEL'S OWN schema keys, which is
 # the whole v1.0 EVENT grammar: a device names its own event fields without a
 # registry PR. This channel is the first device-authored EVENT channel, so it
@@ -925,6 +930,28 @@ def decode_power(payload):
 # the count from ANOMALY_KINDS so the table and the struct cannot drift again.
 _N_KINDS = len(ANOMALY_KINDS)
 DIAG_STRUCT = struct.Struct("<IIIBB%dIIIfIIIIIH" % _N_KINDS)
+
+
+def check_anomaly_vocab(catalog_bytes):
+    """Compare ANOMALY_KINDS against the hub's 0x4100 `kind` option labels. A
+    mismatch means every 0x1111 field after the per-kind block decodes at the
+    wrong offset, so it is a FAIL, never a warning."""
+    entry = _catalog_entries(catalog_bytes).get(CH_MOTION_ANOMALY)
+    if entry is None:
+        skip("anomaly_vocab", "catalog does not declare motion-anomaly(0x4100) -- nothing to compare")
+        return
+    field = entry.get(CAT_E["schema"], {}).get(ANOM_BODY_K["kind"], {})
+    labels = field.get(CAT_F["options"])
+    if not labels:
+        skip("anomaly_vocab", "motion-anomaly(0x4100) `kind` carries no option labels")
+        return
+    ours = [ANOMALY_KINDS.get(i) for i in range(len(ANOMALY_KINDS))]
+    if list(labels) == ours:
+        ok("anomaly_vocab", "probe anomaly table matches the hub's %d `kind` labels" % len(labels))
+    else:
+        bad("anomaly_vocab", "probe ANOMALY_KINDS %r disagrees with the hub's 0x4100 `kind` "
+            "labels %r -- kinetic-diag(0x1111) decodes are misaligned until it is updated"
+            % (ours, list(labels)))
 
 
 def decode_motion_diag(payload):
@@ -1810,6 +1837,7 @@ def _run_session(ws, args):
     # each choice, and human text to show the operator.
     scene("Step 2.95: RFC-009 catalog annotations (generic-client rendering)")
     check_catalog_annotations(catalog_bytes)
+    check_anomaly_vocab(catalog_bytes)
 
     # ---- Step 3: SUBSCRIBE / GRANT -----------------------------------------
     scene("Step 3: SUBSCRIBE safety + motion + the M5a telemetry channels")
