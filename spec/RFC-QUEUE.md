@@ -4430,7 +4430,10 @@ say exactly which, future-us will want the receipts.*
 ## RFC-066 -- Advanced-generator lanes are catalog-declared instances
 
 - **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-0sm).
+  pending (rfc-0sm). Item 3 is the resolution of spec contradiction bead
+  rfc-oy6 (SPEC §8.8 per-catalog role cardinality vs one lane role per
+  lane); items 1-2 resolve the lane half of rfc-bf4, whose master half is
+  [RFC-081](#rfc-081----advanced-generator-master-roles).
 - **Origin:** Phosphor ph-vdk.11. Building the REQUIRED `generator-advanced`
   pattern (RENDERING §10) against the reference hub, whose shape disagrees
   with the spec's.
