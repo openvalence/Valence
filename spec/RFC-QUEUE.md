@@ -2936,7 +2936,12 @@ with machine-checkable `fallback:` compositions, `ui_regions` 5,
 `axis-hero`/`pattern-panel`/`generator-advanced`) plus `identity_keys.5
 hub_instance_id`. None of the eleven are wired onto a real catalog entry in
 this landing — SPEC §18-23 records that plainly; wiring them is the next
-catalog-evolution phase. **The hub-identity fix (operator veto of an [RFC-046](#rfc-046--ble-primary-discovery-udp-probe-and-reply-and-cross-transport-migration)
+catalog-evolution phase. *(Receipt 2026-10-01, rfc-6au: that phase has
+happened. The reference catalog, Nucleus
+`flagship_p4/src/hub/ValenceCatalog.h`, emits entry `category`/`rank` and
+field `rank`/`unit_id`/`aspect`/`scope`/`provenance`; SPEC §18-23 is the
+current record and [RFC-082](#rfc-082----one-home-for-the-rendering-wiring-state)
+corrects §19.1, which still repeats the landing-time sentence.)* **The hub-identity fix (operator veto of an [RFC-046](#rfc-046--ble-primary-discovery-udp-probe-and-reply-and-cross-transport-migration)
 decision, landed same batch):** `identity_keys` gains `5: hub_instance_id`
 (u64, durable, NVS-persisted, generated once) and DISCOVER_REPLY (`0x1F`,
 §13.8) is corrected to carry `hub_instance_id:u64` in place of its original
@@ -6252,3 +6257,40 @@ say exactly which, future-us will want the receipts.*
      RFC-066's naming once its open question 3 settles.
   2. Should a lane name its base control by role (lane `ctrl`, RFC-066 open
      question 1), now that the bases have roles to point at?
+
+## RFC-082 -- One home for the rendering wiring state
+
+- **Status:** DRAFT (spec contradiction bead rfc-6au, 2026-10-01). Ruling
+  pending (rfc-6au). Editorial: no wire, registry or conformance change.
+- **Origin:** board bead rfc-6au. Verified against the reference catalog,
+  Nucleus `flagship_p4/src/hub/ValenceCatalog.h` (the `.hasCategory`,
+  `.hasRank`, `.hasUnitId` and value-axis annotations on its entries and
+  fields), 2026-10-01.
+- **Problem -- SPEC says both things.**
+  1. SPEC §19.1, last sentence: "Nothing in RENDERING.md is wired onto a real
+     catalog entry as of this landing -- §18-23 records that plainly."
+  2. SPEC §18 item 23: "RENDERING.md's vocabulary is now wired onto the
+     reference catalog".
+  Item 23 is current; §19.1 froze the RFC-048 landing-time state into
+  normative prose (Canon C-2: status is not prose). The
+  [RFC-048](#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law)
+  Status line said the same and carries a dated receipt as of this entry.
+  Item 23 has gone stale in its own pointers: it cites
+  `include/comms/ValenceCatalog.h` and `webui/src`, which are paths in the
+  archived S3-era firmware, not in Nucleus or Phosphor.
+- **Proposed change.**
+  1. **§19.1's last sentence is replaced** by: "Whether a reference catalog
+     and a reference client carry RENDERING.md's vocabulary is recorded in
+     §18 item 23 and nowhere else." The section keeps no state of its own.
+  2. **§18 item 23's pointers are refreshed** at landing: the catalog file
+     becomes Nucleus `flagship_p4/src/hub/ValenceCatalog.h` and the
+     annotation counts are re-measured there (the 113 desc / 44 role figures
+     were counted on the archived catalog). Its client half ("no reference
+     client yet renders from it", `webui/src`) is re-stamped against
+     Phosphor, the reference renderer named by RENDERING §13, by whoever
+     lands this; this draft does not assert Phosphor's coverage.
+- **Wire impact.** None.
+- **Registry impact.** None.
+- **Conformance impact.** None; the change removes a self-contradiction a
+  reader could otherwise cite either way.
+- **Open questions.** None.
