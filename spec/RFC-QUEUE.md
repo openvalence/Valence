@@ -5929,7 +5929,7 @@ say exactly which, future-us will want the receipts.*
   `configure`, and the catalog exposes a setup category that a client renders
   generically, with the wizard pattern as polish.
   **CANON FLAG, for the hardware repo to resolve (this RFC does not):**
-  `hardware/flagship/SPEC.md` (decision row 2026-09-23) reads "SW2 PAIR (hold
+  `Hardware/flagship/SPEC.md` (decision row 2026-09-23) reads "SW2 PAIR (hold
   = pair, **held at power-on = AP config mode**, press TBD)". "AP config
   mode" means a softAP, which tonight's ruling forbids. This entry is written
   against the 2026-09-26 ruling (BLE only, no softAP); the Flagship SPEC row
@@ -6170,3 +6170,82 @@ say exactly which, future-us will want the receipts.*
      (undecided in the rulings)?
   4. Should a display-only instance of a writable field render its pending
      writes from elsewhere (the ladder), or only the settled applied value?
+
+## RFC-081 -- Advanced-generator master roles
+
+- **Status:** DRAFT (spec contradiction bead rfc-bf4, 2026-10-01). Ruling
+  pending (rfc-bf4). Completes
+  [RFC-066](#rfc-066----advanced-generator-lanes-are-catalog-declared-instances),
+  which binds the lanes and leaves the master controls as its open
+  question 2; this entry answers "separately" so the lane ruling is not held
+  on it, and folds into RFC-066 if the operator prefers one pass. No wire
+  numbers.
+- **Origin:** board bead rfc-bf4 (Phosphor ph-vdk.11 audit). Reference
+  shape: Nucleus `flagship_p4/src/hub/ValenceCatalog.h`, entry
+  `pattern-advanced` (0x1210), whose eight master fields (`ap_mode`,
+  `master`, `max_depth`, `min_depth`, `in_speed`, `out_speed`, `in_accel`,
+  `out_accel`) carry no `role`; its run/stop is the shared generator's
+  `pattern.running` on `pattern-state` (0x1200).
+- **Problem -- three normative texts cannot all hold.**
+  1. RENDERING §10 lists `generator-advanced` as **MUST** (handheld/full),
+     and the registry `widget_patterns` entry 10 carries `required: true`.
+  2. RENDERING §13 law 6: a conformant client "never pattern-matches a
+     channel or field *name*"; law 7: "Require **all** of a composite
+     widget's essential bindings, or decline entirely."
+  3. Registry `field_roles` has no role for any advanced-generator field.
+     SPEC §8.8 even records the inclusion test that "keeps device internals
+     out of `pattern.*`", and the advanced controls were kept out under it.
+  A client can bind the pattern only by name (violating law 6), or decline
+  it (violating the §10 MUST). RFC-066 removes the lane half of this; the
+  master half remains: the pattern's own essential bindings ("master
+  controls", RENDERING §10) have no identity.
+- **Proposed change.**
+  1. **Register the master role set** in `field_roles`, family `advgen.*`
+     (the advanced generator is a standardized capability interface,
+     RENDERING §2.2, so the §8.8 inclusion test is met by the interface
+     itself, not by any one firmware):
+     - `advgen.master`: overall rate scale of the advanced program, percent
+       of its own range;
+     - `advgen.depth_max`, `advgen.depth_min`: the deep and shallow stroke
+       bounds the program swings between, percent of the stroke window;
+     - `advgen.speed_in`, `advgen.speed_out`: inward and outward stroke speed
+       bases;
+     - `advgen.accel_in`, `advgen.accel_out`: inward and outward
+       acceleration bases;
+     - `advgen.mode`: bool, present only where the advanced program is a mode
+       of a generator that also plays the classic `pattern.select` set: true
+       = the generator plays the advanced program.
+     These are the six base controls RFC-066's lanes modulate, plus the
+     master scale and the mode switch.
+  2. **Run/stop is `pattern.running`.** The master run/stop RENDERING §10
+     names binds the `pattern.running` role. A hub offering an advanced
+     generator MUST carry `pattern.running` for it; `source.background_run`
+     co-locates with it per RENDERING §10.1 unchanged.
+  3. **Essential bindings (law 7).** `generator-advanced` binds only when
+     `pattern.running`, `advgen.master`, the six base roles, and RFC-066's
+     minimum of four complete lanes are all present. `advgen.mode` is
+     essential only when `pattern.select` is present. Anything less falls
+     through to `settings-card` (RENDERING §10), which is conformant.
+  4. **Cardinality unchanged.** Each `advgen.*` role appears once per
+     catalog; SPEC §8.8's SHOULD and first-in-catalog-order tiebreak apply
+     as written (contrast RFC-066 item 3, which exempts lane roles only).
+  5. **Text corrected.** RENDERING §2.2 "master state" and §10 "master
+     controls" gain "(the `advgen.*` roles plus `pattern.running`, RFC-081)";
+     the registry `widget_patterns` 10 note gains the same pointer.
+- **Wire impact.** None beyond role strings, which are catalog text: an
+  adopting hub's etag moves (T11). Reference cost: eight `role` strings on
+  0x1210, roughly 150 bytes, far inside `catalog_max_entry_bytes` (4096).
+- **Registry impact.** `field_roles` gains eight `advgen.*` strings (string
+  vocabulary, nothing numeric to allocate). `widget_patterns` 10 note text.
+  No number moves; codegen regenerates the role constants.
+- **Conformance impact.** Fixture: the RFC-066 six-lane catalog plus a
+  master entry carrying all eight roles and a `pattern-state` entry carrying
+  `pattern.running`; assert `generator-advanced` binds. Variants: drop
+  `advgen.depth_min` (assert decline to `settings-card`); rename every
+  master field (assert the binding survives, law 6). Nucleus follow-up on
+  its own board: eight role annotations on 0x1210.
+- **Open questions.**
+  1. Family name: `advgen.*` (short, unambiguous) versus folding into
+     RFC-066's naming once its open question 3 settles.
+  2. Should a lane name its base control by role (lane `ctrl`, RFC-066 open
+     question 1), now that the bases have roles to point at?
