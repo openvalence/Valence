@@ -485,6 +485,21 @@ def _catalog_has(catalog_bytes, channel_id):
     return channel_id in _catalog_entries(catalog_bytes)
 
 
+def _advertised(catalog_bytes, channel_id):
+    """SPEC §6.3: a feature exists iff its channels exist, so a device-channel
+    step runs only when the hub's catalog declares the channel. With no
+    decodable catalog (already a FAIL at step 2.9) every step runs, so that one
+    failure never hides the rest."""
+    entries = _catalog_entries(catalog_bytes)
+    return not entries or channel_id in entries
+
+
+def _absent(step, channel_id, name=None):
+    skip(step, "%s(0x%04X) is not in this hub's catalog -- feature absent, its absence IS "
+         "the capability answer (SPEC §6.3)"
+         % (name or CHANNEL_NAMES.get(channel_id, "channel"), channel_id))
+
+
 def check_catalog_annotations(catalog_bytes):
     """Walk the hub's own catalog the way a GENERIC settings client would, and
     report whether it could actually build a settings page from it.
@@ -1864,6 +1879,10 @@ def _run_session(ws, args):
     # failure, when it is the correct answer -- so the catalog decides, which
     # is RFC-016's "capability discovery IS catalog introspection" exercised
     # rather than described.
+    absent = [w for w in wishes if w[0] != CH_SAFETY and not _advertised(catalog_bytes, w[0])]
+    for ch, _rate, _prio in absent:
+        _absent("subscribe_%04x" % ch, ch)
+    wishes = [w for w in wishes if w not in absent]
     if _catalog_has(catalog_bytes, CH_POWER):
         wishes.append((CH_POWER, 2.0, PRIORITY["background"]))
         info("catalog declares power(0x1010) -- this hub measures its own bus; subscribing")
@@ -2060,7 +2079,10 @@ def _run_session(ws, args):
             "(\"hub MUST push retained value immediately upon grant\")")
 
     motion_in_window = [e for e in _state_log if e[1] == CH_MOTION and window_start <= e[0] < window_end]
-    if motion_in_window:
+    decoded = []
+    if not _advertised(catalog_bytes, CH_MOTION):
+        _absent("motion_state", CH_MOTION)
+    elif motion_in_window:
         decoded = []
         for t, _ch, _hdr, payload in motion_in_window:
             try:
@@ -2090,8 +2112,10 @@ def _run_session(ws, args):
 
     # (1) The pre-planning demand -- V1-READINESS called this "the most likely
     #     thing to be silently lost", so its absence is a FAILURE, not a note.
-    raw_seen = [d for _t, d in decoded if "raw_mm" in d] if motion_in_window and decoded else []
-    if raw_seen:
+    raw_seen = [d for _t, d in decoded if "raw_mm" in d]
+    if not _advertised(catalog_bytes, CH_MOTION):
+        _absent("motion_raw", CH_MOTION)
+    elif raw_seen:
         ok("motion_raw", "motion(0x1100) carries the appended raw_10um: raw=%.2fmm vs tgt=%.2fmm "
            "vs pos=%.2fmm -- asked / planned / achieved, in ONE frame with one timestamp"
            % (raw_seen[-1]["raw_mm"], raw_seen[-1]["tgt_mm"], raw_seen[-1]["pos_mm"]))
@@ -2103,7 +2127,9 @@ def _run_session(ws, args):
         return _last_state.get(ch)
 
     plan = _last(CH_PLAN_STRIP)
-    if plan is None:
+    if not _advertised(catalog_bytes, CH_PLAN_STRIP):
+        _absent("plan_strip", CH_PLAN_STRIP)
+    elif plan is None:
         bad("plan_strip", "plan-strip(0x1110) STATE never observed")
     else:
         try:
@@ -2116,7 +2142,9 @@ def _run_session(ws, args):
             bad("plan_strip", "plan-strip(0x1110) decode error: %s" % e)
 
     diag = _last(CH_MOTION_DIAG)
-    if diag is None:
+    if not _advertised(catalog_bytes, CH_MOTION_DIAG):
+        _absent("motion_diag", CH_MOTION_DIAG)
+    elif diag is None:
         bad("motion_diag", "kinetic-diag(0x1111) STATE never observed")
     else:
         try:
@@ -2139,7 +2167,9 @@ def _run_session(ws, args):
             bad("motion_diag", "kinetic-diag(0x1111) decode error: %s" % e)
 
     odo = _last(CH_ODOMETER)
-    if odo is None:
+    if not _advertised(catalog_bytes, CH_ODOMETER):
+        _absent("odometer", CH_ODOMETER)
+    elif odo is None:
         bad("odometer", "odometer(0x1020) STATE never observed")
     elif len(odo) < ODOMETER_STRUCT.size:
         bad("odometer", "odometer(0x1020) is %d bytes -- the appended energy_wh + session_ms "
@@ -2159,7 +2189,9 @@ def _run_session(ws, args):
     # with the machine grays the wrong control, and on this product a UI that
     # lies about machine state is a safety defect.
     cfg_snap, pat_snap = _last(CH_MACHINE_CONFIG), _last(CH_PATTERN_STATE)
-    if cfg_snap is None or len(cfg_snap) < 33:
+    if not _advertised(catalog_bytes, CH_MACHINE_CONFIG):
+        _absent("cfg_mask", CH_MACHINE_CONFIG)
+    elif cfg_snap is None or len(cfg_snap) < 33:
         bad("cfg_mask", "machine-config(0x1000) snapshot is %s -- the appended enabled_mask "
             "(33 B total) is missing"
             % ("absent" if cfg_snap is None else "%d bytes" % len(cfg_snap)))
@@ -2171,7 +2203,9 @@ def _run_session(ws, args):
         ok("cfg_mask", "machine-config(0x1000) enabled_mask=0x%02X (%d of 7 limit settings "
            "currently writable)" % (cfg_mask, bin(cfg_mask & 0x7F).count("1")))
 
-    if pat_snap is None or len(pat_snap) < 19:
+    if not _advertised(catalog_bytes, CH_PATTERN_STATE):
+        _absent("pattern_mask", CH_PATTERN_STATE)
+    elif pat_snap is None or len(pat_snap) < 19:
         bad("pattern_mask", "pattern-state(0x1200) snapshot is %s -- the appended enabled_mask "
             "(19 B total) is missing"
             % ("absent" if pat_snap is None else "%d bytes" % len(pat_snap)))
@@ -2219,6 +2253,8 @@ def _run_session(ws, args):
     scene("Step 5: move INTENT (0x3100)")
     if skip_intent:
         skip("intent", "move INTENT skipped (--no-motion/--listen-only)")
+    elif not _advertised(catalog_bytes, CH_MOVE_INTENT):
+        _absent("intent", CH_MOVE_INTENT, "move")
     else:
         motion_samples = [e for e in _state_log if e[1] == CH_MOTION]
         if motion_samples:
@@ -2425,6 +2461,11 @@ def _run_session(ws, args):
         reply, snap = _safety_op_roundtrip(ws, args, "override_on", 900)
         if reply is None:
             bad("safety_modes", "no ECHO/NACK for override_on within %.1fs" % args.timeout)
+        elif reply[0] == "NACK" and reply[1].get(K["code"]) == NACK_CODES_BY_NAME["UNSUPPORTED_OP"]:
+            # SPEC §11.1: a hub that does not implement a level MUST NACK
+            # UNSUPPORTED_OP and latch nothing; that NACK IS the discovery.
+            ok("safety_modes", "override_on NACKed UNSUPPORTED_OP -- this hub does not "
+               "implement override/bypass, and says so (SPEC §11.1)")
         elif reply[0] == "NACK":
             bad("safety_modes", "override_on NACKed: %s" % nack_name(reply[1].get(K["code"])))
         elif snap is None or "override" not in snap:
@@ -2498,6 +2539,8 @@ def _run_session(ws, args):
     if not args.bench_home:
         skip("bench_home", "bench home ops skipped (pass --bench-home; op 2 asserts an "
              "UNMEASURED stroke window and clears the e-stop latch)")
+    elif not _advertised(catalog_bytes, CH_HOME_INTENT):
+        _absent("bench_home", CH_HOME_INTENT, "home")
     else:
         payload = build_intent(CH_HOME_INTENT, 930, [(1, cb_uint(2)), (2, cb_f32(250.0))])
         send_frame(ws, FRAME["INTENT"], CH_HOME_INTENT, payload)
