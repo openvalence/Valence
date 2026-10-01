@@ -969,6 +969,26 @@ def check_anomaly_vocab(catalog_bytes):
             % (ours, list(labels)))
 
 
+def check_welcome_identity(welcome):
+    """SPEC §6.3: a hub SHOULD carry hub_instance_id (identity key 5) and
+    clients MUST tolerate its absence, so absence is a SKIP. Only a key 5 that
+    is present and malformed (not a u64, or 0, which a persisting hub never
+    sends) is a FAIL."""
+    identity_map = welcome.get(K["identity"])
+    if identity_map is not None and not isinstance(identity_map, dict):
+        bad("welcome_identity", "WELCOME identity(37) is not a map: %r" % (identity_map,))
+        return
+    hid = (identity_map or {}).get(IDENTITY_K["hub_instance_id"])
+    if hid is None:
+        skip("welcome_identity", "WELCOME carries no hub_instance_id (identity key 5) -- this hub "
+             "has no durable identity yet, which SPEC §6.3 says clients MUST tolerate")
+    elif isinstance(hid, bool) or not isinstance(hid, int) or not 0 < hid <= 0xFFFFFFFFFFFFFFFF:
+        bad("welcome_identity", "WELCOME hub_instance_id is present but malformed: %r "
+            "(must be a nonzero u64)" % (hid,))
+    else:
+        ok("welcome_identity", "WELCOME hub_instance_id=0x%016X (durable, cross-boot)" % hid)
+
+
 def decode_motion_diag(payload):
     if len(payload) < DIAG_STRUCT.size:
         raise ValueError("kinetic-diag(0x1111) payload too short: %d bytes (need >= %d)"
@@ -1658,9 +1678,9 @@ def _run_session(ws, args):
         # RFC-046/048 (Phase E): WELCOME's endpoint disclosure (ws_port/ipv4,
         # keys 46/47 -- load-bearing for a BLE-connected client's WS auto-
         # upgrade hop) and the hub's durable cross-boot identity (identity
-        # sub-map key 37, hub_instance_id = identity_keys 5). Absent is legal
-        # (a pre-Phase-E hub, or a hub with no durable identity yet) but on
-        # THIS device's WS binding both must be present and sane.
+        # sub-map key 37, hub_instance_id = identity_keys 5). The endpoint must
+        # be present on a WS binding; the durable identity is graded by
+        # check_welcome_identity().
         ws_port = w.get(K["ws_port"])
         ipv4 = w.get(K["ipv4"])
         if ws_port is None or ipv4 is None:
@@ -1671,14 +1691,7 @@ def _run_session(ws, args):
                                        (ipv4 >> 8) & 0xFF, ipv4 & 0xFF)
             ok("welcome_endpoint", "WELCOME ws_port=%d ipv4=0x%08X (%s)" % (ws_port, ipv4, ip_str))
 
-        identity_map = w.get(K["identity"])
-        hub_instance_id = identity_map.get(IDENTITY_K["hub_instance_id"]) if isinstance(identity_map, dict) else None
-        if hub_instance_id is None:
-            bad("welcome_identity", "WELCOME identity(37) missing hub_instance_id(identity_keys 5)")
-        elif hub_instance_id == 0:
-            bad("welcome_identity", "WELCOME hub_instance_id is 0 -- durable identity never generated")
-        else:
-            ok("welcome_identity", "WELCOME hub_instance_id=0x%016X (durable, cross-boot)" % hub_instance_id)
+        check_welcome_identity(w)
 
         if want_stream or want_segments:
             gp_list = w.get(K["granted_publishes"], [])
