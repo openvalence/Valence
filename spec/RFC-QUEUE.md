@@ -4234,7 +4234,12 @@ say exactly which, future-us will want the receipts.*
 ## RFC-063 -- A wire carrier for the `destructive` flag
 
 - **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-c5u).
+  pending (rfc-c5u). **Separable item (2026-10-01, spec contradiction
+  bead rfc-dmf):** item 6's pointer repair is editorial and MAY land
+  alone, ahead of the flag ruling: RENDERING §5.4's "(§8.7)" names a
+  section RENDERING does not have (§8 ends at §8.4), and §8.4 `trigger`
+  is the confirm contract that exists today. Landing it alone changes no
+  wire, registry or conformance text.
 - **Origin:** Phosphor ph-vdk.4 and ph-vdk.3. Building the confirm layer
   RENDERING requires, the reference client found that the flag it is told
   to confirm on cannot arrive.
