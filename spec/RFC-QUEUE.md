@@ -821,6 +821,14 @@ the copy a third-party implementer reads.
   property that offsets §9.4's no-replay rule — a late joiner learning existing
   sessions' names from a snapshot rather than from join events it missed — is
   specification, not shipped behavior. SPEC §18-17.
+  *(Receipt 2026-10-01, rfc-5qo: the registry drift is gone. `core_channels`
+  0x0002 carries `status: reserved` and a note saying "NOT implemented",
+  and has since this repo's first commit, so the "IMPLEMENTED at v1.0"
+  sentence above describes the pre-split registry. The undeclared channel
+  is still true: no catalog declares 0x0002, Nucleus
+  `flagship_p4/src/hub/ValenceCatalog.h` included. Building it is Nucleus
+  dev-board work; retiring 0x0002 instead before the tag would be a new
+  RFC.)*
 - **Origin:** `/api/clients` audit: the Health-tab roster/kick enumerates
   legacy :81 slots; spec reserves `session-roster` 0x0002 but this device
   never implemented it, and no evict intent exists anywhere
