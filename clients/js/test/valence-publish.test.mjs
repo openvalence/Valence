@@ -211,6 +211,14 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
     [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(25)], [K.channel_id, cbUint(0x2100)]])])]]));
   assert('unsolicited re-grant adopted', s.state.grantedPublishes.get(0x2100).rate === 25);
+  assert('no key 49 -> scheduleLatencyUs null', s.state.grantedPublishes.get(0x2100).scheduleLatencyUs === null);
+
+  // RFC-059: schedule_latency_us (49) rides the grant entry; a change is a re-GRANT.
+  ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(25)], [K.channel_id, cbUint(0x2100)],
+      [K.schedule_latency_us, cbUint(12500)]])])]]));
+  assert('GRANT schedule_latency_us -> grantedPublishes.scheduleLatencyUs',
+    s.state.grantedPublishes.get(0x2100).scheduleLatencyUs === 12500);
 
   s.close();
   refusal('after close', () => s.publishSamples(0x2100, one), PUBLISH_ERROR.NOT_LIVE);

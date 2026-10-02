@@ -93,7 +93,7 @@ import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody, schemaByKey,
-  optionAccessFor, canUseOption, encodePacked,
+  optionAccessFor, canUseOption, encodePacked, storeItemDigestOk,
 } from './catalog.js';
 import { catalogEtag, bytesEqual, toHex, fromHex } from './sha256.js';
 
@@ -340,7 +340,7 @@ export function createSession(opts = {}) {
     deadmanPolicy: null,
     limits: {},
     grants: new Map(), // channelId -> {rate, priority}
-    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily}
+    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily, scheduleLatencyUs}
     clockOffsetUs: 0,
     clockSynced: false, // a CLOCK reply has landed this session, so anchors mean something
   };
@@ -513,6 +513,10 @@ export function createSession(opts = {}) {
       burst: e.has(K.burst) ? e.get(K.burst) : null,
       curveFamily: e.has(K.curve_family) ? e.get(K.curve_family) : null,
       requestedCurveFamily: e.has(K.requested_curve_family) ? e.get(K.requested_curve_family) : null,
+      // RFC-059: the hub's committed delay from a sample's time to its execution
+      // (on samples kind, the chase-planning budget). Lead media by this; never
+      // hardcode it. null = unspecified (absent or 0).
+      scheduleLatencyUs: e.get(K.schedule_latency_us) || null,
     };
     state.grantedPublishes.set(ch, rec);
     // The hub rebuilds this channel's bucket full on every grant (session.hpp
@@ -790,9 +794,8 @@ export function createSession(opts = {}) {
    * @param {number} o.storeId the store descriptor's storeId (catalog entry `.store.storeId`)
    * @param {number} o.slot item index
    * @param {number} [o.generation] roster generation to send in the request
-   * @param {Uint8Array} [o.expectDigest] leading bytes of the item's SHA-256;
-   *   §8.7 advertises no per-item digest, so without this a whole reassembly
-   *   reports BLOB_DONE status 0 and a mismatch (status 1) is unreachable
+   * @param {Uint8Array} [o.expectDigest] leading bytes of the item's SHA-256,
+   *   checked in addition to the item's own RFC-073 `digest` when it carries one
    * @param {AbortSignal} [o.signal]
    * @returns {Promise<{ns:number,storeId:number,slot:number,generation:number,bytes:Uint8Array}>}
    */
@@ -889,6 +892,11 @@ export function createSession(opts = {}) {
     if (f.expectDigest && !bytesEqual(catalogEtag(bytes, f.expectDigest.length), f.expectDigest)) {
       finishFetch(f, BLOB_DONE_STATUS.HASH_MISMATCH, new BlobError(BLOB_ERROR.HASH_MISMATCH, f,
         'reassembled bytes do not match expectDigest', { generation: f.generation, bytes }));
+      return;
+    }
+    if (!storeItemDigestOk(bytes)) {
+      finishFetch(f, BLOB_DONE_STATUS.HASH_MISMATCH, new BlobError(BLOB_ERROR.HASH_MISMATCH, f,
+        'item payload does not match its RFC-073 digest', { generation: f.generation, bytes }));
       return;
     }
     finishFetch(f, BLOB_DONE_STATUS.VERIFIED_COMPLETE, null, { ...blobIdOf(f), bytes });

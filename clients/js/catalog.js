@@ -34,6 +34,7 @@ import {
   SETTING_FLAG,
   K, BLOB_K, BLOB_NS, LIMITS,
 } from './frames.js';
+import { catalogEtag, bytesEqual } from './sha256.js';
 
 // ============================================================================
 // BLOB_REQ payload builders (§8.4 / RFC-021)
@@ -253,6 +254,24 @@ export class BlobReassembler {
   assembled() { return this.buf.subarray(0, this.totalBytes); }
 }
 
+/**
+ * RFC-073 (§8.7): a store item is a blob_keys map whose optional `digest` (11)
+ * is SHA-256 over `payload` (7) alone. False only when a digest is present and
+ * disagrees, which is BLOB_DONE status 1; bytes that are not an item map (the
+ * trust ledger's own grammar, a device namespace) have nothing to check.
+ * @param {Uint8Array} bytes the reassembled item
+ * @returns {boolean}
+ */
+export function storeItemDigestOk(bytes) {
+  let m;
+  try { [m] = cbDecode(bytes, 0); } catch { return true; }
+  if (!(m instanceof Map)) return true;
+  const payload = m.get(BLOB_K.payload);
+  const digest = m.get(BLOB_K.digest);
+  if (!(payload instanceof Uint8Array) || !(digest instanceof Uint8Array)) return true;
+  return bytesEqual(catalogEtag(payload, digest.length), digest);
+}
+
 // ============================================================================
 // Catalog CBOR decode (catalog_codec.hpp / schema/catalog.cddl)
 // ============================================================================
@@ -265,15 +284,18 @@ export class BlobReassembler {
  *                  7:priority, ?8:[layout-field], ?9:{key=>schema-field},
  *                  ?10:category, ?11:category_label, ?12:store-descriptor,
  *                  ?13:replay_depth, ?14:setting_channel, ?15:stream_kind,
- *                  ?16:rank}
+ *                  ?16:rank, ?17:store_id, ?18:role, ?19:{event_kinds},
+ *                  ?20:[mod_target channel, field]}
  * layout-field = {1:name, 2:packedType, 3:unit, 4:scale f32, ?5:min, ?6:max,
  *                 ?7:{bits}, ?8:setting_key, ?9:default, ?10:[options],
  *                 ?11:group, ?12:desc, ?13:role, ?14:step, ?15:flags, ?18:size,
- *                 ?19:rank, ?20:aspect, ?21:scope, ?22:provenance, ?23:unit_id}
+ *                 ?19:rank, ?20:aspect, ?21:scope, ?22:provenance, ?23:unit_id,
+ *                 ?25:safe}
  * schema-field = {1:name, 2:cborType, 3:unit, ?5:min, ?6:max, ?9:default,
  *                 ?10:[options], ?11:group, ?12:desc, ?13:role, ?14:step,
  *                 ?15:flags, ?16:access, ?17:[option_access],
- *                 ?19:rank, ?20:aspect, ?21:scope, ?22:provenance, ?23:unit_id}
+ *                 ?19:rank, ?20:aspect, ?21:scope, ?22:provenance, ?23:unit_id,
+ *                 ?24:destructive_options, ?25:safe}
  *
  * Unknown keys are ignored per §4.3 — forward compatibility is mandatory.
  * @param {Uint8Array} bytes
@@ -334,6 +356,10 @@ function decodeEntry(m) {
     // channel may still hold a diagnostic field and vice versa.
     rank: UI_RANK.detail,
     rankName: UI_RANK_NAME[UI_RANK.detail],
+    storeId: null, // RFC-070: the STORE entry this roster/writer belongs to
+    role: null, // RFC-065: channel_roles string; may repeat across entries
+    eventKinds: null, // RFC-065: {event_kind: label}, EVENT class only
+    modTarget: null, // RFC-066: {channel, field} this modulator rides
   };
   if (m.has(8)) entry.layout = m.get(8).map(decodeLayoutField);
   if (m.has(9)) {
@@ -363,6 +389,13 @@ function decodeEntry(m) {
     entry.rank = r.code;
     entry.rankName = r.name;
   }
+  if (m.has(17)) entry.storeId = m.get(17);
+  if (m.has(18)) entry.role = m.get(18);
+  if (m.has(19)) entry.eventKinds = Object.fromEntries(m.get(19));
+  if (m.has(20)) {
+    const [channel, field] = m.get(20);
+    entry.modTarget = { channel, field };
+  }
   return entry;
 }
 
@@ -380,8 +413,10 @@ function decodeSharedAnnotations(fm, f) {
       advanced: (f.flags & SETTING_FLAG.advanced) !== 0,
       restart_required: (f.flags & SETTING_FLAG.restart_required) !== 0,
       secret: (f.flags & SETTING_FLAG.secret) !== 0,
+      destructive: (f.flags & SETTING_FLAG.destructive) !== 0,
     };
   }
+  if (fm.has(25)) f.safe = fm.get(25); // RFC-076: value in an accessory's safe state
   // ---- RFC-048 rendering metamodel, keys 19..23 ----------------------------
   //
   // Decoded UNCONDITIONALLY, with each vocabulary's absent-default, because a
@@ -462,6 +497,15 @@ function decodeSchemaField(key, fm) {
   // for wire value i. A client that reads this GRAYS the ops it cannot use
   // instead of discovering them by NACK (gray, never hide).
   if (fm.has(17)) f.optionAccess = fm.get(17);
+  // RFC-063: index-aligned with `options` like optionAccess (element i: option
+  // i is destructive), so no caller does 32-bit bitwise math on a 64-bit mask.
+  // A mask past 2^53 is not exact as a JS number, so every option counts as
+  // destructive: an extra confirm is safe, a missed one is not.
+  if (fm.has(24)) {
+    const mask = fm.get(24);
+    f.destructiveOptions = Array.from({ length: (f.options || []).length },
+      (_, i) => !Number.isSafeInteger(mask) || Math.floor(mask / 2 ** i) % 2 === 1);
+  }
   return f;
 }
 

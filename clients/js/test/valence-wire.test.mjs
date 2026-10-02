@@ -30,7 +30,7 @@ import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair,
   parseBlobChunk, BlobReassembler, BLOB_CHUNK_HEADER_BYTES,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody,
-  schemaByKey, optionAccessFor, canUseOption,
+  schemaByKey, optionAccessFor, canUseOption, storeItemDigestOk,
 } from '../catalog.js';
 import { sha256, catalogEtag, toHex, bytesEqual } from '../sha256.js';
 
@@ -442,6 +442,59 @@ const evtEntry = decodeCatalog(cbArray([cbMap([
 const body = decodeEventBody(new Map([[1, 5], [2, 42], [9, 'unknown']]), evtEntry);
 assert('EVENT body: schema field names resolved', body.kind === 5 && body.detail === 42);
 assert('EVENT body: unknown key kept, never dropped (§4.3)', body.key9 === 'unknown');
+
+// ---- RFC-063/065/066/070/076: catalog keys ruled 2026-10-01 -----------------
+// Entry keys 17-20, field keys 24-25 and the destructive flag, decoded into the
+// entry and field objects decodeCatalog already returns.
+{
+  const head = (id, name, cls, dir) => [[1, cbUint(id)], [2, cbTstr(name)], [3, cbUint(cls)], [4, cbUint(dir)],
+    [5, cbUint(ACCESS.watch)], [6, cbF32(0)], [7, cbUint(PRIORITY.normal)]];
+  const field = (name, extra = []) => cbMap([[1, cbTstr(name)], [2, cbUint(0)], [3, cbTstr('')], ...extra]);
+  const [roster, writer, events, mod] = decodeCatalog(cbArray([
+    cbMap([...head(0x0091, 'presets-roster', 0, 0),
+      [8, cbArray([cbMap([[1, cbTstr('generation')], [2, cbUint(PACKED.u16)], [3, cbTstr('')], [4, cbF32(1)],
+        [25, cbUint(0)]])])],
+      [17, cbUint(3)]]),
+    cbMap([...head(0x0092, 'presets-write', 2, 1),
+      [9, cbMap([
+        [1, field('op', [[10, cbArray(['none', 'save', 'load', 'delete', 'rename'].map(cbTstr))],
+          [13, cbTstr('action.store')], [24, cbUint(1 << 3)]])],
+        [2, field('wipe', [[15, cbUint(1 << 3)]])],
+      ])],
+      [17, cbUint(3)]]),
+    cbMap([...head(0x0093, 'anomalies', 3, 0), [9, cbMap([[1, field('count')]])],
+      [18, cbTstr('events.anomaly')], [19, cbMap([[1, cbTstr('clamped')], [3, cbTstr('fallback')]])]]),
+    cbMap([...head(0x0094, 'stroke-mod', 0, 0),
+      [8, cbArray([cbMap([[1, cbTstr('amount')], [2, cbUint(PACKED.u8)], [3, cbTstr('%')], [4, cbF32(1)]])])],
+      [20, cbArray([cbUint(0x0095), cbUint(1)])]]),
+  ]));
+  assert('store_id (17) on roster and writer', roster.storeId === 3 && writer.storeId === 3 && events.storeId === null);
+  assert('channel role (18)', events.role === 'events.anomaly' && roster.role === null);
+  assert('event_kinds (19) label by kind', events.eventKinds[1] === 'clamped' && events.eventKinds[3] === 'fallback' &&
+    events.eventKinds[2] === undefined && roster.eventKinds === null);
+  assert('mod_target (20)', mod.modTarget && mod.modTarget.channel === 0x0095 && mod.modTarget.field === 1 &&
+    roster.modTarget === null);
+  const op = writer.schema.find((f) => f.key === 1);
+  const wipe = writer.schema.find((f) => f.key === 2);
+  assert('destructive_options (24) index-aligned with options',
+    JSON.stringify(op.destructiveOptions) === JSON.stringify([false, false, false, true, false]));
+  assert('destructive flag bit3 -> flagBits.destructive', wipe.flagBits.destructive === true && wipe.destructiveOptions === undefined);
+  assert('safe (25) on a layout field', roster.layout[0].safe === 0 && mod.layout[0].safe === undefined);
+}
+
+// ---- RFC-073: a store item's digest picks BLOB_DONE status 0 or 1 -----------
+{
+  const payload = new Uint8Array([1, 2, 3, 4, 5]);
+  const item = (digest) => cbMap([[3, cbUint(7)], [5, cbTstr('warmup')], [6, cbTstr('pattern.frayd')],
+    [7, cbBstr(payload)], ...(digest ? [[11, cbBstr(digest)]] : [])]);
+  const good = sha256(payload);
+  const bad = good.slice();
+  bad[0] ^= 0xff;
+  assert('store item: matching digest verifies', storeItemDigestOk(item(good)) === true);
+  assert('store item: mismatched digest is status 1', storeItemDigestOk(item(bad)) === false);
+  assert('store item: no digest has nothing to check', storeItemDigestOk(item(null)) === true);
+  assert('store item: non-map bytes are not judged', storeItemDigestOk(new Uint8Array([0x01])) === true);
+}
 
 // ---- Golden fixture: the REAL catalog fetched from valencesim ------------------
 // Captured by Valence Drive's webui/test/valence-sim.mjs (machine repo, not
