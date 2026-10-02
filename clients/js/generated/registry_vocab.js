@@ -790,6 +790,20 @@ export const UNIT_ID_NAME = {
   25: 'hub_s',
 };
 
+// ---- store_ops -----------------------------------------------------
+export const STORE_OP = {
+  save: 1,  // capture current live state into the slot; a supplied `payload` makes it an import (§8.7)
+  load: 2,  // apply the slot; the resulting truth arrives on the ordinary STATE broadcasts
+  delete_item: 3,  // the `delete` verb (named `delete_item` only because the generated C++ constant would otherwise b
+  rename: 4,  // change the slot's item name (<= the store's name_max)
+};
+export const STORE_OP_NAME = {
+  1: 'save',
+  2: 'load',
+  3: 'delete_item',
+  4: 'rename',
+};
+
 // ---- ui_archetypes -------------------------------------------------
 export const UI_ARCHETYPE = {
   readout: 0,  // display of a value; bounds present -> bar/gauge projection
@@ -1000,8 +1014,7 @@ export const ACTION_TAG = {
   identify: 'identify',  // blink-to-find: every device ecosystem needs one
   admin: 'admin',  // a generic administrative action not covered by a more specific tag
   reboot: 'reboot',  // firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)
-  preset_save: 'preset_save',  // save-to-store, part of the generator-advanced preset roster
-  preset_recall: 'preset_recall',  // load-from-store, same roster
+  store: 'store',  // RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options bey
 };
 
 // ---- limits --------------------------------------------------------------

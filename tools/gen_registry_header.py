@@ -161,7 +161,8 @@ def gen(reg: dict) -> str:
                         ("value_aspects", "value_aspects"),
                         ("value_scopes", "value_scopes"),
                         ("value_provenance", "value_provenance"),
-                        ("unit_ids", "unit_ids")):
+                        ("unit_ids", "unit_ids"),
+                        ("store_ops", "store_ops")):
         p(f"namespace {ns} {{\n")
         for k in sorted(reg[section]):
             e = reg[section][k]
@@ -254,6 +255,7 @@ JS_CODE_TABLES = (
     ("VALUE_SCOPE",        "value_scopes",        True,  0),
     ("VALUE_PROVENANCE",   "value_provenance",    True,  0),
     ("UNIT_ID",            "unit_ids",            True,  0),
+    ("STORE_OP",           "store_ops",           True,  0),
     ("UI_ARCHETYPE",       "ui_archetypes",       True,  0),
     ("UI_REGION",          "ui_regions",          True,  0),
     ("RENDERER_CLASS",     "renderer_classes",    True,  0),

@@ -135,8 +135,18 @@ A conformant client MAY special-case the specific `action.<name>` suffixes below
 | `identify` | blink-to-find: every device ecosystem needs one |
 | `admin` | a generic administrative action not covered by a more specific tag |
 | `reboot` | firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms) |
-| `preset_save` | save-to-store, part of the generator-advanced preset roster |
-| `preset_recall` | load-from-store, same roster |
+| `store` | RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8). |
+
+## Store ops
+
+The wire values of an `action.store` op select (SPEC §8.7). Index 0 is op-select filler.
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `save` | capture current live state into the slot; a supplied `payload` makes it an import (§8.7) |
+| `2` | `load` | apply the slot; the resulting truth arrives on the ordinary STATE broadcasts |
+| `3` | `delete_item` | the `delete` verb (named `delete_item` only because the generated C++ constant would otherwise be a keyword; prose and catalog labels say 'delete'): remove the slot's item. Destructive by registration (§8.8): a client confirm-gates it without a flag |
+| `4` | `rename` | change the slot's item name (<= the store's name_max) |
 
 ## Archetypes
 
@@ -198,7 +208,7 @@ These are proven compositions extracted from the reference client. `Required` ma
 | `7` | `roster` | list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role honestly distinct from empty |  |
 | `8` | `protocol-pane` | the one deliberately device-aware diagnostic surface: wire ids visible by design |  |
 | `9` | `pattern-panel` | the standard generator surface: run/stop with live state, pattern selection as an exclusive-choice group, knob sliders for whichever optional roles exist, source.background_run co-located with run/stop | `yes` |
-| `10` | `generator-advanced` | the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via the store, source.background_run co-located with the master run/stop | `yes` |
+| `10` | `generator-advanced` | the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop | `yes` |
 | `11` | `transport` | playback: play/pause/seek/queue cluster for hubs that play content |  |
 | `12` | `wizard` | stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequential menu screens |  |
 

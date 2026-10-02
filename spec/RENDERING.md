@@ -215,7 +215,7 @@ Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not
 
 ## 7. Action tags *(normative)*
 
-`action_tags` names the specific verbs a client can recognize under the existing `action.<name>` field-role convention (SPEC §8.8) to upgrade a generic `trigger` (§8) into a purpose-specific rendering (icon, placement, confirm posture). An unregistered `action.<name>` suffix remains legal (SPEC §8.8's "nothing hardcoded as a requirement" doctrine is unchanged) — these are the ones a conformant client MAY special-case. **Frozen set, thirteen tags, v1.0:**
+`action_tags` names the specific verbs a client can recognize under the existing `action.<name>` field-role convention (SPEC §8.8) to upgrade a generic `trigger` (§8) into a purpose-specific rendering (icon, placement, confirm posture). An unregistered `action.<name>` suffix remains legal (SPEC §8.8's "nothing hardcoded as a requirement" doctrine is unchanged) — these are the ones a conformant client MAY special-case. **Frozen set, twelve tags, v1.0** (RFC-067 replaced `preset_save`/`preset_recall` with `store` before the tag)**:**
 
 | Tag | Typical rendering |
 |---|---|
@@ -230,8 +230,7 @@ Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not
 | `identify` | Blink-to-find (§2.2) — every device ecosystem needs one |
 | `admin` | A generic administrative action not covered by a more specific tag |
 | `reboot` | Firmware reboot; SHOULD always confirm (SPEC §9.3 `reboot_in_ms`) |
-| `preset_save` | Save-to-store, part of the `generator-advanced` preset roster (§10) |
-| `preset_recall` | Load-from-store, same roster |
+| `store` | The store CRUD op select (SPEC §8.7, RFC-067): one field whose `options` are index-aligned with `store_ops` (`save` 1, `load` 2, `delete` 3, `rename` 4; index 0 is op-select filler). It MUST NOT declare options beyond the registered ops; a device-specific store verb rides a separate `action.*` field. `delete` is destructive by registration (SPEC §8.8). The store's `kind`, not the tag, says what it holds |
 
 **Unknown-tag rule (MUST):** an unrecognized `action.<name>` suffix renders as a generic `trigger`/`control` per the derivation table (§8.2) — exactly the fallback an `action.*` field already gets today.
 
@@ -292,7 +291,7 @@ Rows 4, 16 and 17 trigger on registered roles, never on a hint; SPEC §8.9 item 
 | 3 | `stepper` | Precision numeric | *(primitive)* | Increments in `step`-sized ticks; typeable value on handheld/full. |
 | 4 | `toggle` | Boolean | *(primitive)* | |
 | 5 | `select` | Enum + options | *(primitive)* | Index-aligned. On an op select (SPEC §8.9) index 0 is filler and MUST NOT render as actionable; on every other select index 0 is a real value (RFC-064). |
-| 6 | `trigger` | Payload-less intent (button) | *(primitive)* | A destructive invocation (SPEC §8.8: the `destructive` flag, the invoked option's `destructive_options` bit, or role `action.reboot`/`action.reset`) ⇒ mandatory confirm, every class, no exception: the §8.3 primitive (long-press on `glance`, modal confirm otherwise) in the `overlay` region (§9), naming the op by its catalog label. Destructiveness is never inferred from labels, names or `desc`. |
+| 6 | `trigger` | Payload-less intent (button) | *(primitive)* | A destructive invocation (SPEC §8.8: the `destructive` flag, the invoked option's `destructive_options` bit, role `action.reboot`/`action.reset`, or op `delete` of `action.store`) ⇒ mandatory confirm, every class, no exception: the §8.3 primitive (long-press on `glance`, modal confirm otherwise) in the `overlay` region (§9), naming the op by its catalog label. Destructiveness is never inferred from labels, names or `desc`. |
 | 7 | `axis` | 1-D positional hero control | *(primitive)* | Commanded-vs-actual overlay is MANDATORY (`command.position` + `telemetry.target`/`telemetry.position`, never one alone); domain is the *reported* window. |
 | 8 | `chart` | Time-series | *(primitive)* | Glance degrades to sparkline/value; missing samples render as GAPS, never zeros. |
 | 9 | `list` | Roster/store items + item actions | *(primitive)* | Pending is a THIRD state, distinct from success/failure; locked-by-role is honestly distinct from empty. |
@@ -348,7 +347,7 @@ Proven compositions extracted from the reference client. Each recipe names its a
 | `roster` | no | `list` + item actions | `content` | pending is a THIRD state | Locked-by-role honestly distinct from empty. |
 | `protocol-pane` | no | the one deliberately device-aware diagnostic surface | `content`, `diagnostic` rank | | Wire ids visible **by design**. |
 | `pattern-panel` | **MUST** (handheld/full; glance: reachable) | run/stop with live state + pattern `select` (exclusive-choice group) + knob sliders for whichever optional roles exist (§2.2) + `source.background_run` toggle co-located with the run/stop control (§10.1) | `content` (or `primary` on a generator-only device) | | The standard-generator surface. |
-| `generator-advanced` | **MUST** (handheld/full; glance: reachable) | master controls (the `advgen.*` roles plus `pattern.running`, RFC-081) + whatever modulators target those controls (§2.2, RFC-066) + preset save/recall via the store + `source.background_run` toggle co-located with the master run/stop control (§10.1) | `content` (or `primary` on an advanced-generator-only device) | | The fray-d surface. |
+| `generator-advanced` | **MUST** (handheld/full; glance: reachable) | master controls (the `advgen.*` roles plus `pattern.running`, RFC-081) + whatever modulators target those controls (§2.2, RFC-066) + preset save/recall via `action.store` (§7) + `source.background_run` toggle co-located with the master run/stop control (§10.1) | `content` (or `primary` on an advanced-generator-only device) | | The fray-d surface. |
 | `transport` | no | play/pause/seek/queue cluster | `content` | | For hubs that play content (§2.2 `playback` category). |
 | `wizard` | no | stepped ceremony flow (pairing, calibration, provisioning) | `overlay` | | Glance projects it as sequential menu screens. |
 

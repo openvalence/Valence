@@ -1038,7 +1038,11 @@ unit_ids:
 # (ui_archetypes) into a purpose-specific rendering. An unregistered
 # action.<name> suffix remains legal (nothing here is a requirement on the
 # device); unknown tag -> generic trigger/control per the derivation table
-# (RENDERING.md §7/§8.2). Frozen, thirteen, v1.0.
+# (RENDERING.md §7/§8.2). Frozen, twelve, v1.0.
+#
+# RETIRED PRE-TAG (RFC-067): `preset_save` and `preset_recall` had zero
+# emitters and covered two of §8.7's four store verbs; `store` replaces both
+# as one op select over `store_ops`. The names are burned, never reissued.
 # ---------------------------------------------------------------------------
 action_tags:
   move:          { note: "the primary positional command: usually already the axis archetype's own binding, rarely a separate trigger" }
@@ -1052,8 +1056,17 @@ action_tags:
   identify:      { note: "blink-to-find: every device ecosystem needs one" }
   admin:         { note: "a generic administrative action not covered by a more specific tag" }
   reboot:        { note: "firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)" }
-  preset_save:   { note: "save-to-store, part of the generator-advanced preset roster" }
-  preset_recall: { note: "load-from-store, same roster" }
+  store:         { note: "RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8)." }
+
+# ---------------------------------------------------------------------------
+# Store ops (u8) — the `action.store` op select's wire values (RFC-067),
+# numbering SPEC §8.7's four store verbs. Index 0 is op-select filler (§8.9).
+# ---------------------------------------------------------------------------
+store_ops:
+  1: { name: save,   note: "capture current live state into the slot; a supplied `payload` makes it an import (§8.7)" }
+  2: { name: load,   note: "apply the slot; the resulting truth arrives on the ordinary STATE broadcasts" }
+  3: { name: delete_item, note: "the `delete` verb (named `delete_item` only because the generated C++ constant would otherwise be a keyword; prose and catalog labels say 'delete'): remove the slot's item. Destructive by registration (§8.8): a client confirm-gates it without a flag" }
+  4: { name: rename, note: "change the slot's item name (<= the store's name_max)" }
 
 # ---------------------------------------------------------------------------
 # Archetypes (u8) — the control style + interaction contract a catalog field
@@ -1124,7 +1137,7 @@ widget_patterns:
   7:  { name: roster,            note: "list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role honestly distinct from empty" }
   8:  { name: protocol-pane,     note: "the one deliberately device-aware diagnostic surface: wire ids visible by design" }
   9:  { name: pattern-panel,     note: "the standard generator surface: run/stop with live state, pattern selection as an exclusive-choice group, knob sliders for whichever optional roles exist, source.background_run co-located with run/stop", required: true }
-  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via the store, source.background_run co-located with the master run/stop", required: true }
+  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop", required: true }
   11: { name: transport,         note: "playback: play/pause/seek/queue cluster for hubs that play content" }
   12: { name: wizard,            note: "stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequential menu screens" }
 

@@ -134,6 +134,7 @@ SECTION_HOMES: dict[str, str] = {
     "value_provenance": "rendering.md",
     "unit_ids": "rendering.md",
     "action_tags": "rendering.md",
+    "store_ops": "rendering.md",
     "ui_archetypes": "rendering.md",
     "ui_regions": "rendering.md",
     "renderer_classes": "rendering.md",
@@ -169,6 +170,14 @@ def table(p, headers: list[str], rows: list[list[str]]) -> None:
     for r in rows:
         p("| " + " | ".join(r) + " |\n")
     p("\n")
+
+
+def enum_table(p, section: dict, title: str, intro: str) -> None:
+    """A `value: {name, note}` table under its own heading."""
+    p(f"## {title}\n\n{intro}\n\n")
+    rows = [[code(k), code(section[k]["name"]), cell(section[k].get("note", ""))]
+            for k in sorted(section)]
+    table(p, ["Value", "Name", "Notes"], rows)
 
 
 def hexcode(value: int, width: int) -> str:
@@ -791,6 +800,9 @@ def page_rendering(reg: dict, reg_display: str) -> str:
     rows = [[code(tag), cell((reg["action_tags"][tag] or {}).get("note", ""))]
             for tag in reg["action_tags"]]
     table(p, ["Tag", "Meaning"], rows)
+    enum_table(p, reg["store_ops"], "Store ops",
+               "The wire values of an `action.store` op select (SPEC §8.7). "
+               "Index 0 is op-select filler.")
 
     p("## Archetypes\n\n")
     p("An archetype is the control style and interaction contract a catalog "

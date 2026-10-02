@@ -392,6 +392,13 @@ inline constexpr uint8_t us = 24;  // RFC-086: microseconds, the §7 hub-time re
 inline constexpr uint8_t hub_s = 25;  // RFC-086: seconds in the hub's own §7.1 timebase, distinct from `s` so a client knows to apply its CLOCK offset; the unit of the RFC-083 datetime.* roles. Temperature stays deg_c only: K and F are display conversions.
 }  // namespace unit_ids
 
+namespace store_ops {
+inline constexpr uint8_t save = 1;  // capture current live state into the slot; a supplied `payload` makes it an import (§8.7)
+inline constexpr uint8_t load = 2;  // apply the slot; the resulting truth arrives on the ordinary STATE broadcasts
+inline constexpr uint8_t delete_item = 3;  // the `delete` verb (named `delete_item` only because the generated C++ constant would otherwise be a keyword; prose and catalog labels say 'delete'): remove the slot's item. Destructive by registration (§8.8): a client confirm-gates it without a flag
+inline constexpr uint8_t rename = 4;  // change the slot's item name (<= the store's name_max)
+}  // namespace store_ops
+
 namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
 inline constexpr uint8_t restart_required = 1u << 1;  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)
