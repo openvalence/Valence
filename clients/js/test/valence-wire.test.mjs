@@ -544,9 +544,8 @@ if (existsSync(FIXTURE) && existsSync(FIXTURE_ETAG)) {
   assert('fixture: 0x0003 safety carries the APPENDED modes bitfield (8 -> 9 B)',
     !!safety && safety.layout.some((f) => f.name === 'modes'));
   const realSi = realMap.get(0x0005);
-  // The fixture predates RFC-085 (its pause still needs control); estop 6 and
-  // resume 5 kept their numbers and tiers, so those are what it can prove.
-  assert('fixture: 0x0005 advertises option_access with estop role-exempt',
+  assert('fixture: 0x0005 advertises option_access with pause and estop role-exempt (RFC-085)',
+    optionAccessFor(realSi, 1, SAFETY_OP.pause) === ACCESS.watch &&
     optionAccessFor(realSi, 1, SAFETY_OP.estop) === ACCESS.watch &&
     optionAccessFor(realSi, 1, SAFETY_OP.resume) === ACCESS.control);
 
