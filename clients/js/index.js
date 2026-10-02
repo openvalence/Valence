@@ -121,6 +121,7 @@ export {
   LIMITS, nackName,
   PROTO_VER, WS_SUBPROTOCOL, HEADER_BYTES,
   encodeFrame, decodeFrameHeader, parseFrames, encodeEstopFrame, crc32, encodeBundle,
+  decodeSafetySnapshot,
   // channel ids
   CH_CATALOG, CH_SESSION_ROSTER, CH_SAFETY, CH_CONTROL_OWNER, CH_SAFETY_INTENTS,
   CH_HUB_STATUS, CH_SESSION_EVENTS, CH_LOG, CH_SESSION_ADMIN, CH_SAFETY_EVENTS,

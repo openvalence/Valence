@@ -123,6 +123,32 @@ export const CH_MODES_SET = 0x3030; // ch::modes_set (INTENT)
  */
 export const SAFETY_OP_ROLE_EXEMPT = new Set([SAFETY_OP.pause, SAFETY_OP.estop]);
 
+/**
+ * Decode the spec-core `safety` snapshot (0x0003, SPEC §11.1) by its registry
+ * bit positions, never by the catalog's bit labels: a hub's labels are device
+ * text and a pre-RFC-085 catalog still names retired bits.
+ * Layout: word:u8 cause:u8 owner_session:u32 estop_seq:u16 [modes:u8]; an
+ * absent modes byte (pre-modes hub) reads as both modes clear.
+ * @param {Uint8Array} payload
+ * @returns {{estopLatched:boolean, paused:boolean, override:boolean, homeRequired:boolean,
+ *            cause:number|null, ownerSession:number|null, estopSeq:number|null}|null}
+ */
+export function decodeSafetySnapshot(payload) {
+  if (!payload || payload.length < 1) return null;
+  const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  const word = payload[0];
+  const modes = payload.length >= 9 ? payload[8] : 0;
+  return {
+    estopLatched: (word & 0x01) !== 0, // word bit0 ESTOP
+    paused: (word & 0x08) !== 0, // word bit3 PAUSE (bits 1/2 retired, RFC-085)
+    override: (modes & 0x01) !== 0, // modes bit0
+    homeRequired: (modes & 0x02) !== 0, // modes bit1
+    cause: payload.length >= 2 ? payload[1] : null,
+    ownerSession: payload.length >= 6 ? dv.getUint32(2, true) : null,
+    estopSeq: payload.length >= 8 ? dv.getUint16(6, true) : null,
+  };
+}
+
 // ---- Home intent ops (ValenceCatalog.h 0x3101) ----------------------------
 // A DEVICE channel's op numbering, not a registry vocabulary — a different hub
 // may number its homing ops differently and still conform.

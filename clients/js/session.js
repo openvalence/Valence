@@ -21,7 +21,8 @@
  *   → PING keepalive on TX silence (< deadman window)
  *   → intents (c2h) encoded from the catalog's own schema, correlated to their
  *     post-clamp ECHO 0x0E and to NACKs by intent_id / intent_seq
- *   → NACK handling, GOODBYE, reconnect-with-backoff.
+ *   → NACK handling, GOODBYE, reconnect-with-backoff; an admission refusal
+ *     (HUB_AT_CAPACITY / HUB_SHEDDING, §6.3) waits out retry_after_ms plus jitter.
  *
  * THE GATE IS WHY THERE IS NO FALLBACK LAYOUT TABLE. The hub emits NO
  * data-plane frame and NACKs every INTENT `NOT_READY` until this client has
@@ -87,7 +88,7 @@ import {
   CH_SAFETY, CH_SAFETY_INTENTS,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
-  STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK,
+  STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK, decodeSafetySnapshot,
 } from './frames.js';
 import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
@@ -98,6 +99,12 @@ import {
 import { catalogEtag, bytesEqual, toHex, fromHex } from './sha256.js';
 
 const DEFAULT_BACKOFF_MS = [500, 1000, 2000, 5000];
+
+// §6.3 (RFC-055): HELLO refusals that carry retry_after_ms and bind the reconnect.
+const ADMISSION_CODES = new Set([NACK.HUB_AT_CAPACITY, NACK.HUB_SHEDDING]);
+
+// RFC-087: the schedule horizons a grant may advertise; anything else is the default.
+const SCHEDULE_HORIZONS_MS = new Set([250, 500, LIMITS.schedule_horizon_max_ms]);
 
 /** Why a fetchBlob() rejected. Every failure rejects with a BlobError carrying one of these. */
 export const BLOB_ERROR = Object.freeze({
@@ -317,6 +324,7 @@ export function createSession(opts = {}) {
   let intentionalClose = false;
   let backoffIdx = 0;
   let reconnectTimer = null;
+  let retryNotBeforeMs = 0; // §6.3: earliest reconnect after an admission refusal (jitter included)
 
   const state = {
     phase: SESSION_STATE.CLOSED,
@@ -328,7 +336,10 @@ export function createSession(opts = {}) {
     catalogEtag: null, // the HUB's etag from WELCOME
     readyEtag: null, // what WE declared we operate against
     ready: false, // RFC-015: is our data plane open?
-    identity: null, // {product, fw_version, hub_name, info}
+    identity: null, // {product, fw_version, hub_name, info, hub_instance_id, estop_cuts_power}
+    safety: null, // latest 0x0003 snapshot by registry bits (decodeSafetySnapshot); also emitted as 'safety'
+    // §6.3: the last admission refusal {code, name, retryAfterMs, reconnectInMs, atMs}; null once WELCOMEd
+    admission: null,
     roles: null,
     // RFC-027 §12.2: WELCOME `trust.pairing_modes` (TRUST_K.pairing_modes,
     // key 8) — bitmask of PAIRING_MODE bits this hub offers RIGHT NOW,
@@ -338,9 +349,9 @@ export function createSession(opts = {}) {
     pairingModes: 0,
     deadmanMs: LIMITS.deadman_default_ms,
     deadmanPolicy: null,
-    limits: {},
+    limits: {}, // WELCOME limits by WELCOME_LIMITS_K name (max_sessions / sessions_in_use: 0 = unknown)
     grants: new Map(), // channelId -> {rate, priority}
-    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily, scheduleLatencyUs}
+    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily, scheduleLatencyUs, scheduleHorizonMs}
     clockOffsetUs: 0,
     clockSynced: false, // a CLOCK reply has landed this session, so anchors mean something
   };
@@ -517,6 +528,11 @@ export function createSession(opts = {}) {
       // (on samples kind, the chase-planning budget). Lead media by this; never
       // hardcode it. null = unspecified (absent or 0).
       scheduleLatencyUs: e.get(K.schedule_latency_us) || null,
+      // RFC-087: how far ahead a segment's START may be stamped, and the span
+      // cap of a c2h segments bundle. A cap, never a delay. Absent or off-step
+      // reads as the 250 ms default.
+      scheduleHorizonMs: SCHEDULE_HORIZONS_MS.has(e.get(K.schedule_horizon_ms))
+        ? e.get(K.schedule_horizon_ms) : LIMITS.max_future_schedule_ms,
     };
     state.grantedPublishes.set(ch, rec);
     // The hub rebuilds this channel's bucket full on every grant (session.hpp
@@ -1179,6 +1195,8 @@ export function createSession(opts = {}) {
   function handleWelcome(payload) {
     const w = cbDecodeFull(payload);
     state.welcomed = true;
+    state.admission = null;
+    retryNotBeforeMs = 0;
     state.sessionId = w.get(K.session_id);
     state.bootId = w.get(K.boot_id);
     state.cfgGen = w.get(K.cfg_gen);
@@ -1215,6 +1233,8 @@ export function createSession(opts = {}) {
         // RFC-048: durable hub identity (u64, survives reboots) — the value a
         // client keys "have I met this hub before" on, never boot_id.
         hub_instance_id: idm.get(IDENTITY_K.hub_instance_id) ?? null,
+        // RFC-085 (§11.2): true renders E-Stop, false or absent renders Halt.
+        estop_cuts_power: idm.get(IDENTITY_K.estop_cuts_power) === true,
       };
     }
 
@@ -1356,10 +1376,12 @@ export function createSession(opts = {}) {
       decoded = { _raw: payload };
     }
 
-    // §11.2 repeat-until-latched: the safety channel's own estop_seq field is
-    // the acknowledgment assertEstopRaw() is waiting for.
-    if (header.channel === CH_SAFETY && estopActive && decoded && decoded.word_bits) {
-      if (decoded.word_bits.estop) { estopActive = false; }
+    // §11.2 repeat-until-latched: the latched ESTOP bit in the safety snapshot
+    // is the acknowledgment assertEstopRaw() is waiting for.
+    if (header.channel === CH_SAFETY) {
+      state.safety = decodeSafetySnapshot(payload);
+      if (state.safety && state.safety.estopLatched) estopActive = false;
+      emit('safety', state.safety);
     }
 
     if (welcomeGrants.has(header.channel) && !adoptedChannels.has(header.channel)) {
@@ -1397,6 +1419,7 @@ export function createSession(opts = {}) {
       retryAfterMs: n.has(K.retry_after_ms) ? n.get(K.retry_after_ms) : null,
     };
     emit('nack', info);
+    if (isAdmissionRefusal(code)) { admissionRefused(code, info.retryAfterMs); return; }
     if (nackStoreFetch(info)) return;
 
     // ---- correlation, best evidence first ---------------------------------
@@ -1477,8 +1500,14 @@ export function createSession(opts = {}) {
         break;
       case FRAME.GOODBYE: {
         let code = null;
-        try { code = cbDecodeFull(payload).get(K.code); } catch (e) { /* empty/none */ }
-        emit('sessionEvent', { channel: header.channel, kind: 'goodbye', code, codeName: nackName(code) });
+        let retryAfterMs = null;
+        try {
+          const g = cbDecodeFull(payload);
+          code = g.get(K.code);
+          retryAfterMs = g.has(K.retry_after_ms) ? g.get(K.retry_after_ms) : null;
+        } catch (e) { /* empty/none */ }
+        emit('sessionEvent', { channel: header.channel, kind: 'goodbye', code, codeName: nackName(code), retryAfterMs });
+        if (isAdmissionRefusal(code)) admissionRefused(code, retryAfterMs);
         break;
       }
       default:
@@ -1512,6 +1541,12 @@ export function createSession(opts = {}) {
   function connect() {
     if (!WSImpl) throw new Error('no WebSocket implementation available');
     intentionalClose = false;
+    // §6.3: retry_after_ms binds every reconnect, the caller's own included.
+    const waitMs = retryNotBeforeMs - Date.now();
+    if (waitMs > 0) {
+      if (!reconnectTimer) reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, waitMs);
+      return;
+    }
     if (!tokenProvider) { openSocket(); return; }
     // Resolve the credential BEFORE the socket opens, not inside onopen. The
     // hub starts a HELLO timer the instant the socket is accepted, and an async
@@ -1596,9 +1631,31 @@ export function createSession(opts = {}) {
     };
   }
 
+  // §6.3: BUSY on a HELLO comes from a hub predating RFC-055 and means HUB_AT_CAPACITY.
+  function isAdmissionRefusal(code) {
+    return ADMISSION_CODES.has(code) || (code === NACK.BUSY && state.phase === SESSION_STATE.HELLO_SENT);
+  }
+
+  /**
+   * §6.3: the hub refused this session. Never retry sooner than retry_after_ms
+   * (absent: busy_retry_after_default_ms), and add jitter so refused clients do
+   * not return as a herd. Closing here hands off to the ordinary reconnect path.
+   */
+  function admissionRefused(code, retryAfterMs) {
+    const asCode = ADMISSION_CODES.has(code) ? code : NACK.HUB_AT_CAPACITY;
+    const waitMs = retryAfterMs ?? LIMITS.busy_retry_after_default_ms;
+    const reconnectInMs = Math.ceil(waitMs + Math.random() * Math.max(waitMs / 2, 250));
+    retryNotBeforeMs = Date.now() + reconnectInMs;
+    state.admission = { code: asCode, name: nackName(asCode), retryAfterMs: waitMs, reconnectInMs, atMs: Date.now() };
+    log('warn', 'admission refused', state.admission.name, 'retry in', reconnectInMs, 'ms');
+    emit('admission', state.admission);
+    try { if (ws && ws.readyState < 2) ws.close(); } catch (e) { /* gone */ }
+  }
+
   function scheduleReconnect() {
     if (reconnectTimer) return;
-    const delay = DEFAULT_BACKOFF_MS[Math.min(backoffIdx, DEFAULT_BACKOFF_MS.length - 1)];
+    const backoff = DEFAULT_BACKOFF_MS[Math.min(backoffIdx, DEFAULT_BACKOFF_MS.length - 1)];
+    const delay = Math.max(backoff, retryNotBeforeMs - Date.now());
     backoffIdx++;
     log('info', 'reconnect in', delay, 'ms');
     reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, delay);

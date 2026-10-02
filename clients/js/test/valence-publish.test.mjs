@@ -1,6 +1,8 @@
 /**
  * valence-publish.test.mjs -- c2h STREAM publishing: publish wishes, grant
- * tracking, the bundle sender, and its refusals.
+ * tracking, the bundle sender, and its refusals; plus the session-layer
+ * decodes that ride the same scripted socket (WELCOME identity/limits, the
+ * safety snapshot, admission refusals).
  *
  * Golden bytes come from lib/valence's own C++ encoders via
  * test/fixtures/gen_publish_golden.cpp (build and run command in its header).
@@ -11,8 +13,11 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { cbUint, cbF32, cbBstr, cbMap, cbArray } from '../cbor.js';
-import { K, FRAME, WELCOME_LIMITS_K, encodeFrame, encodeBundle, decodeFrameHeader } from '../frames.js';
+import { cbUint, cbF32, cbBstr, cbBool, cbTstr, cbMap, cbArray } from '../cbor.js';
+import {
+  K, FRAME, NACK, IDENTITY_K, WELCOME_LIMITS_K, CH_SAFETY,
+  encodeFrame, encodeBundle, decodeFrameHeader, decodeSafetySnapshot,
+} from '../frames.js';
 import { encodePacked } from '../catalog.js';
 import { createSession, PublishError, PUBLISH_ERROR, SESSION_STATE } from '../session.js';
 import { fromHex } from '../sha256.js';
@@ -223,6 +228,93 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   s.close();
   refusal('after close', () => s.publishSamples(0x2100, one), PUBLISH_ERROR.NOT_LIVE);
   assert('close forgets the grants', s.state.grantedPublishes.size === 0);
+}
+
+// ---- session decodes: identity key 6, limits 5/6, grant key 50, safety bits ----
+{
+  const s = createSession({ host: 't3', autoReconnect: false, deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+  s.connect();
+  const ws = FakeWS.last;
+  ws.open();
+  let safetyEvt = null;
+  s.on('safety', (v) => { safetyEvt = v; });
+  ws.recv(FRAME.WELCOME, cbMap([
+    [K.proto_ver, cbUint(1)], [K.session_id, cbUint(4)], [K.boot_id, cbUint(3)], [K.cfg_gen, cbUint(1)],
+    [K.limits, cbMap([[WELCOME_LIMITS_K.max_frame, cbUint(512)],
+      [WELCOME_LIMITS_K.max_sessions, cbUint(4)], [WELCOME_LIMITS_K.sessions_in_use, cbUint(2)]])],
+    [K.roles, cbUint(1)], [K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([
+      cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2101)], [K.schedule_horizon_ms, cbUint(500)]]),
+      cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2102)]]),
+      cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2103)], [K.schedule_horizon_ms, cbUint(300)]]),
+    ])],
+    [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')], [IDENTITY_K.estop_cuts_power, cbBool(true)]])],
+  ]));
+  assert('WELCOME identity.estop_cuts_power true', s.state.identity.estop_cuts_power === true);
+  assert('WELCOME limits max_sessions 4 / sessions_in_use 2',
+    s.state.limits.max_sessions === 4 && s.state.limits.sessions_in_use === 2);
+  const gp = s.state.grantedPublishes;
+  assert('grant key 50 = 500 -> scheduleHorizonMs 500', gp.get(0x2101).scheduleHorizonMs === 500);
+  assert('grant without key 50 -> scheduleHorizonMs 250', gp.get(0x2102).scheduleHorizonMs === 250);
+  assert('grant with an off-step horizon (300) -> the 250 default', gp.get(0x2103).scheduleHorizonMs === 250);
+
+  // 0x0003: word estop+pause (0x09), cause 2, owner 0xdeadbeef, estop_seq 7, modes override+home_required.
+  const snap = Uint8Array.of(0x09, 0x02, 0xef, 0xbe, 0xad, 0xde, 0x07, 0x00, 0x03);
+  ws.recv(FRAME.STATE, snap, CH_SAFETY);
+  assert('safety snapshot by registry bits: estop, paused, override, homeRequired',
+    !!safetyEvt && safetyEvt.estopLatched && safetyEvt.paused && safetyEvt.override && safetyEvt.homeRequired &&
+    safetyEvt.cause === 2 && safetyEvt.ownerSession === 0xdeadbeef && safetyEvt.estopSeq === 7 && s.state.safety === safetyEvt);
+  const old = decodeSafetySnapshot(Uint8Array.of(0x06, 0, 0, 0, 0, 0, 0, 0));
+  assert('retired word bits 1/2 read as nothing; a modes-less 8 B snapshot reads both modes clear',
+    !old.estopLatched && !old.paused && !old.override && !old.homeRequired);
+  s.close();
+
+  const s2 = createSession({ host: 't4', autoReconnect: false, deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+  s2.connect();
+  FakeWS.last.open();
+  FakeWS.last.recv(FRAME.WELCOME, cbMap([[K.session_id, cbUint(5)], [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')]])]]));
+  assert('identity without key 6 -> estop_cuts_power false', s2.state.identity.estop_cuts_power === false);
+  s2.close();
+}
+
+// ---- §6.3 admission refusals: retry_after_ms binds, with jitter --------------
+{
+  const s = createSession({ host: 't5', deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+  let adm = null;
+  s.on('admission', (a) => { adm = a; });
+  s.connect();
+  const ws = FakeWS.last;
+  ws.open();
+  ws.recv(FRAME.NACK, cbMap([[K.code, cbUint(NACK.HUB_AT_CAPACITY)], [K.retry_after_ms, cbUint(3000)]]));
+  assert('NACK HUB_AT_CAPACITY surfaces on the session with retry_after_ms',
+    !!adm && adm.name === 'HUB_AT_CAPACITY' && adm.retryAfterMs === 3000 && s.state.admission === adm);
+  assert('reconnect delay never sooner than retry_after_ms, jittered within +50%',
+    adm.reconnectInMs >= 3000 && adm.reconnectInMs <= 4500);
+  assert('the refused socket is closed', ws.readyState === 3);
+  s.connect();
+  assert('an explicit connect() inside the window opens no socket', FakeWS.last === ws);
+  s.close();
+
+  const delays = new Set();
+  for (let i = 0; i < 8; i++) {
+    const r = createSession({ host: 't6', autoReconnect: false, deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+    r.connect();
+    FakeWS.last.open();
+    FakeWS.last.recv(FRAME.GOODBYE, cbMap([[K.code, cbUint(NACK.HUB_SHEDDING)], [K.retry_after_ms, cbUint(1000)]]));
+    assert('GOODBYE HUB_SHEDDING surfaces (' + i + ')', r.state.admission && r.state.admission.name === 'HUB_SHEDDING' &&
+      r.state.admission.reconnectInMs >= 1000);
+    delays.add(r.state.admission.reconnectInMs);
+    r.close();
+  }
+  assert('jitter: eight refusals did not all pick one delay', delays.size > 1);
+
+  const b = createSession({ host: 't7', autoReconnect: false, deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+  b.connect();
+  FakeWS.last.open();
+  FakeWS.last.recv(FRAME.NACK, cbMap([[K.code, cbUint(NACK.BUSY)]]));
+  assert('BUSY on a HELLO (pre-RFC-055 hub) reads as HUB_AT_CAPACITY, default retry 2000 ms',
+    b.state.admission && b.state.admission.name === 'HUB_AT_CAPACITY' && b.state.admission.retryAfterMs === 2000);
+  b.close();
 }
 
 await tick();
