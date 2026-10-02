@@ -44,7 +44,12 @@ channel-entry = {
   ? 16 => uint,            ; rank: registry ui_ranks (RENDERING.md §4) — how much THIS CHANNEL
                            ;   matters, independent of any per-field key-19 rank (a separate axis,
                            ;   not inheritance). Absent = detail (2), per the unknown/absent-rank rule.
-  ; ---- RFC-065 (key 17 reserved for RFC-070 store_id) ----
+  ; ---- RFC-070 ----
+  ? 17 => uint,            ; store_id: on a store's roster STATE (its {generation, count, capacity}
+                           ;   dynamic half) and on the INTENT entry carrying its action.store op
+                           ;   select: the store-descriptor key-1 store_id of the STORE entry it
+                           ;   belongs to (SPEC §8.7). Optional; absent or unresolving = unlinked.
+  ; ---- RFC-065 ----
   ? 18 => tstr .size (1..24),  ; role: registry channel_roles; the whole entry's purpose (SPEC §8.1, §9.4).
                                ;   Unregistered values legal; MAY repeat across entries.
   ? 19 => { + uint => tstr .size (1..24) },  ; event_kinds: EVENT class only; event_kind -> label.
@@ -248,7 +253,8 @@ cbor-type = 0 ; uint
 ; gate BLOB_REQ on the declaring entry's access exactly as it gates SUBSCRIBE.
 ; ---------------------------------------------------------------------------
 store-descriptor = {
-  1 => uint,               ; store_id: u8, unique per hub; selects this store in `blob`.store_id
+  1 => uint,               ; store_id: u8, unique per hub; selects this store in `blob`.store_id.
+                           ;   Roster and writer entries name it by entry-level key 17 (RFC-070).
   2 => tstr .size (1..32), ; kind: namespaced payload kind, e.g. "pattern.frayd", "trust.ledger"
   3 => uint,               ; capacity: item slots (conformance floor limits.preset_capacity_min)
   4 => uint,               ; per_item_max: max encoded payload bytes (default limits.preset_item_max_bytes)

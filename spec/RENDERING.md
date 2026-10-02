@@ -257,7 +257,7 @@ Evaluated top-to-bottom; the first matching row wins.
 | 2 | Safety-intents `stop`/`estop` op identity | `stop` — **bound by identity, never derived from any other row** |
 | 3 | Schema field, role `command.position` | `axis` |
 | 4 | Two `command.position` fields on one INTENT entry | `pad2d` |
-| 5 | STORE-class channel + its roster STATE pair (SPEC §8.7) | `list` |
+| 5 | STORE-class entry whose `store_id` (store-descriptor key 1) is named by a STATE entry's entry-level `store_id` (SPEC §8.1, §8.7; RFC-070) | `list`, sited in the store's card beside the `action.store` op select naming the same `store_id`; a roster-shaped STATE without a resolving `store_id` renders as a plain, unlinked list |
 | 6 | Schema field, role `action.<name>`, no value payload | `trigger` (destructive invocation, SPEC §8.8 ⇒ mandatory confirm, every class) |
 | 7 | Writable (`setting_key` present) `bool` field | `toggle` |
 | 8 | Writable u8 field + `options` | `select` |

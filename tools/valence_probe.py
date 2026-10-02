@@ -434,7 +434,8 @@ CHANNEL_NAMES = {
 # on an ENTRY are the category and the paired-INTENT `setting_channel`.
 CAT_E = {"id": 1, "name": 2, "cls": 3, "dir": 4, "access": 5, "rate": 6, "priority": 7,
          "layout": 8, "schema": 9, "category": 10, "category_label": 11, "store": 12,
-         "replay_depth": 13, "setting_channel": 14, "stream_kind": 15}
+         "replay_depth": 13, "setting_channel": 14, "stream_kind": 15, "rank": 16,
+         "store_id": 17, "role": 18, "event_kinds": 19, "mod_target": 20}
 CAT_F = {"name": 1, "type": 2, "unit": 3, "scale": 4, "min": 5, "max": 6, "bits": 7,
          "setting_key": 8, "default": 9, "options": 10, "group": 11, "desc": 12,
          "role": 13, "step": 14, "flags": 15, "access": 16, "option_access": 17}
@@ -636,6 +637,17 @@ def check_catalog_annotations(catalog_bytes):
     if readonly:
         ok("cat_readonly", "%d read-only field(s) on settings channels (no setting_key = effective "
            "state, never stored config): %s" % (len(readonly), ", ".join(readonly)))
+
+    # RFC-070 -- a roster-shaped STATE should name its store by entry key 17.
+    # A lint WARNING, never a FAIL: the key is optional.
+    stores = {e.get(CAT_E["store"], {}).get(1) for e in entries.values() if CAT_E["store"] in e}
+    if stores:
+        for e in entries.values():
+            names = [f.get(CAT_F["name"]) for f in e.get(CAT_E["layout"], [])][:3]
+            if e.get(CAT_E["cls"]) == 0 and names == ["generation", "count", "capacity"] \
+                    and CAT_E["store_id"] not in e:
+                info("WARN cat_store_link: roster-shaped STATE 0x%04X carries no store_id "
+                     "(entry key 17, RFC-070): a client renders it unlinked" % e[CAT_E["id"]])
 
     # Category coverage -- the tab strip a client would draw.
     cats = sorted({e[CAT_E["category"]] for e in entries.values() if CAT_E["category"] in e})
