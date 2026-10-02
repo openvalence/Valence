@@ -232,7 +232,7 @@ Provenance is already real on this machine's wire: demand (raw), planned (target
 
 ## 8. Archetypes *(normative)*
 
-An archetype is the **control style and interaction contract** a catalog field or channel is rendered with — never pixels, margins, or a specific widget library's component. Archetypes are **derived**, not carried on the wire, in the common case; an optional explicit `archetype` hint exists for overrides only, and always wins.
+An archetype is the **control style and interaction contract** a catalog field or channel is rendered with — never pixels, margins, or a specific widget library's component. Archetypes are **derived**, never carried on the wire: there is no archetype hint (SPEC §8.9 item 3, RFC-083).
 
 ### 8.1 Universal interaction contract (MUST, binds every archetype)
 
@@ -247,10 +247,10 @@ Evaluated top-to-bottom; the first matching row wins.
 
 | # | Trigger | → Archetype |
 |---|---|---|
-| 1 | Explicit `archetype` annotation present | that archetype (override) |
+| 1 | *(struck by RFC-083: no archetype hint exists; the row number is kept)* | — |
 | 2 | Safety-intents `stop`/`estop` op identity | `stop` — **bound by identity, never derived from any other row** |
 | 3 | Schema field, role `command.position` | `axis` |
-| 4 | Two co-instanced `command.position` fields (one multi-axis capability) | `pad2d` |
+| 4 | Two `command.position` fields on one INTENT entry | `pad2d` |
 | 5 | STORE-class channel + its roster STATE pair (SPEC §8.7) | `list` |
 | 6 | Schema field, role `action.<name>`, no value payload | `trigger` (destructive invocation, SPEC §8.8 ⇒ mandatory confirm, every class) |
 | 7 | Writable (`setting_key` present) `bool` field | `toggle` |
@@ -262,10 +262,10 @@ Evaluated top-to-bottom; the first matching row wins.
 | 13 | Read-only numeric field, no bounds | `readout` (plain numeral) |
 | 14 | Read-only bool/bitfield status field | `indicator` |
 | 15 | STREAM/`plan.*` time-series, or `aspect: rate` telemetry | `chart` |
-| 16 | Three co-grouped numeric setting fields + explicit `color` hint | `color` |
-| 17 | Field(s) representing a moment/interval + explicit `datetime` hint | `datetime` |
+| 16 | Three writable numeric fields in one `group` carrying roles `color.red`, `color.green` and `color.blue` | `color` |
+| 17 | A writable field carrying role `datetime.moment`, or two fields in one `group` carrying `datetime.start` and `datetime.end` (an interval) | `datetime` |
 
-Rows 16-17 (and, commonly, row 4) rely on the explicit hint because automatic derivation from bare primitive fields alone is ambiguous — this is the expected, conformant path for the three newest archetypes, not a workaround.
+Rows 4, 16 and 17 trigger on registered roles, never on a hint; SPEC §8.9 item 3 holds for every row. All three `color.*` roles are essential (law 7): a group carrying fewer falls through to the fallback composition `slider` + `slider` + `slider` (§8.4). A field without a `datetime.*` role renders as its type says (rows 9-13), never as a date. `datetime.*` values are **hub time**: whole seconds in the hub's own SPEC §7.1 timebase, never Unix epoch, so a hub needs no RTC and no network time source. A client converts to and from wall time with the CLOCK offset it already holds; a stored moment is valid for the hub's current `boot_id`, and a client re-arms it after a hub reboot. `color.*` and `datetime.*` repeat by construction (two lights, two schedules): each MUST appear at most once per `group` (SPEC §8.8).
 
 ### 8.3 Interaction primitives by renderer class (behavioral, no pixels)
 
@@ -441,7 +441,7 @@ Every enumerable vocabulary in this document is:
 
 **(b) Frozen at the v1.0 tag.** No entry in any table above is added, removed, or renumbered without the same discipline SPEC §5.7 applies to the wire registry: released numbers are never reused or renumbered.
 
-**(c) Armed with a defined unknown-value degradation rule.** Every section above states one explicitly (unrecognized category → `other`; unrecognized rank → `detail`; unrecognized unit → the catalog's label string; unrecognized action tag → generic trigger; unrecognized archetype hint → the derivation table as if no hint were given).
+**(c) Armed with a defined unknown-value degradation rule.** Every section above states one explicitly (unrecognized category → `other`; unrecognized rank → `detail`; unrecognized unit → the catalog's label string; unrecognized action tag → generic trigger; archetypes are derived, never carried, so no unknown value can arrive).
 
 **(d) The firmware-immortality rule.** Any *post-tag* vocabulary addition MUST declare its rendering as a **composition of frozen primitives** — its fallback (§8.4 already carries this for every archetype, as data, machine-checkable) — so that a client shipped at v1.0 renders every future catalog forever, merely less richly. **UI vocabulary never obligates a firmware or client update.**
 

@@ -86,6 +86,12 @@ role is never an error.
 | `plan.elapsed` | elapsed time within the segment in flight |
 | `plan.duration` | total duration of the segment in flight |
 | `plan.style` | which planning style produced the segment; options are the device's style names, index-aligned with the wire value |
+| `color.red` | RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential) |
+| `color.green` | RFC-083: writable numeric green channel of one color group |
+| `color.blue` | RFC-083: writable numeric blue channel of one color group |
+| `datetime.moment` | RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current boot_id; a client re-arms after a hub reboot. Triggers the `datetime` archetype. |
+| `datetime.start` | RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group triggers the `datetime` archetype |
+| `datetime.end` | RFC-083: interval end, hub time seconds (as datetime.moment) |
 | `source.background_run` | bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one. |
 
 Two conventions extend the list without registering entries:

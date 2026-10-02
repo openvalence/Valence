@@ -798,9 +798,9 @@ export const UI_ARCHETYPE = {
   list: 9,  // roster/store items + item actions; pending is a THIRD state distinct from success/failure
   text: 10,  // constrained string; glance projects a digit/char wheel: the pairing-PIN path
   stop: 11,  // the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; r
-  pad2d: 12,  // two-axis control: the multi-axis runway
-  color: 13,  // chromatic actuator setpoint (lighting/glow accessories)
-  datetime: 14,  // moment/interval input (automation schedules)
+  pad2d: 12,  // two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT 
+  color: 13,  // chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in on
+  datetime: 14,  // moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datet
 };
 export const UI_ARCHETYPE_NAME = {
   0: 'readout',
@@ -951,6 +951,12 @@ export const FIELD_ROLE = {
   plan_elapsed: 'plan.elapsed',  // elapsed time within the segment in flight
   plan_duration: 'plan.duration',  // total duration of the segment in flight
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
+  color_red: 'color.red',  // RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger 
+  color_green: 'color.green',  // RFC-083: writable numeric green channel of one color group
+  color_blue: 'color.blue',  // RFC-083: writable numeric blue channel of one color group
+  datetime_moment: 'datetime.moment',  // RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_
+  datetime_start: 'datetime.start',  // RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group t
+  datetime_end: 'datetime.end',  // RFC-083: interval end, hub time seconds (as datetime.moment)
   source_background_run: 'source.background_run',  // bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning sess
 };
 

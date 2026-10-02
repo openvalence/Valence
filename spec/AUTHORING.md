@@ -56,12 +56,14 @@ common rows, first match wins:
 | A checkbox group | `bitfield8` + enumerated bits | SPEC §8.9 rule 3 |
 | A text input | writable `str<N>` | 11 |
 | A button | schema field, role `action.<name>`, no value payload | 6; registered verbs: RENDERING §7 |
-| A confirm-gated button | the `destructive` flag on that trigger | RENDERING §8.4 row 6 |
+| A confirm-gated button | the `destructive` flag on that trigger, or its op's `destructive_options` bit | SPEC §8.8; RENDERING §8.4 row 6 |
 | A bar/gauge readout | read-only numeric + `min`/`max` | 12 |
 | A status lamp | read-only bool/bitfield | 14 |
 | A chart | STREAM / `plan.*` time-series, or `aspect: rate` | 15 |
 | The hero axis control | `command.position` + `telemetry.target`/`telemetry.position` roles | 3; RENDERING §8.4 row 7 |
-| To overrule all of the above | explicit `archetype` annotation (always wins) | 1 |
+| A two-axis pad | two `command.position` fields on one INTENT entry | 4 |
+| A color picker | `color.red`, `color.green`, `color.blue` on three writable fields in one `group` | 16 |
+| A date/time picker | `datetime.moment`, or `datetime.start` + `datetime.end` in one `group` (hub-time seconds, SPEC §7.2) | 17 |
 
 ## 4. HOW MUCH it matters
 

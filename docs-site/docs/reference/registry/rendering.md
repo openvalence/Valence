@@ -153,9 +153,9 @@ An archetype is the control style and interaction contract a catalog field or ch
 | `9` | `list` | roster/store items + item actions; pending is a THIRD state distinct from success/failure | `list` |
 | `10` | `text` | constrained string; glance projects a digit/char wheel: the pairing-PIN path | `text` |
 | `11` | `stop` | the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden | `stop` |
-| `12` | `pad2d` | two-axis control: the multi-axis runway | `slider` + `slider` |
-| `13` | `color` | chromatic actuator setpoint (lighting/glow accessories) | `slider` + `slider` + `slider` |
-| `14` | `datetime` | moment/interval input (automation schedules) | `text` |
+| `12` | `pad2d` | two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT entry (RFC-083) | `slider` + `slider` |
+| `13` | `color` | chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in one group (RFC-083) | `slider` + `slider` + `slider` |
+| `14` | `datetime` | moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datetime.start + datetime.end in one group (RFC-083) | `text` |
 
 ## Regions
 

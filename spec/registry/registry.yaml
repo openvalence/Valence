@@ -761,6 +761,17 @@ field_roles:
   # distinct unattended-and-moving indicator). Streaming sources are explicitly
   # OUT of scope: a dead stream leaves the machine still by construction
   # (SETTLE, SPEC §11.3), so no switch exists or is wanted for them.
+  # ---- color.* / datetime.* (RFC-083): role triggers for the color and
+  # datetime archetypes (RENDERING.md §8.2 rows 16/17); no archetype hint
+  # exists. Per-GROUP families: each MUST appear at most once per `group`
+  # (SPEC §8.8 cardinality exemption). RGB only: an HSV device converts in
+  # firmware.
+  "color.red":           { note: "RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential)" }
+  "color.green":         { note: "RFC-083: writable numeric green channel of one color group" }
+  "color.blue":          { note: "RFC-083: writable numeric blue channel of one color group" }
+  "datetime.moment":     { note: "RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current boot_id; a client re-arms after a hub reboot. Triggers the `datetime` archetype." }
+  "datetime.start":      { note: "RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group triggers the `datetime` archetype" }
+  "datetime.end":        { note: "RFC-083: interval end, hub time seconds (as datetime.moment)" }
   "source.background_run": { note: "bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one." }
 
 # ---------------------------------------------------------------------------
@@ -1040,9 +1051,9 @@ ui_archetypes:
   9:  { name: list,      note: "roster/store items + item actions; pending is a THIRD state distinct from success/failure", fallback: [list] }
   10: { name: text,      note: "constrained string; glance projects a digit/char wheel: the pairing-PIN path",       fallback: [text] }
   11: { name: stop,      note: "the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden", fallback: [stop] }
-  12: { name: pad2d,     note: "two-axis control: the multi-axis runway",                                     fallback: [slider, slider] }
-  13: { name: color,     note: "chromatic actuator setpoint (lighting/glow accessories)",                      fallback: [slider, slider, slider] }
-  14: { name: datetime,  note: "moment/interval input (automation schedules)",                                 fallback: [text] }
+  12: { name: pad2d,     note: "two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT entry (RFC-083)", fallback: [slider, slider] }
+  13: { name: color,     note: "chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in one group (RFC-083)", fallback: [slider, slider, slider] }
+  14: { name: datetime,  note: "moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datetime.start + datetime.end in one group (RFC-083)", fallback: [text] }
 
 # ---------------------------------------------------------------------------
 # Regions (u8) — four abstract placement zones + one modal layer
