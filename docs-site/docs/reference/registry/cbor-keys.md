@@ -94,6 +94,8 @@ Sizing caps the hub advertises in WELCOME.
 | `2` | `max_subscriptions` | per-session subscription cap |
 | `3` | `retained_pending` | count of retained STATE pushes that will follow WELCOME |
 | `4` | `max_subscriptions_per_frame` | RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was advertised, a client could only find the reference hub's 16-wish decode cap by binary-searching against a live machine. Two clients did this, one night each. |
+| `5` | `max_sessions` | RFC-055 (§6.3): concurrent sessions this hub admits. 0 = unknown. |
+| `6` | `sessions_in_use` | RFC-055 (§6.3): sessions occupying a slot, the admitted one included (STALE sessions count). 0 = unknown. |
 
 ### `probe_result` (key 26)
 

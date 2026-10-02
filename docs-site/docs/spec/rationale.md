@@ -90,7 +90,7 @@ Findings from the pre-specification adversarial design review and from implement
 | T8 clock through relays | [§7.4](time.md#s7-4) + [§14.3](transports.md#s14-3) a/b/c rule |
 | T9 sim binding teeth | [§13.6](transports.md#s13-6) fault injection + deterministic mode |
 | T10 pairing ceremonies per transport | [§12.3](security.md#s12-3), [§12.9](security.md#s12-9) |
-| T11 admission control | [§6.3](session.md#s6-3) BUSY + retry_after + the capacity-exceeds-sessions rule |
+| T11 admission control | [§6.3](session.md#s6-3) HUB_AT_CAPACITY/HUB_SHEDDING + retry_after + incumbency + the capacity-exceeds-sessions rule (RFC-055) |
 | X1 which classes ECHO | [§9.3](channels.md#s9-3) |
 | X2 config write races | [§9.3](channels.md#s9-3) `precondition` CAS |
 | X3 liveness definition | [§6.6](session.md#s6-6) any-frame liveness |

@@ -1388,6 +1388,9 @@ TEST_CASE("SI-21: oversized SUBSCRIBE answers NACK SUBSCRIBE_REJECTED; WELCOME a
     auto w = findWelcome(helloReplies);
     REQUIRE(w.has_value());
     CHECK(w->limits_info.max_subscriptions_per_frame == kSubscribeMaxWishes);
+    // RFC-055: the admission picture rides the same limits sub-map.
+    CHECK(w->limits_info.max_sessions == kHubMaxSessions);
+    CHECK(w->limits_info.sessions_in_use == 1);
     writeCatalogReady(ep, std::span<const std::byte>(w->catalog_etag));
     tickAndDrain(hub, clock, ep);
 

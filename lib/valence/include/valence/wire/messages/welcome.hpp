@@ -163,6 +163,10 @@ struct WelcomeLimits {
     // array MUST advertise the bound so clients stop finding it by
     // binary-searching a live machine.
     uint32_t max_subscriptions_per_frame = 0;
+    // RFC-055: the admission picture (sub-map keys 5/6). 0 = unknown, and the
+    // key is omitted, so a hub that leaves them 0 stays byte-identical.
+    uint32_t max_sessions = 0;
+    uint32_t sessions_in_use = 0;
 };
 
 // RFC-016(a): the WELCOME `identity` (37) sub-map — registered and specified
@@ -269,13 +273,22 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
     // limits sub-map: key 4 (RFC-033) rides only when advertised, so a hub
     // that leaves it 0 — and every frozen golden vector — stays byte-identical.
     const bool hasPerFrame = m.limits_info.max_subscriptions_per_frame > 0;
-    w.key(CborKey::limits).mapHeader(3 + uint32_t(hasPerFrame));
+    const bool hasMaxSessions = m.limits_info.max_sessions > 0;
+    const bool hasInUse = m.limits_info.sessions_in_use > 0;
+    w.key(CborKey::limits).mapHeader(3 + uint32_t(hasPerFrame) + uint32_t(hasMaxSessions) +
+                                     uint32_t(hasInUse));
     w.key(uint64_t(welcome_limits_subkeys::max_frame)).uintVal(m.limits_info.max_frame);
     w.key(uint64_t(welcome_limits_subkeys::max_subscriptions)).uintVal(m.limits_info.max_subscriptions);
     w.key(uint64_t(welcome_limits_subkeys::retained_pending)).uintVal(m.limits_info.retained_pending);
     if (hasPerFrame) {
         w.key(uint64_t(welcome_limits_subkeys::max_subscriptions_per_frame))
             .uintVal(m.limits_info.max_subscriptions_per_frame);
+    }
+    if (hasMaxSessions) {
+        w.key(uint64_t(welcome_limits_subkeys::max_sessions)).uintVal(m.limits_info.max_sessions);
+    }
+    if (hasInUse) {
+        w.key(uint64_t(welcome_limits_subkeys::sessions_in_use)).uintVal(m.limits_info.sessions_in_use);
     }
 
     w.key(CborKey::roles).uintVal(m.roles);
@@ -410,6 +423,18 @@ inline Result<WelcomeMsg, DecodeError> decodeWelcome(std::span<const std::byte> 
                             auto vv = r.readUint();
                             if (!vv) return Ret::err(vv.error());
                             m.limits_info.max_subscriptions_per_frame = uint32_t(vv.value());
+                            break;
+                        }
+                        case welcome_limits_subkeys::max_sessions: {
+                            auto vv = r.readUint();
+                            if (!vv) return Ret::err(vv.error());
+                            m.limits_info.max_sessions = uint32_t(vv.value());
+                            break;
+                        }
+                        case welcome_limits_subkeys::sessions_in_use: {
+                            auto vv = r.readUint();
+                            if (!vv) return Ret::err(vv.error());
+                            m.limits_info.sessions_in_use = uint32_t(vv.value());
                             break;
                         }
                         default: {

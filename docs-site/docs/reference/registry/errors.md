@@ -41,7 +41,7 @@ The session cannot proceed as asked.
 
 | Code | Name | Meaning |
 |---|---|---|
-| `0x0100` | `BUSY` | client limit reached; carries retry_after_ms |
+| `0x0100` | `BUSY` | refused per-request work (concurrent blob transfers, §8.4 row 4); carries retry_after_ms. RFC-055 moved session admission to HUB_AT_CAPACITY; a client meeting BUSY on a HELLO (a pre-RFC-055 hub) treats it as HUB_AT_CAPACITY. |
 | `0x0101` | `UNAUTHORIZED` | token invalid/revoked |
 | `0x0102` | `NOT_CONTROLLER` | control op without controller role |
 | `0x0103` | `PAIRING_REQUIRED` | controller requested, no token, pairing window closed |
@@ -54,7 +54,9 @@ The session cannot proceed as asked.
 | `0x010A` | `READY_TIMEOUT` | session never sent CATALOG_READY within catalog_ready_timeout_ms (RFC-015, GOODBYE code). Needed because liveness reaping NEVER fires on a client that PINGs happily but never finishes adopting the catalog: it would hold a slot forever with both planes gated shut. |
 | `0x010B` | `NOT_READY` | frame refused because the session has not sent CATALOG_READY yet (RFC-015). READY gates BOTH planes: pre-READY INTENTs are NACK'd, not queued, because a client acting before it has adopted the retained safety latch breaks §11.5(2). |
 | `0x010C` | `IDLE_REAPED` | RFC-039.4: hub-initiated teardown of a NON-OWNING session that fell silent past idle_reap_multiplier x ping_interval_idle_ms (RFC-024, GOODBYE code). Distinct from DEADMAN_TIMEOUT on purpose: reaping a dark viewer is housekeeping with zero motion consequence, and before this code existed it was reported with the motion-safety code: a reaped dashboard read as a deadman event in every log and client. RFC-042: silence no longer reaches this code directly; it marks a session STALE instead (session_event_kinds.4), so the reference hub no longer emits DEADMAN_TIMEOUT or IDLE_REAPED for silence; both stay registered for a hub/policy combination that still wants to terminate outright. |
-| `0x010D` | `SLOT_RECLAIMED` | RFC-042: a HELLO that would otherwise NACK BUSY instead evicted a STALE session to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed session was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all). |
+| `0x010D` | `SLOT_RECLAIMED` | RFC-042: a HELLO that would otherwise NACK HUB_AT_CAPACITY (BUSY before RFC-055) instead evicted a STALE session to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed session was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all). |
+| `0x010E` | `HUB_AT_CAPACITY` | RFC-055 (§6.3): HELLO refused because max_sessions are in use (incumbents are never degraded to admit a newcomer). REQUIRES retry_after_ms; usable as a GOODBYE code. A client MUST NOT retry sooner and MUST apply jitter. |
+| `0x010F` | `HUB_SHEDDING` | RFC-055 (§6.3): HELLO or connection refused because the hub is protecting itself (resource pressure, stalled handshakes, a shedding policy). REQUIRES retry_after_ms; usable as a GOODBYE code. Never applies to ESTOP or its connectionless forms. |
 
 ## `0x02xx`: subscription and QoS
 

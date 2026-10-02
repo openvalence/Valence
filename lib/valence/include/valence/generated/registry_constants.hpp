@@ -170,6 +170,8 @@ inline constexpr uint8_t max_frame = 1;  // largest frame this hub accepts, byte
 inline constexpr uint8_t max_subscriptions = 2;  // per-session subscription cap
 inline constexpr uint8_t retained_pending = 3;  // count of retained STATE pushes that will follow WELCOME
 inline constexpr uint8_t max_subscriptions_per_frame = 4;  // RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was advertised, a client could only find the reference hub's 16-wish decode cap by binary-searching against a live machine. Two clients did this, one night each.
+inline constexpr uint8_t max_sessions = 5;  // RFC-055 (§6.3): concurrent sessions this hub admits. 0 = unknown.
+inline constexpr uint8_t sessions_in_use = 6;  // RFC-055 (§6.3): sessions occupying a slot, the admitted one included (STALE sessions count). 0 = unknown.
 }  // namespace welcome_limits
 
 namespace probe_result {
@@ -568,7 +570,7 @@ enum class NackCode : uint16_t {
     UNSUPPORTED_VERSION = 0x0001,  // HELLO proto_ver not servable
     FRAME_TOO_LARGE = 0x0002,  // exceeds negotiated max_frame
     PROFILE_VIOLATION = 0x0003,  // CBOR not in deterministic profile
-    BUSY = 0x0100,  // client limit reached; carries retry_after_ms
+    BUSY = 0x0100,  // refused per-request work (concurrent blob transfers, §8.4 row 4); carries retry_after_ms. RFC-055 moved session admission to HUB_AT_CAPACITY; a client meeting BUSY on a HELLO (a pre-RFC-055 hub) treats it as HUB_AT_CAPACITY.
     UNAUTHORIZED = 0x0101,  // token invalid/revoked
     NOT_CONTROLLER = 0x0102,  // control op without controller role
     PAIRING_REQUIRED = 0x0103,  // controller requested, no token, pairing window closed
@@ -581,7 +583,9 @@ enum class NackCode : uint16_t {
     READY_TIMEOUT = 0x010A,  // session never sent CATALOG_READY within catalog_ready_timeout_ms (RFC-015, GOODBYE code). Needed because liveness reaping NEVER fires on a client that PINGs happily but never finishes adopting the catalog: it would hold a slot forever with both planes gated shut.
     NOT_READY = 0x010B,  // frame refused because the session has not sent CATALOG_READY yet (RFC-015). READY gates BOTH planes: pre-READY INTENTs are NACK'd, not queued, because a client acting before it has adopted the retained safety latch breaks §11.5(2).
     IDLE_REAPED = 0x010C,  // RFC-039.4: hub-initiated teardown of a NON-OWNING session that fell silent past idle_reap_multiplier x ping_interval_idle_ms (RFC-024, GOODBYE code). Distinct from DEADMAN_TIMEOUT on purpose: reaping a dark viewer is housekeeping with zero motion consequence, and before this code existed it was reported with the motion-safety code: a reaped dashboard read as a deadman event in every log and client. RFC-042: silence no longer reaches this code directly; it marks a session STALE instead (session_event_kinds.4), so the reference hub no longer emits DEADMAN_TIMEOUT or IDLE_REAPED for silence; both stay registered for a hub/policy combination that still wants to terminate outright.
-    SLOT_RECLAIMED = 0x010D,  // RFC-042: a HELLO that would otherwise NACK BUSY instead evicted a STALE session to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed session was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all).
+    SLOT_RECLAIMED = 0x010D,  // RFC-042: a HELLO that would otherwise NACK HUB_AT_CAPACITY (BUSY before RFC-055) instead evicted a STALE session to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed session was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all).
+    HUB_AT_CAPACITY = 0x010E,  // RFC-055 (§6.3): HELLO refused because max_sessions are in use (incumbents are never degraded to admit a newcomer). REQUIRES retry_after_ms; usable as a GOODBYE code. A client MUST NOT retry sooner and MUST apply jitter.
+    HUB_SHEDDING = 0x010F,  // RFC-055 (§6.3): HELLO or connection refused because the hub is protecting itself (resource pressure, stalled handshakes, a shedding policy). REQUIRES retry_after_ms; usable as a GOODBYE code. Never applies to ESTOP or its connectionless forms.
     UNKNOWN_CHANNEL = 0x0200,  // channel id not in catalog
     ACCESS_DENIED = 0x0201,  // channel access level above session role
     CLASS_MISMATCH = 0x0202,  // e.g. SUBSCRIBE to an INTENT channel

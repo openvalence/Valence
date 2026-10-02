@@ -117,7 +117,7 @@ generated: true
 
 | Parent | Sub-keys |
 |---|---|
-| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame` |
+| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame`, 5 `max_sessions`, 6 `sessions_in_use` |
 | `probe_result` (26) | 1 `bytes_received`, 2 `span_ms`, 3 `loss_pct_x100`, 4 `rtt_ms` |
 | `identity` (37) | 1 `product`, 2 `fw_version`, 3 `hub_name`, 4 `info` (device-defined map) |
 | `blob` (38) | 1 `ns`, 2 `store_id`, 3 `slot`, 4 `generation`, 5 `name`, 6 `kind`, 7 `payload`, 8 `chunk_index`, 9 `chunk_count`, 10 `total_bytes`, 11 `digest` |

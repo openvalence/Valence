@@ -21,7 +21,7 @@ generated: true
 
 ## 16.1 NACK and GOODBYE {#s16-1}
 
-NACK (CBOR): `code` (16) from the registry's ranged taxonomy, optional `channel_id` (15), `intent_id` (18), `intent_seq` (41), `detail` (17), and `retry_after_ms` (31) with BUSY.
+NACK (CBOR): `code` (16) from the registry's ranged taxonomy, optional `channel_id` (15), `intent_id` (18), `intent_seq` (41), `detail` (17), and `retry_after_ms` (31) with `BUSY`, `HUB_AT_CAPACITY` and `HUB_SHEDDING` (REQUIRED on the last two, RFC-055).
 
 - **Ranges:** `0x00xx` protocol, `0x01xx` session/auth, `0x02xx` subscription/QoS, `0x03xx` intent, **`0x04xx` safety refusals**, `0x05xx` transfer. UIs SHOULD render `0x04xx` distinctly: a refusal because the machine is e-stopped is user-meaningful, not an "error".
 - **Unknown code → treat as its range generic** ([§4.3](foundations.md#s4-3)).

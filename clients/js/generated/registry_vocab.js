@@ -312,6 +312,8 @@ export const WELCOME_LIMITS_K = {
   max_subscriptions: 2,  // per-session subscription cap
   retained_pending: 3,  // count of retained STATE pushes that will follow WELCOME
   max_subscriptions_per_frame: 4,  // RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was ad
+  max_sessions: 5,  // RFC-055 (§6.3): concurrent sessions this hub admits. 0 = unknown.
+  sessions_in_use: 6,  // RFC-055 (§6.3): sessions occupying a slot, the admitted one included (STALE sessions count). 0 =
 };
 
 // ---- probe_result_keys ---------------------------------------------
@@ -584,7 +586,7 @@ export const NACK = {
   UNSUPPORTED_VERSION: 0x0001,  // HELLO proto_ver not servable
   FRAME_TOO_LARGE: 0x0002,  // exceeds negotiated max_frame
   PROFILE_VIOLATION: 0x0003,  // CBOR not in deterministic profile
-  BUSY: 0x0100,  // client limit reached; carries retry_after_ms
+  BUSY: 0x0100,  // refused per-request work (concurrent blob transfers, §8.4 row 4); carries retry_after_ms. RFC-05
   UNAUTHORIZED: 0x0101,  // token invalid/revoked
   NOT_CONTROLLER: 0x0102,  // control op without controller role
   PAIRING_REQUIRED: 0x0103,  // controller requested, no token, pairing window closed
@@ -597,7 +599,9 @@ export const NACK = {
   READY_TIMEOUT: 0x010a,  // session never sent CATALOG_READY within catalog_ready_timeout_ms (RFC-015, GOODBYE code). Needed
   NOT_READY: 0x010b,  // frame refused because the session has not sent CATALOG_READY yet (RFC-015). READY gates BOTH pla
   IDLE_REAPED: 0x010c,  // RFC-039.4: hub-initiated teardown of a NON-OWNING session that fell silent past idle_reap_multip
-  SLOT_RECLAIMED: 0x010d,  // RFC-042: a HELLO that would otherwise NACK BUSY instead evicted a STALE session to make room (lo
+  SLOT_RECLAIMED: 0x010d,  // RFC-042: a HELLO that would otherwise NACK HUB_AT_CAPACITY (BUSY before RFC-055) instead evicted
+  HUB_AT_CAPACITY: 0x010e,  // RFC-055 (§6.3): HELLO refused because max_sessions are in use (incumbents are never degraded to 
+  HUB_SHEDDING: 0x010f,  // RFC-055 (§6.3): HELLO or connection refused because the hub is protecting itself (resource press
   UNKNOWN_CHANNEL: 0x0200,  // channel id not in catalog
   ACCESS_DENIED: 0x0201,  // channel access level above session role
   CLASS_MISMATCH: 0x0202,  // e.g. SUBSCRIBE to an INTENT channel
@@ -642,6 +646,8 @@ export const NACK_NAME = {
   0x010b: 'NOT_READY',
   0x010c: 'IDLE_REAPED',
   0x010d: 'SLOT_RECLAIMED',
+  0x010e: 'HUB_AT_CAPACITY',
+  0x010f: 'HUB_SHEDDING',
   0x0200: 'UNKNOWN_CHANNEL',
   0x0201: 'ACCESS_DENIED',
   0x0202: 'CLASS_MISMATCH',

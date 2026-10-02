@@ -403,8 +403,8 @@ TEST_CASE("S-03: an intent lost before the hub processes it is flushed via onPen
 }
 
 // ---- S-04 -------------------------------------------------------------------
-// duplicate instance eviction, and BUSY admission
-TEST_CASE("S-04: duplicate instance_id evicts the old session; a hub at capacity NACKs BUSY") {
+// duplicate instance eviction, and HUB_AT_CAPACITY admission (RFC-055)
+TEST_CASE("S-04: duplicate instance_id evicts the old session; a hub at capacity NACKs HUB_AT_CAPACITY") {
     Catalog32 catalog;
     conformance::buildMiniCatalog(catalog);
     ManualClock clock;
@@ -445,7 +445,7 @@ TEST_CASE("S-04: duplicate instance_id evicts the old session; a hub at capacity
         CHECK(gb.value().code == NackCode::DUPLICATE_INSTANCE);
     }
 
-    SUBCASE("BUSY: a hub at capacity NACKs the admitting HELLO with retry_after_ms") {
+    SUBCASE("HUB_AT_CAPACITY: a hub at capacity NACKs the admitting HELLO with retry_after_ms") {
         std::vector<std::unique_ptr<InProcessLink>> links;
         std::vector<std::unique_ptr<XorShift32>> rngs;
         std::vector<std::unique_ptr<TestClientDelegate>> delegates;
@@ -475,7 +475,7 @@ TEST_CASE("S-04: duplicate instance_id evicts the old session; a hub at capacity
 
         CHECK(fifthClient.state() == ClientSessionState::CLOSED);
         REQUIRE(fifthDelegate.nacks.size() == 1);
-        CHECK(fifthDelegate.nacks[0].code == NackCode::BUSY);
+        CHECK(fifthDelegate.nacks[0].code == NackCode::HUB_AT_CAPACITY);
         CHECK(fifthDelegate.nacks[0].has_retry_after_ms);
         CHECK(fifthDelegate.nacks[0].retry_after_ms > 0);
     }

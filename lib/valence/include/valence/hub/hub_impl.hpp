@@ -483,7 +483,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
         teardownSession(*dup, nowMs);
     }
 
-    // §6.3 admission: BUSY once kHubMaxSessions SESSIONS (not physical slots)
+    // §6.3 admission (RFC-055): HUB_AT_CAPACITY once kHubMaxSessions SESSIONS (not physical slots)
     // are occupied. `slot` itself doesn't count against its own admission —
     // a HELLO replacing this very slot's own (already-occupied, e.g. a
     // retried) session isn't new capacity pressure.
@@ -506,7 +506,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
             teardownSession(*victim, nowMs);
         } else {
             NackMsg n;
-            n.code = NackCode::BUSY;
+            n.code = NackCode::HUB_AT_CAPACITY;
             n.has_retry_after_ms = true;
             n.retry_after_ms = kHubBusyRetryAfterMs;
             sendNack(*slot.transport, n);
@@ -685,6 +685,9 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     static_assert(kSubscribeMaxWishes == limits::max_subscriptions_per_frame,
                   "registry max_subscriptions_per_frame documents the reference decoder cap");
     w.limits_info.max_subscriptions_per_frame = uint32_t(kSubscribeMaxWishes);
+    // RFC-055: the admission picture; the admitted session counts itself.
+    w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
+    w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
     // RFC-016(a): identity travels when the application declared one.
     if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
         w.has_identity = true;
@@ -913,6 +916,9 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
     w.deadman_ms = slot.session.deadmanMs;  // RFC-038 window kept, not renegotiated
     w.deadman_policy = 0;
     w.limits_info.max_subscriptions_per_frame = uint32_t(kSubscribeMaxWishes);
+    // RFC-055: the admission picture; the admitted session counts itself.
+    w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
+    w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
     if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
         w.has_identity = true;
         w.identity.product = _idProduct;

@@ -401,7 +401,7 @@ CBOR map. Required: `proto_ver` (1), `client_kind` (2), `client_name` (3), `inst
 
 CBOR map: `proto_ver` (the served version), `session_id`, `boot_id`, `catalog_etag`, `cfg_gen`, `roles` (23 — the granted access tier: `watch` unless a valid token raises it), `limits` (22), `deadman_ms` (24) and `deadman_policy` (25) as applied to this session, `nonce` (29 — 8 bytes, used by a subsequent PAIR_REQ *and* by token-proof presentation), `grants` (35), optionally `granted_publishes` (36), `identity` (37), optionally `trust` (39), and optionally `ws_port` (46) and `ipv4` (47).
 
-- `limits` (22) carries at minimum `max_frame` (1), `max_subscriptions` (2), and `retained_pending` (3) — the count of retained STATE pushes that will follow — plus `max_subscriptions_per_frame` (4), the most wishes one SUBSCRIBE or HELLO frame may carry (§6.7).
+- `limits` (22) carries at minimum `max_frame` (1), `max_subscriptions` (2), and `retained_pending` (3) — the count of retained STATE pushes that will follow — plus `max_subscriptions_per_frame` (4), the most wishes one SUBSCRIBE or HELLO frame may carry (§6.7), and `max_sessions` (5) / `sessions_in_use` (6), the admission picture (RFC-055; `0` = unknown).
 - `identity` (37) carries `product` (1), `fw_version` (2), `hub_name` (3), an optional `hub_instance_id` (5, u64, [RFC-048](RFC-QUEUE.md#rfc-048--the-rendering-constitution-catalog-vocabulary-capability-interfaces-renderer-law)) — the hub's durable cross-boot identity (§6.1), distinct from the per-boot `boot_id` — and an optional device-defined `info` map (4) whose keys the protocol never interprets. **This is the only wire home for hub identity.** A hub SHOULD carry it; clients MUST tolerate its absence per §4.3, and MUST NOT make connection or operation conditional on it. Reference-implementation status: §18-16.
 - `trust` (39) in WELCOME may carry `pairing_modes` (8, a bitmask of the association modes this hub offers **right now**, re-evaluated per session so a transient window is advertised only while open) and `welcome_sig` (5) where the hub can sign without stalling (§12.5).
 - **`ws_port` (46) and `ipv4` (47)** ([RFC-046](RFC-QUEUE.md#rfc-046--ble-primary-discovery-udp-probe-and-reply-and-cross-transport-migration) item 3) are the hub's own WebSocket port and IPv4 address, present on every binding — including WS itself, closing the same "what does the hub believe its own endpoint is" gap for a WS client — but load-bearing specifically over BLE: a BLE-connected client reads them to perform the §13.1/§13.4 upgrade hop to WebSocket without any out-of-band discovery. **`0` means absent** for either key (no WS listener, or no IPv4 address) — a client MUST treat `0` as "not offered right now," never as a literal port or address.
@@ -418,7 +418,16 @@ diagram, lives in [examples/session-traces.md](examples/session-traces.md) E1.*
 
 **Transport migration ([RFC-046](RFC-QUEUE.md#rfc-046--ble-primary-discovery-udp-probe-and-reply-and-cross-transport-migration) item 4).** The duplicate-identity rule above is written for a genuine second claimant; it is silent on a client that legitimately hops transports — the case that matters is a BLE-connected client upgrading to WebSocket per §13.1/§13.4. Where a hub can identify an incoming HELLO's `instance_id` as belonging to a session it already holds, **arriving on a transport binding other than the one that session currently uses**, it SHOULD treat the new connection as a **migration** of the same session identity rather than a competing claimant: grants, `cfg_gen`, and the catalog etag are reconciled by the ordinary WELCOME flow exactly as any reconnect (§6.8) — an etag match skips catalog transfer — and the prior transport binding is simply closed, without `DUPLICATE_INSTANCE` and without running §6.9 teardown's ownership-release consequence on it. **A migration is not a session loss.** Role is re-derived from the presented token exactly as any HELLO does, so a revoked credential still downgrades correctly. This is additive, not a relaxation: a hub unable to distinguish a migration from a genuine second claimant MAY simply apply the duplicate-identity rule above, which remains fully conformant — a client that migrated and got evicted anyway just reconnects (§6.8). Where a hub implements session staleness ([RFC-042](RFC-QUEUE.md#rfc-042--session-staleness-separate-the-session-ends-from-motion-stops), §6.6), a `STALE` session's cross-transport HELLO uses this identical reattach path back to `LIVE`. Clients SHOULD keep a BLE binding known/bonded and migrate to WS whenever WELCOME's `ws_port`/`ipv4` (above) and the BLE `ws_available` advertising flag (§13.4) say a WS endpoint is reachable.
 
-**Admission:** a hub at its client limit answers HELLO with NACK `BUSY` carrying `retry_after_ms` (31). A hub's transport-tracking capacity MUST exceed its session capacity by at least one, so that the peer which loses the admission race is still reachable to *receive* its BUSY. Advertised defaults and the conformance floor (≥ `conformance_min_clients`) are in Appendix G.
+**Admission: a hub that cannot serve you says so** (RFC-055).
+
+- **Capacity is advertised.** WELCOME `limits` carries `max_sessions` (5) and `sessions_in_use` (6), the latter counting the admitted session; `0` means unknown. A client that can see the ceiling decides whether to queue, degrade or not connect.
+- **A refusal carries its reason and its delay.** A hub at its session limit answers HELLO with NACK `HUB_AT_CAPACITY`; a hub refusing to protect itself (resource pressure, slow handshakes, a shedding policy) answers `HUB_SHEDDING`. Both MUST carry `retry_after_ms` (31) and both are usable as GOODBYE codes. A hub MUST NOT refuse silently and MUST NOT close bare when it knows the reason. `BUSY` stays the code for refused per-request work (§8.4); a client meeting `BUSY` on a HELLO (a hub predating RFC-055) treats it as `HUB_AT_CAPACITY`.
+- **`retry_after_ms` binds clients.** A client MUST NOT retry sooner than it says and MUST apply jitter, so the refusals do not synchronize a herd.
+- **Incumbency is a right.** Admitting a session MUST NOT degrade an already-adopted one. A hub SHOULD reserve capacity for established sessions and refuse new ones rather than accept and then evict; `SESSION_EVICTED` stays for policy eviction, never capacity. Reclaiming a `STALE` slot (§6.6) is the one sanctioned exception, because a stale session is not being served. **Session admission MUST NEVER cost the machine its home reference.**
+- **Progress deadlines, not flat timeouts.** A hub SHOULD cancel a connection that has not completed its handshake within a short deadline that extends while the peer keeps delivering bytes at a minimum rate: a slow but real client keeps its connection, a stalled one is cut fast. This applies to every transport with a multi-part handshake.
+- **Safety ops are not subject to admission.** ESTOP and its connectionless forms (§5.5, §13.3.1) MUST stay reachable when the hub is at capacity; admission control that can refuse a stop is a safety defect.
+
+A hub's transport-tracking capacity MUST exceed its session capacity by at least one, so that the peer which loses the admission race is still reachable to *receive* its refusal. Advertised defaults and the conformance floor (≥ `conformance_min_clients`) are in Appendix G.
 
 ### 6.4 Readiness: the dual-plane gate *(CATALOG_READY)*
 
@@ -473,7 +482,7 @@ An out-of-band transport-loss report (the transport layer telling the hub a conn
 
 **[RFC-051](RFC-QUEUE.md#rfc-051--critical-stall-parks-the-session-instead-of-evicting-it) adds a fourth staleness trigger, converging with the third.** §10.4 step 4's never-shed queue stall (`never_shed_stall_eviction_ms`, 2 s) closes and detaches the transport and runs the identical park: same reset of transport-scoped state, same slot retention. Rationale: a vanished client's link looks *congested* before it looks *gone*, so this clock used to race the transport-loss report above and always lose, tearing the session down via §6.9 before the transport layer had a chance to report the loss itself. Both triggers now produce one outcome.
 
-**Slot pressure is the only thing that ever reclaims a `STALE` session.** A HELLO that would otherwise be refused with NACK `BUSY` (§6.3, `kHubMaxSessions` sessions already occupied — a `STALE` session still occupies its slot, at full cost) instead evicts the lowest-access-tier `STALE` session first (tie-break: longest continuously stale), sending it a best-effort GOODBYE `SLOT_RECLAIMED` before freeing its slot for real. A `LIVE` session is **never** evicted for pressure — only a genuine duplicate-`instance_id` claim ever displaces one. Staleness itself has **no independent time limit**: a hub MAY run indefinitely with slots parked `STALE`, by design (any fixed cap is just a slower deadman with the identical browser-throttling failure mode this exists to remove).
+**Slot pressure is the only thing that ever reclaims a `STALE` session.** A HELLO that would otherwise be refused with NACK `HUB_AT_CAPACITY` (§6.3, `kHubMaxSessions` sessions already occupied — a `STALE` session still occupies its slot, at full cost) instead evicts the lowest-access-tier `STALE` session first (tie-break: longest continuously stale), sending it a best-effort GOODBYE `SLOT_RECLAIMED` before freeing its slot for real. A `LIVE` session is **never** evicted for pressure — only a genuine duplicate-`instance_id` claim ever displaces one. Staleness itself has **no independent time limit**: a hub MAY run indefinitely with slots parked `STALE`, by design (any fixed cap is just a slower deadman with the identical browser-throttling failure mode this exists to remove).
 
 A hub SHOULD implement idle reaping (into `STALE`, per the above). Without it a watch-tier session that goes dark holds a slot until reboot, and there is no other pressure to release it.
 
@@ -1444,7 +1453,7 @@ Cutover: a hub serves both protocols during migration on different endpoints or 
 
 ### 16.1 NACK and GOODBYE
 
-NACK (CBOR): `code` (16) from the registry's ranged taxonomy, optional `channel_id` (15), `intent_id` (18), `intent_seq` (41), `detail` (17), and `retry_after_ms` (31) with BUSY.
+NACK (CBOR): `code` (16) from the registry's ranged taxonomy, optional `channel_id` (15), `intent_id` (18), `intent_seq` (41), `detail` (17), and `retry_after_ms` (31) with `BUSY`, `HUB_AT_CAPACITY` and `HUB_SHEDDING` (REQUIRED on the last two, RFC-055).
 
 - **Ranges:** `0x00xx` protocol, `0x01xx` session/auth, `0x02xx` subscription/QoS, `0x03xx` intent, **`0x04xx` safety refusals**, `0x05xx` transfer. UIs SHOULD render `0x04xx` distinctly: a refusal because the machine is e-stopped is user-meaningful, not an "error".
 - **Unknown code → treat as its range generic** (§4.3).
@@ -1673,7 +1682,7 @@ Full capability-interface field tables, the derivation chain, and every renderin
 
 | Parent | Sub-keys |
 |---|---|
-| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame` |
+| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame`, 5 `max_sessions`, 6 `sessions_in_use` |
 | `probe_result` (26) | 1 `bytes_received`, 2 `span_ms`, 3 `loss_pct_x100`, 4 `rtt_ms` |
 | `identity` (37) | 1 `product`, 2 `fw_version`, 3 `hub_name`, 4 `info` (device-defined map) |
 | `blob` (38) | 1 `ns`, 2 `store_id`, 3 `slot`, 4 `generation`, 5 `name`, 6 `kind`, 7 `payload`, 8 `chunk_index`, 9 `chunk_count`, 10 `total_bytes`, 11 `digest` |
@@ -1870,7 +1879,7 @@ Findings from the pre-specification adversarial design review and from implement
 | T8 clock through relays | §7.4 + §14.3 a/b/c rule |
 | T9 sim binding teeth | §13.6 fault injection + deterministic mode |
 | T10 pairing ceremonies per transport | §12.3, §12.9 |
-| T11 admission control | §6.3 BUSY + retry_after + the capacity-exceeds-sessions rule |
+| T11 admission control | §6.3 HUB_AT_CAPACITY/HUB_SHEDDING + retry_after + incumbency + the capacity-exceeds-sessions rule (RFC-055) |
 | X1 which classes ECHO | §9.3 |
 | X2 config write races | §9.3 `precondition` CAS |
 | X3 liveness definition | §6.6 any-frame liveness |
