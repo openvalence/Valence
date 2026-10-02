@@ -82,6 +82,16 @@ public:
                                                          AccessLevel role,
                                                          bool& cfgChanged) = 0;
 
+    // §16.1: the optional NACK `detail` for the refusal applyIntent() just
+    // returned on `channel_id`. Asked only after a refusal, before the NACK is
+    // encoded; the view must stay valid until then (a string literal is the
+    // usual answer). Diagnostic only: a client never branches on it. The hub
+    // truncates past nack_detail_max_bytes (48). Never a credential (§13.9).
+    virtual std::string_view intentNackDetail(uint16_t channel_id, NackCode code) {
+        (void)channel_id; (void)code;
+        return {};
+    }
+
     // §11.2 (minimal M4 form): motion must STOP before protocol bookkeeping.
     virtual void onEstop(uint8_t cause, uint8_t origin) = 0;
 

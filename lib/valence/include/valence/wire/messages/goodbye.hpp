@@ -17,23 +17,23 @@
 #include "valence/generated/registry_constants.hpp"
 #include "valence/wire/cbor/cbor_reader.hpp"
 #include "valence/wire/cbor/cbor_writer.hpp"
+#include "valence/wire/messages/nack.hpp"
 
 namespace valence {
 
-// Message-local wire cap for `detail`, same rationale as NACK's (nack.hpp).
-inline constexpr size_t kGoodbyeMaxDetailBytes = 48;
+// §16.1: GOODBYE `detail` is the same diagnostic string as NACK's, same cap,
+// same truncate-never-drop rule (§5.8-4).
+inline constexpr size_t kGoodbyeMaxDetailBytes = kNackMaxDetailBytes;
 
 struct GoodbyeMsg {
     NackCode code = NackCode::MALFORMED;
 
     bool has_detail = false;
-    std::string_view detail;  // <= kGoodbyeMaxDetailBytes UTF-8 bytes
+    std::string_view detail;  // UTF-8; encode/decode truncate past kGoodbyeMaxDetailBytes
 };
 
 // Encodes into `out`; returns bytes written, or 0 on any failure.
 inline size_t encodeGoodbye(const GoodbyeMsg& m, std::span<std::byte> out) {
-    if (m.detail.size() > kGoodbyeMaxDetailBytes) return 0;
-
     uint32_t nKeys = 1;  // code
     if (m.has_detail) ++nKeys;
 
@@ -41,7 +41,7 @@ inline size_t encodeGoodbye(const GoodbyeMsg& m, std::span<std::byte> out) {
     w.mapHeader(nKeys);
     w.key(CborKey::code).uintVal(uint16_t(m.code));
     if (m.has_detail) {
-        w.key(CborKey::detail).tstrVal(m.detail);
+        w.key(CborKey::detail).tstrVal(truncateNackDetail(m.detail));
     }
     return w.size();
 }
@@ -72,8 +72,7 @@ inline Result<GoodbyeMsg, DecodeError> decodeGoodbye(std::span<const std::byte> 
             case uint64_t(CborKey::detail): {
                 auto v = r.readTstr();
                 if (!v) return Ret::err(v.error());
-                if (v.value().size() > kGoodbyeMaxDetailBytes) return Ret::err(DecodeError::CapacityExceeded);
-                m.detail = v.value();
+                m.detail = truncateNackDetail(v.value());
                 m.has_detail = true;
                 break;
             }

@@ -216,6 +216,7 @@ public:
     // NOTHING for it.
     std::vector<uint8_t> refuseOps;
     std::vector<uint8_t> acceptedOps;   // safety ops the delegate actually applied
+    std::string_view refuseDetail;      // §16.1 detail for those refusals
 
     std::vector<uint8_t> deadmanStopped;
     struct OwnershipEvent {
@@ -263,6 +264,7 @@ public:
         ownershipEvents.push_back(OwnershipEvent{source_id, owner_session, reason});
     }
     bool canClearEstop() override { return allowClearEstop; }
+    std::string_view intentNackDetail(uint16_t, NackCode) override { return refuseDetail; }
 
     // §11.1: what admitsUnderPause() answers, and the overrideLatched flag of
     // every call, so a test can model "home/jog admitted" per mode.
@@ -280,6 +282,7 @@ struct RecordedNack {
     NackCode code = NackCode::MALFORMED;
     bool has_intent_id = false;
     uint16_t intent_id = 0;
+    std::string detail;   // copied: the decoded view dies with the frame
 };
 
 struct RecordedEcho {
@@ -326,7 +329,8 @@ public:
     }
 
     void onNack(const NackMsg& n) override {
-        nacks.push_back(RecordedNack{n.code, n.has_intent_id, n.intent_id});
+        nacks.push_back(RecordedNack{n.code, n.has_intent_id, n.intent_id,
+                                     n.has_detail ? std::string(n.detail) : std::string()});
     }
 
     void onPendingDropped(uint16_t intent_id) override { droppedIntentIds.push_back(intent_id); }
@@ -1258,6 +1262,30 @@ TEST_CASE("RFC-085: a delegate that refuses an op NACKs and latches NOTHING") {
     CHECK(rig.del.nacks[0].code == NackCode::UNSUPPORTED_OP);
     CHECK(rig.hub->safetyWord() == 0);
     CHECK(rig.hub->safetyModes() == 0);
+}
+
+TEST_CASE("§16.1: a delegate refusal carries its detail on the NACK; none when it gives none") {
+    SafetyRig rig(/*withToken=*/true);
+    rig.hubDelegate.refuseOps.push_back(safety_ops::override);
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 1);
+    CHECK(rig.del.nacks[0].detail.empty());
+
+    rig.hubDelegate.refuseDetail = "motor power off";
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 2);
+    CHECK(rig.del.nacks[1].code == NackCode::UNSUPPORTED_OP);
+    CHECK(rig.del.nacks[1].detail == "motor power off");
+
+    // Over the cap: truncated, the NACK still arrives (§5.8-4).
+    rig.hubDelegate.refuseDetail = "0123456789012345678901234567890123456789012345678901234567890123";
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 3);
+    CHECK(rig.del.nacks[2].detail.size() == limits::nack_detail_max_bytes);
 }
 
 TEST_CASE("RFC-085: override carries PAUSE; resume is refused until return arrives") {

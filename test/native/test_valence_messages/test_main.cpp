@@ -46,6 +46,7 @@
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -455,6 +456,62 @@ TEST_CASE("NACK: full round-trip (all optionals present) + determinism") {
     CHECK(d.detail == "busy right now");
     REQUIRE(d.has_retry_after_ms);
     CHECK(d.retry_after_ms == 500);
+}
+
+// Z-03 (manifest parser_totality; SPEC §5.8-4, §16.1): an over-cap NACK or
+// GOODBYE `detail` is TRUNCATED to nack_detail_max_bytes, never a reason to
+// drop the message, on encode and on decode. The cut keeps UTF-8 whole.
+TEST_CASE("Z-03: over-cap NACK/GOODBYE detail is truncated, never dropped") {
+    const std::string longAscii(60, 'x');
+
+    SUBCASE("encode truncates") {
+        NackMsg m{};
+        m.code = NackCode::INTERLOCK;
+        m.has_detail = true;
+        m.detail = longAscii;
+        std::array<std::byte, 128> buf{};
+        size_t n = encodeNack(m, buf);
+        REQUIRE(n > 0);
+        auto d = decodeNack(std::span<const std::byte>(buf.data(), n));
+        REQUIRE(d.isOk());
+        CHECK(d.value().code == NackCode::INTERLOCK);
+        CHECK(d.value().detail == std::string_view(longAscii).substr(0, limits::nack_detail_max_bytes));
+    }
+
+    SUBCASE("the cut backs off to a code point boundary") {
+        // 47 ASCII bytes, then U+00E9 (C3 A9) straddling byte 48.
+        const std::string s = std::string(47, 'a') + "\xC3\xA9" + "tail";
+        CHECK(truncateNackDetail(s) == std::string_view(s).substr(0, 47));
+        // A 2-byte char ending exactly at the cap is kept.
+        const std::string fits = std::string(46, 'a') + "\xC3\xA9" + "tail";
+        CHECK(truncateNackDetail(fits) == std::string_view(fits).substr(0, 48));
+    }
+
+    SUBCASE("decode keeps the NACK and truncates a hostile sender's detail") {
+        std::array<std::byte, 128> buf{};
+        CborWriter w(buf);
+        w.mapHeader(2);
+        w.key(CborKey::code).uintVal(uint16_t(NackCode::INTERLOCK));
+        w.key(CborKey::detail).tstrVal(longAscii);
+        REQUIRE(w.size() > 0);
+        auto d = decodeNack(std::span<const std::byte>(buf.data(), w.size()));
+        REQUIRE(d.isOk());
+        CHECK(d.value().code == NackCode::INTERLOCK);
+        CHECK(d.value().detail.size() == limits::nack_detail_max_bytes);
+    }
+
+    SUBCASE("GOODBYE follows the same rule") {
+        GoodbyeMsg g{};
+        g.code = NackCode::REBOOTING;
+        g.has_detail = true;
+        g.detail = longAscii;
+        std::array<std::byte, 128> buf{};
+        size_t n = encodeGoodbye(g, buf);
+        REQUIRE(n > 0);
+        auto d = decodeGoodbye(std::span<const std::byte>(buf.data(), n));
+        REQUIRE(d.isOk());
+        CHECK(d.value().detail.size() == limits::nack_detail_max_bytes);
+    }
 }
 
 // ----------------------------------------------------------------------------

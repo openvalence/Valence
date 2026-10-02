@@ -1754,6 +1754,8 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         n.code = applied.error();
         n.has_intent_id = true;
         n.intent_id = m.intent_id;
+        n.detail = _delegate.intentNackDetail(m.channel_id, n.code);
+        n.has_detail = !n.detail.empty();
         sendNackTracked(slot, n, nowMs);
         return;
     }

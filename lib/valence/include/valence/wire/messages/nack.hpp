@@ -21,10 +21,18 @@
 
 namespace valence {
 
-// Message-local wire cap for `detail` — SPEC only says "human-readable
-// diagnostic", no length is mandated; 48 bytes is generous for a one-line
-// reason string and keeps NACK tiny (it rides the never-shed set, §10.1).
-inline constexpr size_t kNackMaxDetailBytes = 48;
+// §16.1: the `detail` cap is the registry's nack_detail_max_bytes.
+inline constexpr size_t kNackMaxDetailBytes = limits::nack_detail_max_bytes;
+
+// §5.8-4/§16.1: an over-cap `detail` is truncated, never a reason to drop the
+// NACK. The cut backs off to a UTF-8 code point boundary so the tstr stays
+// well-formed.
+inline std::string_view truncateNackDetail(std::string_view s) {
+    if (s.size() <= kNackMaxDetailBytes) return s;
+    size_t n = kNackMaxDetailBytes;
+    while (n > 0 && (uint8_t(s[n]) & 0xC0u) == 0x80u) --n;  // s[n] is the first byte cut
+    return s.substr(0, n);
+}
 
 struct NackMsg {
     NackCode code = NackCode::MALFORMED;
@@ -36,7 +44,7 @@ struct NackMsg {
     uint16_t intent_id = 0;
 
     bool has_detail = false;
-    std::string_view detail;  // <= kNackMaxDetailBytes UTF-8 bytes
+    std::string_view detail;  // UTF-8; encode/decode truncate past kNackMaxDetailBytes
 
     bool has_retry_after_ms = false;
     uint32_t retry_after_ms = 0;
@@ -54,8 +62,6 @@ struct NackMsg {
 
 // Encodes into `out`; returns bytes written, or 0 on any failure.
 inline size_t encodeNack(const NackMsg& m, std::span<std::byte> out) {
-    if (m.detail.size() > kNackMaxDetailBytes) return 0;
-
     uint32_t nKeys = 1;  // code
     if (m.has_channel_id) ++nKeys;
     if (m.has_detail) ++nKeys;
@@ -72,7 +78,7 @@ inline size_t encodeNack(const NackMsg& m, std::span<std::byte> out) {
     }
     w.key(CborKey::code).uintVal(uint16_t(m.code));
     if (m.has_detail) {
-        w.key(CborKey::detail).tstrVal(m.detail);
+        w.key(CborKey::detail).tstrVal(truncateNackDetail(m.detail));
     }
     if (m.has_intent_id) {
         w.key(CborKey::intent_id).uintVal(m.intent_id);
@@ -119,8 +125,7 @@ inline Result<NackMsg, DecodeError> decodeNack(std::span<const std::byte> in) {
             case uint64_t(CborKey::detail): {
                 auto v = r.readTstr();
                 if (!v) return Ret::err(v.error());
-                if (v.value().size() > kNackMaxDetailBytes) return Ret::err(DecodeError::CapacityExceeded);
-                m.detail = v.value();
+                m.detail = truncateNackDetail(v.value());
                 m.has_detail = true;
                 break;
             }
