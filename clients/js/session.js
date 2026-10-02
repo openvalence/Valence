@@ -148,7 +148,7 @@ export const PUBLISH_ERROR = Object.freeze({
   NO_CLOCK: 'NO_CLOCK', // no CLOCK reply yet, so no anchor can be expressed in hub time (§7.1)
   BAD_SAMPLE: 'BAD_SAMPLE', // a sample does not encode against the catalog layout
   BAD_BUNDLE: 'BAD_BUNDLE', // violates a §5.4 cap or the negotiated max_frame
-  SCHEDULE_TOO_FAR: 'SCHEDULE_TOO_FAR', // segment anchor beyond max_future_schedule_ms: the hub drops it
+  SCHEDULE_TOO_FAR: 'SCHEDULE_TOO_FAR', // a segment start beyond the grant's schedule horizon: the hub drops it
   RATE_EXCEEDED: 'RATE_EXCEEDED', // would overdraw the granted-rate token bucket (§10.5)
   NOT_SENT: 'NOT_SENT', // socket not open
 });
@@ -566,9 +566,13 @@ export function createSession(opts = {}) {
     if (!grant) refuse(PUBLISH_ERROR.NOT_GRANTED, channelId, 'no granted publish; call publish() first');
     if (!state.clockSynced) refuse(PUBLISH_ERROR.NO_CLOCK, channelId, 'no CLOCK reply yet');
 
+    // §5.4 (RFC-087): c2h segments count t_off in 100 us units and span up to
+    // the grant's horizon; samples keep 1 us units and the 20 ms span cap.
+    const seg = kind === STREAM_KIND.segments;
+    const bundleOpts = seg ? { unitUs: LIMITS.segment_t_off_unit_us, spanCapUs: grant.scheduleHorizonMs * 1000 } : {};
     let payload;
     try {
-      payload = encodeBundle(anchorUs, tOffsUs, values.map((v) => encodePacked(v, entry.layout || [])));
+      payload = encodeBundle(anchorUs, tOffsUs, values.map((v) => encodePacked(v, entry.layout || [])), bundleOpts);
     } catch (e) {
       refuse(e instanceof RangeError && /^bundle/.test(e.message) ? PUBLISH_ERROR.BAD_BUNDLE : PUBLISH_ERROR.BAD_SAMPLE,
         channelId, e.message);
@@ -577,10 +581,11 @@ export function createSession(opts = {}) {
     if (maxFrame && HEADER_BYTES + payload.length > maxFrame) {
       refuse(PUBLISH_ERROR.BAD_BUNDLE, channelId, (HEADER_BYTES + payload.length) + ' B frame exceeds max_frame ' + maxFrame);
     }
-    if (kind === STREAM_KIND.segments) {
-      const aheadUs = wrapDiff(anchorUs >>> 0, hubNowUs());
-      if (aheadUs > LIMITS.max_future_schedule_ms * 1000) {
-        refuse(PUBLISH_ERROR.SCHEDULE_TOO_FAR, channelId, 'anchor is ' + aheadUs + ' us ahead, cap ' + LIMITS.max_future_schedule_ms + ' ms');
+    if (seg) {
+      // The hub tests the LAST start against its horizon, so that is the one checked.
+      const aheadUs = wrapDiff((anchorUs + tOffsUs[tOffsUs.length - 1]) >>> 0, hubNowUs());
+      if (aheadUs > grant.scheduleHorizonMs * 1000) {
+        refuse(PUBLISH_ERROR.SCHEDULE_TOO_FAR, channelId, 'last start is ' + aheadUs + ' us ahead, horizon ' + grant.scheduleHorizonMs + ' ms');
       }
     }
 
@@ -624,20 +629,26 @@ export function createSession(opts = {}) {
   }
 
   /**
-   * Send ONE timed segment on a `segments`-kind c2h STREAM channel (§9.2/§9.6).
-   * `segment` is {layoutFieldName: physicalValue}. The anchor is the segment's
-   * intended EXECUTION START in hub time (§5.4); the hub drops a bundle
-   * anchored more than max_future_schedule_ms ahead, so that is refused here.
-   * One segment per bundle: a segment's own duration dwarfs the 20 ms span cap.
+   * Send timed segments on a `segments`-kind c2h STREAM channel (§9.2/§9.6).
+   * Each segment is {layoutFieldName: physicalValue}. anchor + offsetsUs[i] is
+   * segment i's EXECUTION START in hub time (§5.4). A bundle may fill toward
+   * the grant's scheduleHorizonMs (RFC-087, 250 ms when the grant carries no
+   * key 50): every start must lie within it, and offsets are multiples of
+   * segment_t_off_unit_us (100 us). A newly accepted bundle supersedes every
+   * not-yet-started segment at or after its first start (the flush).
    * @param {number} channelId
-   * @param {Object} segment
-   * @param {Object} [o] {anchor: u32 hub-µs execution start (default hubNowUs())}
+   * @param {Object|Object[]} segments one segment, or 1..bundle_max_samples
+   * @param {Object} [o] {anchor: u32 hub-µs first start (default hubNowUs()),
+   *        offsetsUs: per-segment start offsets in µs (required for more than one)}
    * @returns {{seq:number, n:number}}
    * @throws {PublishError}
    */
-  function publishSegment(channelId, segment, o = {}) {
+  function publishSegment(channelId, segments, o = {}) {
+    const values = Array.isArray(segments) ? segments : [segments];
+    const offs = o.offsetsUs || (values.length === 1 ? [0] : null);
+    if (!offs) refuse(PUBLISH_ERROR.BAD_BUNDLE, channelId, values.length + ' segments need offsetsUs');
     const anchor = o.anchor != null ? o.anchor : hubNowUs();
-    return sendStream(channelId, STREAM_KIND.segments, [segment], [0], anchor);
+    return sendStream(channelId, STREAM_KIND.segments, values, offs, anchor);
   }
 
   // ---- CATALOG (BLOB namespace 0) -----------------------------------------

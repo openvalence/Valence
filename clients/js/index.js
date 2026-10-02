@@ -67,7 +67,10 @@
  *   s.publishSamples(input.id, { target_norm: 0.5, vel_norm: 0 });
  *   s.publishSegment(segId, { target_norm: 0.8, duration_ms: 120, end_vel_norm: 0 },
  *     { anchor: s.hubNowUs() + 60000 });      // execution start, hub time
- *   s.state.grantedPublishes                  // Map<ch, {rate, burst, curveFamily, ...}>
+ *   s.publishSegment(segId, [a, b, c], { anchor, offsetsUs: [0, 120000, 240000] });
+ *                                             // several starts, within grant.scheduleHorizonMs
+ *   s.state.grantedPublishes                  // Map<ch, {rate, burst, curveFamily,
+ *                                             //   scheduleLatencyUs, scheduleHorizonMs, ...}>
  *
  * ── Phase D (STORE items, BLOB namespace 1, §8.7) ───────────────────────────
  * A STORE catalog entry's `.store` descriptor names the store; the roster

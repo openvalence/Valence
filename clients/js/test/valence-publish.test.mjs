@@ -82,6 +82,19 @@ assert('bundle: 21 ms span rejected', throws(() => encodeBundle(0, [0, 21000], [
 assert('bundle: t_off[0] != 0 rejected', throws(() => encodeBundle(0, [5], [s4])));
 assert('bundle: repeated t_off rejected', throws(() => encodeBundle(0, [0, 100, 100], [s4, s4, s4])));
 assert('bundle: exactly 20 ms span accepted', !throws(() => encodeBundle(0, [0, 20000], [s4, s4])));
+// RFC-087 t_off units, against hand-built bundles (t_base 0x01020304):
+//   samples  [0, 5000 us]          -> t_off 0x0000, 0x1388 (1 us units)
+//   segments [0, 120 ms, 240 ms]   -> t_off 0x0000, 0x04B0, 0x0960 (100 us units)
+const segA = encodePacked({ target_norm: 0.25, duration_ms: 120, end_vel_norm: 0 }, SEG_LAYOUT);
+check('samples bundle: t_off in 1 us units',
+  encodeBundle(0x01020304, [0, 5000], [s4, s4]), '0403020102000000881300000000' + '00000000');
+check('segments bundle: t_off in 100 us units, spanning 240 ms under a 250 ms horizon',
+  encodeBundle(0x01020304, [0, 120000, 240000], [segA, segA, segA], { unitUs: 100, spanCapUs: 250000 }),
+  '040302010300' + '0000B0046009' + 'C40978000000'.repeat(3));
+assert('segments bundle: 260 ms span refused at a 250 ms horizon',
+  throws(() => encodeBundle(0, [0, 260000], [segA, segA], { unitUs: 100, spanCapUs: 250000 })));
+assert('segments bundle: an offset off the 100 us grid refused',
+  throws(() => encodeBundle(0, [0, 120050], [segA, segA], { unitUs: 100, spanCapUs: 250000 })));
 assert('packed: out-of-range u16 refused, never wrapped', throws(() => encodePacked({ target_norm: 7, vel_norm: 0 }, INPUT_LAYOUT)));
 assert('packed: missing field refused', throws(() => encodePacked({ target_norm: 0.5 }, INPUT_LAYOUT)));
 
@@ -211,6 +224,23 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   refusal('segment anchored 300 ms ahead', () => s.publishSegment(0x2101, segv, { anchor: (s.hubNowUs() + 300000) >>> 0 }), PUBLISH_ERROR.SCHEDULE_TOO_FAR);
   assert('segment anchored 100 ms ahead goes out, seq 0 on its own channel',
     s.publishSegment(0x2101, segv, { anchor: (s.hubNowUs() + 100000) >>> 0 }).seq === 0);
+  assert('no key 50 -> horizon 250 ms', s.state.grantedPublishes.get(0x2101).scheduleHorizonMs === 250);
+  refusal('two segments without offsets', () => s.publishSegment(0x2101, [segv, segv]), PUBLISH_ERROR.BAD_BUNDLE);
+  refusal('last start 260 ms out at the 250 ms default', () => s.publishSegment(0x2101, [segv, segv],
+    { anchor: s.hubNowUs(), offsetsUs: [0, 260000] }), PUBLISH_ERROR.BAD_BUNDLE);
+  refusal('span inside 250 ms but last start past it', () => s.publishSegment(0x2101, [segv, segv],
+    { anchor: (s.hubNowUs() + 100000) >>> 0, offsetsUs: [0, 200000] }), PUBLISH_ERROR.SCHEDULE_TOO_FAR);
+
+  // A 1000 ms horizon (re-GRANT with key 50): fill a bundle to 900 ms.
+  ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
+    [K.granted_publishes, cbArray([cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2101)],
+      [K.schedule_horizon_ms, cbUint(1000)]])])]]));
+  const r = s.publishSegment(0x2101, [segv, segv, segv], { offsetsUs: [0, 450000, 900000] });
+  const wire = ws.framesOf(FRAME.STREAM).filter((f) => f.header.channel === 0x2101).pop().bytes;
+  const wdv = new DataView(wire.buffer, wire.byteOffset + 8);
+  assert('900 ms bundle accepted at horizon 1000; wire t_off 0/4500/9000 (100 us units)',
+    r.n === 3 && wdv.getUint8(4) === 3 && wdv.getUint16(6, true) === 0 &&
+    wdv.getUint16(8, true) === 4500 && wdv.getUint16(10, true) === 9000);
 
   // Unsolicited re-grant (§10.2): a key-36 GRANT with nothing pending updates the rate.
   ws.recv(FRAME.GRANT, cbMap([[K.grants, cbArray([])],
