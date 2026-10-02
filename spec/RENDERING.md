@@ -313,6 +313,17 @@ Authoring note *(informative, RFC-064)*: a settings select that wants a
 > real interaction (drag, tap, confirm-gate) across all three renderer
 > classes side by side.
 
+### 8.5 User-authored surfaces and presentation choice *(normative, RFC-080)*
+
+The **catalog-built UI** is the derived page tree of §11 with the region assignment of §9, unchanged and REQUIRED of every client claiming conformance; it is what a hardware remote or an embedded screen renders, where nobody authors anything. A client MAY **additionally** offer **user-authored surfaces**: saved layouts the user composes from placements, each placement one catalog field with a chosen presentation. A user-authored surface never replaces the derived UI, and every field MUST stay reachable through the derived pages.
+
+1. **What a user-authored surface may never do.** Remove, cover or displace the `persistent` region or the `stop` archetype: a surface always carries a stop affordance the user cannot remove (law 1; the Phosphor top strip is the reference form). Change what a placement binds to: the user chooses how a field looks, never which field it is (laws 6, 7). Suspend §8.1: every writing presentation shows the four-state ladder (law 5), grays with a reason rather than hiding, and renders only values the wire sent. Place a composite without all its essential bindings (law 7).
+2. **Archetype fixed, presentation chosen.** The archetype is the §8.2 first match and is not user-editable. Within it the user picks a **presentation** by read/write class: a **writable** field (§8.2 rows 3 and 6 to 11) may take any writable presentation (knob, slider, stepper, segmented, toggle and the like); a **read-only** field any read-only presentation (number, bar, bulb, graph, hero numeral and the like). A writable field MAY also be placed with a read-only presentation as a **display-only instance**: it writes nothing, shows the applied value, and shows the pending ladder for writes made elsewhere, never only the settled value (law 5). Presentations are client vocabulary, not registered, and stay client craft: there is no portable layout format until a second client exists. The `stop` archetype is bound by identity and takes no presentation choice beyond the client's own rendering of it. Single fields are placeable anywhere on a surface.
+3. **Per-placement range parameters.** A placement with a range presentation MAY set `min`, `max`, `step` and `default`, each inside the catalog's own bounds: a placement may **narrow, never widen**; `step` MUST be a whole multiple of the catalog `step` where one is declared; `default` (the placement's return value) MUST lie inside the placement's own range. The narrowing is a UI constraint only; the hub stays the referee (SPEC §8.8). **Ground truth wins over the narrowing:** when the applied value lies outside a placement's range, the placement MUST show the true value and mark it out of range, never pin it silently to its own edge.
+4. **Toggle placements.** A toggle placement on any writable field (not only a `bool`) is two-valued: each press writes the other of values A and B, both inside the field's range. There is no client-side momentary (press-and-restore) mode, because a client-side restore depends on the client surviving the press; a hub-side hold-to-run, if an accessory ever needs one, is its own future RFC.
+5. **Saved layout keys.** A saved layout keys each placement on stable identity: the hub by `hub_instance_id` (SPEC §6.1) where present; the field by its registered `role` where it has one; otherwise by **channel id plus field name** (law 10's scoped exception). A key that no longer resolves after a firmware update leaves the placement **orphaned and shown as missing**; it MUST NOT be rebound to a different field by guess. User-space channels (SPEC §8.10) are keyed by their absolute id, which stays stable while the accessory stays paired.
+6. **Layouts live on the client.** Named layouts are stored per user per client, locally. Nothing about them reaches the hub or the wire.
+
 ---
 
 ## 9. Regions *(normative)*
@@ -331,7 +342,7 @@ Four abstract placement zones plus one modal layer, **frozen at five, v1.0**. Ge
 
 - No `content` may ever obscure or displace `persistent`.
 - Pending/degraded state visualization MUST NOT be suppressed by layout, on any region.
-- A pattern's region assignment (§10) is part of its spec definition, never a per-app choice.
+- A pattern's region assignment (§10) is part of its spec definition, never a per-app choice. A user-authored surface (§8.5) is a separate surface, not a reassignment: it never removes, covers or displaces `persistent` (RFC-080).
 - `persistent` MUST remain visible in every navigation state of every class — on `glance` it MAY compress to the stop affordance + latch glyph, never to nothing.
 
 ---
@@ -415,7 +426,7 @@ Pages are **derived from the catalog**, never designed per app.
 - **Tagged min/max pairs render as a single range control**, not two independent sliders.
 - `glance`-class auto-paginates long sections, preserving order.
 
-**Consistency invariant (MUST):** the same catalog yields the same page tree on every conformant client, differing only by class projection (§12).
+**Consistency invariant (MUST):** the same catalog yields the same page tree on every conformant client, differing only by class projection (§12). The invariant binds the derived tree; a client MAY additionally offer user-authored surfaces (§8.5, RFC-080), which never replace it: every field stays reachable through the derived pages whatever any layout contains or omits.
 
 ---
 
@@ -459,7 +470,7 @@ Each earned by a documented field regression in the reference client. A client c
 7. Require **all** of a composite widget's essential bindings, or decline entirely. A partial instrument lies.
 8. Visibly dim stale telemetry — freshness is part of truth.
 9. Never fabricate a value the wire did not send: no placeholder ceilings, no invented zeros.
-10. Key persisted client layout on stable ids, never on indices or wire vocabulary — layouts survive firmware updates. A client that persists layout keys it on the pair (class, stable id): a layout saved under one class MUST NOT be applied under another, and returning to a class restores that class's own layout (§12.1, RFC-062).
+10. Key persisted client layout on stable ids, never on indices or wire vocabulary — layouts survive firmware updates. **For user-authored surfaces only** (§8.5), a field with no role MAY be keyed on channel id plus field name: a storage key for re-finding a placement the user made, never semantic binding, so law 6 still holds (RFC-080). A client that persists layout keys it on the pair (class, stable id): a layout saved under one class MUST NOT be applied under another, and returning to a class restores that class's own layout (§12.1, RFC-062).
 11. Never scroll pinned chrome (safety facts) out of view.
 12. Meet a minimum touch-target size (40 CSS px, the figure §12.1's floor derives from) and support reduced motion, as conformance floors, not nice-to-haves.
 13. Never make a safety color themeable.
