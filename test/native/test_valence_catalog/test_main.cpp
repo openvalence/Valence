@@ -132,8 +132,10 @@ TEST_CASE("K-01: mini-catalog deterministic encoding") {
     // (verified by removing just that field and watching this pin and K-02's
     // etag return EXACTLY to 733 / 21 CB 26 C9 4F B3 88 B5 with every other
     // M4a change still in place). Re-frozen here per the RFC queue's
-    // break-allowed ruling.
-    CHECK(n1 == 775);
+    // break-allowed ruling. RFC-037 (rfc-bmy option a, 2026-10-02): 775 -> 805,
+    // the encoder now emits key 18 `size` on all 15 layout fields (+2 B each);
+    // re-pinned before the first tag under the C-6 amendment.
+    CHECK(n1 == 805);
 
     // Decode -> re-encode must reproduce the exact same bytes (round-trip
     // determinism, not just "encode is stable").
@@ -161,8 +163,9 @@ TEST_CASE("K-02: catalogEtag over mini-catalog") {
     // printed during development, now a hard assertion).
     // v1.0 base pass re-pin: 21 CB 26 C9 4F B3 88 B5 -> F4 A2 8F BB 58 CE D1 6A,
     // moved by RFC-025c's appended `modes` field on 0x0003 and by nothing else.
+    // RFC-037 re-pin: F4 A2 8F BB 58 CE D1 6A -> 8C 5D 68 F4 1A D0 32 5E (key 18).
     std::array<std::byte, 8> expected = {
-        B(0xF4), B(0xA2), B(0x8F), B(0xBB), B(0x58), B(0xCE), B(0xD1), B(0x6A),
+        B(0x8C), B(0x5D), B(0x68), B(0xF4), B(0x1A), B(0xD0), B(0x32), B(0x5E),
     };
     CHECK(etag == expected);
 
@@ -196,9 +199,9 @@ TEST_CASE("K-03: chunking and reassembly") {
     conformance::buildMiniCatalog(cat);
     std::array<std::byte, 2048> buf{};
     size_t n = encodeCatalog(cat, buf);
-    REQUIRE(n == 775);  // pinned by K-01; chunk math below depends on it
+    REQUIRE(n == 805);  // pinned by K-01; chunk math below depends on it
 
-    // ceil(775 / 192) = 5 chunks: 192, 192, 192, 192, 7.
+    // ceil(805 / 192) = 5 chunks: 192, 192, 192, 192, 37.
     size_t cc = chunkCount(n);
     CHECK(cc == 5);
 
@@ -241,7 +244,7 @@ TEST_CASE("K-04: selective repair of withheld chunks {1,3}") {
     conformance::buildMiniCatalog(cat);
     std::array<std::byte, 2048> buf{};
     size_t n = encodeCatalog(cat, buf);
-    REQUIRE(n == 775);
+    REQUIRE(n == 805);
     size_t cc = chunkCount(n);
     REQUIRE(cc == 5);
 
@@ -444,7 +447,7 @@ TEST_CASE("catalog decode: entries out of ascending id order is Malformed") {
 //
 // The BASELINE for all of it is K-01/K-02 above: the frozen fixture carries no
 // annotations, every annotation key is OPTIONAL, and §5.3 does not emit absent
-// optional keys — so its 775-byte length and its etag are UNMOVED by this whole
+// optional keys — so its 805-byte length and its etag are UNMOVED by this whole
 // block. If either pin ever shifts, something optional was made mandatory.
 
 namespace {

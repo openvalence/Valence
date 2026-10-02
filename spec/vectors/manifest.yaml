@@ -17,9 +17,12 @@ fixtures:
   catalog: "fixtures/mini-catalog.yaml"  # 6-entry catalog exercising every field type,
                                          # both layout and schema forms, one bitfield8
   # FROZEN AT THE v1.0 TAG (K-01 and K-02 pins). Changing the fixture moves both
-  # and is a protocol break, not a refactor — SPEC §17.2.
-  catalog_encoded_bytes: 775
-  catalog_etag: "F4A28FBB58CED16A"
+  # and is a protocol break, not a refactor — SPEC §17.2. Before the first tag a
+  # pin MAY be re-pinned by operator ruling (C-6 amendment, SPEC §17.2): RFC-037
+  # (2026-10-02) moved 775 / F4A28FBB58CED16A to 805 / 8C5D68F41AD0325E when the
+  # reference encoder began emitting key 18 `size` on every layout field.
+  catalog_encoded_bytes: 805
+  catalog_etag: "8C5D68F41AD0325E"
 
 suites:
   header:
@@ -92,7 +95,7 @@ suites:
   # fixture cannot cover at all (it carries no RFC-009 annotations and no
   # safety INTENT channel, so per-op `access`, `option_access` and the role
   # exemption are behavioral-test-only until a v1.1 fixture pass — which would
-  # move the 775 B / F4 A2 8F BB 58 CE D1 6A pins and therefore was NOT done at
+  # move the 805 B / 8C 5D 68 F4 1A D0 32 5E pins and therefore was NOT done at
   # the v1.0 tag).
   readiness:                                          # RFC-015, SPEC §6.4
     - id: R-01  # CATALOG_READY raw frame: exact 8-byte etag payload; wrong length rejected

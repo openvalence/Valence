@@ -164,7 +164,7 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     for (std::string_view name : bits) {
         if (!name.empty()) ++nBits;
     }
-    uint32_t nKeys = 4;
+    uint32_t nKeys = 5;  // 1-4 + RFC-037 size (18), always emitted
     if (f.hasMin) ++nKeys;
     if (f.hasMax) ++nKeys;
     if (nBits > 0) ++nKeys;
@@ -210,8 +210,11 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     if (!f.role.empty()) w.key(13).tstrVal(f.role);
     if (f.hasStep) w.key(14).f32Val(f.step);
     if (f.flags != 0) w.key(15).uintVal(f.flags);
-    // RFC-048 (Phase C2), keys 19-23 — ascending, after 18 (RFC-037 size, this
-    // library never authors) and the reserved-for-schema-field 16/17.
+    // RFC-037 (rfc-bmy option a): the field's packed width, on every layout
+    // field, so a reader meeting an unknown type skips it instead of losing
+    // every later offset. 16/17 are schema-field keys.
+    w.key(18).uintVal(f.wireSize());
+    // RFC-048 (Phase C2), keys 19-23 — ascending.
     if (f.hasRank) w.key(19).uintVal(f.rank);
     if (f.hasAspect) w.key(20).uintVal(f.aspect);
     if (f.hasScope) w.key(21).uintVal(f.scope);

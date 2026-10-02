@@ -67,7 +67,7 @@ does not carry a demo binary of its own yet.
 
 `conformance/catalog_check.hpp` mechanically validates any catalog (STATE-fit,
 id order, form rules). The frozen fixture `conformance/mini_catalog.hpp` pins
-the protocol's reference etag (`F4 A2 8F BB 58 CE D1 6A`) — if your
+the protocol's reference etag (`8C 5D 68 F4 1A D0 32 5E`, 805 B; RFC-037 re-pin) — if your
 implementation reproduces it byte-for-byte, your catalog codec is correct.
 
 License: MIT. Nucleus is the reference hub implementation consuming

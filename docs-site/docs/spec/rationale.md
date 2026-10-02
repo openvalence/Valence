@@ -153,7 +153,7 @@ For implementers of the draft. This is a summary; the reasoning lives in `RFC-QU
 
 **Rejected, numbers retained:** a separate stored-vs-effective field flag, and a reserved `machine-limits` channel id — both **superseded by the [§8.8](catalog.md#s8-8) mechanism**, where `setting_key` presence answers the first and `field_roles` answers the second, so the registry never grows two ways to express one thing.
 
-**Fixture re-freeze:** the conformance mini-catalog is now **775 bytes** with etag **`F4 A2 8F BB 58 CE D1 6A`** (was 733 / `21 CB 26 C9 4F B3 88 B5`), re-frozen at this tag ([§17.2](conformance.md#s17-2)).
+**Fixture re-freeze:** the conformance mini-catalog was re-frozen at **775 bytes** / **`F4 A2 8F BB 58 CE D1 6A`** (was 733 / `21 CB 26 C9 4F B3 88 B5`), and re-pinned again before the tag at **805 bytes** / **`8C 5D 68 F4 1A D0 32 5E`** by RFC-037's key 18 ([§17.2](conformance.md#s17-2), C-6 amendment).
 
 ---
 
