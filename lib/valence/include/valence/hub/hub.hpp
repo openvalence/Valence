@@ -296,6 +296,12 @@ public:
     // delegate.onEstop FIRST (§11.2: stop motion before bookkeeping), then
     // publishes the latched snapshot at critical priority.
     void latchEstop(uint8_t cause, uint8_t origin, uint16_t estop_seq);
+    // A hub-side initiation (a delegate's fault latch): the seq comes from the
+    // hub's one §5.5 counter, the same one raw 0xE5 frames and the `estop` op
+    // advance. Do not invent a seq in the delegate; it drifts from that counter.
+    void latchEstop(uint8_t cause, uint8_t origin);
+    // §5.5/§11.1: the estop_seq of the latest initiation (the snapshot's field).
+    uint16_t estopSeq() const { return _estopSeq; }
     bool estopLatched() const;
 
     // ---- Catalog encoding health (M5a, additive) ---------------------------
@@ -914,6 +920,8 @@ private:
     void pumpSlot(Slot& slot, uint32_t nowMs);
     void dispatchFrame(Slot& slot, const FrameHeader& h, std::span<const std::byte> payload, uint32_t nowMs);
     void handleEstopFrame(const EstopFrame& f, uint32_t nowMs);
+    // §5.5: the seq a new initiation carries; a repeat while latched keeps the latched one.
+    uint16_t nextEstopSeq() const;
     void handleHello(Slot& slot, std::span<const std::byte> payload, uint32_t nowMs);
     // RFC-042 path B: `slot` names a fresh HELLO's arrival, `stale` an existing
     // STALE session (a different physical slot) sharing its instance_id.

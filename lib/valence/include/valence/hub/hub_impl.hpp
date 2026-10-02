@@ -1649,7 +1649,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         // repeating — otherwise subscribers see an initiation that never
         // happened. handleEstopFrame only adopts f.seq on the transition, so
         // this matches the raw-frame semantics exactly.
-        f.seq = (_safetyWord & safety_bits::ESTOP) ? _estopSeq : uint16_t(_estopSeq + 1);
+        f.seq = nextEstopSeq();
         handleEstopFrame(f, nowMs);
 
         EchoMsg echo;
@@ -2597,6 +2597,12 @@ inline void Hub::latchEstop(uint8_t cause, uint8_t origin, uint16_t estop_seq) {
     f.seq = estop_seq;
     handleEstopFrame(f, _clock.nowMs());
 }
+
+inline uint16_t Hub::nextEstopSeq() const {
+    return (_safetyWord & safety_bits::ESTOP) ? _estopSeq : uint16_t(_estopSeq + 1);
+}
+
+inline void Hub::latchEstop(uint8_t cause, uint8_t origin) { latchEstop(cause, origin, nextEstopSeq()); }
 
 inline bool Hub::estopLatched() const { return (_safetyWord & safety_bits::ESTOP) != 0; }
 

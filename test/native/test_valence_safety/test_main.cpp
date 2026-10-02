@@ -1422,6 +1422,44 @@ TEST_CASE("RFC-085/§11.1: under PAUSE a motion intent is refused INTERLOCK unle
     }
 }
 
+// §5.5: one estop_seq counter. A delegate's fault latch continues from a raw
+// 0xE5 initiation instead of keeping a count of its own (rfc-1ek).
+TEST_CASE("§5.5: a hub-side latchEstop(cause, origin) continues the seq a raw 0xE5 initiation set") {
+    SafetyRig rig(/*withToken=*/true);
+    CHECK(rig.hub->estopSeq() == 0);
+
+    rig.client->initiateEstop(safety_causes::user);   // raw 0xE5 frame, client-chosen seq
+    rig.step();
+    REQUIRE(rig.hub->estopLatched());
+    const uint16_t rawSeq = rig.hub->estopSeq();
+    CHECK(rawSeq != 0);
+    CHECK(getU16(std::span<const std::byte>(rig.del.lastStateByChannel[0x0003]).subspan(6, 2)) == rawSeq);
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    REQUIRE_FALSE(rig.hub->estopLatched());
+
+    rig.hub->latchEstop(safety_causes::fault, uint8_t(AccessLevel::configure));
+    rig.step();
+    REQUIRE(rig.hub->estopLatched());
+    CHECK(rig.hub->estopSeq() == uint16_t(rawSeq + 1));
+    CHECK(rig.lastCause() == safety_causes::fault);
+    CHECK(getU16(std::span<const std::byte>(rig.del.lastStateByChannel[0x0003]).subspan(6, 2)) ==
+          uint16_t(rawSeq + 1));
+
+    // A repeat while latched is the same initiation: the seq holds.
+    rig.hub->latchEstop(safety_causes::fault, uint8_t(AccessLevel::configure));
+    rig.step();
+    CHECK(rig.hub->estopSeq() == uint16_t(rawSeq + 1));
+
+    // And the `estop` op after a release continues the same counter.
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::estop)).has_value());
+    rig.step();
+    CHECK(rig.hub->estopSeq() == uint16_t(rawSeq + 2));
+}
+
 // ---- RFC-045 ----------------------------------------------------------------
 // source loss (any door, any cause) latches NOTHING any more. This
 // supersedes the old RFC-022.3 test pair, which proved the latched CAUSE told
