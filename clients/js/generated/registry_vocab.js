@@ -1137,6 +1137,8 @@ export const FIELD_ROLE = {
   advgen_speed_out: 'advgen.speed_out',  // RFC-081: outward stroke speed base
   advgen_accel_in: 'advgen.accel_in',  // RFC-081: inward acceleration base
   advgen_accel_out: 'advgen.accel_out',  // RFC-081: outward acceleration base
+  advgen_dwell_crest: 'advgen.dwell_crest',  // RFC-095: hold at the deep bound (advgen.depth_max) after the inward half completes and before th
+  advgen_dwell_trough: 'advgen.dwell_trough',  // RFC-095: hold at the shallow bound (advgen.depth_min) after the outward half completes and befor
   mod_amount: 'mod.amount',  // RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation
   mod_rise: 'mod.rise',  // RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)
   mod_hold: 'mod.hold',  // RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)

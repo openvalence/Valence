@@ -543,6 +543,8 @@ inline constexpr std::string_view advgen_speed_in = "advgen.speed_in";  // RFC-0
 inline constexpr std::string_view advgen_speed_out = "advgen.speed_out";  // RFC-081: outward stroke speed base
 inline constexpr std::string_view advgen_accel_in = "advgen.accel_in";  // RFC-081: inward acceleration base
 inline constexpr std::string_view advgen_accel_out = "advgen.accel_out";  // RFC-081: outward acceleration base
+inline constexpr std::string_view advgen_dwell_crest = "advgen.dwell_crest";  // RFC-095: hold at the deep bound (advgen.depth_max) after the inward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive: the stroke period grows by the dwell, the moving halves keep their speed and acceleration, and one stroke on the modulators' clock (RFC-066) is the whole cycle, both dwells included. A modulator whose mod_target is a dwell varies it per stroke. Optional binding of generator-advanced.
+inline constexpr std::string_view advgen_dwell_trough = "advgen.dwell_trough";  // RFC-095: hold at the shallow bound (advgen.depth_min) after the outward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive, as advgen.dwell_crest. Optional binding of generator-advanced.
 inline constexpr std::string_view mod_amount = "mod.amount";  // RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation
 inline constexpr std::string_view mod_rise = "mod.rise";  // RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)
 inline constexpr std::string_view mod_hold = "mod.hold";  // RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)

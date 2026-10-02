@@ -806,6 +806,8 @@ field_roles:
   "advgen.speed_out":    { note: "RFC-081: outward stroke speed base" }
   "advgen.accel_in":     { note: "RFC-081: inward acceleration base" }
   "advgen.accel_out":    { note: "RFC-081: outward acceleration base" }
+  "advgen.dwell_crest":  { note: "RFC-095: hold at the deep bound (advgen.depth_max) after the inward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive: the stroke period grows by the dwell, the moving halves keep their speed and acceleration, and one stroke on the modulators' clock (RFC-066) is the whole cycle, both dwells included. A modulator whose mod_target is a dwell varies it per stroke. Optional binding of generator-advanced." }
+  "advgen.dwell_trough": { note: "RFC-095: hold at the shallow bound (advgen.depth_min) after the outward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive, as advgen.dwell_crest. Optional binding of generator-advanced." }
   # ---- mod.* (RFC-066 as amended): the fields of a MODULATOR, one entry
   # attached by its entry-level `mod_target` (catalog entry key 20) to the
   # field it rides. One modulator per entry; the roles bind within that entry.
@@ -1286,7 +1288,7 @@ widget_patterns:
   7:  { name: roster,            note: "list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role honestly distinct from empty" }
   8:  { name: protocol-pane,     note: "the one deliberately device-aware diagnostic surface: wire ids visible by design" }
   9:  { name: pattern-panel,     note: "the standard generator surface: run/stop with live state, pattern selection as an exclusive-choice group, knob sliders for whichever optional roles exist, source.background_run co-located with run/stop", required: true }
-  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles incl. its own run/stop advgen.running, RFC-081/RFC-093) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop", required: true }
+  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles incl. its own run/stop advgen.running, RFC-081/RFC-093; the dwells advgen.dwell_crest and advgen.dwell_trough optional, RFC-095) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop", required: true }
   11: { name: transport,         note: "playback: play/pause/seek/queue cluster for hubs that play content" }
   12: { name: wizard,            note: "stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequential menu screens" }
 
