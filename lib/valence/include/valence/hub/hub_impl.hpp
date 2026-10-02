@@ -1898,7 +1898,7 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
         ++slot.session.streamBundlesDropped;
         return;
     }
-    const BundleView& bundle = parsed.value();
+    BundleView bundle = parsed.value();
 
     // 3b) n==0 is malformed AT THE INGRESS LAYER (an empty bundle carries no
     // samples — BundleWriter never emits one, and delivering one to the
@@ -1919,30 +1919,15 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
         return;
     }
 
-    // 3c) RFC-014 SCHEDULING CONTRACT (segment-class channels only). For a
-    // segment stream, `t_base + t_off[i]` IS the intended EXECUTION START of
-    // sample i — not a sample timestamp — resolved through §7.2's nearest-window
-    // rule. That is what the signed difference below computes: hub time is a
-    // wrapping u32 of microseconds, so "how far ahead" is the nearest-window
-    // interpretation of the difference, never a naive unsigned compare.
-    //
-    // A schedule further ahead than limits::max_future_schedule_ms (250) is
-    // REJECTED whole. This replaces an unregistered 250 ms folklore constant
-    // that shipped fw 2.1.45 enforced and the MFP plugin was guessing against
-    // with a private SegLookaheadMs = 120 — interop by folklore, now by number.
-    // Recommended client lookahead is <= half the limit.
-    //
-    // RFC-087: the LAST start is tested against the granted horizon, since a
-    // segments bundle may now span the horizon itself. PAST schedules are NOT
-    // rejected — a late bundle is the normal consequence of jitter and the
-    // engine resolves it by playing it now.
-    if (segments) {
-        const int32_t aheadUs = int32_t(bundle.sampleTimeUs(n - 1) - _clock.nowUs());
-        if (aheadUs > int32_t(horizonMs) * 1000) {
-            ++slot.session.streamBundlesDropped;
-            return;
-        }
-    }
+    // 3c) §5.4 lead cap (RFC-084, RFC-087): a c2h stamp further ahead of hub
+    // time than the cap is CLAMPED, never rejected. The cap is the granted
+    // horizon for segments and max_future_schedule_ms for samples. The whole
+    // bundle moves earlier until its last stamp sits on the cap, keeping order
+    // and spacing (a segment's duration is the gap to its successor's start).
+    // The span caps parsed above keep a clamped t_base at or after now. The
+    // difference is §7.2's nearest-window read of the wrapping u32 clock, so a
+    // past stamp never moves: a late bundle plays at once (§7.3).
+    bundle.clampLead(_clock.nowUs(), (segments ? horizonMs : limits::max_future_schedule_ms) * 1000u);
 
     // 4) Granted-rate token bucket on SAMPLES (§10.5). Overdraw -> drop whole +
     // throttled RATE_LIMITED NACK, but keep servicing later legal bundles.

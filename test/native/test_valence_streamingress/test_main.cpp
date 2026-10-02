@@ -1252,13 +1252,11 @@ TEST_CASE("SI-17: SOURCE_CONFLICT throttle is per-source across channels sharing
 // ---- SI-18 (RFC-014) --------------------------------------------------------
 // the segment SCHEDULING CONTRACT. For a segment-class
 // channel, t_base + t_off[i] IS the intended execution start of sample i,
-// resolved via §7.2's nearest-window rule. A schedule further ahead than
-// limits::max_future_schedule_ms is rejected whole; a PAST one is fine (a late
-// bundle is ordinary jitter, and the engine plays it now).
-//
-// This replaces the unregistered 250 ms folklore constant the MFP plugin was
-// guessing against with a private SegLookaheadMs = 120.
-TEST_CASE("SI-18: segment schedules beyond max_future_schedule_ms are rejected; past ones accepted") {
+// resolved via §7.2's nearest-window rule. A schedule further ahead than the
+// horizon (default limits::max_future_schedule_ms) is clamped to it, never
+// rejected (§5.4, RFC-084); a PAST one is untouched (a late bundle is ordinary
+// jitter, and the engine plays it now).
+TEST_CASE("SI-18: segment schedules beyond the horizon are clamped and delivered; past ones untouched") {
     Catalog32 cat;
     makeStreamCatalog(cat);
     ManualClock clock;
@@ -1284,28 +1282,30 @@ TEST_CASE("SI-18: segment schedules beyond max_future_schedule_ms are rejected; 
     tickAndDrain(hub, clock, link.endpointB(), /*stepUs=*/0);
     CHECK(del.bundles.size() == 1);
 
-    // Beyond it: dropped whole, counted, and NOT NACKed (§9.2 — the carve-out
-    // is ownership only; a malformed schedule is a producer bug, not a
-    // contended resource).
-    writeSegmentBundle(link.endpointB(), {{6000, 200, kSegNoEndVel}}, /*tBase=*/now + limitUs + 100000);
+    CHECK(del.bundles.back().tBase == now + limitUs - 50000);
+
+    // 400 ms ahead under the 250 ms horizon: clamped to 250, delivered, never
+    // dropped or NACKed.
+    writeSegmentBundle(link.endpointB(), {{6000, 200, kSegNoEndVel}}, /*tBase=*/now + 400000);
     auto tooFar = tickAndDrain(hub, clock, link.endpointB(), /*stepUs=*/0);
-    CHECK(del.bundles.size() == 1);
-    CHECK(hub.streamIngressCounters(0).dropped == 1);
+    REQUIRE(del.bundles.size() == 2);
+    CHECK(del.bundles.back().tBase == now + limitUs);
+    CHECK(hub.streamIngressCounters(0).dropped == 0);
     CHECK(countNacks(tooFar, NackCode::RATE_LIMITED) == 0);
     CHECK(countNacks(tooFar, NackCode::SOURCE_CONFLICT) == 0);
 
-    // Late (in the past): accepted — jitter is normal, and the nearest-window
-    // rule reads a wrapped-back t_base as "behind", never as "+71 minutes".
+    // Late (in the past): accepted unmoved; the nearest-window rule reads a
+    // wrapped-back t_base as "behind", never as "+71 minutes".
     writeSegmentBundle(link.endpointB(), {{7000, 200, kSegNoEndVel}}, /*tBase=*/now - 100000);
     tickAndDrain(hub, clock, link.endpointB(), /*stepUs=*/0);
-    CHECK(del.bundles.size() == 2);
+    REQUIRE(del.bundles.size() == 3);
+    CHECK(del.bundles.back().tBase == now - 100000);
 }
 
-// ---- SI-19 (RFC-014) --------------------------------------------------------
-// the future-schedule clamp applies ONLY to segment-class
-// channels. A dense point-sample stream carries timestamps, not schedules, and
-// clamping it would break legitimate lookahead buffering.
-TEST_CASE("SI-19: the schedule clamp does not apply to non-segment STREAM channels") {
+// ---- SI-19 (RFC-084) --------------------------------------------------------
+// samples-kind channels take the same lead cap at max_future_schedule_ms
+// (§5.4): clamped and delivered, spacing kept.
+TEST_CASE("SI-19: a samples bundle beyond max_future_schedule_ms is clamped and delivered") {
     Catalog32 cat;
     makeStreamCatalog(cat);
     ManualClock clock;
@@ -1318,10 +1318,12 @@ TEST_CASE("SI-19: the schedule clamp does not apply to non-segment STREAM channe
     REQUIRE(link.endpointB().open());
     connectSession(hub, clock, link.endpointB(), 1, true, {{kStreamCh, 100.0f}});
 
-    writeValidBundle(link.endpointB(), kStreamCh, 2,
-                     /*tBase=*/clock.nowUs() + limits::max_future_schedule_ms * 1000u + 500000);
+    const uint32_t now = clock.nowUs();
+    writeValidBundle(link.endpointB(), kStreamCh, 2, /*tBase=*/now + limits::max_future_schedule_ms * 1000u + 500000);
     tickAndDrain(hub, clock, link.endpointB(), /*stepUs=*/0);
-    CHECK(del.bundles.size() == 1);  // accepted: 0x0080 declares no time-unit field
+    REQUIRE(del.bundles.size() == 1);
+    // The last sample (t_off 1 us) lands on the cap.
+    CHECK(del.bundles[0].tBase == now + limits::max_future_schedule_ms * 1000u - 1);
 }
 
 // ---- SI-20 (RFC-014/023) ----------------------------------------------------
@@ -1807,16 +1809,28 @@ TEST_CASE("SI-87: a segments bundle spans up to the granted horizon in 100 us t_
     REQUIRE(hub.attachTransport(link.endpointA()));
     REQUIRE(link.endpointB().open());
 
-    SUBCASE("default horizon 250 ms: 240 ms accepted, 260 ms dropped; no key on the grant") {
+    SUBCASE("default horizon 250 ms: 240 ms span accepted, 260 ms span rejected whole; no key on the grant") {
         WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 87, true, {PublishWish{kSegCh, 50.0f}});
         REQUIRE(w.granted_publishes_count == 1);
         CHECK(w.granted_publishes[0].schedule_horizon_ms == 0);
         writeSegmentSpan(link.endpointB(), clock.nowUs(), 2400);   // 240 ms
         tickAndDrain(hub, clock, link.endpointB());
         CHECK(del.bundles.size() == 1);
-        writeSegmentSpan(link.endpointB(), clock.nowUs(), 2600);   // 260 ms > horizon
+        writeSegmentSpan(link.endpointB(), clock.nowUs(), 2600);   // 260 ms span > horizon: malformed
         tickAndDrain(hub, clock, link.endpointB());
         CHECK(del.bundles.size() == 1);
+        CHECK(hub.streamIngressCounters(0).dropped == 1);
+    }
+
+    SUBCASE("last start 400 ms ahead at a 250 ms horizon: the bundle moves to 250, spacing kept") {
+        connectSession(hub, clock, link.endpointB(), 90, true, {PublishWish{kSegCh, 50.0f}});
+        const uint32_t now = clock.nowUs();
+        writeSegmentSpan(link.endpointB(), now + 300000, 1000);    // starts at +300 and +400 ms
+        tickAndDrain(hub, clock, link.endpointB(), /*stepUs=*/0);
+        REQUIRE(del.bundles.size() == 1);
+        CHECK(del.bundles[0].sampleCount == 2);
+        CHECK(del.bundles[0].tBase == now + 150000);               // now +150 and +250 ms
+        CHECK(hub.streamIngressCounters(0).dropped == 0);
     }
 
     SUBCASE("a 1000 ms grant advertises key 50 and accepts a 900 ms span") {

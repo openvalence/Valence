@@ -144,7 +144,9 @@ public:
     // arrived on `channel_id` from `session_id`. Called ONLY after the hub has
     // confirmed the channel is a granted c2h STREAM publish for this session,
     // re-validated the §5.4 caps against its own catalog (n in 1..32, span
-    // ≤ 20 ms, strictly-increasing t_off with t_off[0] == 0, exact size),
+    // ≤ 20 ms or the segments horizon, strictly-increasing t_off with
+    // t_off[0] == 0, exact size), clamped the stamps to the §5.4 lead cap
+    // (tBase() is the clamped base; the payload bytes keep the sent one),
     // passed the granted-rate token bucket (§10.5), and acquired/refreshed
     // source ownership (§11.4) + deadman (§11.3). The delegate applies the
     // samples via the MotionArbiter (sole-caller doctrine, §3.1) — it never

@@ -231,6 +231,18 @@ public:
         return _tBase + uint32_t(tOff) * _tOffUnitUs;
     }
 
+    // §5.4 lead cap (RFC-084, RFC-087): moves the whole bundle earlier so its
+    // last stamp lies at most capUs ahead of nowUs; spacing and order are kept,
+    // so every segment keeps its duration. Only t_base moves; the payload bytes
+    // are untouched. Returns true if it moved. A stamp in the past never moves.
+    bool clampLead(uint32_t nowUs, uint32_t capUs) {
+        if (_n == 0) return false;
+        const int32_t overUs = int32_t(sampleTimeUs(_n - 1) - nowUs) - int32_t(capUs);
+        if (overUs <= 0) return false;
+        _tBase -= uint32_t(overUs);
+        return true;
+    }
+
     std::span<const std::byte> sample(size_t i) const {
         const size_t samplesStart = kStreamBundleHeaderBytes + kStreamBundleTOffBytes * size_t(_n);
         return _in.subspan(samplesStart + i * _sampleSize, _sampleSize);
