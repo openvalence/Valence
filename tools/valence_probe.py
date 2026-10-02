@@ -1541,6 +1541,90 @@ def _safety_op_roundtrip(ws, args, op_name, next_intent_id, expect_modes_bit=Non
     return reply, (decode_safety_state(snap) if snap else None)
 
 
+def _intent_reply(ws, args, channel, intent_id, fields):
+    """Send one INTENT and return ("ECHO"|"NACK", decoded) or None; STATE
+    frames seen while waiting are recorded."""
+    send_frame(ws, FRAME["INTENT"], channel, build_intent(channel, intent_id, fields))
+    deadline = time.time() + args.timeout
+    while time.time() < deadline:
+        got = recv_frame(ws, deadline)
+        if got is None:
+            return None
+        hdr, pl = got
+        if hdr["type"] == FRAME["STATE"]:
+            record_state(hdr, pl)
+        elif hdr["type"] in (FRAME["ECHO"], FRAME["NACK"]):
+            return ("ECHO" if hdr["type"] == FRAME["ECHO"] else "NACK", cb_decode_full(pl))
+    return None
+
+
+def _reply_text(reply):
+    if reply is None:
+        return "no ECHO/NACK"
+    if reply[0] == "NACK":
+        return "NACK %s" % nack_name(reply[1].get(K["code"]))
+    return "ECHO"
+
+
+def _pause_steps(ws, args, catalog_bytes):
+    """Step 5.92 (SPEC §11.1). The watch session is a second connection with
+    no token; the main session holds control."""
+    try:
+        wws = _pair_connect(args, "pause_watch")
+    except Exception as e:  # noqa: BLE001 -- surfacing any connect failure is the point
+        bad("pause_watch", "second (watch) connection failed: %s" % e)
+        return
+    try:
+        if _pair_hello(wws, args, "pause_watch", os.urandom(8), client_name="probe-watch") is None:
+            return
+        _pair_collect(wws, args, (), seconds=0.3)  # drain the post-WELCOME pushes
+        send_frame(wws, FRAME["INTENT"], CH_SAFETY_INTENT,
+                   build_intent(CH_SAFETY_INTENT, 1, [(1, cb_uint(SAFETY_OP["pause"]))]))
+        frames = _pair_collect(wws, args, (FRAME["ECHO"], FRAME["NACK"]))
+        if _pair_find(frames, FRAME["ECHO"]) is not None:
+            ok("pause_watch", "a watch session latched PAUSE (role-exempt, SPEC §11.1)")
+        else:
+            n = _pair_find(frames, FRAME["NACK"])
+            bad("pause_watch", "pause from watch refused: %s -- pause is role-exempt (SPEC §11.1)"
+                % (nack_name(cb_decode_full(n).get(K["code"])) if n is not None else "no reply"))
+            return
+
+        if not _advertised(catalog_bytes, CH_MOVE_INTENT):
+            _absent("pause_motion", CH_MOVE_INTENT, "move")
+        else:
+            # Target = the current position, so a wrong accept still moves nothing.
+            motion = [e for e in _state_log if e[1] == CH_MOTION]
+            pos = decode_motion_state(motion[-1][3])["pos_mm"] if motion else 0.0
+            reply = _intent_reply(ws, args, CH_MOVE_INTENT, 950, [(1, cb_f32(pos))])
+            if reply and reply[0] == "NACK" and nack_name(reply[1].get(K["code"])) == "INTERLOCK":
+                ok("pause_motion", "move under PAUSE refused INTERLOCK (SPEC §11.1)")
+            else:
+                bad("pause_motion", "move under PAUSE: %s, want NACK INTERLOCK (SPEC §11.1)"
+                    % _reply_text(reply))
+
+        send_frame(wws, FRAME["INTENT"], CH_SAFETY_INTENT,
+                   build_intent(CH_SAFETY_INTENT, 2, [(1, cb_uint(SAFETY_OP["resume"]))]))
+        frames = _pair_collect(wws, args, (FRAME["ECHO"], FRAME["NACK"]))
+        n = _pair_find(frames, FRAME["NACK"])
+        code = nack_name(cb_decode_full(n).get(K["code"])) if n is not None else None
+        if code == "NOT_CONTROLLER":
+            ok("pause_resume_watch", "resume from watch refused NOT_CONTROLLER (SPEC §11.1, §11.2)")
+        else:
+            bad("pause_resume_watch", "resume from watch: %s, want NACK NOT_CONTROLLER"
+                % (code or "ECHO or no reply"))
+    finally:
+        try:
+            wws.close()
+        except Exception:
+            pass
+
+    reply, snap = _safety_op_roundtrip(ws, args, "resume", 951)
+    if reply and reply[0] == "ECHO" and snap and "pause" not in snap.get("flags", ["pause"]):
+        ok("pause_resume", "resume (control) cleared PAUSE, the only clear (SPEC §11.1)")
+    else:
+        bad("pause_resume", "resume did not clear PAUSE: %s snap=%s" % (_reply_text(reply), snap))
+
+
 def _await_sync_counters(ws, args):
     """Wait for a FRESH kinetic-diag(0x1111) STATE push and return its
     decoded sync block, or (fallback) the stale last-seen one, or None.
@@ -2499,6 +2583,16 @@ def _run_session(ws, args):
                    % (d["sync_bundles"], d["sync_seg_bundles"], d["sync_samples"],
                       d["sync_enqueued"], d["sync_dropped"], n_sent,
                       "" if fresh else " (STALE: no fresh 1 Hz push arrived in time)"))
+
+    # ---- Step 5.92: PAUSE from watch, motion under PAUSE, resume (RFC-085) --
+    # SPEC §11.1: pause is role-exempt (a watch session may latch it), a
+    # motion intent under PAUSE is refused INTERLOCK, resume needs control and
+    # is the only clear.
+    scene("Step 5.92: PAUSE from a watch session; motion refused under PAUSE; resume clears (RFC-085)")
+    if skip_intent:
+        skip("pause_watch", "pause steps skipped (--no-motion/--listen-only)")
+    else:
+        _pause_steps(ws, args, catalog_bytes)
 
     # ---- Step 5.9: safety ops -- override/return round-trip (RFC-085) -------
     # override carries PAUSE and hands the rail to the operator; return moves

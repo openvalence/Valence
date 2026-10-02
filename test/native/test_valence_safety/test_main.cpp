@@ -53,7 +53,9 @@ namespace {
 // Entries are APPENDED in ascending id order, which is also the order the
 // shared field pools fill in, so the mini fixture's entries are copied across
 // in two halves with 0x0004/0x0005 authored in between.
-void safetyCatalog(Catalog32& c) {
+// `wideOps`: an authoring error that declares every 0x0005 op `watch`, for
+// proving the hub's own §11.2 `control` floor does not depend on the catalog.
+void safetyCatalog(Catalog32& c, bool wideOps = false) {
     Catalog32 mini;  // 0x0003,0x0080,0x0082,0x0084,0x008A,0x0090 (6, ascending)
     conformance::buildMiniCatalog(mini);
     REQUIRE(mini.count == 6);
@@ -92,13 +94,12 @@ void safetyCatalog(Catalog32& c) {
                 .cls = ChannelClass::INTENT, .dir = Direction::c2h,
                 .access = AccessLevel::watch, .maxRateHz = 10.0f,
                 .defaultPriority = Priority::critical});
+    const AccessLevel gated = wideOps ? AccessLevel::watch : AccessLevel::control;
     c.addSelectSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = ""},
                            {"reserved", "release", "retired", "retired", "pause", "resume",
                             "estop", "override", "return", "retired", "retired"},
-                           {AccessLevel::control, AccessLevel::control, AccessLevel::control,
-                            AccessLevel::control, AccessLevel::watch, AccessLevel::control,
-                            AccessLevel::watch, AccessLevel::control, AccessLevel::control,
-                            AccessLevel::control, AccessLevel::control});
+                           {gated, gated, gated, gated, AccessLevel::watch, gated,
+                            AccessLevel::watch, gated, gated, gated, gated});
 
     // -- the rest of the mini fixture (0x0080 .. 0x0090); ids stay ascending.
     for (uint16_t i = 1; i < mini.count; ++i) c.addEntryFrom(mini, mini.entries[i]);
@@ -262,6 +263,16 @@ public:
         ownershipEvents.push_back(OwnershipEvent{source_id, owner_session, reason});
     }
     bool canClearEstop() override { return allowClearEstop; }
+
+    // §11.1: what admitsUnderPause() answers, and the overrideLatched flag of
+    // every call, so a test can model "home/jog admitted" per mode.
+    bool admitUnderPause = false;
+    bool admitOnlyUnderOverride = false;
+    std::vector<bool> admitCalls;
+    bool admitsUnderPause(uint16_t, const IntentValueMap&, bool overrideLatched) override {
+        admitCalls.push_back(overrideLatched);
+        return admitUnderPause && (!admitOnlyUnderOverride || overrideLatched);
+    }
 };
 
 // ---- TestClientDelegate -----------------------------------------------------
@@ -1054,16 +1065,14 @@ TEST_CASE("S-10 (HMAC KAT): RFC 4231 test case 2 — key \"Jefe\", full 32-byte 
 // ############################################################################
 // M4a — SAFETY SEMANTICS FOR PUBLIC v1.0
 //
-// RFC-010 (client-assertable e-stop), RFC-025a (the hub latches all four
-// levels), RFC-025b (per-op role exemption, expressed in the CATALOG),
-// RFC-025c (override/bypass as safety-domain state on the appended snapshot
-// byte), RFC-022.3 (session_loss vs deadman cause).
+// RFC-010 (client-assertable e-stop), RFC-085 (two levels, ESTOP and PAUSE;
+// the override mode on the appended snapshot byte; release lands in PAUSE),
+// RFC-025b (per-op role exemption, expressed in the CATALOG and floored by
+// the hub, §11.2).
 //
-// Shared harness note: `safetyCatalog()` above now authors 0x0005 with a
-// `watch` access FLOOR plus index-aligned `option_access`, which is the thing
-// under test in half of these cases — a viewer must be able to STOP and to
-// ESTOP, and must NOT be able to HOLD, PAUSE, RESUME, clear a latch, or flip
-// override/bypass.
+// Shared harness note: `safetyCatalog()` above authors 0x0005 with a `watch`
+// access FLOOR plus index-aligned `option_access` — a viewer may `estop` and
+// `pause`, and may not `release`, `resume`, `override` or `return`.
 // ############################################################################
 
 namespace {
@@ -1081,8 +1090,8 @@ struct SafetyRig {
     TestClientDelegate del{};
     std::optional<Client> client{};
 
-    explicit SafetyRig(bool withToken, uint8_t idByte = 60) {
-        safetyCatalog(catalog);
+    explicit SafetyRig(bool withToken, uint8_t idByte = 60, bool wideOps = false) {
+        safetyCatalog(catalog, wideOps);
         hub.emplace(catalog, clock, hubRng, hubDelegate);
         hubDelegate.hub = &*hub;
         link.emplace(clock, hubRng);
@@ -1332,6 +1341,85 @@ TEST_CASE("RFC-085: setOverride is the machine-side direction, publishing on cha
     rig.hub->setOverride(true);   // value-identical: no publish
     rig.step();
     CHECK(rig.del.stateCountByChannel[0x0003] == afterChange);
+}
+
+TEST_CASE("RFC-085/§11.2: the control floor on release/resume/override/return holds when the catalog widens them") {
+    SafetyRig rig(/*withToken=*/false, /*idByte=*/61, /*wideOps=*/true);   // watch, every op declared watch
+
+    const uint8_t gated[] = {safety_ops::release, safety_ops::resume, safety_ops::override,
+                             safety_ops::return_op, 200};
+    for (uint8_t op : gated) {
+        CAPTURE(int(op));
+        rig.del.nacks.clear();
+        REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(op)).has_value());
+        rig.step();
+        REQUIRE(rig.del.nacks.size() == 1);
+        CHECK(rig.del.nacks[0].code == NackCode::NOT_CONTROLLER);
+    }
+    CHECK(rig.hubDelegate.acceptedOps.empty());
+
+    // The two role-exempt ops still pass for a viewer.
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::pause)).has_value());
+    rig.step();
+    CHECK(rig.del.nacks.empty());
+    CHECK(rig.hub->pauseLatched());
+}
+
+TEST_CASE("RFC-085/§11.1: under PAUSE a motion intent is refused INTERLOCK unless the application admits it") {
+    SafetyRig rig(/*withToken=*/true);
+    rig.hubDelegate.channelToSource[0x0084] = 1;
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::pause)).has_value());
+    rig.step();
+    REQUIRE(rig.hub->pauseLatched());
+
+    SUBCASE("not admitted: INTERLOCK, nothing acquired, PAUSE stays") {
+        REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        REQUIRE(rig.del.nacks.size() == 1);
+        CHECK(rig.del.nacks[0].code == NackCode::INTERLOCK);
+        CHECK(rig.hubDelegate.ownershipEvents.empty());
+        REQUIRE(rig.hubDelegate.admitCalls.size() == 1);
+        CHECK_FALSE(rig.hubDelegate.admitCalls[0]);
+        CHECK(rig.hub->pauseLatched());
+    }
+
+    SUBCASE("admitted (the home verb): applied, PAUSE stays") {
+        rig.hubDelegate.admitUnderPause = true;
+        REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        CHECK(rig.del.nacks.empty());
+        CHECK(rig.del.echoes.size() == 2);   // pause + the admitted intent
+        CHECK(rig.hub->pauseLatched());      // no motion intent clears PAUSE
+    }
+
+    SUBCASE("jog: admitted only once override is latched") {
+        rig.hubDelegate.admitUnderPause = true;
+        rig.hubDelegate.admitOnlyUnderOverride = true;
+        REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        REQUIRE(rig.del.nacks.size() == 1);
+        CHECK(rig.del.nacks[0].code == NackCode::INTERLOCK);
+
+        REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+        rig.step();
+        rig.del.nacks.clear();
+        REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        CHECK(rig.del.nacks.empty());
+        REQUIRE(rig.hubDelegate.admitCalls.size() == 2);
+        CHECK(rig.hubDelegate.admitCalls[1]);   // overrideLatched reached the application
+    }
+
+    SUBCASE("resume lifts the gate without consulting the application") {
+        REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+        rig.step();
+        REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        CHECK(rig.del.nacks.empty());
+        CHECK(rig.hubDelegate.admitCalls.empty());
+    }
 }
 
 // ---- RFC-045 ----------------------------------------------------------------

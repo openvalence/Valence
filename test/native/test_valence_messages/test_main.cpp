@@ -829,6 +829,41 @@ TEST_CASE("WELCOME: ws_port/ipv4/hub_instance_id round-trip when all three are s
     CHECK(d.value().identity.hub_instance_id == 0x0123456789ABCDEFull);
 }
 
+// RFC-085, §11.2 + registry identity_keys 6: the declared stop category.
+// Present round-trips both values; absent decodes as not-declared, read false.
+TEST_CASE("WELCOME: identity estop_cuts_power round-trips both values and reads false when absent") {
+    for (bool cuts : {true, false}) {
+        CAPTURE(cuts);
+        WelcomeMsg m{};
+        m.has_identity = true;
+        m.identity.has_estop_cuts_power = true;
+        m.identity.estop_cuts_power = cuts;
+
+        std::array<std::byte, 256> buf{};
+        size_t n = encodeWelcome(m, buf);
+        REQUIRE(n > 0);
+        checkDeterministic(encodeWelcome, m);
+
+        auto d = decodeWelcome(std::span<const std::byte>(buf.data(), n));
+        REQUIRE(d.isOk());
+        REQUIRE(d.value().has_identity);
+        CHECK(d.value().identity.has_estop_cuts_power);
+        CHECK(d.value().identity.estop_cuts_power == cuts);
+    }
+
+    WelcomeMsg m{};
+    m.has_identity = true;
+    m.identity.has_hub_instance_id = true;
+    m.identity.hub_instance_id = 7;
+    std::array<std::byte, 256> buf{};
+    size_t n = encodeWelcome(m, buf);
+    REQUIRE(n > 0);
+    auto d = decodeWelcome(std::span<const std::byte>(buf.data(), n));
+    REQUIRE(d.isOk());
+    CHECK_FALSE(d.value().identity.has_estop_cuts_power);
+    CHECK_FALSE(d.value().identity.estop_cuts_power);
+}
+
 TEST_CASE("WELCOME: hub_instance_id alone (no product/fw_version/hub_name) still emits the identity map") {
     WelcomeMsg m{};
     m.has_identity = true;

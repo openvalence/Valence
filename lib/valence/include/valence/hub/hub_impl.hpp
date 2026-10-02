@@ -1431,10 +1431,10 @@ inline void Hub::handleCatalogReady(Slot& slot, std::span<const std::byte> paylo
 //   * schema-field `option_access` (key 17) — index-aligned with the field's
 //     option labels, i.e. the WIRE VALUE indexes it. This is the one that
 //     makes 0x0005 work: the channel sits at `watch` so ANY session may send
-//     `estop`/`stop` (§11.2's "safety outranks authorization" generalized —
-//     the failure mode of getting this wrong is "the person in the room
-//     cannot stop the machine"), while `hold`/`pause`/`resume`/`estop_clear`/
-//     override/bypass carry `control` per-option.
+//     `estop`/`pause` (§11.1, §11.2: "you may always stop the machine"),
+//     while `release`/`resume`/`override`/`return` carry `control`
+//     per-option. handleIntent adds a catalog-independent `control` floor on
+//     those (§11.2 last bullet).
 //
 // An option value PAST the end of the vector raises to the STRICTEST declared
 // option, not the floor. That is the safe direction: an unknown op on a
@@ -1562,7 +1562,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     }
 
     // 5b) The two safety-intents ops the hub handles ITSELF, before the
-    // delegate is ever consulted: ESTOP_CLEAR (§11.2) and ESTOP (RFC-010).
+    // delegate is ever consulted: `release` (§11.2) and `estop` (RFC-010).
     // Everything else on 0x0005 falls through to the delegate like any other
     // INTENT and is LATCHED afterwards by applySafetyOpLatch (RFC-025a).
     //
@@ -1580,21 +1580,23 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         }
     }
 
+    // §11.2 last bullet, §11.1 "Authorization": the `control` floor on every
+    // safety op except the two role-exempt ones (`pause`, `estop`) is a hub
+    // obligation independent of the catalog. Step 4 gates by the catalog's
+    // `option_access`; this gate holds when a catalog omits or widens it.
+    // Unknown and retired ops take the floor too: an unknown op on this
+    // channel is never cheaper to reach than a known one.
+    if (hasSafetyOp && safetyOp != safety_ops::pause && safetyOp != safety_ops::estop &&
+        uint8_t(slot.session.role) < uint8_t(AccessLevel::control)) {
+        NackMsg n;
+        n.code = NackCode::NOT_CONTROLLER;
+        n.has_intent_id = true;
+        n.intent_id = m.intent_id;
+        sendNackTracked(slot, n, nowMs);
+        return;
+    }
+
     if (hasSafetyOp && safetyOp == safety_ops::release) {
-        // Belt-and-braces role gate (§11.2: "requires control+ role")
-        // independent of whatever access level a given catalog declares for
-        // this channel or this op — step 4 already gates it, this is a second
-        // guard specific to the one op that UN-latches a safety state. A
-        // catalog that forgets estop_clear's `option_access` must not thereby
-        // hand the clear to a viewer.
-        if (uint8_t(slot.session.role) < uint8_t(AccessLevel::control)) {
-            NackMsg n;
-            n.code = NackCode::NOT_CONTROLLER;
-            n.has_intent_id = true;
-            n.intent_id = m.intent_id;
-            sendNackTracked(slot, n, nowMs);
-            return;
-        }
         if (!releaseEstop()) {
             NackMsg n;
             n.code = NackCode::CLEAR_REFUSED;
@@ -1623,9 +1625,8 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     // publishes 0x0003 and broadcasts it at critical priority to every
     // subscriber, bypassing pacing. The raw 0xE5 frame remains the
     // deframed/relay guarantee for transports that need to recognize a stop
-    // without a session; this op is the trivially-implementable client path,
-    // and its absence is why a UI's red button silently degraded to `stop` —
-    // which maps to a decel HALT, NOT an e-stop latch.
+    // without a session; this op is the trivially-implementable client path
+    // (§11.2 path 2).
     //
     // ROLE-EXEMPT (RFC-025b): no role check here, on purpose. Step 4's
     // per-option access is what declares that exemption to clients, and the
@@ -1636,15 +1637,9 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     // Repeats are meaningful (§11.2: repeat-until-latch is the client's only
     // loss-recovery mechanism) so an estop while ALREADY latched is not an
     // error: latchEstop re-broadcasts, and the hub still ECHOes.
-    // THE EVENT TWIN, honestly: §5.5/§11.2's "emit the EVENT twin" has NO
-    // registry home yet — there is no safety EVENT channel and no
-    // `session_event_kinds` value for a latch — so the raw 0xE5 path
-    // (handleEstopFrame) has never emitted one either. Rather than invent a
-    // wire number, this op is dispatched THROUGH handleEstopFrame: whatever
-    // "exactly as a valid 0xE5 frame" means today it means here too, and when
-    // the EVENT twin is registered and added there, this path inherits it for
-    // free with no second implementation to keep in sync. That equivalence is
-    // the actual requirement; a private event kind would have broken it.
+    // Dispatched THROUGH handleEstopFrame (§11.2 SHOULD: "the same function as
+    // the frame path"), so the latch, the publish and the `estop_latched`
+    // edge on 0x000E are one implementation for both initiation paths.
     if (hasSafetyOp && safetyOp == safety_ops::estop) {
         EstopFrame f;
         f.cause = safety_causes::user;                  // an operator asked for it (§5.5)
@@ -1673,7 +1668,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     }
 
     // 5c) M4b: session-admin (0x0009). Handled by the hub itself for the same
-    // reason ESTOP_CLEAR is — these ops mutate HUB state (the session table,
+    // reason `release` is — these ops mutate HUB state (the session table,
     // the trust ledger), not application state, so there is nothing sane for a
     // delegate to apply and no way for one to get it right. Everything above
     // this line has already run: rate limiting, catalog lookup, class check,
@@ -2629,15 +2624,12 @@ inline void Hub::setHomeRequired(bool required) {
     broadcastSafetyNow(_clock.nowMs());
 }
 
-// RFC-010 / RFC-025a / RFC-025c: THE HUB LATCHES ALL FOUR LEVELS (plus the two
-// mode bits). Called only after the delegate ACCEPTED the op, so "the delegate
-// does not implement HOLD" resolves to a NACK UNSUPPORTED_OP from the delegate
-// and no latch ever happens — discoverable and honest, instead of the pre-v1.0
-// behavior where HOLD/PAUSE had registry codes and wire bits but no rule about
-// who set them, so a generic client could not know whether sending HOLD did
-// anything at all on an arbitrary hub.
+// §11.1 (RFC-085): the hub latches PAUSE and the override mode. Called only
+// after the delegate ACCEPTED the op, so "the delegate does not implement
+// override" resolves to a NACK UNSUPPORTED_OP from the delegate and no latch
+// ever happens.
 //
-// ESTOP (op 6) and ESTOP_CLEAR (op 1) are NOT here: they are hub-handled before
+// `estop` (op 6) and `release` (op 1) are NOT here: they are hub-handled before
 // the delegate is ever consulted, because §11.2 requires motion to stop BEFORE
 // protocol bookkeeping. Everything in this function is post-acceptance
 // bookkeeping by definition.
