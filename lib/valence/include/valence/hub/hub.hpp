@@ -176,6 +176,15 @@ public:
         return 0;
     }
 
+    // RFC-087: the schedule horizon (cbor key 50) this hub grants a
+    // segments-kind publish of `channel_id`: 250, 500 or 1000 ms. Any other
+    // value (0 included) means the 250 ms default and the key is omitted.
+    // Constant for the life of the grant, like scheduleLatencyUs().
+    virtual uint16_t scheduleHorizonMs(uint16_t channel_id) {
+        (void)channel_id;
+        return 0;
+    }
+
     // ---- RFC-021: the BLOB STORE BACKEND SEAM -------------------------------
     // The hub owns TRANSPORT (chunk framing, repair, identity, caps, access);
     // the delegate owns STORAGE. That split is the whole reason BLOB_* is one
@@ -976,6 +985,8 @@ private:
     // state, run AFTER the delegate accepted it. Returns true if anything
     // changed (caller publishes + broadcasts).
     bool applySafetyOpLatch(uint8_t op, uint32_t sessionId);
+    // RFC-087: the horizon a segments-kind grant advertises (0 = default 250, omitted).
+    uint16_t advertisedHorizonMs(uint16_t channel_id);
     // RFC-025/010 per-op access: the minimum role `m`'s value map demands on
     // `entry`, starting from the entry's own access FLOOR and raised by any
     // schema-field `access` (key 16) or per-option `option_access` (key 17).

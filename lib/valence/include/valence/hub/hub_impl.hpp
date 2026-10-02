@@ -894,6 +894,7 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
         gp.has_curve_family = pg.curveFamily != 0;
         gp.curve_family = pg.curveFamily;
         gp.schedule_latency_us = _delegate.scheduleLatencyUs(pg.channel_id);
+        gp.schedule_horizon_ms = advertisedHorizonMs(pg.channel_id);
         w.granted_publishes[w.granted_publishes_count++] = gp;
     }
 
@@ -1333,7 +1334,19 @@ inline std::optional<GrantedPublish> Hub::grantPublishWish(Slot& slot, const Pub
     gp.has_requested_curve_family = wish.has_curve_family;
     gp.requested_curve_family = wish.curve_family;
     gp.schedule_latency_us = _delegate.scheduleLatencyUs(wish.channel_id);  // RFC-059
+    gp.schedule_horizon_ms = advertisedHorizonMs(wish.channel_id);          // RFC-087
     return gp;
+}
+
+// RFC-087: the horizon a segments-kind grant advertises: one of the three
+// registry steps, else 0 (omitted, meaning the 250 ms default). Never on a
+// samples-kind channel.
+inline uint16_t Hub::advertisedHorizonMs(uint16_t channel_id) {
+    const CatalogEntry* e = _catalog.find(channel_id);
+    if (e == nullptr || !_catalog.isSegmentClass(*e)) return 0;
+    const uint16_t h = _delegate.scheduleHorizonMs(channel_id);
+    if (h == 500 || h == uint16_t(limits::schedule_horizon_max_ms)) return h;
+    return 0;
 }
 
 // RFC-030: what family is a live publish operating under? 0 = unspecified —
@@ -1867,12 +1880,20 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
         return;
     }
     const size_t sampleSize = _catalog.layoutWireSize(*entry);
+    // RFC-087: a segments-kind c2h bundle spans up to the granted horizon and
+    // counts t_off in segment_t_off_unit_us; every other bundle keeps 1 us
+    // units and the 20 ms span.
+    const bool segments = _catalog.isSegmentClass(*entry);
+    uint32_t horizonMs = advertisedHorizonMs(channel_id);
+    if (horizonMs == 0) horizonMs = limits::max_future_schedule_ms;
 
     // 3) Parse + re-validate §5.4 caps against the payload (n≤32, span≤20ms,
     // strictly-increasing t_off with t_off[0]==0, exact total size /
     // truncation). BundleView::parse enforces ALL of those; a violation drops
     // the bundle WHOLE.
-    auto parsed = BundleView::parse(payload, sampleSize);
+    auto parsed = segments ? BundleView::parse(payload, sampleSize, limits::segment_t_off_unit_us,
+                                               horizonMs * 1000u)
+                           : BundleView::parse(payload, sampleSize);
     if (!parsed) {
         ++slot.session.streamBundlesDropped;
         return;
@@ -1911,13 +1932,13 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
     // with a private SegLookaheadMs = 120 — interop by folklore, now by number.
     // Recommended client lookahead is <= half the limit.
     //
-    // Only the FIRST sample is tested: §5.4 caps a bundle's whole span at 20 ms,
-    // so if t_off[0] is legal every later sample is legal by construction.
-    // PAST schedules are NOT rejected — a late bundle is the normal
-    // consequence of jitter and the engine resolves it by playing it now.
-    if (_catalog.isSegmentClass(*entry)) {
-        const int32_t aheadUs = int32_t(bundle.tBase() - _clock.nowUs());
-        if (aheadUs > int32_t(limits::max_future_schedule_ms) * 1000) {
+    // RFC-087: the LAST start is tested against the granted horizon, since a
+    // segments bundle may now span the horizon itself. PAST schedules are NOT
+    // rejected — a late bundle is the normal consequence of jitter and the
+    // engine resolves it by playing it now.
+    if (segments) {
+        const int32_t aheadUs = int32_t(bundle.sampleTimeUs(n - 1) - _clock.nowUs());
+        if (aheadUs > int32_t(horizonMs) * 1000) {
             ++slot.session.streamBundlesDropped;
             return;
         }

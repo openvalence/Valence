@@ -111,7 +111,8 @@ generated: true
 | | | | 47 | `ipv4` | uint |
 | | | | 48 | `requested_curve_family` | uint |
 | | | | 49 | `schedule_latency_us` | uint |
-| | | | | *50–63 free* | |
+| | | | 50 | `schedule_horizon_ms` | uint |
+| | | | | *51–63 free* | |
 
 **Scoped sub-map key spaces ([§5.3](wire-format.md#s5-3)).** Each is local to its own map: key 1 of `blob` and key 1 of `trust` are unrelated, and neither is `proto_ver`.
 
@@ -211,6 +212,7 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `idle_reap_multiplier` | 3 | [§6.6](session.md#s6-6) |
 | `catalog_ready_timeout_ms` | 15000 | [§6.4](session.md#s6-4) |
 | `max_future_schedule_ms` | 250 | [§5.4](wire-format.md#s5-4) |
+| `schedule_horizon_max_ms` / `segment_t_off_unit_us` | 1000 / 100 | [§5.4](wire-format.md#s5-4) |
 | `max_burst_multiple` | 4 | [§10.5](qos.md#s10-5) |
 | `segment_handoff_k` | 1.5 | [§9.6](channels.md#s9-6) |
 | `segment_end_vel_unspecified` | -32768 | [§5.4](wire-format.md#s5-4), [§9.6](channels.md#s9-6) |

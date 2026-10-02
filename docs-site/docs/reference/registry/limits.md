@@ -29,7 +29,8 @@ registry's own rationale where it records one.
 | `catalog_chunk_payload` | `192` |  |
 | `blob_chunks_in_flight` | `4` | RFC-050: advertised SENDER pacing budget — the max unacknowledged-by-application-progress BLOB_CHUNKs a sender may have outstanding for one transfer before it MUST hold emission (§8.4's backpressure table). Concrete answer to the panel's "what IS the signal" finding: a hub MAY advertise a smaller value, MUST NOT advertise more. |
 | `bundle_max_samples` | `32` |  |
-| `bundle_max_span_ms` | `20` |  |
+| `bundle_max_span_ms` | `20` | RFC-087: the span cap of samples-kind and every h2c bundle; a c2h segments-kind bundle spans up to its grant's schedule horizon instead. |
+| `segment_t_off_unit_us` | `100` | RFC-087: t_off unit on a c2h segments-kind bundle (a u16 spans 6.5535 s, covering the 1000 ms horizon ceiling at 0.1 ms resolution). samples-kind and h2c bundles keep 1 us units. |
 | `seq_width_bits` | `16` |  |
 | `seq_newer_window` | `32768` | serial arithmetic half-window |
 | `frag_reassembly_timeout_ms` | `5000` |  |
@@ -89,7 +90,8 @@ registry's own rationale where it records one.
 
 | Name | Value | Notes |
 |---|---|---|
-| `max_future_schedule_ms` | `250` | RFC-014, widened by RFC-084: for every c2h STREAM channel the hub clamps a sample's timestamp this far ahead of its own time (clamped, never rejected). Segments: t_base + t_off[i] IS the execution start; samples: it is the arrival time (§5.4). It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended client lookahead <= half of this. |
+| `schedule_horizon_max_ms` | `1000` | RFC-087: ceiling of the per-grant schedule horizon (cbor key 50). The pinned steps are 250 (default), 500 and 1000. |
+| `max_future_schedule_ms` | `250` | RFC-014, widened by RFC-084, refined by RFC-087: the lead cap for samples-kind c2h STREAM and the DEFAULT schedule horizon of a segments-kind grant (a grant MAY advertise 500 or 1000 via schedule_horizon_ms); a sample stamped further ahead is clamped, never rejected. Segments: t_base + t_off[i] IS the execution start; samples: it is the arrival time (§5.4). It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended client lookahead <= half of this. |
 | `max_burst_multiple` | `4` | RFC-013: cap on `burst` relative to granted rate. An unbounded client-declared burst would reintroduce the exact flood the token bucket exists to stop. |
 | `segment_end_vel_unspecified` | `-32768` | RFC-058: the §5.4 `unspecified` sentinel of a motion-input i16 end-velocity field (a signed field's type minimum; zero is a real slope). Without a scheduled successor a hub MUST resolve it to rest (§9.6). Also the absent value for any motion-input field a sender has no value for (RFC-071). Replaces the hand copies (reference catalog comment, MFP SegmentEndVelSentinel). |
 | `segment_dwell_span` | `0.02` | RFC-058: §9.6 dwell rule, normalized units: a segment whose target is within this of the previous accepted target on the same source is a hold; a nonzero end velocity on it SHOULD be bounded to zero and surfaced as its own anomaly kind. Tested against the target, never position. |

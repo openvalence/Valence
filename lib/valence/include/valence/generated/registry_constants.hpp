@@ -163,6 +163,7 @@ enum class CborKey : uint8_t {
     ipv4 = 47,  // uint: WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1.229 = 0xC0A801E5): there is no bstr(4) here because a plain integer makes '0 = none' the same natural sentinel 0.0.0.0 already is. Read alongside `ws_port` for the BLE→WS upgrade hop. 0 = none.
     requested_curve_family = 48,  // uint: publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WISH verbatim, unmodified by `curve_policy`. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a client has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a hub with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049).
     schedule_latency_us = 49,  // uint: granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample's time (segments: t_base + t_off; samples: its arrival stamp, RFC-084) and the start of its execution, inclusive of every hub-internal hop. On a samples-kind grant it is the chase-planning budget. A commitment, constant for the life of the grant; a change is an unsolicited GRANT. Absent or 0 = unspecified. No client wish exists (§9.6).
+    schedule_horizon_ms = 50,  // uint: granted_publishes ENTRY maps (RFC-087), segments-kind grants only: the schedule horizon, how far ahead of hub time a segment's START may be stamped, and the span cap of a c2h segments bundle. One of 250 (the default, max_future_schedule_ms), 500 or 1000 (schedule_horizon_max_ms); the larger steps exist for lookahead players on poor WiFi. A cap, never a delay. Absent = 250. A commitment for the life of the grant; a change is an unsolicited GRANT. The hub picks it; no client wish exists.
 };
 
 namespace welcome_limits {
@@ -616,6 +617,7 @@ inline constexpr uint32_t catalog_chunk_payload = 192;
 inline constexpr uint32_t blob_chunks_in_flight = 4;
 inline constexpr uint32_t bundle_max_samples = 32;
 inline constexpr uint32_t bundle_max_span_ms = 20;
+inline constexpr uint32_t segment_t_off_unit_us = 100;
 inline constexpr uint32_t seq_width_bits = 16;
 inline constexpr uint32_t seq_newer_window = 32768;
 inline constexpr uint32_t frag_reassembly_timeout_ms = 5000;
@@ -659,6 +661,7 @@ inline constexpr uint32_t max_frame_ble = 244;
 inline constexpr uint32_t max_frame_serial = 512;
 inline constexpr uint32_t catalog_ready_timeout_ms = 15000;
 inline constexpr uint32_t idle_reap_multiplier = 3;
+inline constexpr uint32_t schedule_horizon_max_ms = 1000;
 inline constexpr uint32_t max_future_schedule_ms = 250;
 inline constexpr uint32_t max_burst_multiple = 4;
 inline constexpr int32_t segment_end_vel_unspecified = -32768;

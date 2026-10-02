@@ -109,6 +109,8 @@ public:
     bool mapSource = true;                 // 0x0080 -> source 0 when true
     uint32_t latencyUs = 0;                // RFC-059: committed on every publish grant when nonzero
     uint32_t scheduleLatencyUs(uint16_t) override { return latencyUs; }
+    uint16_t horizonMs = 0;                // RFC-087: 0 = the 250 ms default
+    uint16_t scheduleHorizonMs(uint16_t) override { return horizonMs; }
     std::vector<RecordedBundle> bundles;
     std::vector<RecordedOwnership> ownership;
     std::vector<uint8_t> deadmanStops;
@@ -1779,4 +1781,58 @@ TEST_CASE("SI-85: under PAUSE a source-mapped bundle is dropped silently; resume
     writeSegmentBundle(link.endpointB(), {SegSample{3000, 900, kSegNoEndVel}}, /*tBase=*/clock.nowUs());
     tickAndDrain(hub, clock, link.endpointB());
     CHECK(del.bundles == 1);
+}
+
+// ---- RFC-087: segments bundles span the granted horizon ---------------------
+namespace {
+void writeSegmentSpan(ITransport& ep, uint32_t tBase, uint16_t lastTOffUnits) {
+    std::array<std::byte, 64> buf{};
+    BundleWriter w(std::span<std::byte>(buf), tBase, kSegSampleSize, limits::segment_t_off_unit_us,
+                   limits::schedule_horizon_max_ms * 1000u);
+    std::array<std::byte, kSegSampleSize> s{};
+    REQUIRE(w.addSample(0, std::span<const std::byte>(s)));
+    REQUIRE(w.addSample(lastTOffUnits, std::span<const std::byte>(s)));
+    writeFrame(ep, FrameType::STREAM, kSegCh, std::span<const std::byte>(buf.data(), w.finalize()));
+}
+}  // namespace
+
+TEST_CASE("SI-87: a segments bundle spans up to the granted horizon in 100 us t_off units") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(187);
+    StreamHubDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+
+    SUBCASE("default horizon 250 ms: 240 ms accepted, 260 ms dropped; no key on the grant") {
+        WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 87, true, {PublishWish{kSegCh, 50.0f}});
+        REQUIRE(w.granted_publishes_count == 1);
+        CHECK(w.granted_publishes[0].schedule_horizon_ms == 0);
+        writeSegmentSpan(link.endpointB(), clock.nowUs(), 2400);   // 240 ms
+        tickAndDrain(hub, clock, link.endpointB());
+        CHECK(del.bundles.size() == 1);
+        writeSegmentSpan(link.endpointB(), clock.nowUs(), 2600);   // 260 ms > horizon
+        tickAndDrain(hub, clock, link.endpointB());
+        CHECK(del.bundles.size() == 1);
+    }
+
+    SUBCASE("a 1000 ms grant advertises key 50 and accepts a 900 ms span") {
+        del.horizonMs = 1000;
+        WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 88, true, {PublishWish{kSegCh, 50.0f}});
+        REQUIRE(w.granted_publishes_count == 1);
+        CHECK(w.granted_publishes[0].schedule_horizon_ms == 1000);
+        writeSegmentSpan(link.endpointB(), clock.nowUs(), 9000);   // 900 ms
+        tickAndDrain(hub, clock, link.endpointB());
+        CHECK(del.bundles.size() == 1);
+    }
+
+    SUBCASE("a horizon outside the registry steps is never advertised") {
+        del.horizonMs = 700;
+        WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 89, true, {PublishWish{kSegCh, 50.0f}});
+        REQUIRE(w.granted_publishes_count == 1);
+        CHECK(w.granted_publishes[0].schedule_horizon_ms == 0);
+    }
 }

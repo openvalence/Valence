@@ -71,8 +71,12 @@ public:
     // `out` can't even hold the 6-byte header, the writer is permanently
     // invalid (every addSample() call returns false, finalize() returns 0)
     // — this is the constructor-time form of the "out-span too small" cap.
-    BundleWriter(std::span<std::byte> out, uint32_t tBase, size_t sampleSize)
-        : _out(out), _tBase(tBase), _sampleSize(sampleSize) {
+    // RFC-087: a c2h segments-kind bundle counts `tOff` in units of
+    // limits::segment_t_off_unit_us and caps its span at the grant's schedule
+    // horizon; pass both for that case. The defaults are every other bundle.
+    BundleWriter(std::span<std::byte> out, uint32_t tBase, size_t sampleSize, uint32_t tOffUnitUs = 1,
+                 uint32_t spanCapUs = limits::bundle_max_span_ms * 1000u)
+        : _out(out), _tBase(tBase), _sampleSize(sampleSize), _tOffUnitUs(tOffUnitUs), _spanCapUs(spanCapUs) {
         if (_out.size() >= kStreamBundleHeaderBytes) {
             putU32(_out.subspan(0, 4), _tBase);
             putU8(_out.subspan(5, 1), 0);  // reserved
@@ -80,7 +84,7 @@ public:
         }
     }
 
-    // Appends one sample at hub-µs offset `tOff` from t_base. Returns false
+    // Appends one sample at offset `tOff` (in tOffUnitUs units) from t_base. Returns false
     // and leaves the buffer EXACTLY as it was before the call (no partial
     // writes) if any cap is violated:
     //   - the writer is invalid (see constructor)
@@ -88,7 +92,7 @@ public:
     //   - n is already at limits::bundle_max_samples
     //   - tOff isn't strictly greater than the previous sample's (or isn't
     //     0, for the first sample)
-    //   - tOff exceeds limits::bundle_max_span_ms*1000 µs
+    //   - tOff * tOffUnitUs exceeds the span cap
     //   - the resulting total size wouldn't fit `out`
     //
     // Implementation note (why this isn't a trivial append): the wire
@@ -107,7 +111,7 @@ public:
         } else if (tOff <= _tOffs[_n - 1]) {
             return false;  // not strictly monotonic
         }
-        if (uint32_t(tOff) > limits::bundle_max_span_ms * 1000u) return false;
+        if (uint64_t(tOff) * _tOffUnitUs > _spanCapUs) return false;
 
         const size_t oldHeaderSize = kStreamBundleHeaderBytes + kStreamBundleTOffBytes * size_t(_n);
         const size_t newHeaderSize = oldHeaderSize + kStreamBundleTOffBytes;
@@ -144,6 +148,8 @@ private:
     std::span<std::byte> _out;
     uint32_t _tBase;
     size_t _sampleSize;
+    uint32_t _tOffUnitUs = 1;
+    uint32_t _spanCapUs = limits::bundle_max_span_ms * 1000u;
     bool _valid = false;
     uint8_t _n = 0;
     std::array<uint16_t, limits::bundle_max_samples> _tOffs{};
@@ -166,7 +172,14 @@ public:
     // symmetric totality — see this file's header): a client decoding an h2c
     // bundle from a hostile hub gets the same structural guarantees the hub
     // gets from a client, without having to know it should re-derive anything.
-    static Result<BundleView, DecodeError> parse(std::span<const std::byte> in, size_t sampleSize) {
+    //
+    // RFC-087: a c2h segments-kind bundle counts t_off in units of
+    // limits::segment_t_off_unit_us and caps its span at the grant's schedule
+    // horizon; the caller passes both. The defaults (1 us, 20 ms) are every
+    // samples-kind and h2c bundle.
+    static Result<BundleView, DecodeError> parse(std::span<const std::byte> in, size_t sampleSize,
+                                                 uint32_t tOffUnitUs = 1,
+                                                 uint32_t spanCapUs = limits::bundle_max_span_ms * 1000u) {
         using Ret = Result<BundleView, DecodeError>;
         if (in.size() < kStreamBundleHeaderBytes) return Ret::err(DecodeError::Truncated);
 
@@ -195,14 +208,14 @@ public:
             }
             lastTOff = tOff;
         }
-        if (n > 0 && uint32_t(lastTOff) > limits::bundle_max_span_ms * 1000u) {
+        if (n > 0 && uint64_t(lastTOff) * tOffUnitUs > spanCapUs) {
             return Ret::err(DecodeError::Malformed);
         }
 
         const size_t total = tOffEnd + size_t(n) * sampleSize;
         if (in.size() < total) return Ret::err(DecodeError::Truncated);
 
-        return Ret::ok(BundleView(in, tBase, n, sampleSize));
+        return Ret::ok(BundleView(in, tBase, n, sampleSize, tOffUnitUs));
     }
 
     uint32_t tBase() const { return _tBase; }
@@ -215,7 +228,7 @@ public:
     // "which is newer" question to ask.
     uint32_t sampleTimeUs(size_t i) const {
         const uint16_t tOff = getU16(_in.subspan(kStreamBundleHeaderBytes + kStreamBundleTOffBytes * i, 2));
-        return _tBase + uint32_t(tOff);
+        return _tBase + uint32_t(tOff) * _tOffUnitUs;
     }
 
     std::span<const std::byte> sample(size_t i) const {
@@ -224,13 +237,14 @@ public:
     }
 
 private:
-    BundleView(std::span<const std::byte> in, uint32_t tBase, uint8_t n, size_t sampleSize)
-        : _in(in), _tBase(tBase), _n(n), _sampleSize(sampleSize) {}
+    BundleView(std::span<const std::byte> in, uint32_t tBase, uint8_t n, size_t sampleSize, uint32_t tOffUnitUs)
+        : _in(in), _tBase(tBase), _n(n), _sampleSize(sampleSize), _tOffUnitUs(tOffUnitUs) {}
 
     std::span<const std::byte> _in{};
     uint32_t _tBase = 0;
     uint8_t _n = 0;
     size_t _sampleSize = 0;
+    uint32_t _tOffUnitUs = 1;
 };
 
 }  // namespace valence

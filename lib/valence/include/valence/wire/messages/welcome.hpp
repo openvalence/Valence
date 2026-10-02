@@ -69,14 +69,19 @@ struct GrantedPublish {
     // planning budget. Constant for the life of the grant; a change is an
     // unsolicited GRANT. 0 = unspecified and is omitted on the wire.
     uint32_t schedule_latency_us = 0;
+    // RFC-087: the segments-kind schedule horizon (key 50), one of 250 / 500 /
+    // 1000 ms. 0 = omitted, which means the 250 ms default.
+    uint16_t schedule_horizon_ms = 0;
 };
 
 // One granted_publishes entry map, shared by WELCOME and GRANT. Keys
 // ascending: granted_rate_hz(14) < channel_id(15) < burst(42) <
-// curve_family(45) < requested_curve_family(48) < schedule_latency_us(49).
+// curve_family(45) < requested_curve_family(48) < schedule_latency_us(49) <
+// schedule_horizon_ms(50).
 inline void encodeGrantedPublish(CborWriter& w, const GrantedPublish& gp) {
     w.mapHeader(2 + uint32_t(gp.has_burst) + uint32_t(gp.has_curve_family) +
-                uint32_t(gp.has_requested_curve_family) + uint32_t(gp.schedule_latency_us != 0));
+                uint32_t(gp.has_requested_curve_family) + uint32_t(gp.schedule_latency_us != 0) +
+                uint32_t(gp.schedule_horizon_ms != 0));
     w.key(CborKey::granted_rate_hz).f32Val(gp.granted_rate_hz);
     w.key(CborKey::channel_id).uintVal(gp.channel_id);
     if (gp.has_burst) w.key(CborKey::burst).f32Val(gp.burst);
@@ -84,6 +89,7 @@ inline void encodeGrantedPublish(CborWriter& w, const GrantedPublish& gp) {
     if (gp.has_requested_curve_family)
         w.key(CborKey::requested_curve_family).uintVal(gp.requested_curve_family);
     if (gp.schedule_latency_us != 0) w.key(CborKey::schedule_latency_us).uintVal(gp.schedule_latency_us);
+    if (gp.schedule_horizon_ms != 0) w.key(CborKey::schedule_horizon_ms).uintVal(gp.schedule_horizon_ms);
 }
 
 inline Result<GrantedPublish, DecodeError> decodeGrantedPublish(CborReader& r) {
@@ -135,6 +141,13 @@ inline Result<GrantedPublish, DecodeError> decodeGrantedPublish(CborReader& r) {
                 if (!vv) return Ret::err(vv.error());
                 if (vv.value() > 0xFFFFFFFFull) return Ret::err(DecodeError::Malformed);
                 gp.schedule_latency_us = uint32_t(vv.value());
+                break;
+            }
+            case uint64_t(CborKey::schedule_horizon_ms): {
+                auto vv = r.readUint();
+                if (!vv) return Ret::err(vv.error());
+                if (vv.value() > limits::schedule_horizon_max_ms) return Ret::err(DecodeError::Malformed);
+                gp.schedule_horizon_ms = uint16_t(vv.value());
                 break;
             }
             default: {

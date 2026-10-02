@@ -253,6 +253,7 @@ export const K = {
   ipv4: 47,  // WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1
   requested_curve_family: 48,  // publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WIS
   schedule_latency_us: 49,  // granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample'
+  schedule_horizon_ms: 50,  // granted_publishes ENTRY maps (RFC-087), segments-kind grants only: the schedule horizon, how far
 };
 export const K_NAME = {
   1: 'proto_ver',
@@ -304,6 +305,7 @@ export const K_NAME = {
   47: 'ipv4',
   48: 'requested_curve_family',
   49: 'schedule_latency_us',
+  50: 'schedule_horizon_ms',
 };
 
 // ---- welcome_limits_keys -------------------------------------------
@@ -1182,6 +1184,7 @@ export const LIMITS = {
   blob_chunks_in_flight: 4,
   bundle_max_samples: 32,
   bundle_max_span_ms: 20,
+  segment_t_off_unit_us: 100,
   seq_width_bits: 16,
   seq_newer_window: 32768,
   frag_reassembly_timeout_ms: 5000,
@@ -1225,6 +1228,7 @@ export const LIMITS = {
   max_frame_serial: 512,
   catalog_ready_timeout_ms: 15000,
   idle_reap_multiplier: 3,
+  schedule_horizon_max_ms: 1000,
   max_future_schedule_ms: 250,
   max_burst_multiple: 4,
   segment_end_vel_unspecified: -32768,

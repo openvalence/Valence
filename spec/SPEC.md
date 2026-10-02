@@ -305,15 +305,17 @@ offset  size      field
 0       4         t_base     u32 hub-time µs of sample[0] (§7.2)
 4       1         n          sample count, 1..32
 5       1         reserved   zero on send, ignored on receive
-6       2×n       t_off[n]   u16 µs offset of sample[i] from t_base
+6       2×n       t_off[n]   u16 offset of sample[i] from t_base (µs; c2h segments: segment_t_off_unit_us)
 6+2n    S×n       samples    n packed sample structs of catalog-declared size S
 ```
+
+**`t_off` units** (RFC-087). On a c2h STREAM whose `stream_kind` is `segments`, `t_off` counts in units of `segment_t_off_unit_us` (100 µs), so a u16 spans 6.5535 s at 0.1 ms resolution; every `samples`-kind and every h2c bundle keeps 1 µs units. The unit rides the same `stream_kind` branch as the timestamp's meaning below.
 
 A bundle MUST satisfy all of:
 
 1. `n` in `1..bundle_max_samples` (32);
 2. `t_off[0] == 0`, and `t_off` **strictly increasing** thereafter;
-3. span `t_off[n-1] ≤ bundle_max_span_ms` (20 ms);
+3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] ≤ bundle_max_span_ms` (20 ms); for a c2h `segments`-kind bundle, the span is capped by the grant's schedule horizon instead: `t_base + t_off[n-1]` MUST NOT lie further ahead of hub time than the horizon (RFC-087);
 4. payload length exactly `6 + 2n + S·n`;
 5. total frame ≤ the binding's `max_frame`.
 
@@ -324,7 +326,11 @@ A bundle violating any of these is **malformed** and MUST be rejected **whole** 
 - `samples` (0, the default): `t_base + t_off[i]` is the instant sample *i* **describes**. It is observational. On a c2h motion input (RFC-084), the instant a sample describes is the instant the commanded curve passes through it: a hub SHOULD reach the sample's value at that instant as closely as its ceilings allow, and MUST NOT treat the timestamp as the start of a move toward it; start times are the `segments` meaning, chosen by declaring `stream_kind` `segments` (§9.2). The hub stays the referee of feasibility (§1.2): arrival is a target, not a guarantee.
 - `segments` (1): `t_base + t_off[i]` is the intended **execution start** of sample *i*, resolved through the §7.2 nearest-window rule. It is a schedule.
 
-**One lead cap for every c2h STREAM** (RFC-084). A hub MUST clamp a c2h sample's timestamp, of either kind, to at most `max_future_schedule_ms` (250 ms) ahead of its own current time; a sample stamped further out is clamped, not rejected. Clients SHOULD schedule no further ahead than half that budget. A sample whose instant has passed is consumed at once (§7.3).
+**One lead cap for every c2h STREAM** (RFC-084). A hub MUST clamp a c2h sample's timestamp, of either kind, to at most its cap ahead of its own current time: `max_future_schedule_ms` (250 ms) for `samples`, and for `segments` the grant's schedule horizon (below, default the same 250 ms). A sample stamped further out is clamped, not rejected. Clients SHOULD schedule no further ahead than half that budget. A sample whose instant has passed is consumed at once (§7.3).
+
+**The schedule horizon** (RFC-087). A `segments`-kind `granted_publishes` entry map MAY carry `schedule_horizon_ms` (50): one of 250 (the default, `max_future_schedule_ms`), 500 or 1000 (`schedule_horizon_max_ms`); a grant without the key means 250. The hub picks it (it MAY expose a setting); no client wish exists. Like `schedule_latency_us` it is a commitment for the life of the grant, and a change is an unsolicited GRANT. **The horizon is a cap, never a delay:** it bounds how far ahead a segment's start may be stamped; the hub adds no wait and never waits for a bundle to fill, and each segment executes at its stamped time. A low-latency client stamps a short lead and sends small bundles under the same horizon (its felt latency is its own lead plus `schedule_latency_us`); a lookahead player on poor WiFi fills bundles toward a larger advertised horizon and sends fewer frames. A full bundle of the reference 6-byte segment is 6 + 2·32 + 6·32 = 262 bytes: 32 per bundle over WebSocket and serial, 29 over ESP-NOW, 28 over BLE. A segment longer than the horizon is legal: the horizon bounds start time, never duration.
+
+**Supersede, the segments flush** (RFC-087). A newly accepted bundle on a `segments` channel replaces every scheduled, not-yet-started segment from the same source whose start is at or after the new bundle's first start (`t_base`). A segment already executing is handed off at the new first start exactly as any successor's start hands it off (§9.6). A player that seeks sends fresh segments stamped from now plus its lead and everything stale is gone; a client that resends an overlapping window replaces the overlap, so a resend is idempotent. PAUSE then `resume` is not the flush: it is an operator-level safety latch every connected client shows, and a seek is not a safety act.
 
 **Declared scheduling latency** (RFC-059). A `granted_publishes` entry map MAY carry `schedule_latency_us` (49): the hub's declared fixed delay between a sample's time (segments: `t_base + t_off`; samples: the sample's own stamp, its arrival time) and the start of its execution, inclusive of every hub-internal hop. On a `samples`-kind grant it states the hub's chase-planning budget: how far behind a sample's arrival time the commanded curve passes through it. It is per entry because it differs by mode, and it is a **commitment, not an estimate**: constant for the life of the grant, and a change is an unsolicited GRANT (§10.2), never a silent drift. Absent or zero means unspecified (the pre-RFC-059 behavior). Clients SHOULD lead their media by the declared value and MUST NOT hardcode a per-hub constant; a client MAY expose a user trim on top, whose zero is the declared value. No client wish exists for it: the delay is the hub's planner robustness against measured jitter, and bidding it down would re-litigate feasibility (§9.6). The optional telemetry twin is the `plan.latency` field role.
 
@@ -825,7 +831,7 @@ STREAM channels carry timestamped sample bundles (§5.4) in either direction: te
 
 - **`stream_kind` says what a sample IS**, and everything else follows from it:
   - **`samples` (0, default)** — dense points reporting a value **at an instant**. A dropped sample is recoverable by interpolation from its neighbors. Decimable.
-  - **`segments` (1)** — each sample **commands a time extent**: it carries its own duration and is not a point on a continuous curve. A dropped segment is a permanently lost **command**, not a recoverable interpolation gap. **Not decimable** (§10.4).
+  - **`segments` (1)** — each sample **commands a time extent**: it carries its own duration and is not a point on a continuous curve. A dropped segment is a permanently lost **command**, not a recoverable interpolation gap. **Not decimable** (§10.4). A segments stream wants lookahead: a client that cannot see its future gets the rest-without-successor rule (§9.6) at the end of each bundle, which is correct and visibly stop-start, and such an application belongs on `samples` (RFC-087).
   This is an explicit registered property, not an inference. An earlier heuristic classified segment channels by looking for a time unit in the layout — but `unit` is a free-form string, so two conforming hubs could disagree (`ms` vs `msec` vs `millis`) and therefore **shed differently under identical congestion**, which is exactly the divergence §10.4 exists to eliminate.
 - **Ordering:** guaranteed only on ordered bindings. On datagram bindings the consumer rules of §7.3 — drop-not-newer, timestamp-driven consumption — are the whole contract. STREAM consumers MUST be written against the weakest line of the §13.1 matrix.
 - **No per-sample acknowledgments**, in either direction. At 333 Hz an ACK would be a storm; §9.3 explains why motion *input* correctness does not need one.
@@ -1692,7 +1698,8 @@ Full capability-interface field tables, the derivation chain, and every renderin
 | | | | 47 | `ipv4` | uint |
 | | | | 48 | `requested_curve_family` | uint |
 | | | | 49 | `schedule_latency_us` | uint |
-| | | | | *50–63 free* | |
+| | | | 50 | `schedule_horizon_ms` | uint |
+| | | | | *51–63 free* | |
 
 **Scoped sub-map key spaces (§5.3).** Each is local to its own map: key 1 of `blob` and key 1 of `trust` are unrelated, and neither is `proto_ver`.
 
@@ -1786,6 +1793,7 @@ The fixture's coverage gaps at v1.0 are stated in §18-7 rather than implied by 
 | `idle_reap_multiplier` | 3 | §6.6 |
 | `catalog_ready_timeout_ms` | 15000 | §6.4 |
 | `max_future_schedule_ms` | 250 | §5.4 |
+| `schedule_horizon_max_ms` / `segment_t_off_unit_us` | 1000 / 100 | §5.4 |
 | `max_burst_multiple` | 4 | §10.5 |
 | `segment_handoff_k` | 1.5 | §9.6 |
 | `segment_end_vel_unspecified` | -32768 | §5.4, §9.6 |
