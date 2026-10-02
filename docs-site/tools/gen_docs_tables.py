@@ -135,6 +135,7 @@ SECTION_HOMES: dict[str, str] = {
     "unit_ids": "rendering.md",
     "action_tags": "rendering.md",
     "store_ops": "rendering.md",
+    "provisioning_ops": "rendering.md",
     "ui_archetypes": "rendering.md",
     "ui_regions": "rendering.md",
     "renderer_classes": "rendering.md",
@@ -803,6 +804,9 @@ def page_rendering(reg: dict, reg_display: str) -> str:
     enum_table(p, reg["store_ops"], "Store ops",
                "The wire values of an `action.store` op select (SPEC §8.7). "
                "Index 0 is op-select filler.")
+    enum_table(p, reg["provisioning_ops"], "Provisioning ops",
+               "The wire values of the `action.provision` op select on core "
+               "channel `0x000F` (SPEC §13.9). Index 0 is op-select filler.")
 
     p("## Archetypes\n\n")
     p("An archetype is the control style and interaction contract a catalog "

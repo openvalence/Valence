@@ -102,6 +102,7 @@ inline constexpr uint16_t pairing_events = 0x000B;  // EVENT: RFC-027: knock arr
 inline constexpr uint16_t paired_devices = 0x000C;  // STORE: trust-ledger store descriptor: {store_id, kind 'trust.ledger', capacity paired_devices_max, per_item_max, name_max}. Items are read/revoked by any `configure` session via BLOB_REQ on blob_namespaces.store + the 0x0009 admin surface. Whole encoded ledger stays under trust_ledger_max_bytes (one NVS page).
 inline constexpr uint16_t paired_devices_roster = 0x000D;  // STATE: the 0x000C store's roster: {generation u16, count u8, capacity u8}. On-change, tiny; a generation bump means 're-enumerate' (fetch again over BLOB_REQ). `configure` access: the paired-device list is not open reading.
 inline constexpr uint16_t safety_events = 0x000E;  // EVENT: RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_kinds`; fields ride the scoped `body` (40) sub-map keyed by this channel's own catalog schema (word, cause, owner_session, estop_seq, level). `critical` priority and `watch` access, matching its STATE twin exactly: an edge nobody is allowed to be denied and nobody is allowed to shed. Carries `seq_of_state` (34) naming the 0x0003 frame it corresponds to, which is what lets a client that missed the edge reconcile against the latch it DID receive. Emitted on TRANSITIONS ONLY: a repeated ESTOP frame re-broadcasts the STATE (that is §11.2's loss recovery) but does NOT re-emit the edge, because an edge that did not happen is a lie.
+inline constexpr uint16_t provisioning = 0x000F;  // INTENT: RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network credentials. `configure` access. Schema: 1 op (action.provision over provisioning_ops), 2 ssid (tstr, secret), 3 passphrase (tstr, secret, may be empty), 4 ipv4 / 5 ws_port (uint, ECHO result keys). Accepted only on BLE GATT, serial or in-process bindings, with a pairing window open or the hub factory-fresh; else NACK ACCESS_DENIED. Answer deferred until the join concludes (provision_join_timeout_ms): ECHO with `true` for each secret key, or NACK NETWORK_JOIN_FAILED. Credentials never appear anywhere else.
 }  // namespace channels
 
 enum class CborKey : uint8_t {
@@ -401,10 +402,14 @@ inline constexpr uint8_t delete_item = 3;  // the `delete` verb (named `delete_i
 inline constexpr uint8_t rename = 4;  // change the slot's item name (<= the store's name_max)
 }  // namespace store_ops
 
+namespace provisioning_ops {
+inline constexpr uint8_t wifi_join = 1;  // join the WiFi network named by `ssid` with `passphrase`; answered after the join concludes (§13.9)
+}  // namespace provisioning_ops
+
 namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
 inline constexpr uint8_t restart_required = 1u << 1;  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)
-inline constexpr uint8_t secret = 1u << 2;  // NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive.
+inline constexpr uint8_t secret = 1u << 2;  // NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value: the applied key carries the CBOR value `true` in its place (RFC-069), and a client MUST accept `true` for a secret key whatever the field's type. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive.
 inline constexpr uint8_t destructive = 1u << 3;  // RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator cannot restore from the client (configuration, stored items, counters, sessions, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a client MUST confirm-gate (RENDERING.md §8.4 `trigger`), a hub MUST NOT change wire behavior on it. Per-option form: schema-field `destructive_options` (SPEC §8.8).
 }  // namespace setting_flags
 
@@ -510,6 +515,7 @@ enum class NackCode : uint16_t {
     RATE_LIMITED = 0x0301,  // ingress intent rate exceeded
     INVALID_VALUE = 0x0302,  // outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RFC-021.5)
     UNSUPPORTED_OP = 0x0303,  // intent op not implemented on this hub
+    NETWORK_JOIN_FAILED = 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect.
     ESTOP_ACTIVE = 0x0400,  // refused while e-stop latched
     NOT_HOMED = 0x0401,  // motion intent before homing
     INTERLOCK = 0x0402,  // hub-specific safety interlock
@@ -591,6 +597,7 @@ inline constexpr uint32_t trust_ledger_name_max_bytes = 16;
 inline constexpr uint32_t trust_ledger_kind_max_bytes = 16;
 inline constexpr uint32_t hub_sig_timeout_ms = 3000;
 inline constexpr uint32_t auth_attempts_max = 3;
+inline constexpr uint32_t provision_join_timeout_ms = 20000;
 inline constexpr uint32_t log_replay_depth_default = 32;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";
 inline constexpr std::string_view mdns_service = "_valence._tcp";

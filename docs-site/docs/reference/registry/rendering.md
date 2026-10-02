@@ -135,6 +135,7 @@ A conformant client MAY special-case the specific `action.<name>` suffixes below
 | `identify` | blink-to-find: every device ecosystem needs one |
 | `admin` | a generic administrative action not covered by a more specific tag |
 | `reboot` | firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms) |
+| `provision` | RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `provisioning_ops` |
 | `store` | RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8). |
 
 ## Store ops
@@ -147,6 +148,14 @@ The wire values of an `action.store` op select (SPEC §8.7). Index 0 is op-selec
 | `2` | `load` | apply the slot; the resulting truth arrives on the ordinary STATE broadcasts |
 | `3` | `delete_item` | the `delete` verb (named `delete_item` only because the generated C++ constant would otherwise be a keyword; prose and catalog labels say 'delete'): remove the slot's item. Destructive by registration (§8.8): a client confirm-gates it without a flag |
 | `4` | `rename` | change the slot's item name (<= the store's name_max) |
+
+## Provisioning ops
+
+The wire values of the `action.provision` op select on core channel `0x000F` (SPEC §13.9). Index 0 is op-select filler.
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `wifi_join` | join the WiFi network named by `ssid` with `passphrase`; answered after the join concludes (§13.9) |
 
 ## Archetypes
 

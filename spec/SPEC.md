@@ -731,7 +731,7 @@ Three role families were registered by the first generic clients, which found th
 
 **Dynamic enablement.** "Grayed out right now" depends on live machine state and therefore cannot live in static metadata at all. A settings STATE channel carries one or more `bitfield8` fields tagged `meta.enabled_mask`; bit *i* gates the *i*-th setting-annotated field of that layout. On-change, retained, conflated — every client grays from the same ground truth.
 
-**Secrets (normative).** A `secret`-flagged field's value **NEVER** appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally, and ECHO confirms application **without echoing the value**. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive. A secret *string* SHOULD be `str16` or write-only with a presence bit: a `secret str32` burns 13 % of a snapshot to communicate one bit.
+**Secrets (normative).** A `secret`-flagged field's value **NEVER** appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally, and ECHO confirms application **without echoing the value**: the ECHO carries the applied key with the CBOR value `true` in place of its value, so §9.3's key-completeness holds, and a client decoding `applied` against the schema MUST accept `true` for a `secret`-flagged key whatever the field's type (RFC-069). A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive. A secret *string* SHOULD be `str16` or write-only with a presence bit: a `secret str32` burns 13 % of a snapshot to communicate one bit.
 
 **Validation is hub-side.** `min`/`max`/`step`/width are UI hints; the hub is the referee and NACKs `INVALID_VALUE`. There is **no regex requirement on clients** — an optional pattern hint MAY be included and MAY be ignored. A constrained client must never need a regex engine to render a settings page.
 
@@ -1266,6 +1266,17 @@ always an equally valid entry point.*
 
 **Discovery doctrine, restated for this binding:** BLE advertisement remains primary where BLE is available at all (§13.7); the UDP probe is the WS-side discovery a LAN client without BLE should use in preference to mDNS.
 
+### 13.9 Provisioning: client-pushed network credentials *(RFC-069)*
+
+A factory-fresh hub has no network; the operator's phone or computer has the credentials. The spec-core INTENT channel **`provisioning` (`0x000F`)**, `configure` access, carries them in.
+
+- **Schema** (the channel's own keys): 1 `op`, an op select with role `action.provision` over `provisioning_ops` (`wifi_join` 1; index 0 is filler, §8.9); 2 `ssid` (tstr); 3 `passphrase` (tstr, MAY be empty for an open network); 4 `ipv4` and 5 `ws_port` (uint, result keys of the ECHO). `ssid` and `passphrase` carry the `secret` flag. A core id, not a device channel plus role, because the first-run client binds by identity and a headless hub has no other surface.
+- **Gate (MUST).** The hub accepts `wifi_join` only when all hold: the session holds `configure`; a §12.3 association window is open, or the hub is factory-fresh (zero `configure` tokens, §12.3); and the frame arrived on a BLE GATT (§13.4), serial (§13.5) or in-process (§13.6) binding. Otherwise NACK `ACCESS_DENIED`. A network binding is refused because it rides the network being changed and is cleartext (H4). The **serial binding is a first-class provisioning path beside BLE**: where config mode is offered (§13.4.1), both are active at once and both accept `wifi_join`. A hub SHOULD require LE Secure Connections on a BLE link (§12.9).
+- **Unicast result.** The hub defers its answer until the join concludes or `provision_join_timeout_ms` elapses. Success: ECHO whose `applied` carries `op`, each credential key with the value `true` (§8.8 Secrets), and the resulting `ipv4` and `ws_port`. Failure: NACK `NETWORK_JOIN_FAILED`, whose `detail` MUST NOT contain either credential. A duplicate `intent_id` during the attempt joins it and MUST NOT start a second attempt.
+- **No stranding (MUST).** A hub that already has working credentials keeps them until the new ones join; a failed join leaves the prior configuration in effect.
+- **Never disclosed (MUST).** Credentials never appear in STATE, in any EVENT (including the log channel, §16.2), in GOODBYE or NACK `detail`, in any diagnostic surface, or in the ECHO of any other session. Their public consequences ride their existing homes: `ipv4` and `ws_port` in WELCOME (§6.3), `ble_adv_flags.ws_available` (§13.4). A client MUST NOT log or persist the credentials beyond the send, and enters the SSID itself: the hub publishes no scan list.
+- **Then the upgrade.** On success the client SHOULD perform the §6.3 BLE-to-WS migration using the returned endpoint.
+
 ---
 
 ## 14. Relay Role *(normative)*
@@ -1659,6 +1670,7 @@ The fixture's coverage gaps at v1.0 are stated in §18-7 rather than implied by 
 | `nack_detail_max_bytes` | 48 | §16.1 |
 | `preset_capacity_min` / `preset_item_max_bytes` | 32 / 4096 | §8.7 |
 | `log_replay_depth_default` | 32 | §16.2 |
+| `provision_join_timeout_ms` | 20000 | §13.9 |
 | `max_frame_ws` / `max_frame_espnow` / `max_frame_ble` / `max_frame_serial` | 512 / 250 / 244 / 512 | §5.1, §13.1 |
 | `conformance_min_clients` | 4 | §6.3, §17.1 |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | §6.3 |

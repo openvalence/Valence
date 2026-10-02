@@ -238,6 +238,7 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `nack_detail_max_bytes` | 48 | [§16.1](errors.md#s16-1) |
 | `preset_capacity_min` / `preset_item_max_bytes` | 32 / 4096 | [§8.7](catalog.md#s8-7) |
 | `log_replay_depth_default` | 32 | [§16.2](errors.md#s16-2) |
+| `provision_join_timeout_ms` | 20000 | [§13.9](transports.md#s13-9) |
 | `max_frame_ws` / `max_frame_espnow` / `max_frame_ble` / `max_frame_serial` | 512 / 250 / 244 / 512 | [§5.1](wire-format.md#s5-1), [§13.1](transports.md#s13-1) |
 | `conformance_min_clients` | 4 | [§6.3](session.md#s6-3), [§17.1](conformance.md#s17-1) |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | [§6.3](session.md#s6-3) |

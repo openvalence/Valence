@@ -123,5 +123,6 @@ registry's own rationale where it records one.
 
 | Name | Value | Notes |
 |---|---|---|
+| `provision_join_timeout_ms` | `20000` | RFC-069 (§13.9): longest a hub defers its answer to a provisioning wifi_join before NACK NETWORK_JOIN_FAILED. Covers association plus DHCP on a slow access point. |
 | `log_replay_depth_default` | `32` | entries the hub MAY replay from its ring tail when a session is granted the log channel. THE named exception to §9.4's no-replay rule ("except where a channel's catalog entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every grant a burst. |
 

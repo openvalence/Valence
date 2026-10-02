@@ -117,6 +117,17 @@ always an equally valid entry point.*
 
 **Discovery doctrine, restated for this binding:** BLE advertisement remains primary where BLE is available at all ([§13.7](#s13-7)); the UDP probe is the WS-side discovery a LAN client without BLE should use in preference to mDNS.
 
+### 13.9 Provisioning: client-pushed network credentials *(RFC-069)* {#s13-9}
+
+A factory-fresh hub has no network; the operator's phone or computer has the credentials. The spec-core INTENT channel **`provisioning` (`0x000F`)**, `configure` access, carries them in.
+
+- **Schema** (the channel's own keys): 1 `op`, an op select with role `action.provision` over `provisioning_ops` (`wifi_join` 1; index 0 is filler, [§8.9](catalog.md#s8-9)); 2 `ssid` (tstr); 3 `passphrase` (tstr, MAY be empty for an open network); 4 `ipv4` and 5 `ws_port` (uint, result keys of the ECHO). `ssid` and `passphrase` carry the `secret` flag. A core id, not a device channel plus role, because the first-run client binds by identity and a headless hub has no other surface.
+- **Gate (MUST).** The hub accepts `wifi_join` only when all hold: the session holds `configure`; a [§12.3](security.md#s12-3) association window is open, or the hub is factory-fresh (zero `configure` tokens, [§12.3](security.md#s12-3)); and the frame arrived on a BLE GATT ([§13.4](#s13-4)), serial ([§13.5](#s13-5)) or in-process ([§13.6](#s13-6)) binding. Otherwise NACK `ACCESS_DENIED`. A network binding is refused because it rides the network being changed and is cleartext (H4). The **serial binding is a first-class provisioning path beside BLE**: where config mode is offered ([§13.4](#s13-4).1), both are active at once and both accept `wifi_join`. A hub SHOULD require LE Secure Connections on a BLE link ([§12.9](security.md#s12-9)).
+- **Unicast result.** The hub defers its answer until the join concludes or `provision_join_timeout_ms` elapses. Success: ECHO whose `applied` carries `op`, each credential key with the value `true` ([§8.8](catalog.md#s8-8) Secrets), and the resulting `ipv4` and `ws_port`. Failure: NACK `NETWORK_JOIN_FAILED`, whose `detail` MUST NOT contain either credential. A duplicate `intent_id` during the attempt joins it and MUST NOT start a second attempt.
+- **No stranding (MUST).** A hub that already has working credentials keeps them until the new ones join; a failed join leaves the prior configuration in effect.
+- **Never disclosed (MUST).** Credentials never appear in STATE, in any EVENT (including the log channel, [§16.2](errors.md#s16-2)), in GOODBYE or NACK `detail`, in any diagnostic surface, or in the ECHO of any other session. Their public consequences ride their existing homes: `ipv4` and `ws_port` in WELCOME ([§6.3](session.md#s6-3)), `ble_adv_flags.ws_available` ([§13.4](#s13-4)). A client MUST NOT log or persist the credentials beyond the send, and enters the SSID itself: the hub publishes no scan list.
+- **Then the upgrade.** On success the client SHOULD perform the [§6.3](session.md#s6-3) BLE-to-WS migration using the returned endpoint.
+
 ## 14. Relay Role *(normative)* {#s14}
 
 ### 14.1 Forwarding {#s14-1}

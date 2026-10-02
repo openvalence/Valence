@@ -78,6 +78,7 @@ The intent is refused on its own merits.
 | `0x0301` | `RATE_LIMITED` | ingress intent rate exceeded |
 | `0x0302` | `INVALID_VALUE` | outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RFC-021.5) |
 | `0x0303` | `UNSUPPORTED_OP` | intent op not implemented on this hub |
+| `0x0304` | `NETWORK_JOIN_FAILED` | RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect. |
 
 ## `0x04xx`: safety refusal
 

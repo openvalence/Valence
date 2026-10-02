@@ -167,6 +167,7 @@ export const CORE_CHANNEL = {
   paired_devices: 0x000c,  // trust-ledger store descriptor: {store_id, kind 'trust.ledger', capacity paired_devices_max, per_
   paired_devices_roster: 0x000d,  // the 0x000C store's roster: {generation u16, count u8, capacity u8}. On-change, tiny; a generatio
   safety_events: 0x000e,  // RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_
+  provisioning: 0x000f,  // RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network creden
 };
 export const CORE_CHANNEL_NAME = {
   0x0001: 'catalog',
@@ -183,6 +184,7 @@ export const CORE_CHANNEL_NAME = {
   0x000c: 'paired-devices',
   0x000d: 'paired-devices-roster',
   0x000e: 'safety-events',
+  0x000f: 'provisioning',
 };
 
 // ---- cbor_keys -----------------------------------------------------
@@ -588,6 +590,7 @@ export const NACK = {
   RATE_LIMITED: 0x0301,  // ingress intent rate exceeded
   INVALID_VALUE: 0x0302,  // outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RF
   UNSUPPORTED_OP: 0x0303,  // intent op not implemented on this hub
+  NETWORK_JOIN_FAILED: 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, tim
   ESTOP_ACTIVE: 0x0400,  // refused while e-stop latched
   NOT_HOMED: 0x0401,  // motion intent before homing
   INTERLOCK: 0x0402,  // hub-specific safety interlock
@@ -628,6 +631,7 @@ export const NACK_NAME = {
   0x0301: 'RATE_LIMITED',
   0x0302: 'INVALID_VALUE',
   0x0303: 'UNSUPPORTED_OP',
+  0x0304: 'NETWORK_JOIN_FAILED',
   0x0400: 'ESTOP_ACTIVE',
   0x0401: 'NOT_HOMED',
   0x0402: 'INTERLOCK',
@@ -805,6 +809,14 @@ export const STORE_OP_NAME = {
   2: 'load',
   3: 'delete_item',
   4: 'rename',
+};
+
+// ---- provisioning_ops ----------------------------------------------
+export const PROVISIONING_OP = {
+  wifi_join: 1,  // join the WiFi network named by `ssid` with `passphrase`; answered after the join concludes (§13.
+};
+export const PROVISIONING_OP_NAME = {
+  1: 'wifi_join',
 };
 
 // ---- ui_archetypes -------------------------------------------------
@@ -1022,6 +1034,7 @@ export const ACTION_TAG = {
   identify: 'identify',  // blink-to-find: every device ecosystem needs one
   admin: 'admin',  // a generic administrative action not covered by a more specific tag
   reboot: 'reboot',  // firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)
+  provision: 'provision',  // RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `
   store: 'store',  // RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options bey
 };
 
@@ -1094,6 +1107,7 @@ export const LIMITS = {
   trust_ledger_kind_max_bytes: 16,
   hub_sig_timeout_ms: 3000,
   auth_attempts_max: 3,
+  provision_join_timeout_ms: 20000,
   log_replay_depth_default: 32,
   ws_subprotocol: 'valence.v1',
   mdns_service: '_valence._tcp',
