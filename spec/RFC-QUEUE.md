@@ -6468,3 +6468,545 @@ say exactly which, future-us will want the receipts.*
      (end-velocity semantics) and [RFC-071](#rfc-071----motion-input-field-roles-find-the-stream-target-without-a-name)
      (motion-input roles) both touch the samples/segments split; neither
      states an anchor meaning, so no text of theirs moves.
+
+## RFC-085 -- Three safety pairs, one control each: pause and resume, override and return, estop and release
+
+- **Status:** DRAFT (operator rulings 2026-10-01, written while running the
+  RFC queue). Ruling pending (rfc-crn): the operator authored every item
+  below in ten dated comments on the bead the same night and has not yet
+  read this text. Folds in
+  [RFC-074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command),
+  which was accepted under this fold the same day. Pre-tag restructuring:
+  numbers retire as gaps, nothing is renumbered. No hub or client codes
+  against it before acceptance.
+- **Origin:** operator rulings 2026-10-01 on rfc-crn, in this order: the
+  fold of STOP and HOLD into PAUSE; the override refinement (override
+  carries pause, jog only under override, return to the paused position,
+  "jog" replaces "user"); the arbitration consequence for §11.4; the travel
+  window stays writable; the merge of the two latched modes; the final
+  naming and the one-control-per-pair rendering law; ESTOP cuts motor power;
+  the `estop_cuts_power` declaration for machines without a motor switch;
+  that declaration REQUIRED of a hardware hub.
+- **Problem.**
+  1. **Four levels where two do the work.** SPEC §11.1 as it reads today
+     ("Four distinct levels, all latched or gated in the `safety` STATE
+     channel") defines ESTOP, STOP ("Decelerate to zero at configured decel;
+     source deactivated", cleared by "Any new accepted motion intent from an
+     authorized source"), HOLD ("Decelerate, then actively hold position;
+     source suspended", cleared by RESUME) and PAUSE ("The hub-autonomous
+     generator suspends at a safe phase; position parked", cleared by
+     RESUME). STOP's clear is the fuzzy one RFC-074 had to pin down: a
+     stream bundle is not an intent, so what clears STOP for a streaming
+     client had no spelling. HOLD has no implementer (RFC-074 open question
+     3). An operator reaching for "stop the machine, keep it where it is"
+     has three near-synonyms to choose from and no way to know which one a
+     given hub honors (§11.1 lets a hub NACK `UNSUPPORTED_OP` for any of
+     them).
+  2. **Two latched modes that overlap.** §11.1 carries `manual_override` and
+     `bypass_limits` in the snapshot's appended modes byte, written by four
+     ops (`override_on`/`override_off`/`bypass_on`/`bypass_off`,
+     [RFC-025](#rfc-025--safety-semantics-completion-incl-overridebypass-ruling)
+     (c)), plus "a per-move bypass flag on a motion intent, where a hub
+     offers one". Nothing says how they combine, and neither says what
+     happens to a source that owns the rail while the operator takes it by
+     hand.
+  3. **A jog takes the rail from a stream by priority.** §11.4: "Takeover
+     *between* source types remains the arbiter's existing priority logic,
+     unchanged." On the reference hub a manual point move is an accepted
+     motion intent that simply wins over a running stream. Hand and stream
+     then both command position, in sequence, with nothing visible to say
+     which one owns the rail.
+  4. **Clearing is a separate button.** §11.2's `estop_clear` op and the
+     RENDERING §10 `safety-strip` render latch and clear as distinct
+     controls. Two quick taps on a panic control can latch and then clear.
+  5. **"E-stop" promises more than some hubs deliver.** §11.2 asks for
+     "Immediate driver-level stop" and H1 says the hardware path is the
+     guarantee of last resort, but a client cannot tell whether a given
+     hub's ESTOP removes motor power or decelerates under power. The label
+     the operator sees is the same either way.
+  6. **"User" names the manual move.** The registry roles `limit.user.speed`
+     and `limit.user.accel` ("the USER (manual) limit set") name the jog
+     speed pair after who sends it rather than what it is. "Jog" is the
+     industry term.
+- **Proposed change.**
+  1. **Two levels (SPEC §11.1 table rewritten).**
+
+     | Level | Meaning | Motion behavior | Clears by |
+     |---|---|---|---|
+     | **ESTOP** | Emergency stop, latched | Item 3: motor power cut where declared, else a maximum-deceleration halt; motion prohibited while latched | `release` (§11.2 preconditions), which lands in PAUSE |
+     | **PAUSE** | The one latched non-emergency level | Decelerate to zero at configured decel, then actively hold position; every source suspended | `resume` only |
+
+     - **PAUSE suspends every source.** c2h motion-input bundles on any
+       source-mapped channel are dropped whole and counted, never NACKed
+       (RFC-074 clauses 1, 2 and 4, unchanged, with PAUSE in place of
+       STOP); a hub-autonomous generator parks at a safe phase; motion
+       INTENTs are refused (`INTERLOCK`) except the home verb (item 3) and,
+       under override, jog (item 2). Ownership is not released by a pause:
+       the owning session keeps the source, suspended.
+     - **Only `resume` clears PAUSE.** No motion intent, no stream bundle
+       and no PUBLISH clears it (RFC-074 clause 3's re-arm is `resume`; no
+       PUBLISH side effect and no new op). `resume` is refused `ESTOP_ACTIVE`
+       while ESTOP is latched, `INTERLOCK` while override is latched (item
+       2), and `NOT_HOMED` while the hub is unhomed (item 3).
+     - **Authorization.** `pause` (op 4) becomes ROLE-EXEMPT, inheriting
+       STOP's place under §11.2's "you may always stop the machine; you may
+       not always start it": any session, `watch` included, may pause.
+       `resume` (op 5) stays `control`. A client MUST NOT send `resume` on
+       its own initiative (RFC-074's client clause, now about PAUSE): it is
+       an operator act or PAUSE is decorative.
+     - **A hub with a motion source MUST implement PAUSE.** It is half of
+       the strip's mandatory pair (item 4); §11.1's "a hub whose application
+       does not implement a level MUST NACK `UNSUPPORTED_OP`" no longer
+       applies to it. It still applies to override on a hub with no rail
+       control.
+     - **Retired ops.** `stop` (2) and `hold` (3) are retired pre-tag; their
+       numbers stay gaps and are never reused. A hub answers them
+       `UNSUPPORTED_OP` until the tag, then they are simply unknown ops.
+     - **Safety word.** bit0 ESTOP and bit3 PAUSE keep their positions;
+       bits 1 (STOP) and 2 (HOLD) are retired, zero on send. Keeping PAUSE
+       at bit3 moves no shipped byte.
+     - **Event kinds.** `safety_event_kinds` 3 `stop_latched` and 4
+       `stop_cleared` are renamed `pause_latched` and `pause_cleared`.
+       `body.level` retires with the extra bits (one level leaves nothing to
+       disambiguate); `cause` stays and still separates an operator pause
+       (`user`) from `deadman` and `session_loss`.
+     - **Causes.** `safety_causes` is unchanged. ESTOP's causes remain
+       `user`, `fault` and `relay`. Session loss and the deadman latch PAUSE,
+       never ESTOP, wherever a hub latches anything for them; RFC-045 is
+       unchanged, so a command-driven source still latches nothing at all
+       (§11.3) and the hub-autonomous case stays the delegate's decision.
+  2. **OVERRIDE and RETURN: one rail-bound mode (SPEC §11.1 modes, §11.4).**
+     The two latched modes `manual_override` and `bypass_limits` merge into
+     one, **override**, written by the op pair `override` / `return`.
+     - **`override` carries PAUSE.** Accepting `override` latches PAUSE as a
+       side effect if it is not already latched; override never exists
+       without PAUSE. PAUSE alone stops the machine in place; override
+       additionally hands the rail to the operator, lifts the travel window
+       and the hub's soft limits (hardware protection is untouched, H1), and
+       enables jog. The hub records the **paused position**: where the
+       machine came to rest under PAUSE.
+     - **Jog is the operator's hand on the rail.** Under override, a jog (a
+       manual point move at jog speed and jog accel) is the only motion the
+       hub accepts, inside or outside the travel window as the operator
+       chooses. The suspended source stays suspended, so hand and stream
+       never command position at once.
+     - **Arbitration (§11.4 amended).** While any source owns the rail and
+       override is not latched, a jog intent is REFUSED `SOURCE_CONFLICT`.
+       Override is the only way the operator takes the rail from a source;
+       the "arbiter's existing priority logic" sentence no longer lets a
+       manual move win over a stream.
+     - **`return`** arms a smooth move back to the paused position at jog
+       speed and jog accel. Jog is refused while it runs. On arrival the
+       override bit clears and the machine is in plain PAUSE awaiting
+       `resume`. Return takes no gate beyond `control`.
+     - **The travel window stays writable at any time** (the `window.*`
+       roles): while a source owns the rail, while paused, and under
+       override. Only jog is gated; nothing here freezes window edits.
+     - **ESTOP drops override.** An ESTOP latch clears the override bit
+       (on a power-cutting hub the paused position is no longer known, item
+       3); release lands in plain PAUSE.
+     - **Ops.** `override_on` (7) is renamed `override` and `override_off`
+       (8) is renamed `return`, both with the merged semantics, both
+       `control`. `bypass_on` (9) and `bypass_off` (10) are retired as gaps.
+     - **Modes byte.** bit0 is `override` (was `manual_override`); bit1
+       (`bypass_limits`) is retired, see open question 1 for a proposed
+       reuse.
+     - **The per-move `bypass` key retires.** A jog under override is
+       already outside the limits by mode, so a per-intent escape hatch has
+       nothing left to do. A hub that offers one drops it.
+     - **Bound to the rail, not free-standing.** The pair is an ESSENTIAL
+       BINDING of the `axis` archetype (the rail widget carries it). A
+       client with no rail control declines it and renders nothing
+       (RENDERING §13 law 7); it is not a safety-strip control.
+  3. **ESTOP and RELEASE (SPEC §11.2).**
+     - **A declared stop category.** A hub DECLARES whether its ESTOP cuts
+       motor power, as a new boolean `estop_cuts_power`, carried in WELCOME
+       `identity` (key 37) as new `identity_keys` 6. Identity is chosen over
+       the §13.1 binding matrix because this is a property of the hub, not
+       of a transport, and it is known at WELCOME, before LIVE, so a
+       client's first paint labels the control correctly. The declaration is
+       the firmware author's responsibility and is REQUIRED of a
+       hardware-profile hub (§13.1); the spec mandates the declaration,
+       never the mechanism. A client MUST treat an absent key as `false`.
+     - **`true`: power cut.** ESTOP opens the motor switch (the H1 path):
+       the machine goes limp, with no holding torque, its position reference
+       is lost, and the hub marks itself unhomed. This is an IEC 60204-1
+       category 0 stop, chosen because a person is on the rail. True on the
+       Nucleus Flagship (it owns a motor switch).
+     - **`false`: halt.** ESTOP is a maximum-deceleration controlled stop,
+       latched exactly as above, with power kept and home kept. False on
+       `valencesim` and on a budget build with the motor-switch bypass
+       jumper fitted.
+     - **Same op, same latch, either way.** The raw `0xE5` frame (§5.5), the
+       `estop` op (6), the repeat-until-latched rule and the relay
+       obligation are unchanged.
+     - **`release`.** `estop_clear` (1) is renamed `release`, still
+       `control`. The hub still refuses `CLEAR_REFUSED` unless §11.2's
+       preconditions hold (cause resolved, motion at rest; the "no other
+       stop level pending escalation" clause loses its object and is
+       struck). Release lands in **PAUSE**, never in motion. On a `true`
+       hub, release restores power with the hub unhomed: the home verb
+       (`action.home`) is the one motion accepted under PAUSE while
+       unhomed, and `resume` is refused `NOT_HOMED` until a home completes.
+       Sequence: estop, Halted, release, PAUSE unhomed, home, resume. On a
+       `false` hub, release lands in PAUSE homed.
+     - **Accessories are unchanged.** RFC-075's spoke ESTOP broadcast and
+       safe state stand; RFC-078's interlock reads PAUSE where it read STOP.
+  4. **Rendering (RENDERING §8.2, §8.4, §9, §10, §13).**
+     - **One control per pair.** Each pair (pause/resume, override/return,
+       estop/release) renders as ONE control with two states. There is no
+       separate clear, release or resume button anywhere.
+     - **The persistent strip's mandatory pair is e-stop plus pause.**
+       §8.2 row 2 binds `pause`/`estop` op identity (was `stop`/`estop`);
+       §8.4 row 11 and §10 `safety-strip` follow; law 1 reads "Keep the
+       e-stop and pause controls reachable at every rank on every class".
+     - **E-stop.** Pressing latches. Its latched state reads **Halted**.
+       Release is the same control held: press-and-hold, RECOMMENDED 3 s,
+       on every class and on a physical remote button (a RENDERING SHOULD;
+       the duration is client vocabulary). This supersedes the earlier
+       same-night wording that put release behind the §8.3 destructive
+       primitive; the hold exists so two panic taps can never
+       latch-then-release. The hub's §11.2 preconditions still decide.
+     - **The label follows the declaration.** A hub declaring
+       `estop_cuts_power` true renders **E-Stop**; false or absent renders
+       **Halt**. A client MUST NOT render "E-Stop" on a hub that declared
+       false or declared nothing: H1 made testable.
+     - **Pause.** Press latches PAUSE; a second press on the same control is
+       `resume`, no gate.
+     - **Override.** On the rail's control row (item 2): press is
+       `override`, second press is `return`, no gate.
+  5. **"Jog" replaces "user".** Every role, field name, setting and document
+     that calls the manual move pair "user" speed/accel is renamed. The
+     inventory as of 2026-10-01:
+     - **Registry** `field_roles`: `limit.user.speed` to `limit.jog.speed`,
+       `limit.user.accel` to `limit.jog.accel`; their notes say "JOG
+       (manual) limit set".
+     - **SPEC** §8.8, the field-roles example sentence naming
+       `limit.user.speed`.
+     - **RENDERING**: no occurrence.
+     - **Generated** (regenerated, never hand-edited):
+       `lib/valence/include/valence/generated/registry_constants.hpp`
+       (`limit_user_speed`, `limit_user_accel`),
+       `clients/js/generated/registry_vocab.js`.
+     - **Valence hand copies:** `clients/mfp/ValenceConnect.cs`
+       (`RoleLimitUserSpeed`, `RoleLimitUserAccel`),
+       `tools/valence_probe.py` (role list), the `tools/gen_registry_header.py`
+       docstring example.
+     - **Nucleus:** `flagship_p4/src/hub/ValenceCatalog.h` (`factory::
+       user_speed`/`user_accel`, the 0x0081 layout fields `user_speed` /
+       `user_accel` and their `enabled_mask` bit names, the 0x0101 schema
+       fields keys 3 and 4, `roles::limit_user_*`); `StoredState.h`;
+       `ValenceDevice.cpp` (`motionSetUserLimits` and the key 3/4 apply and
+       echo paths); `ValenceHub.cpp` static asserts; `valence_config.h`
+       (`DEFAULT_USER_MAX_SPEED_MM_S`, `DEFAULT_USER_ACCEL_MM_S2`);
+       `motion/MotionArbiter.h` (`_user_v`, `_user_a`); native tests
+       `test_motion_arbiter`, `test_stored_state`, `test_kinetic` (comment).
+     - **Phosphor:** `src/model/roles.js` (`limitUserSpeed`,
+       `limitUserAccel`, labels "User speed", "User accel").
+     Field names are device vocabulary: renaming them moves an etag (T11)
+     and no packed byte; the stored-state blob layout is unchanged.
+  6. **Text this retires.** SPEC §11.1 (table, "all four levels", the
+     override/bypass paragraphs), §11.2 (`estop_clear`, clause (c)), §11.3
+     ("role-exempt `stop`/`estop`"), §11.4 (between-type takeover for
+     jog), §12 role-exemption sentence, §18 item 3, and Appendix I (F16,
+     F17) and Appendix J lines naming HOLD/STOP; registry `0x0003` and `0x0005` notes,
+     `safety_intent_ops`, `safety_event_kinds`, the `safety` action tag
+     note; RENDERING §8.2 row 2, §8.4 `stop`, §9 `persistent`, §10
+     `safety-strip`, §10.1 rule text naming role-exempt `stop`, laws 1
+     and 2.
+- **Wire impact.** Pre-tag restructuring, no frame changes. Ops 2, 3, 9 and
+  10 retired as gaps; 1, 7 and 8 renamed with merged semantics; `pause`
+  becomes role-exempt. Safety word bits 1 and 2 and modes bit1 retired.
+  Event kinds 3 and 4 renamed, `body.level` retired. One new
+  `identity_keys` entry (6, `estop_cuts_power`). Two role strings renamed.
+  The `0xE5` frame, `estop_seq` and the repeat rule are untouched.
+- **Registry impact.** `safety_intent_ops` (renames, retirements, the
+  role-exemption banner naming `estop` and `pause`); `safety_event_kinds` 3
+  and 4; the `0x0003` and `0x0005` notes; `identity_keys` gains 6
+  `estop_cuts_power` (bool); `field_roles` renames; `action_tags` `safety`
+  note. Codegen regenerates.
+- **Conformance impact.**
+  - **Hub:** a `watch` session pauses; streamed bundles under PAUSE are
+    dropped and counted and position holds (the RFC-074 test shape); no
+    INTENT, bundle or PUBLISH clears PAUSE; `resume` does. Under a stream,
+    a jog is refused `SOURCE_CONFLICT`; under override it is accepted
+    outside the window; `return` arrives at the paused position at jog
+    speed and leaves plain PAUSE. A window write is accepted while paused
+    and while a source owns the rail. On a `true` hub, ESTOP leaves the hub
+    unhomed, `release` lands in PAUSE, `resume` is refused `NOT_HOMED`
+    until a home completes; `release` while moving is `CLEAR_REFUSED`. A
+    hardware-profile hub that omits `estop_cuts_power` fails the probe.
+  - **Client:** a fixture hub declaring `false` (and one declaring nothing)
+    renders Halt, never E-Stop; each pair is one control; release requires
+    the hold; a client never sends `resume` unprompted.
+- **Compatibility and follow-ups.** Nucleus: retire the STOP path in favor
+  of PAUSE; the MotionArbiter gains the jog refusal; the motor switch on
+  ESTOP and the unhomed mark; declare `estop_cuts_power` true; the jog
+  rename; bench stamp: jog under stream refused, jog under override
+  accepted, return on `return`. `valencesim`: declare false. Phosphor:
+  relabel the strip, one control per pair, the rail carries
+  override/return, and its TCode and buttplug adapters send `resume`
+  explicitly, never implicitly.
+- **Open questions.**
+  1. **Surfacing "home required".** `resume` is refused `NOT_HOMED` after a
+     power-cutting ESTOP, and a client must say why. Proposed: the freed
+     modes bit1 becomes `home_required` (set by ESTOP on a `true` hub,
+     cleared by a completed home), so the safety snapshot alone explains
+     the refusal. Alternative: leave it to a device-catalog role.
+  2. **A point move with no owner, no pause and no override.** The rulings
+     say both "jog only under override" and "refused while a source owns
+     the rail". This draft reads the second as the binding rule: a manual
+     point move on an idle, unpaused rail is an ordinary source activation
+     under §11.4. Confirm, or make jog override-only outright.
+  3. **The home verb under PAUSE.** This draft admits `action.home` under
+     PAUSE whether or not the hub is unhomed (homing is an operator act
+     with its own tier). Narrow it to "only while unhomed"?
+
+## RFC-086 -- Units: `deg`, `us` and a hub-time stamp unit; display autoranging is a client choice
+
+- **Status:** ACCEPTED (operator, 2026-10-01). Pre-approved on its bead
+  (rfc-263) as described and drafted directly as accepted; registry
+  allocation of the three unit ids rides the same landing pass. Not landed.
+- **Origin:** operator ruling 2026-10-01 while running the RFC queue, with
+  [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role)
+  (its `datetime.*` roles carry hub time and need a unit that says so).
+- **Problem.**
+  1. **No angle unit.** Registry `unit_ids` (RENDERING §6) has no angle. A
+     rotary or tilting accessory (RFC-076's motorized stand) has nothing to
+     declare.
+  2. **No microsecond unit.** Hub time is microseconds everywhere in SPEC §7
+     (§7.1, §7.2 `t_base`), and the table registers only `ms` (7) and `s`
+     (8). A field carrying a raw hub-time interval must be rescaled or lie
+     about its unit.
+  3. **A hub-time stamp is not a duration.** RFC-083 ruled that
+     `datetime.moment`/`start`/`end` carry seconds in the hub's own §7.1
+     timebase, never Unix epoch. Declared as `s`, a client cannot tell a
+     duration from a stamp it must shift by its CLOCK offset to show wall
+     time.
+  4. **Nothing says whether a client may rescale for display.** A `V` field
+     reading 0.085 is clearer as 85 mV. Without a rule, one client
+     autoranges and another invents a prefix vocabulary on the wire.
+  The table is marked "frozen at v1.0" (RENDERING §6, "deliberately
+  over-provisioned so that a foreseeable future actuator never needs a v1.1
+  vocabulary addition"), but no tag exists, so additions are legal now and
+  this is the moment.
+- **Proposed change.**
+  1. **`unit_ids` gains three entries** (registry owner allocates; proposed
+     23, 24, 25 in this order):
+     - `deg`: angle in degrees. Radians are a math convenience, not a knob
+       unit.
+     - `us`: time in microseconds, the §7 hub-time resolution.
+     - `hub_s`: seconds in the hub's own §7.1 timebase, distinct from `s`
+       so a client knows to apply its CLOCK offset before showing wall time.
+       The unit of RFC-083's `datetime.*` roles.
+  2. **Display autoranging (RENDERING §6, one sentence).** A client MAY
+     autorange SI prefixes for DISPLAY (85 mV for a `V` field reading
+     0.085) and MUST NOT alter the wire unit or scale. Magnitude lives in
+     the field's `scale` (§5.4), never in a prefix, so no prefix or range
+     vocabulary exists on the wire.
+  3. **Temperature stays `deg_c` only.** Kelvin and Fahrenheit are display
+     conversions, not units a field declares.
+- **Wire impact.** Additive: three unit ids. No number in use moves.
+- **Registry impact.** `unit_ids` gains `deg`, `us`, `hub_s`; RENDERING §6's
+  table follows. Codegen regenerates the unit constants.
+- **Conformance impact.** The unknown-unit rule (RENDERING §6) already
+  covers an older client meeting the new ids. Client fixture: a `hub_s`
+  field renders as wall time through the CLOCK offset; a `V` field at 0.085
+  may display 85 mV and its write path still sends volts.
+- **Open questions.** None.
+
+## RFC-087 -- Segments-kind bundles span the schedule horizon; the horizon is advertised per grant
+
+- **Status:** DRAFT (operator direction and two rulings 2026-10-01 on
+  rfc-66i). Ruling pending (rfc-66i): the operator set the numbers and the
+  semantics; this text is not yet read. A Nucleus bench bead measures the
+  rapid-oscillation buffer effect before the horizon value is tuned.
+- **Origin:** operator direction 2026-10-01 while running the RFC queue. A
+  lookahead client (a funscript player, anything that can see its future)
+  sends ten bundles per 200 ms today, because SPEC §5.4 caps every bundle's
+  span at `bundle_max_span_ms` (20 ms) whatever its `stream_kind`. For a
+  `segments` stream, whose stamps are execution starts (§5.4,
+  [RFC-014](#rfc-014--timed-segment-scheduling-contract)), the 20 ms cap
+  buys nothing: the hub already holds the scheduled plan, and the frames are
+  pure overhead on the link most likely to be poor.
+- **Problem.**
+  1. **One span cap for two meanings.** §5.4 rule 3: "span `t_off[n-1] ≤
+     bundle_max_span_ms` (20 ms)", "the caps exist to bound latency,
+     buffers, and fragmentation". For `samples` (chased on arrival,
+     [RFC-084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap))
+     a wider span only adds lag. For `segments` the latency is the client's
+     chosen lead, not the span, and the bound that matters is how far ahead
+     a start may be stamped.
+  2. **The horizon is a fixed number.** `max_future_schedule_ms` (250,
+     registry `limits`) is the clamp for every c2h STREAM (RFC-084). A
+     player on poor WiFi wants more future in flight; nothing lets a hub
+     offer it.
+  3. **The bundle header cannot express the span.** `t_off` is "u16 µs
+     offset of sample[i] from t_base" (§5.4 layout), so no bundle can span
+     more than 65.535 ms. A 250 ms window of segments does not fit the
+     header as written, at any `n`.
+  4. **A long horizon makes a seek visible.** At 1000 ms, a player that
+     seeks or skips has up to a second of already-scheduled segments still
+     to play out unless something flushes them.
+- **Proposed change.**
+  1. **Span cap by kind (§5.4 rule 3).** `bundle_max_span_ms` (20) stays
+     for `samples`-kind and for every h2c STREAM. For a c2h STREAM whose
+     `stream_kind` is `segments`, the span cap is the grant's schedule
+     horizon (item 2): `t_base + t_off[n-1]` MUST NOT lie further ahead of
+     hub time than the horizon. `n` stays bounded by `bundle_max_samples`
+     (32) and by rule 5 (the binding's `max_frame`): with the reference
+     6-byte segment (0x2101) a full bundle is 6 + 2x32 + 6x32 = 262 bytes,
+     inside WebSocket and serial (504), while ESP-NOW (242) carries 29 and
+     BLE (236) 28. At 32 per bundle that is 128 segments/s at 250 ms, 64/s
+     at 500 and 32/s at 1000, all above dense funscript rates.
+  2. **The horizon is advertised per grant.** A new CBOR key
+     `schedule_horizon_ms` on `granted_publishes` entry maps, beside
+     [RFC-059](#rfc-059----hub-advertised-scheduling-latency)'s
+     `schedule_latency_us`, present on `segments`-kind grants. Its value is
+     one of 250 (the default, today's `max_future_schedule_ms`), 500 or
+     1000; the registry pins the steps and a CEILING of 1000
+     (`schedule_horizon_max_ms`). The two larger steps exist for lookahead
+     players on poor WiFi. A grant without the key means 250. Like
+     `schedule_latency_us` it is a commitment for the life of the grant; a
+     change is an unsolicited GRANT (§10.2). Clients SHOULD fill bundles
+     toward the advertised horizon; RFC-014's "schedule no further ahead
+     than half that budget" stays a SHOULD against the granted value.
+  3. **The horizon is a cap, never a delay.** It bounds how far ahead a
+     segment's START may be stamped. The hub adds no wait and never waits
+     for a bundle to fill; each segment executes at its stamped time
+     (§5.4). A low-latency `segments` client stamps 50 ms ahead and sends
+     small bundles under the same 250 ms horizon; its felt latency is its
+     own lead plus `schedule_latency_us`, so no 100 ms step is needed.
+     `samples`-kind keeps the 20 ms span and RFC-084's 250 ms lead cap:
+     chased on arrival, a wider span only adds lag.
+  4. **`t_off` resolution for `segments` bundles (§5.4 layout).** On a c2h
+     `segments`-kind STREAM, `t_off` counts in units of
+     `segment_t_off_unit_us` (new limit, 100), so a u16 spans 6.5535 s,
+     covering the 1000 ms ceiling with margin, at 0.1 ms resolution.
+     `samples`-kind and h2c bundles keep 1 µs units. The decoder already
+     branches on `stream_kind` for the timestamp's meaning; the unit rides
+     the same branch. Bytes and rules 1, 2, 4 and 5 are unchanged.
+  5. **Flush is a supersede rule, not pause.** A newly accepted bundle on a
+     `segments` channel replaces every scheduled, not-yet-started segment
+     from the same source whose start is at or after the new bundle's first
+     start (`t_base`). A segment already executing is handed off at the new
+     first start exactly as any successor's start hands it off today (§9.6).
+     A player that seeks sends fresh segments stamped from now plus its
+     lead, and everything stale is gone; a client that resends an
+     overlapping window replaces the overlap, so a resend is idempotent.
+     PAUSE then RESUME
+     ([RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release))
+     is not the flush: it is an operator-level safety latch every
+     connected client shows, and a seek is not a safety act.
+  6. **Semantics restated.** A gap with no bundle settles the machine (no
+     bundle, no motion; RFC-058 item 4, §6.6). A segment longer than the
+     horizon is legal: the horizon bounds start time, never duration.
+  7. **Segments without lookahead.** A client that cannot see its future
+     gets [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)'s
+     rest-without-successor at the end of each bundle, which is correct and
+     visibly stop-start. Such an application belongs on `samples`, and
+     §9.2's `segments` bullet gains a sentence saying so.
+- **Wire impact.** One `granted_publishes` key. `t_off` units change for
+  c2h `segments` bundles only (pre-tag; the reference hub must follow in
+  the same release, see compatibility). Span rule 3 is kind-dependent. No
+  frame type changes.
+- **Registry impact.** `cbor_keys` gains `schedule_horizon_ms` (number by
+  the registry owner); `limits` gains `schedule_horizon_max_ms` (1000), the
+  pinned steps (250, 500, 1000) and `segment_t_off_unit_us` (100);
+  `max_future_schedule_ms` note: the default horizon for `segments` and the
+  lead cap for `samples`; `bundle_max_span_ms` note: `samples` and h2c
+  only. RFC-049 (c)'s unlanded scheduling-depth backstop is unaffected.
+- **Conformance impact.** Hub: a `segments` bundle spanning 240 ms under a
+  250 ms grant is accepted; one stamped 300 ms ahead is clamped (never
+  rejected); a grant advertising 1000 accepts a 900 ms span; a seek bundle
+  supersedes the stale tail and the next segment starts at the new stamp;
+  a `samples` bundle over 20 ms is still malformed. Client: a lookahead
+  client sends one bundle per horizon window and fills toward the
+  advertised value.
+- **Compatibility.** Pre-tag. Nucleus: kinetic's plan queue (eight
+  scheduled plans today) is sized against 32 segments in flight at the
+  chosen horizon, the supersede rule, the `t_off` unit on 0x2101, and the
+  grant key; the bench bead measures the oscillation buffer first. clients/js
+  and the MFP plugin: fill to the horizon, decode the grant key.
+- **Open questions.**
+  1. **The `t_off` unit (item 4).** The rulings did not address the u16
+     limit; 100 µs units are this draft's answer. Alternatives: 1 ms units
+     (simpler, funscript-native), or keep µs and widen `t_off` to u32 for
+     `segments` (a different byte layout per kind).
+  2. **Who picks the horizon.** This draft lets the hub choose (a hub MAY
+     expose it as a setting). Should a client be able to wish for one on
+     its `publishes` entry, echoed post-clamp like `burst` (RFC-013), or
+     does that re-litigate a hub property the way RFC-059 declined to?
+
+## RFC-088 -- Flip: a rail-bound direction flip, home swaps ends
+
+- **Status:** DRAFT (operator direction 2026-10-01 on rfc-tnm). Ruling
+  pending (rfc-tnm): the label was ruled the same night (Flip, not Invert);
+  the rest of the text is not yet read.
+- **Origin:** operator direction 2026-10-01 while running the RFC queue.
+  The machine calls one end of its rail home. The Flagship can be mounted
+  either way round, and a user who mounts it reversed wants one control
+  that makes the other end home rather than a reversed sense on every
+  slider, stream and preset.
+- **Problem.**
+  1. **Direction is baked in.** Position 0 is the homing end on every
+     reference surface. A reversed mount makes every client's slider,
+     every stream and every saved preset run backwards, and nothing in the
+     catalog can say so.
+  2. **A client-side flip is the wrong home.** A client that mirrors values
+     itself fixes only its own surfaces; another client, a TCode adapter
+     (RFC-061) or an RFC-078 relationship still sees the raw sense. The
+     §9.6 write-once argument applies: the hub must own it.
+  3. **There is no role to find it by.** The reference `machine-modes`
+     STATE (Nucleus 0x1030, written through `modes_set` 0x3030) holds the
+     machine's modes, but a generic client binds by role only (RENDERING
+     §13 law 6), and no role names a direction.
+- **Proposed change.**
+  1. **A stored mode with a role.** A writable layout field (bool, or a
+     two-option select) carrying a new registered role `axis.flipped`. It
+     is a setting (§8.8 `setting_key`), persisted across reboot because it
+     describes how the machine is mounted. The reference places it on
+     `machine-modes` (0x1030, appended at the tail per §5.4, written through
+     0x3030); the spec binds the role, never the channel.
+  2. **Effect: home swaps ends.** With the flip on, position 0 is the far
+     end. The hub mirrors, against the homed travel
+     (`geometry.measured_travel`): position telemetry (`telemetry.position`
+     reads travel minus position), the travel window (`window.min`/`max`
+     report the same physical window in the flipped frame), and every c2h
+     stream and intent target. No client needs to know the state to
+     behave; presets keep their meaning because they are stored in the
+     frame they were authored in, and the hub mirrors on the way in.
+  3. **Gate (hub MUST).** A write that changes the flip is refused:
+     `SOURCE_CONFLICT` while any source owns the rail (the flip is a
+     between-streams act); `NOT_HOMED` while the hub is unhomed (the mirror
+     needs a measured travel); `INTERLOCK` while
+     [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)
+     override is latched or the machine is moving. It never acts
+     mid-motion. A write that leaves the value unchanged is an ordinary
+     no-op ECHO (§4.2 `cfg_gen` unchanged).
+  4. **Rendering (RENDERING §8.4 `axis`).** One toggle control with two
+     states on the rail's control row, beside home and RFC-085's
+     override/return; an essential binding of the `axis` archetype where
+     the role is present (absent role, no control). Confirm-gated on every
+     class with the §8.3 destructive primitive: reversing a rail under a
+     person is a real act. Label **Flip** (operator ruling 2026-10-01).
+- **Wire impact.** One field role. The reference catalog appends one byte
+  to 0x1030 (tail-only, §5.4) and its etag moves (T11).
+- **Registry impact.** `field_roles` gains `axis.flipped`. No number.
+- **Conformance impact.** Hub: a homed rail flips, and telemetry reads
+  travel minus position; a flip write under an owning stream is refused
+  `SOURCE_CONFLICT`, unhomed `NOT_HOMED`, under override `INTERLOCK`; a
+  stream sent after the flip lands mirrored; the flip survives a reboot.
+  Client: the toggle renders on the rail row only where the role exists
+  and asks for confirmation.
+- **Compatibility.** Nucleus follow-up on its own board: the field on
+  0x1030, the mirroring in the kinetic and telemetry paths, the bench stamp
+  above. Phosphor: the toggle on the rail row.
+- **Open questions.**
+  1. **Role name.** The draft on the bead proposed `axis.inverted`; this
+     text uses `axis.flipped` to match the ruled label. Either is fine on
+     the wire.
+  2. **Category.** Under RFC-079's commissioning scope (the setup category
+     holds the machine's geometry), mounting direction is setup data, but
+     `machine-modes` is category `tuning` and categories are entry-level.
+     Move the field to a setup-category entry, or leave it with the modes?
