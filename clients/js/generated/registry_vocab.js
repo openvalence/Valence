@@ -866,7 +866,7 @@ export const WIDGET_PATTERN = {
   roster: 7,  // list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role hone
   protocol_pane: 8,  // the one deliberately device-aware diagnostic surface: wire ids visible by design
   pattern_panel: 9,  // the standard generator surface: run/stop with live state, pattern selection as an exclusive-choi
-  generator_advanced: 10,  // the fray-d surface: master controls + the four modifier lanes rendered as parallel lane groups +
+  generator_advanced: 10,  // the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the four modif
   transport: 11,  // playback: play/pause/seek/queue cluster for hubs that play content
   wizard: 12,  // stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequentia
 };
@@ -957,6 +957,14 @@ export const FIELD_ROLE = {
   plan_elapsed: 'plan.elapsed',  // elapsed time within the segment in flight
   plan_duration: 'plan.duration',  // total duration of the segment in flight
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
+  advgen_master: 'advgen.master',  // RFC-081: overall rate scale of the advanced program, percent of its own range
+  advgen_depth_max: 'advgen.depth_max',  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
+  advgen_depth_min: 'advgen.depth_min',  // RFC-081: the shallow stroke bound the program swings to, percent of the stroke window
+  advgen_speed_in: 'advgen.speed_in',  // RFC-081: inward stroke speed base
+  advgen_speed_out: 'advgen.speed_out',  // RFC-081: outward stroke speed base
+  advgen_accel_in: 'advgen.accel_in',  // RFC-081: inward acceleration base
+  advgen_accel_out: 'advgen.accel_out',  // RFC-081: outward acceleration base
+  advgen_mode: 'advgen.mode',  // RFC-081: bool, present only where the advanced program is a mode of a generator that also plays 
   color_red: 'color.red',  // RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger 
   color_green: 'color.green',  // RFC-083: writable numeric green channel of one color group
   color_blue: 'color.blue',  // RFC-083: writable numeric blue channel of one color group

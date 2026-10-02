@@ -761,6 +761,18 @@ field_roles:
   # distinct unattended-and-moving indicator). Streaming sources are explicitly
   # OUT of scope: a dead stream leaves the machine still by construction
   # (SETTLE, SPEC §11.3), so no switch exists or is wanted for them.
+  # ---- advgen.* (RFC-081): the advanced-generator capability interface's
+  # master controls (RENDERING.md §2.2, §10 `generator-advanced`). The
+  # interface itself meets SPEC §8.8's inclusion test, not any one firmware.
+  # Run/stop is `pattern.running`. Once per catalog (§8.8 cardinality).
+  "advgen.master":       { note: "RFC-081: overall rate scale of the advanced program, percent of its own range" }
+  "advgen.depth_max":    { note: "RFC-081: the deep stroke bound the program swings to, percent of the stroke window" }
+  "advgen.depth_min":    { note: "RFC-081: the shallow stroke bound the program swings to, percent of the stroke window" }
+  "advgen.speed_in":     { note: "RFC-081: inward stroke speed base" }
+  "advgen.speed_out":    { note: "RFC-081: outward stroke speed base" }
+  "advgen.accel_in":     { note: "RFC-081: inward acceleration base" }
+  "advgen.accel_out":    { note: "RFC-081: outward acceleration base" }
+  "advgen.mode":         { note: "RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present." }
   # ---- color.* / datetime.* (RFC-083): role triggers for the color and
   # datetime archetypes (RENDERING.md §8.2 rows 16/17); no archetype hint
   # exists. Per-GROUP families: each MUST appear at most once per `group`
@@ -1100,7 +1112,7 @@ widget_patterns:
   7:  { name: roster,            note: "list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role honestly distinct from empty" }
   8:  { name: protocol-pane,     note: "the one deliberately device-aware diagnostic surface: wire ids visible by design" }
   9:  { name: pattern-panel,     note: "the standard generator surface: run/stop with live state, pattern selection as an exclusive-choice group, knob sliders for whichever optional roles exist, source.background_run co-located with run/stop", required: true }
-  10: { name: generator-advanced, note: "the fray-d surface: master controls + the four modifier lanes rendered as parallel lane groups + preset save/recall via the store, source.background_run co-located with the master run/stop", required: true }
+  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the four modifier lanes rendered as parallel lane groups + preset save/recall via the store, source.background_run co-located with the master run/stop", required: true }
   11: { name: transport,         note: "playback: play/pause/seek/queue cluster for hubs that play content" }
   12: { name: wizard,            note: "stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequential menu screens" }
 

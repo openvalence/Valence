@@ -72,7 +72,7 @@ A hub SHOULD expose the well-known channel for any capability it has, carrying a
 | Power metering | `power` | `{watts, …}` | |
 | Usage totals | `odometer` | totals, `aspect: total` (§5.1) | |
 | **Pattern generator** (capability interface) | device-named STATE/INTENT pair | `{running, select(+options), speed?, depth?, stroke?, sensation?}` | The standard role set for a hub with a built-in generator. Optional roles render only when present. |
-| **Advanced generator** — the fray-d shape (capability interface) | device-named STATE/INTENT pair | master state + four modifier lanes (in-speed, out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait, offset}`) + preset store/roster | fray-d's design is the community gold standard; standardizing its *shape* means every advanced generator in the ecosystem speaks it and every client renders it, the same way VMotion is the standard planner. |
+| **Advanced generator** — the fray-d shape (capability interface) | device-named STATE/INTENT pair | master state (the `advgen.*` roles plus `pattern.running`, RFC-081) + four modifier lanes (in-speed, out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait, offset}`) + preset store/roster | fray-d's design is the community gold standard; standardizing its *shape* means every advanced generator in the ecosystem speaks it and every client renders it, the same way VMotion is the standard planner. |
 | Thermal | `thermal` | `{temp_actual, temp_setpoint?}` | Heaters are coming. |
 | Battery | `battery` | `{percent, charging}` | Portable devices. |
 | **Identify** (capability interface) | `action.identify`-tagged trigger | none — blink-to-find | Every device ecosystem needs a find-me op. |
@@ -348,11 +348,13 @@ Proven compositions extracted from the reference client. Each recipe names its a
 | `roster` | no | `list` + item actions | `content` | pending is a THIRD state | Locked-by-role honestly distinct from empty. |
 | `protocol-pane` | no | the one deliberately device-aware diagnostic surface | `content`, `diagnostic` rank | | Wire ids visible **by design**. |
 | `pattern-panel` | **MUST** (handheld/full; glance: reachable) | run/stop with live state + pattern `select` (exclusive-choice group) + knob sliders for whichever optional roles exist (§2.2) + `source.background_run` toggle co-located with the run/stop control (§10.1) | `content` (or `primary` on a generator-only device) | | The standard-generator surface. |
-| `generator-advanced` | **MUST** (handheld/full; glance: reachable) | master controls + four modifier lane groups (§2.2) + preset save/recall via the store + `source.background_run` toggle co-located with the master run/stop control (§10.1) | `content` (or `primary` on an advanced-generator-only device) | | The fray-d surface. |
+| `generator-advanced` | **MUST** (handheld/full; glance: reachable) | master controls (the `advgen.*` roles plus `pattern.running`, RFC-081) + four modifier lane groups (§2.2) + preset save/recall via the store + `source.background_run` toggle co-located with the master run/stop control (§10.1) | `content` (or `primary` on an advanced-generator-only device) | | The fray-d surface. |
 | `transport` | no | play/pause/seek/queue cluster | `content` | | For hubs that play content (§2.2 `playback` category). |
 | `wizard` | no | stepped ceremony flow (pairing, calibration, provisioning) | `overlay` | | Glance projects it as sequential menu screens. |
 
 How a developer *builds* each one — visuals, arrangement within its region, style — is entirely theirs; the bindings, interactions, and states are not.
+
+**`generator-advanced` bindings (RFC-081, law 7).** The master run/stop binds `pattern.running`; a hub offering an advanced generator MUST carry `pattern.running` for it. The pattern binds only when `pattern.running`, `advgen.master` and the six base roles (`advgen.depth_max`, `advgen.depth_min`, `advgen.speed_in`, `advgen.speed_out`, `advgen.accel_in`, `advgen.accel_out`) are all present; `advgen.mode` is essential only when `pattern.select` is also present. Anything less falls through to `settings-card`, which is conformant. Each `advgen.*` role appears once per catalog (SPEC §8.8 cardinality applies as written).
 
 ### 10.1 Shared safety-relevant control: `source.background_run`
 

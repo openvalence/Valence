@@ -86,6 +86,14 @@ role is never an error.
 | `plan.elapsed` | elapsed time within the segment in flight |
 | `plan.duration` | total duration of the segment in flight |
 | `plan.style` | which planning style produced the segment; options are the device's style names, index-aligned with the wire value |
+| `advgen.master` | RFC-081: overall rate scale of the advanced program, percent of its own range |
+| `advgen.depth_max` | RFC-081: the deep stroke bound the program swings to, percent of the stroke window |
+| `advgen.depth_min` | RFC-081: the shallow stroke bound the program swings to, percent of the stroke window |
+| `advgen.speed_in` | RFC-081: inward stroke speed base |
+| `advgen.speed_out` | RFC-081: outward stroke speed base |
+| `advgen.accel_in` | RFC-081: inward acceleration base |
+| `advgen.accel_out` | RFC-081: outward acceleration base |
+| `advgen.mode` | RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present. |
 | `color.red` | RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential) |
 | `color.green` | RFC-083: writable numeric green channel of one color group |
 | `color.blue` | RFC-083: writable numeric blue channel of one color group |
