@@ -1741,7 +1741,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
 | [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Draft 2026-10-02 |
-| [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Draft 2026-10-02 |
+| [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Accepted 2026-10-02 |
 
 ---
 
@@ -7813,7 +7813,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-095 -- Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods
 
-- **Status:** DRAFT (operator-originated, 2026-10-02).
+- **Status:** ACCEPTED (operator, 2026-10-02: "just approve that rfc, its 2x
+  controls"; rfc-ct1's sibling bead). The open questions resolve to the
+  draft's defaults: additive dwell, u16 at 0.01 strokes, a period is the
+  whole cycle. Landing follows the amendment ritual.
 - **Origin:** operator review of the Advanced Penetration plugin
   (ph-e82.18), 2026-10-02: "add a crest and trough dwell as a float of
   periods so a trough dwell @0.5 with a stroke period of 200ms would be
