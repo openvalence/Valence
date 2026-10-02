@@ -1655,7 +1655,7 @@ export function createSession(opts = {}) {
      * May this session use `value` on field `key` of `channelId`? RFC-009's
      * gray-never-hide input. NOTE there is deliberately NO channel-id special
      * case here for the role-exempt safety ops: 0x0005 advertises
-     * `option_access` (catalog key 17) with `stop` and `estop` at `watch`, and
+     * `option_access` (catalog key 17) with `pause` and `estop` at `watch`, and
      * the hub gates on that SAME data (Hub::requiredAccessFor), so the client's
      * graying and the hub's enforcement cannot disagree. Hardcoding the
      * exemption here would reintroduce exactly the drift the catalog removes.

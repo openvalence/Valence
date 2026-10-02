@@ -22,7 +22,7 @@ import {
 } from '../cbor.js';
 import {
   K, PRIORITY, FRAME, ACCESS, PACKED, PACKED_SIZE, GOODBYE_CODE, NACK,
-  SAFETY_OP, BLOB_NS, CH_SAFETY, LIMITS,
+  SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_EVENT_KIND, BLOB_NS, CH_SAFETY, LIMITS,
   UI_CATEGORY, UI_RANK, VALUE_ASPECT, VALUE_SCOPE, VALUE_PROVENANCE, UNIT_ID,
   encodeFrame, encodeEstopFrame, crc32, ESTOP_FRAME_BYTES,
 } from '../frames.js';
@@ -180,9 +180,20 @@ assert('new frame types (PUBLISH/CATALOG_READY/BLOB_REQ/BLOB_CHUNK/AUTH/HUB_SIG)
   FRAME.BLOB_CHUNK === 0x1b && FRAME.AUTH === 0x1c && FRAME.HUB_SIG === 0x1d);
 assert('CATALOG_REQ/CATALOG_CHUNK are RETIRED (absent, never reused)',
   FRAME.CATALOG_REQ === undefined && FRAME.CATALOG_CHUNK === undefined);
-assert('safety_ops::estop = 6 (RFC-010) + override/bypass 7..10 (RFC-025c)',
-  SAFETY_OP.estop === 6 && SAFETY_OP.override_on === 7 && SAFETY_OP.override_off === 8 &&
-  SAFETY_OP.bypass_on === 9 && SAFETY_OP.bypass_off === 10);
+// registry safety_intent_ops (RFC-085): three pairs; 2/3/9/10 retired as gaps.
+assert('safety_intent_ops: release 1, pause 4, resume 5, estop 6, override 7, return_op 8',
+  SAFETY_OP.release === 1 && SAFETY_OP.pause === 4 && SAFETY_OP.resume === 5 &&
+  SAFETY_OP.estop === 6 && SAFETY_OP.override === 7 && SAFETY_OP.return_op === 8);
+assert('safety_intent_ops: retired stop/hold/bypass and the old pair names are absent',
+  ['stop', 'hold', 'bypass_on', 'bypass_off', 'override_on', 'override_off', 'estop_clear']
+    .every((n) => SAFETY_OP[n] === undefined) &&
+  [2, 3, 9, 10].every((v) => !Object.values(SAFETY_OP).includes(v)));
+assert('role-exempt safety ops are exactly pause and estop',
+  SAFETY_OP_ROLE_EXEMPT.size === 2 && SAFETY_OP_ROLE_EXEMPT.has(SAFETY_OP.pause) &&
+  SAFETY_OP_ROLE_EXEMPT.has(SAFETY_OP.estop));
+assert('safety_event_kinds: pause_latched 3, pause_cleared 4 (RFC-085)',
+  SAFETY_EVENT_KIND.pause_latched === 3 && SAFETY_EVENT_KIND.pause_cleared === 4 &&
+  SAFETY_EVENT_KIND.stop_latched === undefined);
 assert('access tiers renamed, wire values unchanged (watch0/control1/configure2)',
   ACCESS.watch === 0 && ACCESS.control === 1 && ACCESS.configure === 2);
 
@@ -299,22 +310,23 @@ const strDec = decodePacked(strPayload, [
 assert('decodePacked: str16 strips zero padding', strDec.hub_name === 'ValenceDrive');
 assert('decodePacked: field after a str16 is at the right offset', strDec.volts === 12.5);
 
-// safety 0x0003 grew `modes` (manual_override + bypass_limits): 8 -> 9 B.
+// safety 0x0003 (RFC-085): word bit0 estop, bit3 pause, bits 1/2 retired;
+// appended modes byte bit0 override, bit1 home_required. 8 -> 9 B.
 const safetyLayout = [
-  { name: 'word', type: PACKED.bitfield8, scale: 1, bits: ['estop', 'stop', 'hold', 'pause'] },
+  { name: 'word', type: PACKED.bitfield8, scale: 1, bits: ['estop', '', '', 'pause'] },
   { name: 'cause', type: PACKED.u8, scale: 1 },
   { name: 'owner_session', type: PACKED.u32, scale: 1 },
   { name: 'estop_seq', type: PACKED.u16, scale: 1 },
-  { name: 'modes', type: PACKED.bitfield8, scale: 1, bits: ['override', 'bypass'] },
+  { name: 'modes', type: PACKED.bitfield8, scale: 1, bits: ['override', 'home_required'] },
 ];
-const safety9 = Uint8Array.of(0x03, 0x00, 0xef, 0xbe, 0xad, 0xde, 0x07, 0x00, 0x03);
+const safety9 = Uint8Array.of(0x09, 0x00, 0xef, 0xbe, 0xad, 0xde, 0x07, 0x00, 0x03);
 const sd = decodePacked(safety9, safetyLayout);
-assert('safety decode: word bits (estop+stop latched)',
-  sd.word_bits.estop === true && sd.word_bits.stop === true && sd.word_bits.hold === false);
+assert('safety decode: word bits (estop+pause latched)',
+  sd.word_bits.estop === true && sd.word_bits.pause === true);
 assert('safety decode: owner_session u32 LE', sd.owner_session === 0xdeadbeef);
 assert('safety decode: estop_seq', sd.estop_seq === 7);
-assert('safety decode: NEW modes byte (override+bypass)',
-  sd.modes_bits.override === true && sd.modes_bits.bypass === true);
+assert('safety decode: modes byte (override+home_required)',
+  sd.modes_bits.override === true && sd.modes_bits.home_required === true);
 // An OLD 8-byte snapshot must still parse its prefix (append-only evolution).
 const sd8 = decodePacked(safety9.subarray(0, 8), safetyLayout);
 assert('safety decode: 8-byte prefix still decodes, modes simply absent',
@@ -337,10 +349,10 @@ const miniCatalog = cbArray([
       [1, cbTstr('op')],
       [2, cbUint(0)],           // cbor type uint_t
       [3, cbTstr('')],
-      [10, cbArray([cbTstr('reserved'), cbTstr('estop_clear'), cbTstr('stop'),
-        cbTstr('hold'), cbTstr('pause'), cbTstr('resume'), cbTstr('estop')])],
+      [10, cbArray([cbTstr('reserved'), cbTstr('release'), cbTstr(''),
+        cbTstr(''), cbTstr('pause'), cbTstr('resume'), cbTstr('estop')])],
       [12, cbTstr('What to do about safety.')],
-      [17, cbArray([cbUint(1), cbUint(1), cbUint(0), cbUint(1), cbUint(1), cbUint(1), cbUint(0)])],
+      [17, cbArray([cbUint(1), cbUint(1), cbUint(1), cbUint(1), cbUint(0), cbUint(1), cbUint(0)])],
       // RFC-048 keys 19..23 on a SCHEMA field — rare but legal, and the reason
       // decodeSharedAnnotations owns them rather than decodeLayoutField.
       [19, cbUint(UI_RANK.hero)],
@@ -417,15 +429,15 @@ assert('unrecognized annotation codes fall back to the vocabulary default, never
   wild.layout[0].aspectName === 'live' && wild.layout[0].scopeName === 'session' &&
   wild.layout[0].provenanceName === 'actual' && wild.layout[0].unitIdName === null);
 assert('catalog decode: option_access decoded (key 17)', Array.isArray(opField.optionAccess));
-assert('option_access: stop(2) and estop(6) are ROLE-EXEMPT (watch)',
-  optionAccessFor(si, 1, SAFETY_OP.stop) === ACCESS.watch &&
+assert('option_access: pause(4) and estop(6) are ROLE-EXEMPT (watch)',
+  optionAccessFor(si, 1, SAFETY_OP.pause) === ACCESS.watch &&
   optionAccessFor(si, 1, SAFETY_OP.estop) === ACCESS.watch);
-assert('option_access: hold(3) needs control',
-  optionAccessFor(si, 1, SAFETY_OP.hold) === ACCESS.control);
-assert('gray-never-hide: a watch session may estop but not hold',
-  canUseOption(si, 1, SAFETY_OP.estop, ACCESS.watch) === true &&
-  canUseOption(si, 1, SAFETY_OP.hold, ACCESS.watch) === false &&
-  canUseOption(si, 1, SAFETY_OP.hold, ACCESS.control) === true);
+assert('option_access: resume(5) needs control',
+  optionAccessFor(si, 1, SAFETY_OP.resume) === ACCESS.control);
+assert('gray-never-hide: a watch session may pause but not resume',
+  canUseOption(si, 1, SAFETY_OP.pause, ACCESS.watch) === true &&
+  canUseOption(si, 1, SAFETY_OP.resume, ACCESS.watch) === false &&
+  canUseOption(si, 1, SAFETY_OP.resume, ACCESS.control) === true);
 
 // ---- EVENT `body` (key 40) decoded against the channel's OWN schema --------
 // v1.0 moved kind-specific fields OFF the global key space into this scoped
@@ -515,9 +527,11 @@ if (existsSync(FIXTURE) && existsSync(FIXTURE_ETAG)) {
   assert('fixture: 0x0003 safety carries the APPENDED modes bitfield (8 -> 9 B)',
     !!safety && safety.layout.some((f) => f.name === 'modes'));
   const realSi = realMap.get(0x0005);
+  // The fixture predates RFC-085 (its pause still needs control); estop 6 and
+  // resume 5 kept their numbers and tiers, so those are what it can prove.
   assert('fixture: 0x0005 advertises option_access with estop role-exempt',
     optionAccessFor(realSi, 1, SAFETY_OP.estop) === ACCESS.watch &&
-    optionAccessFor(realSi, 1, SAFETY_OP.hold) === ACCESS.control);
+    optionAccessFor(realSi, 1, SAFETY_OP.resume) === ACCESS.control);
 
   // ---- GAP CLOSED (Phosphor milestone 1, sim fidelity) -------------------
   // Was an [SKIP-EXPECTED-GAP]: sim/valencesim's DEFAULT catalog used to be

@@ -114,13 +114,14 @@ export const CH_HOME = 0x3101; // ch::home (INTENT)
 export const CH_MODES_SET = 0x3030; // ch::modes_set (INTENT)
 
 /**
- * Ops any session may send regardless of role (RFC-025b) — safety outranks
- * authorization. estop(6) is RFC-010's client-assertable e-stop: the hub treats
- * it exactly as a valid 0xE5 frame (latch, cause=user, publish 0x0003, EVENT
- * twin). Derived from the generated table; the EXEMPTION is the fact this line
- * owns, and it lives here because it is a rule, not a vocabulary.
+ * Ops any session may send regardless of role (registry safety_intent_ops,
+ * RFC-085) — safety outranks authorization: `pause` and `estop`. estop(6) is
+ * RFC-010's client-assertable e-stop: the hub treats it exactly as a valid 0xE5
+ * frame (latch, cause=user, publish 0x0003, EVENT twin). Derived from the
+ * generated table; the EXEMPTION is the fact this line owns, and it lives here
+ * because it is a rule, not a vocabulary.
  */
-export const SAFETY_OP_ROLE_EXEMPT = new Set([SAFETY_OP.stop, SAFETY_OP.estop]);
+export const SAFETY_OP_ROLE_EXEMPT = new Set([SAFETY_OP.pause, SAFETY_OP.estop]);
 
 // ---- Home intent ops (ValenceCatalog.h 0x3101) ----------------------------
 // A DEVICE channel's op numbering, not a registry vocabulary — a different hub

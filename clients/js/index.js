@@ -52,7 +52,7 @@
  *   // applied[1] / applied[2] are the DEVICE's clamped values — render those.
  *   await s.sendMove(targetMm);            // 0x3100 move
  *   await s.sendHome(1);                    // 0x3101 home op 1
- *   await s.sendSafetyIntent(SAFETY_OP.stop);
+ *   await s.sendSafetyIntent(SAFETY_OP.pause);   // role-exempt, like estop
  *   await s.assertEstop();   // RFC-010: a REAL e-stop, not a decel-stop —
  *                            // falls back to the raw 0xE5 frame pre-LIVE
  *
