@@ -99,6 +99,9 @@ export {
   createSession, SESSION_STATE, PublishError, PUBLISH_ERROR, BlobError, BLOB_ERROR,
 } from './session.js';
 
+// In-page hub over the WebSocketImpl seam: demo/configure mode (localhub.js header).
+export { createLocalHub, defaultSnapshot } from './localhub.js';
+
 // wire codec (for tests / advanced integrators)
 export {
   cbUint, cbInt, cbBool, cbF32, cbTstr, cbBstr, cbArray, cbMap,
