@@ -447,6 +447,13 @@ inline constexpr std::string_view advgen_speed_out = "advgen.speed_out";  // RFC
 inline constexpr std::string_view advgen_accel_in = "advgen.accel_in";  // RFC-081: inward acceleration base
 inline constexpr std::string_view advgen_accel_out = "advgen.accel_out";  // RFC-081: outward acceleration base
 inline constexpr std::string_view advgen_mode = "advgen.mode";  // RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present.
+inline constexpr std::string_view mod_amount = "mod.amount";  // RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation
+inline constexpr std::string_view mod_rise = "mod.rise";  // RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)
+inline constexpr std::string_view mod_hold = "mod.hold";  // RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)
+inline constexpr std::string_view mod_fall = "mod.fall";  // RFC-066: duration of the falling leg of the cycle (field unit: strokes or seconds)
+inline constexpr std::string_view mod_rest = "mod.rest";  // RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds)
+inline constexpr std::string_view mod_phase = "mod.phase";  // RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds)
+inline constexpr std::string_view mod_shape = "mod.shape";  // RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest)
 inline constexpr std::string_view color_red = "color.red";  // RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential)
 inline constexpr std::string_view color_green = "color.green";  // RFC-083: writable numeric green channel of one color group
 inline constexpr std::string_view color_blue = "color.blue";  // RFC-083: writable numeric blue channel of one color group

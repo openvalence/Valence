@@ -50,6 +50,10 @@ channel-entry = {
   ? 19 => { + uint => tstr .size (1..24) },  ; event_kinds: EVENT class only; event_kind -> label.
                                ;   Append-only across firmware. MUST be absent on spec-core channels.
                                ;   Depth: entry -> map -> tstr = 2.
+  ; ---- RFC-066 as amended ----
+  ? 20 => [ uint, uint ],      ; mod_target: on a modulator's entry (mod.* roles), the field it rides:
+                               ;   [channel id, field], field = layout index on a STATE/STREAM target,
+                               ;   schema key on an INTENT target (the RFC-078 target addressing).
 }
 ; Exactly one of key 8 / key 9 / key 12 MUST be present, matching the class:
 ;   STATE | STREAM -> 8  (layout)

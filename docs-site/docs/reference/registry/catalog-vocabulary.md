@@ -94,6 +94,13 @@ role is never an error.
 | `advgen.accel_in` | RFC-081: inward acceleration base |
 | `advgen.accel_out` | RFC-081: outward acceleration base |
 | `advgen.mode` | RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present. |
+| `mod.amount` | RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation |
+| `mod.rise` | RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds) |
+| `mod.hold` | RFC-066: dwell at the top of the cycle (field unit: strokes or seconds) |
+| `mod.fall` | RFC-066: duration of the falling leg of the cycle (field unit: strokes or seconds) |
+| `mod.rest` | RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds) |
+| `mod.phase` | RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds) |
+| `mod.shape` | RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest) |
 | `color.red` | RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential) |
 | `color.green` | RFC-083: writable numeric green channel of one color group |
 | `color.blue` | RFC-083: writable numeric blue channel of one color group |
