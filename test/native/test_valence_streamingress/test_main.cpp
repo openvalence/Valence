@@ -23,6 +23,7 @@
 #include "valence/wire/frame_header.hpp"
 #include "valence/wire/raw/clock_frame.hpp"
 #include "valence/wire/messages/hello.hpp"
+#include "valence/wire/messages/intent.hpp"
 #include "valence/wire/messages/nack.hpp"
 #include "valence/wire/messages/grant.hpp"
 #include "valence/wire/messages/publish.hpp"
@@ -1707,4 +1708,75 @@ TEST_CASE("SI-26: a rate-0 PUBLISH drops the grant; a following STREAM on that c
     REQUIRE(regrant.has_value());
     REQUIRE(regrant->granted_publishes_count == 1);
     CHECK(regrant->granted_publishes[0].channel_id == kStreamCh);
+}
+
+// ---- RFC-085 / RFC-074: PAUSE suspends every source ------------------------
+namespace {
+class PauseGateDelegate final : public HubDelegate {
+public:
+    int bundles = 0;
+    AccessLevel validateToken(std::span<const std::byte>, std::span<const std::byte>, bool hasToken) override {
+        return hasToken ? AccessLevel::control : AccessLevel::watch;
+    }
+    Result<IntentValueMap, NackCode> applyIntent(uint16_t, const IntentValueMap& v, AccessLevel, bool&) override {
+        return Result<IntentValueMap, NackCode>::ok(v);  // accept the safety op as sent
+    }
+    void onEstop(uint8_t, uint8_t) override {}
+    std::optional<uint8_t> sourceForChannel(uint16_t channel_id) override {
+        if (channel_id == kSegCh) return uint8_t{0};
+        return std::nullopt;
+    }
+    void onStreamBundle(uint16_t, uint32_t, const BundleView&) override { ++bundles; }
+};
+
+void writeSafetyOpFrame(ITransport& ep, uint16_t intentId, uint8_t op) {
+    IntentMsg m;
+    m.channel_id = channels::safety_intents;
+    m.intent_id = intentId;
+    m.value_count = 1;
+    m.value[0] = {1, IntentValue::ofU64(op)};
+    std::array<std::byte, 64> buf{};
+    const size_t n = encodeIntent(m, std::span<std::byte>(buf));
+    REQUIRE(n > 0);
+    writeFrame(ep, FrameType::INTENT, channels::safety_intents, std::span<const std::byte>(buf.data(), n));
+}
+}  // namespace
+
+TEST_CASE("SI-85: under PAUSE a source-mapped bundle is dropped silently; resume re-arms the stream") {
+    Catalog32 base;
+    makeStreamCatalog(base);
+    static Catalog32 cat;
+    cat.clear();
+    cat.addEntry({.id = channels::safety_intents, .name = "safety-intents", .cls = ChannelClass::INTENT,
+                  .dir = Direction::c2h, .access = AccessLevel::control, .maxRateHz = 20.0f,
+                  .defaultPriority = Priority::critical});
+    cat.addSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = ""});
+    for (uint16_t i = 0; i < base.count; ++i) REQUIRE(cat.addEntryFrom(base, base.entries[i]));
+    REQUIRE(cat.ok());
+
+    ManualClock clock;
+    XorShift32 rng(185);
+    PauseGateDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 85, true, {PublishWish{kSegCh, 50.0f}});
+
+    writeSafetyOpFrame(link.endpointB(), 1, safety_ops::pause);
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(hub.pauseLatched());
+
+    writeSegmentBundle(link.endpointB(), {SegSample{3000, 900, kSegNoEndVel}}, /*tBase=*/clock.nowUs());
+    auto replies = tickAndDrain(hub, clock, link.endpointB());
+    CHECK(del.bundles == 0);           // dropped whole, never delivered
+    for (const auto& r : replies) CHECK(r.type != FrameType::NACK);   // and never NACKed
+    CHECK(hub.pauseLatched());         // a bundle never clears PAUSE
+
+    writeSafetyOpFrame(link.endpointB(), 2, safety_ops::resume);
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE_FALSE(hub.pauseLatched());
+    writeSegmentBundle(link.endpointB(), {SegSample{3000, 900, kSegNoEndVel}}, /*tBase=*/clock.nowUs());
+    tickAndDrain(hub, clock, link.endpointB());
+    CHECK(del.bundles == 1);
 }
