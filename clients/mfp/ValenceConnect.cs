@@ -1766,10 +1766,10 @@ public class ValenceConnect : PluginBase
     private const int SegTickMs = 10;
 
     // How far ahead of the media clock a span may be handed to the device. The
-    // segment's START rides on the bundle's t_base (§5.4 pins t_off[0] to 0 and
-    // caps the bundle span at 20 ms, so scheduling CANNOT ride on t_off), and
-    // the hub clamps a wire timestamp more than 250 ms in the future — stay well
-    // under that. This is also the exposure window for stale motion after a seek
+    // segment's START rides on the bundle's t_base (one segment per bundle, so
+    // t_off[0] = 0; RFC-087's multi-start bundles are not used here), and the
+    // hub caps a start at the grant's schedule horizon (250 ms when the grant
+    // carries no schedule_horizon_ms) — stay well under that. This is also the exposure window for stale motion after a seek
     // or a pause: whatever is already scheduled still plays out.
     private const double SegLookaheadMs = 120.0;
 
@@ -1860,7 +1860,7 @@ public class ValenceConnect : PluginBase
     // requires the successor to have been scheduled before its predecessor came
     // due — with SegLookaheadMs = 120 that holds for spans shorter than
     // ~120 ms and not for longer ones. Raising SegLookaheadMs (the wire allows
-    // scheduling up to 250 ms ahead before the hub clamps t_off) widens the
+    // scheduling up to the grant's horizon, 250 ms by default) widens the
     // guard's coverage and is the obvious knob to sweep in the same session.
     private const bool SegHandoffLimiterEnabled = false;
 
@@ -2366,8 +2366,8 @@ public class ValenceConnect : PluginBase
     // One span → one 0x2101 sample. Two cases, one rule:
     //   * a span we have NOT entered yet (the normal case — the lookahead sees it
     //     coming) is SCHEDULED at its true start with its FULL duration. The
-    //     start time rides on the bundle's t_base, because §5.4 pins t_off[0] to
-    //     0 and caps the bundle span at 20 ms; the hub resolves t_base+t_off
+    //     start time rides on the bundle's t_base, because one segment per
+    //     bundle pins t_off[0] to 0 (§5.4); the hub resolves t_base+t_off
     //     against its own clock and honors it as the segment START. This is what
     //     makes segment timing independent of our tick jitter.
     //   * a span we are already INSIDE (right after a re-anchor, or if a tick ran
@@ -3221,8 +3221,6 @@ public static class ValenceWire
     public const string RoleLimitInputSpeed = "limit.input.speed";
     public const string RoleLimitInputAccel = "limit.input.accel";
     public const string RoleLimitInputJerk = "limit.input.jerk";
-    public const string RoleLimitUserSpeed = "limit.user.speed";
-    public const string RoleLimitUserAccel = "limit.user.accel";
     public const string RoleWindowMin = "window.min";
     public const string RoleWindowMax = "window.max";
     // Live carriage telemetry + rail extent, for the rail readout. The channel
