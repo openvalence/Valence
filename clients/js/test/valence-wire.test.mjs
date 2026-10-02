@@ -197,6 +197,23 @@ assert('safety_event_kinds: pause_latched 3, pause_cleared 4 (RFC-085)',
 assert('access tiers renamed, wire values unchanged (watch0/control1/configure2)',
   ACCESS.watch === 0 && ACCESS.control === 1 && ACCESS.configure === 2);
 
+// ---- u64 integers (rfc-0oj): exact both ways, never a rounded Number -------
+const U64 = 0x5e95c1a7d3b2f00dn; // past 2^53: a Number would drop its low bits
+check('cbUint(BigInt u64) -> 8-byte head', cbUint(U64), '1B5E95C1A7D3B2F00D');
+assert('8-byte uint decodes to the exact BigInt', cbDecodeFull(cbUint(U64)) === U64);
+assert('u64 max round-trips', cbDecodeFull(cbUint(0xffffffffffffffffn)) === 0xffffffffffffffffn);
+check('a small BigInt still encodes shortest form', cbUint(1000n), '1903E8');
+assert('a <= u32 value decodes to a Number, as before', cbDecodeFull(cbUint(0xffffffff)) === 0xffffffff);
+assert('a non-shortest 8-byte small value decodes to a Number',
+  cbDecodeFull(Uint8Array.of(0x1b, 0, 0, 0, 0, 0, 0, 0, 7)) === 7);
+check('cbInt(negative BigInt past -2^32)', cbInt(-0x100000001n), '3B0000000100000000');
+assert('negative 8-byte int decodes to the exact BigInt', cbDecodeFull(cbInt(-0x100000001n)) === -0x100000001n);
+assert('a Number past 2^53 is refused on encode, never guessed',
+  (() => { try { cbUint(2 ** 60); return false; } catch (e) { return e instanceof RangeError; } })());
+check('a safe Number past u32 still encodes exactly', cbUint(2 ** 40), '1B0000010000000000');
+assert('an 8-byte string length is rejected, not allocated',
+  (() => { try { cbDecodeFull(Uint8Array.of(0x5b, 0, 0, 0, 1, 0, 0, 0, 0)); return false; } catch (e) { return true; } })());
+
 // ---- BLOB_REQ (0x1A) — the ONE transfer verb -------------------------------
 // A bare catalog request is the EMPTY map: namespace 0 is the default and
 // store_id/slot are absent by rule, so generalizing transfer cost the common

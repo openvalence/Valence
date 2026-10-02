@@ -336,7 +336,9 @@ export function createSession(opts = {}) {
     catalogEtag: null, // the HUB's etag from WELCOME
     readyEtag: null, // what WE declared we operate against
     ready: false, // RFC-015: is our data plane open?
-    identity: null, // {product, fw_version, hub_name, info, hub_instance_id, estop_cuts_power}
+    // {product, fw_version, hub_name, info, hub_instance_id (16 lowercase hex digits),
+    //  hub_instance_id_u64 (the same value as a BigInt), estop_cuts_power}
+    identity: null,
     safety: null, // latest 0x0003 snapshot by registry bits (decodeSafetySnapshot); also emitted as 'safety'
     // §6.3: the last admission refusal {code, name, retryAfterMs, reconnectInMs, atMs}; null once WELCOMEd
     admission: null,
@@ -1236,14 +1238,18 @@ export function createSession(opts = {}) {
     const idm = w.get(K.identity);
     state.identity = null;
     if (idm instanceof Map) {
+      const rawId = idm.get(IDENTITY_K.hub_instance_id);
+      const hubInstanceId = (typeof rawId === 'bigint' || Number.isInteger(rawId)) && rawId >= 0 ? BigInt(rawId) : null;
       state.identity = {
         product: idm.get(IDENTITY_K.product) || null,
         fw_version: idm.get(IDENTITY_K.fw_version) || null,
         hub_name: idm.get(IDENTITY_K.hub_name) || null,
         info: idm.get(IDENTITY_K.info) || null,
         // RFC-048: durable hub identity (u64, survives reboots) — the value a
-        // client keys "have I met this hub before" on, never boot_id.
-        hub_instance_id: idm.get(IDENTITY_K.hub_instance_id) ?? null,
+        // client keys "have I met this hub before" on, never boot_id. The hex
+        // string is the display and dedupe form; compare it, never a Number.
+        hub_instance_id: hubInstanceId == null ? null : hubInstanceId.toString(16).padStart(16, '0'),
+        hub_instance_id_u64: hubInstanceId,
         // RFC-085 (§11.2): true renders E-Stop, false or absent renders Halt.
         estop_cuts_power: idm.get(IDENTITY_K.estop_cuts_power) === true,
       };

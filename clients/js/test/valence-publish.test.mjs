@@ -278,9 +278,12 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
       cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2102)]]),
       cbMap([[K.granted_rate_hz, cbF32(20)], [K.channel_id, cbUint(0x2103)], [K.schedule_horizon_ms, cbUint(300)]]),
     ])],
-    [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')], [IDENTITY_K.estop_cuts_power, cbBool(true)]])],
+    [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')], [IDENTITY_K.hub_instance_id, cbUint(0x5e95c1a7d3b2f00dn)],
+      [IDENTITY_K.estop_cuts_power, cbBool(true)]])],
   ]));
   assert('WELCOME identity.estop_cuts_power true', s.state.identity.estop_cuts_power === true);
+  assert('hub_instance_id: 16 lowercase hex digits, exact, BigInt beside it (rfc-0oj)',
+    s.state.identity.hub_instance_id === '5e95c1a7d3b2f00d' && s.state.identity.hub_instance_id_u64 === 0x5e95c1a7d3b2f00dn);
   assert('WELCOME limits max_sessions 4 / sessions_in_use 2',
     s.state.limits.max_sessions === 4 && s.state.limits.sessions_in_use === 2);
   const gp = s.state.grantedPublishes;
@@ -303,7 +306,16 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   s2.connect();
   FakeWS.last.open();
   FakeWS.last.recv(FRAME.WELCOME, cbMap([[K.session_id, cbUint(5)], [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')]])]]));
+  const s3 = createSession({ host: 't4b', autoReconnect: false, deadmanWishMs: null, catalogStore: memStore(null), WebSocketImpl: FakeWS });
+  s3.connect();
+  FakeWS.last.open();
+  FakeWS.last.recv(FRAME.WELCOME, cbMap([[K.session_id, cbUint(6)],
+    [K.identity, cbMap([[IDENTITY_K.product, cbTstr('t')], [IDENTITY_K.hub_instance_id, cbUint(0x2a)]])]]));
+  assert('a small hub_instance_id still renders as 16 hex digits', s3.state.identity.hub_instance_id === '000000000000002a');
+  s3.close();
   assert('identity without key 6 -> estop_cuts_power false', s2.state.identity.estop_cuts_power === false);
+  assert('identity without key 5 -> hub_instance_id null', s2.state.identity.hub_instance_id === null &&
+    s2.state.identity.hub_instance_id_u64 === null);
   s2.close();
 }
 

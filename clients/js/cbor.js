@@ -11,9 +11,11 @@
  * tools/valence_probe.py (cb_* / cb_decode). Golden-byte verified against
  * WireSelfTest.cs — do NOT "optimize" the byte layout, it is wire-visible.
  *
- * Types map: uint/negative-int -> number, byte string -> Uint8Array,
- * text string -> string, array -> Array, map(int keys) -> Map<number,value>,
- * f32 -> number, bool -> boolean, null -> null.
+ * Types map: uint/negative-int -> number, or BigInt when its argument is wider
+ * than 32 bits (u64 ids: hub_instance_id, accessory_id; a Number would round
+ * them past 2^53); byte string -> Uint8Array, text string -> string, array ->
+ * Array, map(int keys) -> Map<number,value>, f32 -> number, bool -> boolean,
+ * null -> null. The encoders take a BigInt anywhere they take an integer.
  */
 
 // ---- low-level: initial byte + argument, shortest form ---------------------
@@ -21,25 +23,30 @@
 /**
  * Encode a CBOR head (major type + argument value), shortest form.
  * @param {number} major 0..7
- * @param {number} v non-negative integer argument
+ * @param {number|bigint} v non-negative integer argument, at most u64
  * @returns {Uint8Array}
  */
 export function head(major, v) {
   const ib0 = major << 5;
+  if (typeof v === 'bigint') {
+    if (v < 0n || v > 0xffffffffffffffffn) throw new RangeError('cbor head: ' + v + ' is not a u64');
+    if (v > 0xffffffffn) {
+      const out = new Uint8Array(9);
+      out[0] = ib0 | 27;
+      new DataView(out.buffer).setBigUint64(1, v, false);
+      return out;
+    }
+    v = Number(v);
+  }
   if (v <= 23) return Uint8Array.of(ib0 | v);
   if (v <= 0xff) return Uint8Array.of(ib0 | 24, v);
   if (v <= 0xffff) return Uint8Array.of(ib0 | 25, (v >> 8) & 0xff, v & 0xff);
   if (v <= 0xffffffff) {
     return Uint8Array.of(ib0 | 26, (v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff);
   }
-  // 8-byte argument (rare on this wire; ids/timestamps are u32). Split hi/lo.
-  const hi = Math.floor(v / 0x100000000);
-  const lo = v >>> 0;
-  return Uint8Array.of(
-    ib0 | 27,
-    (hi >>> 24) & 0xff, (hi >>> 16) & 0xff, (hi >>> 8) & 0xff, hi & 0xff,
-    (lo >>> 24) & 0xff, (lo >>> 16) & 0xff, (lo >>> 8) & 0xff, lo & 0xff
-  );
+  // A Number past 2^53 has already lost its low bits: refuse, never send a guess.
+  if (!Number.isSafeInteger(v)) throw new RangeError('cbor head: ' + v + ' is not exact; pass a BigInt');
+  return head(major, BigInt(v));
 }
 
 /** Concatenate Uint8Arrays into one. @param {Uint8Array[]} parts */
@@ -54,11 +61,14 @@ export function concatBytes(parts) {
 
 // ---- encoders (each returns a Uint8Array of that value's encoding) ---------
 
-/** @param {number} v non-negative integer */
+/** @param {number|bigint} v non-negative integer */
 export function cbUint(v) { return head(0, v); }
 
-/** @param {number} v signed integer */
-export function cbInt(v) { return v >= 0 ? head(0, v) : head(1, -1 - v); }
+/** @param {number|bigint} v signed integer */
+export function cbInt(v) {
+  if (typeof v === 'bigint') return v >= 0n ? head(0, v) : head(1, -1n - v);
+  return v >= 0 ? head(0, v) : head(1, -1 - v);
+}
 
 /** @param {boolean} v */
 export function cbBool(v) { return Uint8Array.of(v ? 0xf5 : 0xf4); }
@@ -144,19 +154,17 @@ export function cbDecode(buf, pos = 0) {
     val = (buf[pos + 1] * 0x1000000) + (buf[pos + 2] << 16) + (buf[pos + 3] << 8) + buf[pos + 4];
     p = pos + 5;
   } else if (ai === 27) {
-    // 8-byte: assemble as a JS number (safe for u32 ids/timestamps on this wire)
-    let hi = 0;
-    let lo = 0;
-    for (let i = 0; i < 4; i++) hi = hi * 256 + buf[pos + 1 + i];
-    for (let i = 0; i < 4; i++) lo = lo * 256 + buf[pos + 5 + i];
-    val = hi * 0x100000000 + lo;
+    if (pos + 9 > buf.length) throw new Error('cbDecode: truncated 8-byte argument');
+    val = new DataView(buf.buffer, buf.byteOffset + pos + 1, 8).getBigUint64(0, false);
+    if (val <= 0xffffffffn) val = Number(val); // a non-shortest small value is still exact as a Number
     p = pos + 9;
   } else {
     throw new Error('cbDecode: indefinite/reserved ai=' + ai + ' forbidden');
   }
 
   if (major === 0) return [val, p];
-  if (major === 1) return [-1 - val, p];
+  if (major === 1) return [typeof val === 'bigint' ? -1n - val : -1 - val, p];
+  if (typeof val === 'bigint') throw new Error('cbDecode: a length past u32 cannot fit any frame');
   if (major === 2) return [buf.slice(p, p + val), p + val];
   if (major === 3) return [new TextDecoder().decode(buf.subarray(p, p + val)), p + val];
   if (major === 4) {
