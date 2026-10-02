@@ -1737,6 +1737,8 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
 | [087](#rfc-087----segments-kind-bundles-span-the-schedule-horizon-the-horizon-is-advertised-per-grant) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088----flip-a-rail-bound-direction-flip-home-swaps-ends) | Flip: rail-bound direction flip | Landed a7415b0 |
+| [089](#rfc-089----store-writer-field-roles-find-slot-name-and-item-by-identity) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
+| [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
 
 ---
 
@@ -7490,3 +7492,175 @@ say exactly which, future-us will want the receipts.*
      holds the machine's geometry), mounting direction is setup data, but
      `machine-modes` is category `tuning` and categories are entry-level.
      Move the field to a setup-category entry, or leave it with the modes?
+
+## RFC-089 -- Store writer field roles: find slot, name and item by identity
+
+- **Status:** DRAFT (2026-10-02; rfc-hen). Ruling pending.
+- **Origin:** Phosphor ph-e82.13.6, 2026-10-02. Building the relationships
+  store writer (`relationships-write` 0x0015,
+  [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine)),
+  the node-graph agent found that nothing names the writer's parameter
+  fields. It finds them by type today (the one unroled uint, the one text
+  field, the one byte-string field), which is a guess RENDERING §13 law 6
+  forbids.
+- **Problem.**
+  1. **The verb is named, its arguments are not.** SPEC §8.7 (as landed by
+     [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags))
+     tags the op select `action.store` and numbers its ops; RFC-067 problem
+     1 itself says "both registered verbs carry parameters (`slot`,
+     `name`)". No role says which schema fields beside the op select carry
+     them. A writer that grows a second uint (a flags word, a source index)
+     breaks every type-guessing client silently.
+  2. **The import carrier is unnamed.** §8.7 says a `save` import carries a
+     full item as the store-item document
+     ([RFC-073](#rfc-073----store-item-encoding-a-registered-cbor-map-a-kind-namespace-and-an-optional-per-item-digest)),
+     but not which field holds it.
+  3. **No per-verb argument set.** `load` without a slot, or `rename`
+     without a name, has no stated answer, so two hubs refuse differently
+     or not at all, against §4.5's every-refusal-answered rule.
+- **Proposed change.**
+  1. **Three registered field roles** (registry `field_roles`), each on a
+     schema field of the INTENT entry that carries the `action.store` op
+     select:
+     - `store.slot`: an unsigned integer, the item's slot in the store.
+     - `store.name`: a text field, the item's name, fitting the store's
+       `name_max` (§8.7).
+     - `store.item`: a byte string carrying one whole §8.7 store-item
+       document (the RFC-073 `store-item` CBOR map: `slot`, `name`, `kind`,
+       `payload`, optional `digest`), never the bare `payload`. The
+       document is the same bytes a BLOB_CHUNK stream for `ns = 1`
+       reassembles into, so an export from one hub is an import to
+       another unchanged. Carried as a byte string, it adds no CBOR depth
+       to the INTENT (§5.3's cap of 4 is untouched), and §8.7's opacity
+       holds: the hub reads the document's keys and checks `kind`, size and
+       `digest`, and never decodes `payload`.
+  2. **Binding scope (§8.8 role cardinality).** The three roles bind within
+     the entry that carries the `action.store` op select, and that entry's
+     `store_id` ([RFC-070](#rfc-070----store-to-roster-linkage)) says which
+     store they address. Like the `mod.*` roles under `mod_target`
+     (RFC-066), they repeat once per writer entry and are told apart by
+     that key, so the at-most-one-per-catalog SHOULD and the
+     first-in-order tiebreak do not apply to them. A client never resolves
+     them catalog-wide.
+  3. **Per-verb argument set (hub MUST).** A missing required field is
+     refused `INVALID_VALUE`; a field the verb does not use is ignored and
+     not echoed.
+
+     | Op | `store.slot` | `store.name` | `store.item` |
+     |---|---|---|---|
+     | `save` (1) | optional: absent, the hub picks a free slot | required | optional: absent, the hub captures current live state (§8.7) |
+     | `load` (2) | required | | |
+     | `delete` (3) | required | | |
+     | `rename` (4) | required | required | |
+
+     ECHO is key-complete over what was applied (§9.3), so a `save`
+     without `store.slot` is echoed with the slot the hub chose; that is
+     how the client learns it. A store with no live state to capture (the
+     relationships store, 0x0013) refuses a `save` without `store.item`
+     with `INVALID_VALUE`.
+  4. **One address, never two.** When `store.item` is present, its
+     document's `slot` and `name` MUST equal `store.slot` and
+     `store.name`; a mismatch is refused `INVALID_VALUE`, never resolved by
+     the hub picking one.
+  5. **Rendering.** A client binds a store writer's controls by these
+     roles alone: the slot comes from the linked roster (RENDERING §8.2
+     row 5), the name from a text input, and `store.item` is filled by the
+     client's import path, never typed by a person. A writer with
+     `action.store` and none of the three roles renders the ops as plain
+     actions, never guessed into arguments by type.
+- **Wire impact.** No bytes move. Reference catalogs gain three role
+  strings on existing schema fields, so their etags move (T11).
+- **Registry impact.** `field_roles` gains `store.slot`, `store.name`,
+  `store.item`, each noting the per-entry binding scope. The 0x0015 note
+  (`relationships-write`) gains "slot, name and item fields carry the
+  `store.*` roles".
+- **Conformance impact.** Hub: `load`, `delete` or `rename` without
+  `store.slot`, and `save` or `rename` without `store.name`, NACK
+  `INVALID_VALUE`; a `save` without a slot is echoed with the chosen slot;
+  an item whose document slot disagrees with `store.slot` NACKs
+  `INVALID_VALUE`. Client fixture: a writer entry with a second, unroled
+  uint field beside `store.slot` binds the roled field, never the other.
+- **Compatibility.** Pre-tag, additive. Reference-hub follow-ups (Nucleus
+  board): `pattern-presets-cmd` and the relationships writer (0x0015) tag
+  their slot, name and item fields and enforce the per-verb set. Phosphor
+  (ph-e82.13.6): bind by role and drop the type guess.
+- **Open questions.**
+  1. **Item size against the frame.** An INTENT is one frame, and a store
+     item may reach `per_item_max` (default 4096, §8.7), far past the
+     242 B `min_transport_payload`. As drafted, an import that does not fit
+     the binding's `max_frame` cannot be sent over that binding
+     (`FRAME_TOO_LARGE`). Is that acceptable for v1 (relationships and
+     small presets fit), or does it need a c2h blob path (BLOB_CHUNK is
+     h2c only today, §8.4)? This draft does not invent one.
+  2. **A full store on `save`.** The draft lets the hub pick the slot when
+     `store.slot` is absent and refuse when no slot is free. Should a full
+     store have its own NACK code rather than `INVALID_VALUE`?
+  3. **`store.item` on `save` (operator check).** The bead listed `save`
+     as slot optional + name + item. This draft keeps `store.item`
+     optional because §8.7 makes capture-live-state the default `save`,
+     and requires it only where a store has no live state to capture.
+     Confirm, or make it required everywhere (which retires
+     capture-by-default).
+
+## RFC-090 -- SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base`
+
+- **Status:** DRAFT (2026-10-02; rfc-0wp). Ruling pending. Editorial and
+  separable: it changes no behavior the operator ruled, and is proposed
+  as landable without a separate ruling on the precedent of
+  [RFC-063](#rfc-063----a-wire-carrier-for-the-destructive-flag) item 6
+  (a spec-contradiction repair, bead rfc-dmf, carried as its own item with
+  no wire, registry or conformance change).
+- **Origin:** Valence val-091.54, 2026-10-02. The library's `handleStream`
+  dropped a `segments` bundle whose last start lay beyond the granted
+  horizon, following SPEC §5.4 rule 3 as landed by
+  [RFC-087](#rfc-087----segments-kind-bundles-span-the-schedule-horizon-the-horizon-is-advertised-per-grant)
+  (1dbdc3e). Commit 9dd395d moved it to the clamp; this entry brings the
+  rule's wording into line.
+- **Problem.** SPEC §5.4 contradicts itself for c2h `segments` bundles:
+  1. **Rule 3** reads "`t_base + t_off[n-1]` MUST NOT lie further ahead of
+     hub time than the horizon", and the paragraph after the rules makes
+     any violation **malformed**, rejected **whole**.
+  2. **The lead-cap paragraph** two blocks down
+     ([RFC-084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap),
+     extended by RFC-087) says a sample stamped further out than the cap
+     "is clamped, not rejected", for both kinds.
+  3. **RFC-087's own conformance impact** says "one stamped 300 ms ahead is
+     clamped (never rejected)".
+
+  Rule 3 mixes two bounds: how wide a bundle is (a shape property,
+  decidable from the bundle alone, so a malformation) and how far ahead of
+  now it lies (a lead, which depends on arrival time and is the lead cap's
+  business). A bundle stamped 300 ms ahead with a 50 ms span is well
+  formed; only its lead is too long.
+- **Proposed change.** Rule 3 of §5.4's bundle rules becomes:
+
+  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] ≤
+  >    bundle_max_span_ms` (20 ms); for a c2h `segments`-kind bundle,
+  >    `t_off[n-1] × segment_t_off_unit_us` MUST NOT exceed the grant's
+  >    schedule horizon (RFC-087). The span is measured from `t_base`; how
+  >    far the bundle lies ahead of hub time is not a span violation, and a
+  >    bundle whose stamps lie beyond now plus the cap is clamped per the
+  >    lead-cap paragraph below, never rejected;
+
+  Nothing else in §5.4 changes; the lead-cap and schedule-horizon
+  paragraphs already say the rest.
+- **Wire impact.** None. The library already behaves this way (9dd395d):
+  the span cap is `t_off[n-1] × 100 µs ≤ horizon`, malformed if over, and
+  the lead beyond hub time is clamped.
+- **Registry impact.** None.
+- **Conformance impact.** None new: RFC-087's stated cases (a 240 ms span
+  under a 250 ms grant accepted, a bundle stamped 300 ms ahead clamped) now
+  agree with the rule text. Stated for clarity: a c2h `segments` bundle
+  whose span exceeds the horizon is still malformed and rejected whole.
+- **Compatibility.** Nucleus pins 9dd395d, which carries the clamp; no
+  firmware follow-up.
+- **Open questions.**
+  1. **How the clamp lands (separate from this repair).** The lead-cap
+     paragraph clamps "a c2h sample's timestamp"; 9dd395d clamps a bundle
+     by moving its `t_base` earlier until the last stamp sits on the cap,
+     keeping every spacing so each segment keeps its duration. Pinning
+     each late stamp at the cap instead would collapse a `segments` tail
+     onto one instant and break rule 2's strict increase. Should the
+     lead-cap paragraph say the bundle moves earlier as a whole? That is a
+     normative clarification needing its own ruling; this entry does not
+     include it.
