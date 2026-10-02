@@ -21,6 +21,10 @@ generated: true
 
 ## 13. Transport Bindings *(normative)* {#s13}
 
+### 13.0 What conformance binds: duties, not topology *(RFC-056)* {#s13-0}
+
+Conformance is defined over the **wire** and the **duties**, never over topology. A conformant hub MAY be implemented across multiple processors, cores or physical devices in any arrangement, provided the composite satisfies the golden vectors ([§17.2](conformance.md#s17-2)), the [§6.3](session.md#s6-3) session lifecycle, the role and trust layers, and the [§13.1](#s13-1) property declarations for whichever bindings it exposes. A client MUST NOT be able to tell the difference, and MUST NOT probe for it. **An internal link between hub components is not a Valence binding and has no conformance duty of its own**: it may be any transport at all, including a [§13.5](#s13-5) serial link carrying Valence frames, and it is invisible to conformance. The two HTTP escapees of [§1](foundations.md#s1) item 8 are duties of the composite hub in the same sense (RFC-057).
+
 ### 13.1 The binding contract {#s13-1}
 
 A binding implements four operations — `open`, `close`, `write(frame)`, `read → frame` — and declares its properties. Valence above the binding line is transport-blind. The matrix every implementation codes against:
@@ -40,9 +44,10 @@ The ESP-NOW line is the **normative floor**: `min_transport_payload` = 242 comes
 **Conformance profiles (RFC-043).** Which bindings a hub MUST offer depends on what it is:
 
 - **Base profile** (simulators, hosted hubs, relays, in-process test hubs): any **single** binding conforms. A hub with no radio at all — a desktop simulator talking only in-process, a hub behind an existing gateway — is a fully legitimate Valence citizen.
-- **Hardware hub profile** (an embedded hub on radio-bearing silicon — every known target is ESP32-class WiFi+BLE): <!-- TODO(rfc-qqq): when RFC-056 rules BLE to SHOULD, this sentence reads "BLE GATT is SHOULD, and MUST where config mode is offered ([§13.4](#s13-4).1)" (RFC-079). --> **BLE GATT is MUST**, and MUST under any profile where config mode is offered ([§13.4](#s13-4).1, RFC-079), the conformance floor, because it is the infrastructure-free path — no router, no credentials, phone-direct control and discovery, and the future WiFi-provisioning admin channel all want it. **WebSocket is SHOULD**, the preferred high-throughput path (dense streams, fat catalogs, multiple clients) and expected on all ESP32-class hardware. **ESP-NOW** is the supported ESP32-peer/remote binding: deliberately trivial to enable, not itself conformance-relevant.
+- **Hardware hub profile** (an embedded hub on radio-bearing silicon — every known target is ESP32-class WiFi+BLE): **BLE GATT is SHOULD, and MUST where config mode is offered** ([§13.4](#s13-4).1; RFC-056, RFC-079). It is the infrastructure-free discovery and provisioning path and stays RECOMMENDED wherever the silicon has a radio going spare; a hardware hub that ships WiFi, UDP discovery ([§13.8](#s13-8)) and a provisioning path ([§13.9](#s13-9) over serial, or any other) and no BLE is fully conformant. **WebSocket is SHOULD**, the preferred high-throughput path (dense streams, fat catalogs, multiple clients) and expected on all ESP32-class hardware. **ESP-NOW** is the supported ESP32-peer/remote binding: deliberately trivial to enable, not itself conformance-relevant.
 - **Serving a UI is a capability, never a conformance requirement.** A hub with no web assets to serve is fully conformant, and a client MUST NOT assume the hub it is talking to serves one.
-- **Clients SHOULD auto-upgrade BLE→WS** whenever both ends can: BLE is how a client *finds and provisions* a machine, WS is how it *streams* to one ([§6.3](session.md#s6-3)'s transport migration carries the session across the hop).
+- **Clients SHOULD auto-upgrade BLE→WS** where the hub has BLE and both ends can: BLE is how a client *finds and provisions* a machine, WS is how it *streams* to one ([§6.3](session.md#s6-3)'s transport migration carries the session across the hop). More generally, where a hub exposes several bindings, a client SHOULD prefer the highest-throughput one the matrix above declares (RFC-056).
+- **The credential-entry duty (RFC-056).** A client that can provision a hardware hub MUST provide a way for the user to enter WiFi credentials: the [§13.9](#s13-9) push over BLE or serial (RFC-069), a form, a QR scan, an SD card, whatever suits it. The spec mandates the capability, never the mechanism; without it a factory-fresh hub with no BLE would have no route onto a network.
 
 All of the above is availability policy, stated so a client knows what to expect from an arbitrary hardware hub — it changes no wire format.
 
