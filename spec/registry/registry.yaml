@@ -1120,7 +1120,8 @@ ui_regions:
 # ---------------------------------------------------------------------------
 # Renderer classes (u8) — all classes render ONE category tree; they differ
 # in projection and default surfacing, never in reachable content
-# (RENDERING.md §12). A device between budgets adopts the nearer class.
+# (RENDERING.md §12). Selection and live re-selection: RENDERING.md §12.1
+# (RFC-062).
 # Frozen at three.
 # ---------------------------------------------------------------------------
 renderer_classes:

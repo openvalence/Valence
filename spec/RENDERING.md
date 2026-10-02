@@ -273,7 +273,9 @@ Evaluated top-to-bottom; the first matching row wins.
 
 Rows 4, 16 and 17 trigger on registered roles, never on a hint; SPEC §8.9 item 3 holds for every row. All three `color.*` roles are essential (law 7): a group carrying fewer falls through to the fallback composition `slider` + `slider` + `slider` (§8.4). A field without a `datetime.*` role renders as its type says (rows 9-13), never as a date. `datetime.*` values are **hub time**: whole seconds in the hub's own SPEC §7.1 timebase, never Unix epoch, so a hub needs no RTC and no network time source. A client converts to and from wall time with the CLOCK offset it already holds; a stored moment is valid for the hub's current `boot_id`, and a client re-arms it after a hub reboot. `color.*` and `datetime.*` repeat by construction (two lights, two schedules): each MUST appear at most once per `group` (SPEC §8.8).
 
-### 8.3 Interaction primitives by renderer class (behavioral, no pixels)
+### 8.3 Interaction primitives by primary pointer (behavioral, no pixels)
+
+The input columns below follow the client's **primary pointer**, not its class (§12.1, RFC-062): `none` gets the `glance` row, `coarse` (touch) the `handheld` row and `fine` (mouse, stylus) the `full` row, at any class. The class selects projection and default surfacing only.
 
 | Class | Input model | Numeric (slider/stepper/axis/pad2d) | Choice (toggle/select) | Action (trigger/stop) | Text |
 |---|---|---|---|---|---|
@@ -415,7 +417,18 @@ All classes render **one** category tree; they differ in *projection* and *defau
 
 **Ordering (all classes):** canonical category order from the registry (§3); within a category, catalog declaration order.
 
-A device whose display/input budget sits between two classes adopts the nearer one. This is a deployment choice, not a fourth class.
+Class is selected, and re-selected while the client runs, by §12.1. There is no fourth class.
+
+### 12.1 Class selection *(normative, RFC-062)*
+
+1. **Inputs.** Class is a function of two inputs: the *usable viewport* (the area the client may draw in after host chrome, in the host's device-independent length units, never device pixels) and the *primary pointer*: `none` (rotary encoder, keys), `coarse` (touch) or `fine` (mouse, stylus). A hub never needs a client's class; it never crosses the wire.
+2. **Selection.** Primary pointer `none` selects `glance`. Otherwise the client compares the usable viewport against two client-chosen boundaries, glance/handheld and handheld/full. *Informative:* this document RECOMMENDS the handheld/full boundary near 600 to 960 CSS px, the client stating its choice; prior art is Material's 600/840 dp, Windows' 640/1008 epx and Apple's size classes. A client SHOULD choose its boundaries so every control of the selected class meets law 12's touch-target floor at that size.
+3. **The floor (MUST).** The floor is defined by derivation: the usable width at which the `persistent` region (§9) still holds its mandatory controls at law 12's 40 px targets. Below the floor no client degrades further. A desktop client MUST enforce the floor as its OS minimum window size (the reference client: 320 px today); phones sit above it by construction.
+4. **Input primitives follow the pointer, not the class** (§8.3).
+5. **Continuous re-derivation (MUST).** A client whose usable viewport or primary pointer can change at runtime MUST re-derive its class whenever either changes. A client whose inputs never change derives once.
+6. **Hysteresis (MUST).** Each boundary has a band: the class moves up only when the viewport exceeds the boundary plus the band, and down only when it falls below the boundary minus the band. The band SHOULD be at least 10 percent of its boundary. A class change MUST be deferred while a gesture is in progress (an uncommitted drag, a held encoder press) and applied when the gesture ends.
+7. **Invariants across a switch (MUST).** Reachable content does not change (§12). The active category stays the active root (on `glance` the menu stack is rebuilt to that category's root). Every in-flight intent keeps its §8.1 lifecycle state and the control rendering it after the switch shows that state; a switch MUST NOT send, resend or cancel an intent, and MUST NOT commit a gesture that was not released. An open `overlay` confirm either survives with its content or is dismissed as canceled, never resolved as accepted. The `stop` affordance stays reachable throughout, including during the rebuild (law 1).
+8. **Persisted layout is per class (MUST)** (law 10).
 
 ---
 
@@ -432,9 +445,9 @@ Each earned by a documented field regression in the reference client. A client c
 7. Require **all** of a composite widget's essential bindings, or decline entirely. A partial instrument lies.
 8. Visibly dim stale telemetry — freshness is part of truth.
 9. Never fabricate a value the wire did not send: no placeholder ceilings, no invented zeros.
-10. Key persisted client layout on stable ids, never on indices or wire vocabulary — layouts survive firmware updates.
+10. Key persisted client layout on stable ids, never on indices or wire vocabulary — layouts survive firmware updates. A client that persists layout keys it on the pair (class, stable id): a layout saved under one class MUST NOT be applied under another, and returning to a class restores that class's own layout (§12.1, RFC-062).
 11. Never scroll pinned chrome (safety facts) out of view.
-12. Meet a minimum touch-target size and support reduced motion, as conformance floors, not nice-to-haves.
+12. Meet a minimum touch-target size (40 CSS px, the figure §12.1's floor derives from) and support reduced motion, as conformance floors, not nice-to-haves.
 13. Never make a safety color themeable.
 
 **The Phosphor Tier-0 renderer is the REFERENCE renderer for this section** — every law above was earned there first.
