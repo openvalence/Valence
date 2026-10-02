@@ -19,7 +19,10 @@ by document version (§0). On any conflict between spec text and
 - STREAM (1): timestamped sample bundles, either direction. `stream_kind`
   governs shedding: `samples` (0) interpolable and decimable; `segments` (1)
   are timed COMMANDS, never decimated, shed whole-source-or-nothing
-  (§9.2, §10.4).
+  (§9.2, §10.4). Span cap (§5.4): 20 ms for `samples` and every h2c
+  bundle; a c2h `segments` bundle spans up to its grant's
+  `schedule_horizon_ms` (250 default, 500 or 1000; CBOR 50) with `t_off` in
+  100 µs units. A c2h `samples` stamp is an arrival time (RFC-084, RFC-087).
 - INTENT (2): the only way a client changes anything. Absolute values only,
   never relative ops (that is what makes reconnect-reconcile sound, §6.8).
   Answered by ECHO or NACK, always. Idempotency ring depth 32 (§9.3).
@@ -29,6 +32,12 @@ by document version (§0). On any conflict between spec text and
   delivery (§9.4).
 - STORE (4): blob-store descriptors (presets, trust ledger); items move over
   BLOB_REQ/BLOB_CHUNK; declared as ordinary catalog entries (§8.7).
+
+User space (§8.10, RFC-076/077): `0x8000`-`0xBFFF` holds accessory channels,
+512 slices of `0x20` ids, grouped by `id & 0xFFE0`. It is the only part of a
+catalog that changes at runtime (§8.6); a user-space change re-announces the
+etag on `catalog` 0x0001 (every client MUST subscribe) and does NOT revoke
+readiness. Core and device entries stay byte-identical across it.
 
 ## Session lifecycle (§2.2, §6)
 
@@ -48,10 +57,28 @@ behaviorally identical: ownership released unconditionally, latching nothing
 (§6.9, RFC-045). Reconnect: fresh HELLO, snapshot adoption mandatory, intent
 ids reset, control ownership never silently reacquired (§6.8).
 
+## Safety (§11, RFC-085)
+
+- Two levels: ESTOP and PAUSE (STOP and HOLD retired pre-tag). Safety word
+  bit0 ESTOP, bit3 PAUSE; modes bit0 `override`, bit1 `home_required`
+  (§11.1).
+- Three op pairs, each ONE control with two states (RENDERING law 14):
+  pause/resume, override/return, estop/release. No separate clear button.
+- PAUSE suspends every source (bundles dropped and counted, never NACKed);
+  only `resume` (control) clears it. `pause` and `estop` are role-exempt.
+- ESTOP cuts motor power where the hub declares `estop_cuts_power`
+  (WELCOME identity key 6), else a max-decel halt; the label follows the
+  declaration, E-Stop vs Halt, absent = Halt (law 15). `release` lands in
+  PAUSE; after a power cut `resume` is refused `NOT_HOMED` until a home.
+- Override carries PAUSE, hands the rail to the operator, lifts the limits,
+  enables jog (`limit.jog.*`); `return` moves back to the paused position.
+  A jog never takes the rail from a source: `SOURCE_CONFLICT` unless
+  override is latched (§11.4).
+
 ## Trust model (§11, §12)
 
-- Tiers (wire 0/1/2): watch / control / configure. `stop` and `estop` are
-  role-exempt: safety outranks authorization (§11.2). OTA rights never derive
+- Tiers (wire 0/1/2): watch / control / configure. `pause` and `estop` are
+  role-exempt: safety outranks authorization (§11.1, §11.2). OTA rights never derive
   from any tier. Serial/in-process transports are implicitly configure;
   possession is the credential (§12.3, §12.9).
 - Ownership: one owning session per motion source, published via
@@ -61,7 +88,10 @@ ids reset, control ownership never silently reacquired (§6.8).
   when planning motion; authorization is the named carve-out (§9.6).
 - Pairing: one ceremony, three association modes (knock-and-approve primary,
   PIN proof, push-to-pair); role is an attribute of the grant, never the
-  ceremony. Factory-fresh: first knock gets configure (§12.3).
+  ceremony. Factory-fresh: first knock gets configure (§12.3). Config mode
+  (boot with the pairing control held, §13.4.1): BLE and USB serial up, no
+  WiFi, no softAP ever; the window's grant is configure whatever tokens
+  exist.
 - Hub MUST NOT be exposed to the wider internet (§12.1).
 
 ## Wire format (§5)
@@ -76,17 +106,18 @@ the unsynced-receiver raw-scan duty (§13.5). Parser totality binds every
 profile: any byte string maps to accept-or-reject, no OOB, no unbounded
 allocation, constant-time compares for secrets (§5.8).
 
-## Honesty clauses (H1..H12, indexed at §1.5)
+## Honesty clauses (H1..H13, indexed at §1.5)
 
 Normative statements of what the protocol does NOT protect; presenting a
 protected-sounding UI over one is non-conformant. Highest-traffic ones:
 H1 protocol ESTOP is convenience atop hardware e-stop; H4 v1 transports are
-cleartext; H10 relay reliability is hop-by-hop. Adjacent obligations: ECHO
+cleartext; H10 relay reliability is hop-by-hop; H13 the ESP-NOW accessory
+spoke is unencrypted and unauthenticated. Adjacent obligations: ECHO
 reports applied post-clamp values and is key-complete over what was applied
 (§9.3, §1.2); `cfg_gen` advances iff an applied value actually changed, both
 directions (§4.2); advertised ranges are never lied past (§8.8); every
 refusal is answered on the wire (§4.5); secret-flagged values never appear in
-STATE (§8.8).
+STATE, and their ECHO carries the key as `true` (§8.8).
 
 ## Generated views and registry (§5.7)
 
@@ -102,10 +133,15 @@ entries machine-checkably.
 ## Conformance (§17.1, §13.1)
 
 Profiles: hub, client-watch, client-control, client-configure,
-constrained-client, relay; parser totality binds all. Transport floor
-(RFC-043): base profile conforms with any one binding; hardware hub profile
-makes BLE GATT MUST and WebSocket SHOULD (RFC-056, Proposed, would demote
-BLE to SHOULD; not ruled yet). The 242 B `min_transport_payload` is the
+constrained-client, relay, accessory, plus the accessory-host duty set
+(§17.1.1); parser totality binds all. Conformance binds duties, never
+topology: a hub MAY span several processors (§13.0, RFC-056). Transport
+floor (§13.1, RFC-043/056): base profile conforms with any one binding;
+hardware hub profile makes BLE GATT SHOULD, and MUST where config mode is
+offered, and WebSocket SHOULD. Discovery (§13.7, §13.8): no mDNS service
+record (RFC-072 retired it); WS-side clients use the UDP probe, BLE
+advertising stays primary, and a hub serving a page SHOULD answer mDNS
+hostname queries. The 242 B `min_transport_payload` is the
 normative floor derived from ESP-NOW; every mandatory control message and
 every STATE payload fits it.
 
