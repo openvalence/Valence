@@ -67,6 +67,7 @@ The subscription request is refused.
 | `0x0202` | `CLASS_MISMATCH` | e.g. SUBSCRIBE to an INTENT channel |
 | `0x0203` | `SUB_LIMIT` | per-session subscription cap reached |
 | `0x0204` | `SUBSCRIBE_REJECTED` | RFC-033.2: the SUBSCRIBE frame as a WHOLE could not be processed (undecodable, or more wishes than max_subscriptions_per_frame): as opposed to the per-channel codes above, which reject one wish and grant the rest. `detail` carries the reason. Exists because the alternative was observed silence: a dropped SUBSCRIBE leaves a healthy-looking LIVE session with zero STATE, which presents as a client rendering bug and cost two debugging nights. |
+| `0x0205` | `CHANNEL_WITHDRAWN` | RFC-077 (§8.6): UNSOLICITED, one per withdrawn subscription or publication grant, carrying `channel_id`, when a user-space channel is removed (an accessory forgotten or its declaration replaced). Silence is not an option: a subscription that silently stops presents as a rendering bug. |
 
 ## `0x03xx`: intent
 
@@ -80,6 +81,7 @@ The intent is refused on its own merits.
 | `0x0303` | `UNSUPPORTED_OP` | intent op not implemented on this hub |
 | `0x0304` | `NETWORK_JOIN_FAILED` | RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect. |
 | `0x0305` | `ACCESSORY_OFFLINE` | RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone. |
+| `0x0306` | `ACCESSORY_CAPACITY` | RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free peer entry, or less budget than the smallest legal declaration (the status entry plus one channel). |
 
 ## `0x04xx`: safety refusal
 

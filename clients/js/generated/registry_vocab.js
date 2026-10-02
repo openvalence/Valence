@@ -159,7 +159,7 @@ export const PACKED_NAME = {
 
 // ---- core_channels -------------------------------------------------
 export const CORE_CHANNEL = {
-  catalog: 0x0001,  // catalog meta: etag, chunk count, entry count
+  catalog: 0x0001,  // catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces u
   session_roster: 0x0002,  // RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder dec
   safety: 0x0003,  // latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_overr
   control_owner: 0x0004,  // active arbiter source + owning session per source (§11.4)
@@ -433,6 +433,7 @@ export const PAIRING_EVENT_KIND = {
   window_closed: 6,  // the pairing association window closed
   revoked: 7,  // a paired device's token was revoked from the trust ledger (RFC-018 admin surface, store 0x000C)
   recognized_pending: 8,  // RFC-029 item 2: a paired device's observed `client_ver` changed; state dropped trusted -> RECOGN
+  accessory_refused: 9,  // RFC-077: an accessory join was refused (body: accessory_id, result as a `join_results` value), s
 };
 export const PAIRING_EVENT_KIND_NAME = {
   1: 'knocked',
@@ -443,6 +444,7 @@ export const PAIRING_EVENT_KIND_NAME = {
   6: 'window_closed',
   7: 'revoked',
   8: 'recognized_pending',
+  9: 'accessory_refused',
 };
 
 // ---- safety_event_kinds --------------------------------------------
@@ -598,12 +600,14 @@ export const NACK = {
   CLASS_MISMATCH: 0x0202,  // e.g. SUBSCRIBE to an INTENT channel
   SUB_LIMIT: 0x0203,  // per-session subscription cap reached
   SUBSCRIBE_REJECTED: 0x0204,  // RFC-033.2: the SUBSCRIBE frame as a WHOLE could not be processed (undecodable, or more wishes th
+  CHANNEL_WITHDRAWN: 0x0205,  // RFC-077 (§8.6): UNSOLICITED, one per withdrawn subscription or publication grant, carrying `chan
   CONFLICT: 0x0300,  // precondition (cfg_gen CAS) failed
   RATE_LIMITED: 0x0301,  // ingress intent rate exceeded
   INVALID_VALUE: 0x0302,  // outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RF
   UNSUPPORTED_OP: 0x0303,  // intent op not implemented on this hub
   NETWORK_JOIN_FAILED: 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, tim
   ACCESSORY_OFFLINE: 0x0305,  // RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no an
+  ACCESSORY_CAPACITY: 0x0306,  // RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free
   ESTOP_ACTIVE: 0x0400,  // refused while e-stop latched
   NOT_HOMED: 0x0401,  // motion intent before homing
   INTERLOCK: 0x0402,  // hub-specific safety interlock
@@ -640,12 +644,14 @@ export const NACK_NAME = {
   0x0202: 'CLASS_MISMATCH',
   0x0203: 'SUB_LIMIT',
   0x0204: 'SUBSCRIBE_REJECTED',
+  0x0205: 'CHANNEL_WITHDRAWN',
   0x0300: 'CONFLICT',
   0x0301: 'RATE_LIMITED',
   0x0302: 'INVALID_VALUE',
   0x0303: 'UNSUPPORTED_OP',
   0x0304: 'NETWORK_JOIN_FAILED',
   0x0305: 'ACCESSORY_OFFLINE',
+  0x0306: 'ACCESSORY_CAPACITY',
   0x0400: 'ESTOP_ACTIVE',
   0x0401: 'NOT_HOMED',
   0x0402: 'INTERLOCK',

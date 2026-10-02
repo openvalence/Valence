@@ -739,7 +739,12 @@ private:
     // 8 MB budget is
     // noise. 32768 leaves 26214 B of 80%-headroom against a measured 23282 B
     // — real margin, not landing exactly on the new line a third time.
-    static constexpr size_t kCatalogScratchBytes = 32768;
+    // RFC-077 item 8: build-time parameter, set beside the VALENCE_CATALOG_*
+    // capacities (channel/catalog.hpp) and under the same one-value-per-build rule.
+#ifndef VALENCE_CATALOG_SCRATCH_BYTES
+#define VALENCE_CATALOG_SCRATCH_BYTES 32768
+#endif
+    static constexpr size_t kCatalogScratchBytes = VALENCE_CATALOG_SCRATCH_BYTES;
 
     // ---- §8.4: per-update() chunk budget for a resumable blob transfer -------
     // NOT a wire number, so no registry entry: a receiver cannot observe this

@@ -144,7 +144,7 @@ channel_id_ranges:
   0xC000-0xFFFF:     { name: reserved }
 
 core_channels:
-  0x0001: { name: catalog,        class: STATE, status: active,   note: "catalog meta: etag, chunk count, entry count" }
+  0x0001: { name: catalog,        class: STATE, status: active,   note: "catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING." }
   0x0002: { name: session-roster, class: STATE, status: reserved, note: "RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives." }
   0x0003: { name: safety,         class: STATE, status: active,   note: "latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_override + bypass_limits to the same snapshot (append-only is legal)" }
   0x0004: { name: control-owner,  class: STATE, status: active,   note: "active arbiter source + owning session per source (§11.4)" }
@@ -175,7 +175,7 @@ core_channels:
   0x000E: { name: safety-events, class: EVENT, status: active, note: "RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_kinds`; fields ride the scoped `body` (40) sub-map keyed by this channel's own catalog schema (word, cause, owner_session, estop_seq, level). `critical` priority and `watch` access, matching its STATE twin exactly: an edge nobody is allowed to be denied and nobody is allowed to shed. Carries `seq_of_state` (34) naming the 0x0003 frame it corresponds to, which is what lets a client that missed the edge reconcile against the latch it DID receive. Emitted on TRANSITIONS ONLY: a repeated ESTOP frame re-broadcasts the STATE (that is §11.2's loss recovery) but does NOT re-emit the edge, because an edge that did not happen is a lie." }
   0x000F: { name: provisioning,  class: INTENT, status: reserved, note: "RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network credentials. `configure` access. Schema: 1 op (action.provision over provisioning_ops), 2 ssid (tstr, secret), 3 passphrase (tstr, secret, may be empty), 4 ipv4 / 5 ws_port (uint, ECHO result keys). Accepted only on BLE GATT, serial or in-process bindings, with a pairing window open or the hub factory-fresh; else NACK ACCESS_DENIED. Answer deferred until the join concludes (provision_join_timeout_ms): ECHO with `true` for each secret key, or NACK NETWORK_JOIN_FAILED. Credentials never appear anywhere else." }
   0x0010: { name: accessories,        class: STORE, status: reserved, note: "RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered item grammar `accessory_record_keys` (§8.7 carve-out: protocol content). One item per paired accessory." }
-  0x0011: { name: accessories-roster, class: STATE, status: reserved, note: "RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity." }
+  0x0011: { name: accessories-roster, class: STATE, status: reserved, note: "RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity. RFC-077 tail (§5.4 append): per_accessory_entries u8, free_entries u16, free_layout_fields u16, free_schema_fields u16, free_catalog_bytes u16 = 25 B total; a host MUST NOT advertise room it lacks." }
   0x0012: { name: accessory-admin,    class: INTENT, status: reserved, note: "RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only." }
 
 # ---------------------------------------------------------------------------
@@ -430,6 +430,7 @@ pairing_event_kinds:
   6: { name: window_closed,      note: "the pairing association window closed" }
   7: { name: revoked,            note: "a paired device's token was revoked from the trust ledger (RFC-018 admin surface, store 0x000C)" }
   8: { name: recognized_pending, note: "RFC-029 item 2: a paired device's observed `client_ver` changed; state dropped trusted -> RECOGNIZED-PENDING (admitted at watch, granted role suspended pending re-approval)" }
+  9: { name: accessory_refused,  note: "RFC-077: an accessory join was refused (body: accessory_id, result as a `join_results` value), so the operator who opened the window learns why nothing appeared" }
 
 # ---------------------------------------------------------------------------
 # safety-events channel (0x000E) event_kind values (§9.4 duality, §5.5, §11.2).
@@ -611,6 +612,7 @@ nack_codes:
   0x0202: { name: CLASS_MISMATCH,       note: "e.g. SUBSCRIBE to an INTENT channel" }
   0x0203: { name: SUB_LIMIT,            note: "per-session subscription cap reached" }
   0x0204: { name: SUBSCRIBE_REJECTED,   note: "RFC-033.2: the SUBSCRIBE frame as a WHOLE could not be processed (undecodable, or more wishes than max_subscriptions_per_frame): as opposed to the per-channel codes above, which reject one wish and grant the rest. `detail` carries the reason. Exists because the alternative was observed silence: a dropped SUBSCRIBE leaves a healthy-looking LIVE session with zero STATE, which presents as a client rendering bug and cost two debugging nights." }
+  0x0205: { name: CHANNEL_WITHDRAWN,    note: "RFC-077 (§8.6): UNSOLICITED, one per withdrawn subscription or publication grant, carrying `channel_id`, when a user-space channel is removed (an accessory forgotten or its declaration replaced). Silence is not an option: a subscription that silently stops presents as a rendering bug." }
   # 0x03xx — intent
   0x0300: { name: CONFLICT,             note: "precondition (cfg_gen CAS) failed" }
   0x0301: { name: RATE_LIMITED,         note: "ingress intent rate exceeded" }
@@ -618,6 +620,7 @@ nack_codes:
   0x0303: { name: UNSUPPORTED_OP,       note: "intent op not implemented on this hub" }
   0x0304: { name: NETWORK_JOIN_FAILED,  note: "RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect." }
   0x0305: { name: ACCESSORY_OFFLINE,    note: "RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone." }
+  0x0306: { name: ACCESSORY_CAPACITY,   note: "RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free peer entry, or less budget than the smallest legal declaration (the status entry plus one channel)." }
   # 0x04xx — safety refusals (UIs SHOULD render these distinctly)
   0x0400: { name: ESTOP_ACTIVE,         note: "refused while e-stop latched" }
   0x0401: { name: NOT_HOMED,            note: "motion intent before homing" }

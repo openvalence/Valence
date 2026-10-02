@@ -58,6 +58,7 @@ The EVENT twin of the [pending-pairing STATE channel](channels.md#spec-core-chan
 | `6` | `window_closed` | the pairing association window closed |
 | `7` | `revoked` | a paired device's token was revoked from the trust ledger (RFC-018 admin surface, store 0x000C) |
 | `8` | `recognized_pending` | RFC-029 item 2: a paired device's observed `client_ver` changed; state dropped trusted -> RECOGNIZED-PENDING (admitted at watch, granted role suspended pending re-approval) |
+| `9` | `accessory_refused` | RFC-077: an accessory join was refused (body: accessory_id, result as a `join_results` value), so the operator who opened the window learns why nothing appeared |
 
 ## safety-events (`0x000E`)
 

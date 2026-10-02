@@ -877,6 +877,29 @@ struct BasicCatalog {
 // false, no diagnostic beyond that) until measured with a scratch instrumented
 // build. 160 leaves the same kind of real headroom as the entries bump rather
 // than landing on the new line a second time.
-using Catalog32 = BasicCatalog<48, 200, 160, 192, 4>;
+//
+// RFC-077 item 8: the capacities are a BUILD-TIME parameter of the hub. A hub
+// that hosts accessories sizes them for its accessory count (SPEC §8.10). Set
+// them as build flags (-DVALENCE_CATALOG_ENTRIES=...), identically for every
+// translation unit: a per-file #define gives two TUs two Catalog32 types (ODR).
+// The hub MUST advertise exactly the headroom these leave (accessories-roster).
+#ifndef VALENCE_CATALOG_ENTRIES
+#define VALENCE_CATALOG_ENTRIES 48
+#endif
+#ifndef VALENCE_CATALOG_LAYOUT_FIELDS
+#define VALENCE_CATALOG_LAYOUT_FIELDS 200
+#endif
+#ifndef VALENCE_CATALOG_SCHEMA_FIELDS
+#define VALENCE_CATALOG_SCHEMA_FIELDS 160
+#endif
+#ifndef VALENCE_CATALOG_LABELS
+#define VALENCE_CATALOG_LABELS 192
+#endif
+#ifndef VALENCE_CATALOG_STORES
+#define VALENCE_CATALOG_STORES 4
+#endif
+using Catalog32 = BasicCatalog<VALENCE_CATALOG_ENTRIES, VALENCE_CATALOG_LAYOUT_FIELDS,
+                               VALENCE_CATALOG_SCHEMA_FIELDS, VALENCE_CATALOG_LABELS,
+                               VALENCE_CATALOG_STORES>;
 
 }  // namespace valence
