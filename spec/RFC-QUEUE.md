@@ -7664,3 +7664,58 @@ say exactly which, future-us will want the receipts.*
      lead-cap paragraph say the bundle moves earlier as a whole? That is a
      normative clarification needing its own ruling; this entry does not
      include it.
+
+## RFC-093 -- Classic and Advanced generators are two rail sources, not one generator with a mode
+
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-cs9). Pre-approved: lands
+  directly as accepted, like
+  [RFC-086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice).
+- **Origin:** operator ruling 2026-10-02 (bead rfc-cs9), while the
+  Phosphor factory plugin (ph-e82.18) and the Nucleus arbiter were being
+  reconciled with
+  [RFC-081](#rfc-081----advanced-generator-master-roles).
+- **Problem.**
+  1. **The advanced program is a mode of the classic generator.** RFC-081
+     item 1 registered `advgen.mode`, a bool "present only where the
+     advanced program is a mode of a generator that also plays the
+     `pattern.select` set", and bound the advanced pattern's run/stop to
+     the shared `pattern.running`. One run/stop and a mode switch make
+     "which program is the machine playing" a property of a hidden toggle
+     rather than of which control the operator pressed.
+  2. **SPEC §11.4 never names generators as sources.** Arbitration is
+     specified for sessions and streams; nothing says two on-hub
+     generators compete for the rail under the same rules.
+- **Proposed change.**
+  1. **Two sources.** The Classic pattern generator and the Advanced
+     generator are two separate generator sources in the §11.4 sense. They
+     never run at the same time: starting one while the other owns the rail
+     is refused `SOURCE_CONFLICT` until the owner is stopped. There is no
+     automatic handoff. §11.4 gains one bullet naming hub-autonomous
+     generators as sources that arbitrate like any other.
+  2. **`advgen.mode` is retired** (pre-tag; the string is burned, never
+     reissued). The "Advanced program" switch is removed.
+  3. **`advgen.running` is registered** (bool): the advanced generator's own
+     run/stop, an essential binding of `generator-advanced` in place of the
+     shared `pattern.running`. `pattern.running` stays the classic
+     generator's.
+  4. **Rendering (RENDERING §10 `generator-advanced`).** Run/stop binds
+     `advgen.running`. A client renders Classic and Advanced as two panels
+     or tabs, each with its own start/stop, never a mode switch, and shows
+     the hub's `SOURCE_CONFLICT` refusal when the other owns the rail.
+     RENDERING §2.2's advanced-generator row and the registry
+     `widget_patterns` 10 note follow.
+- **Wire impact.** Two role strings (one retired, one registered); an
+  adopting hub's etag moves. No number.
+- **Registry impact.** `field_roles`: `advgen.mode` retired,
+  `advgen.running` registered; `pattern.running` and `widget_patterns` 10
+  notes. Codegen regenerates (`field_roles::advgen_mode` disappears,
+  `advgen_running` appears).
+- **Conformance impact.** Hub: starting Advanced while Classic owns the
+  rail is refused `SOURCE_CONFLICT` and vice versa; stopping the owner
+  lets the other start. Client: two start/stop controls, no mode switch;
+  `generator-advanced` declines when `advgen.running` is absent.
+- **Compatibility.** Nucleus: two sources in the MotionArbiter, the
+  advanced entry carries `advgen.running` and drops `advgen.mode`
+  (`ValenceCatalog.h`; val board). Phosphor: the factory plugin's tabs
+  (ph-e82.18) and `roles.js` (`advgenMode` retires).
+- **Open questions.** None.

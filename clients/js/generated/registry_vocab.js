@@ -1016,7 +1016,7 @@ export const WIDGET_PATTERN = {
   roster: 7,  // list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role hone
   protocol_pane: 8,  // the one deliberately device-aware diagnostic surface: wire ids visible by design
   pattern_panel: 9,  // the standard generator surface: run/stop with live state, pattern selection as an exclusive-choi
-  generator_advanced: 10,  // the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators
+  generator_advanced: 10,  // the fray-d surface: master controls (advgen.* roles incl. its own run/stop advgen.running, RFC-0
   transport: 11,  // playback: play/pause/seek/queue cluster for hubs that play content
   wizard: 12,  // stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequentia
 };
@@ -1109,7 +1109,7 @@ export const FIELD_ROLE = {
   identity_name: 'identity.name',  // the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME i
   meta_enabled_mask: 'meta.enabled_mask',  // RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layo
   meta_reset_gen: 'meta.reset_gen',  // RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the
-  pattern_running: 'pattern.running',  // whether the built-in pattern generator is currently driving the machine
+  pattern_running: 'pattern.running',  // whether the built-in (classic) pattern generator is currently driving the machine. The advanced 
   pattern_select: 'pattern.select',  // which built-in pattern the generator plays; options are the device's pattern names, index-aligne
   pattern_speed: 'pattern.speed',  // pattern generator speed knob, as a percentage of its own range
   pattern_depth: 'pattern.depth',  // pattern generator depth knob: how far into the stroke window it reaches
@@ -1129,6 +1129,7 @@ export const FIELD_ROLE = {
   plan_duration: 'plan.duration',  // total duration of the segment in flight
   plan_latency: 'plan.latency',  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagno
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
+  advgen_running: 'advgen.running',  // RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). 
   advgen_master: 'advgen.master',  // RFC-081: overall rate scale of the advanced program, percent of its own range
   advgen_depth_max: 'advgen.depth_max',  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
   advgen_depth_min: 'advgen.depth_min',  // RFC-081: the shallow stroke bound the program swings to, percent of the stroke window
@@ -1136,7 +1137,6 @@ export const FIELD_ROLE = {
   advgen_speed_out: 'advgen.speed_out',  // RFC-081: outward stroke speed base
   advgen_accel_in: 'advgen.accel_in',  // RFC-081: inward acceleration base
   advgen_accel_out: 'advgen.accel_out',  // RFC-081: outward acceleration base
-  advgen_mode: 'advgen.mode',  // RFC-081: bool, present only where the advanced program is a mode of a generator that also plays 
   mod_amount: 'mod.amount',  // RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation
   mod_rise: 'mod.rise',  // RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)
   mod_hold: 'mod.hold',  // RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)

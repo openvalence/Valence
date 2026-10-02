@@ -72,7 +72,7 @@ role is never an error.
 | `identity.name` | the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name. |
 | `meta.enabled_mask` | RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, retained, conflated: every client grays from one ground truth. Disabled means GRAY, never hide. |
 | `meta.reset_gen` | RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it. |
-| `pattern.running` | whether the built-in pattern generator is currently driving the machine |
+| `pattern.running` | whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093). |
 | `pattern.select` | which built-in pattern the generator plays; options are the device's pattern names, index-aligned with the wire value |
 | `pattern.speed` | pattern generator speed knob, as a percentage of its own range |
 | `pattern.depth` | pattern generator depth knob: how far into the stroke window it reaches |
@@ -92,6 +92,7 @@ role is never an error.
 | `plan.duration` | total duration of the segment in flight |
 | `plan.latency` | RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance. |
 | `plan.style` | which planning style produced the segment; options are the device's style names, index-aligned with the wire value |
+| `advgen.running` | RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff. |
 | `advgen.master` | RFC-081: overall rate scale of the advanced program, percent of its own range |
 | `advgen.depth_max` | RFC-081: the deep stroke bound the program swings to, percent of the stroke window |
 | `advgen.depth_min` | RFC-081: the shallow stroke bound the program swings to, percent of the stroke window |
@@ -99,7 +100,6 @@ role is never an error.
 | `advgen.speed_out` | RFC-081: outward stroke speed base |
 | `advgen.accel_in` | RFC-081: inward acceleration base |
 | `advgen.accel_out` | RFC-081: outward acceleration base |
-| `advgen.mode` | RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present. |
 | `mod.amount` | RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation |
 | `mod.rise` | RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds) |
 | `mod.hold` | RFC-066: dwell at the top of the cycle (field unit: strokes or seconds) |

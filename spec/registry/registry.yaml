@@ -741,7 +741,7 @@ field_roles:
   "identity.name":       { note: "the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name." }
   "meta.enabled_mask":   { note: "RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, retained, conflated: every client grays from one ground truth. Disabled means GRAY, never hide." }
   "meta.reset_gen":      { note: "RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it." }
-  "pattern.running":     { note: "whether the built-in pattern generator is currently driving the machine" }
+  "pattern.running":     { note: "whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093)." }
   "pattern.select":      { note: "which built-in pattern the generator plays; options are the device's pattern names, index-aligned with the wire value" }
   "pattern.speed":       { note: "pattern generator speed knob, as a percentage of its own range" }
   "pattern.depth":       { note: "pattern generator depth knob: how far into the stroke window it reaches" }
@@ -794,7 +794,11 @@ field_roles:
   # ---- advgen.* (RFC-081): the advanced-generator capability interface's
   # master controls (RENDERING.md §2.2, §10 `generator-advanced`). The
   # interface itself meets SPEC §8.8's inclusion test, not any one firmware.
-  # Run/stop is `pattern.running`. Once per catalog (§8.8 cardinality).
+  # Run/stop is `advgen.running` (RFC-093): the advanced generator is its own
+  # §11.4 source, never a mode of the classic one. Once per catalog (§8.8).
+  # RETIRED PRE-TAG (RFC-093): `advgen.mode`, the conditional mode bool. The
+  # string is burned, never reissued.
+  "advgen.running":      { note: "RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff." }
   "advgen.master":       { note: "RFC-081: overall rate scale of the advanced program, percent of its own range" }
   "advgen.depth_max":    { note: "RFC-081: the deep stroke bound the program swings to, percent of the stroke window" }
   "advgen.depth_min":    { note: "RFC-081: the shallow stroke bound the program swings to, percent of the stroke window" }
@@ -802,7 +806,6 @@ field_roles:
   "advgen.speed_out":    { note: "RFC-081: outward stroke speed base" }
   "advgen.accel_in":     { note: "RFC-081: inward acceleration base" }
   "advgen.accel_out":    { note: "RFC-081: outward acceleration base" }
-  "advgen.mode":         { note: "RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present." }
   # ---- mod.* (RFC-066 as amended): the fields of a MODULATOR, one entry
   # attached by its entry-level `mod_target` (catalog entry key 20) to the
   # field it rides. One modulator per entry; the roles bind within that entry.
@@ -1283,7 +1286,7 @@ widget_patterns:
   7:  { name: roster,            note: "list + item actions; pending is a THIRD state distinct from success/failure; locked-by-role honestly distinct from empty" }
   8:  { name: protocol-pane,     note: "the one deliberately device-aware diagnostic surface: wire ids visible by design" }
   9:  { name: pattern-panel,     note: "the standard generator surface: run/stop with live state, pattern selection as an exclusive-choice group, knob sliders for whichever optional roles exist, source.background_run co-located with run/stop", required: true }
-  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles + pattern.running, RFC-081) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop", required: true }
+  10: { name: generator-advanced, note: "the fray-d surface: master controls (advgen.* roles incl. its own run/stop advgen.running, RFC-081/RFC-093) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via `action.store` (RFC-067), source.background_run co-located with the master run/stop", required: true }
   11: { name: transport,         note: "playback: play/pause/seek/queue cluster for hubs that play content" }
   12: { name: wizard,            note: "stepped ceremony flow: pairing, calibration, provisioning; glance-class projects it as sequential menu screens" }
 

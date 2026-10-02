@@ -515,7 +515,7 @@ inline constexpr std::string_view telemetry_uptime = "telemetry.uptime";  // hub
 inline constexpr std::string_view identity_name = "identity.name";  // the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name.
 inline constexpr std::string_view meta_enabled_mask = "meta.enabled_mask";  // RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, retained, conflated: every client grays from one ground truth. Disabled means GRAY, never hide.
 inline constexpr std::string_view meta_reset_gen = "meta.reset_gen";  // RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it.
-inline constexpr std::string_view pattern_running = "pattern.running";  // whether the built-in pattern generator is currently driving the machine
+inline constexpr std::string_view pattern_running = "pattern.running";  // whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093).
 inline constexpr std::string_view pattern_select = "pattern.select";  // which built-in pattern the generator plays; options are the device's pattern names, index-aligned with the wire value
 inline constexpr std::string_view pattern_speed = "pattern.speed";  // pattern generator speed knob, as a percentage of its own range
 inline constexpr std::string_view pattern_depth = "pattern.depth";  // pattern generator depth knob: how far into the stroke window it reaches
@@ -535,6 +535,7 @@ inline constexpr std::string_view plan_elapsed = "plan.elapsed";  // elapsed tim
 inline constexpr std::string_view plan_duration = "plan.duration";  // total duration of the segment in flight
 inline constexpr std::string_view plan_latency = "plan.latency";  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance.
 inline constexpr std::string_view plan_style = "plan.style";  // which planning style produced the segment; options are the device's style names, index-aligned with the wire value
+inline constexpr std::string_view advgen_running = "advgen.running";  // RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff.
 inline constexpr std::string_view advgen_master = "advgen.master";  // RFC-081: overall rate scale of the advanced program, percent of its own range
 inline constexpr std::string_view advgen_depth_max = "advgen.depth_max";  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
 inline constexpr std::string_view advgen_depth_min = "advgen.depth_min";  // RFC-081: the shallow stroke bound the program swings to, percent of the stroke window
@@ -542,7 +543,6 @@ inline constexpr std::string_view advgen_speed_in = "advgen.speed_in";  // RFC-0
 inline constexpr std::string_view advgen_speed_out = "advgen.speed_out";  // RFC-081: outward stroke speed base
 inline constexpr std::string_view advgen_accel_in = "advgen.accel_in";  // RFC-081: inward acceleration base
 inline constexpr std::string_view advgen_accel_out = "advgen.accel_out";  // RFC-081: outward acceleration base
-inline constexpr std::string_view advgen_mode = "advgen.mode";  // RFC-081: bool, present only where the advanced program is a mode of a generator that also plays the pattern.select set: true = the generator plays the advanced program. Essential only when pattern.select is present.
 inline constexpr std::string_view mod_amount = "mod.amount";  // RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation
 inline constexpr std::string_view mod_rise = "mod.rise";  // RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)
 inline constexpr std::string_view mod_hold = "mod.hold";  // RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)
