@@ -8,7 +8,7 @@ for the change history this grid landed in).*
 This document is the protocol-side half of channel numbering: the
 **convention** every Valence hub's device-defined channel space (`0x0080`
 –`0x7FFF`) is RECOMMENDED to follow, plus the fixed core channel list
-(`0x0001`–`0x0012`) that every hub shares. It does not enumerate any single
+(`0x0001`–`0x0015`) that every hub shares. It does not enumerate any single
 hub's actual device channels — that allocation is each hub's own, documented
 in its own repository. Nucleus's `CHANNEL-MAP.md` is the worked example
 of a real hub applying this convention.
@@ -82,7 +82,7 @@ domain as a whole rather than on one of its channels.
   `channel_id_ranges`). It exists so a vendor prototyping a new channel has
   somewhere collision-safe to work before requesting a real allocation.
 
-## Core channels (`0x0001`-`0x0012`)
+## Core channels (`0x0001`-`0x0015`)
 
 Fixed, spec-governed, identical on every conforming hub — never
 device-allocated. `0x0000` is reserved for session-scoped frames (never
@@ -109,8 +109,11 @@ subscribable). Full field-level detail lives in `registry/registry.yaml`'s
 | `0x0010` | accessories | STORE | reserved (RFC-076, SPEC §8.10) |
 | `0x0011` | accessories-roster | STATE | reserved (RFC-076) |
 | `0x0012` | accessory-admin | INTENT | reserved (RFC-076) |
+| `0x0013` | relationships | STORE | reserved (RFC-078, SPEC §8.11) |
+| `0x0014` | relationships-roster | STATE | reserved (RFC-078) |
+| `0x0015` | relationships-write | INTENT | reserved (RFC-078) |
 
-`0x0013`-`0x007F` are reserved spec-core headroom for future core channels.
+`0x0016`-`0x007F` are reserved spec-core headroom for future core channels.
 
 ## User space (`0x8000`-`0xBFFF`)
 

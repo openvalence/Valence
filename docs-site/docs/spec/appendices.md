@@ -217,6 +217,7 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `segment_dwell_span` | 0.02 | [§9.6](channels.md#s9-6) |
 | `spoke_beacon_interval_ms` / `spoke_deadman_ms` / `spoke_scan_dwell_ms` | 1000 / 5000 / 150 | [§13.3](transports.md#s13-3).1 |
 | `accessory_slice_ids` / `accessory_declaration_max_bytes` | 0x20 (32) / 4096 | [§8.10](catalog.md#s8-10) |
+| `relationships_max` | 16 | [§8.11](catalog.md#s8-11) |
 | `pairing_window_default_s` | 120 | [§12.3](security.md#s12-3) |
 | `pairing_pin_digits` | 4 | [§12.3](security.md#s12-3) |
 | `pairing_gesture_boot_count` | 3 | [§12.3](security.md#s12-3) |

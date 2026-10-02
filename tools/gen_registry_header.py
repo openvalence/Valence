@@ -166,7 +166,10 @@ def gen(reg: dict) -> str:
                         ("provisioning_ops", "provisioning_ops"),
                         ("accessory_admin_ops", "accessory_admin_ops"),
                         ("join_results", "join_results"),
-                        ("accessory_record_keys", "accessory_record")):
+                        ("accessory_record_keys", "accessory_record"),
+                        ("accessory_states", "accessory_states"),
+                        ("relationship_maps", "relationship_maps"),
+                        ("relationship_keys", "relationship")):
         p(f"namespace {ns} {{\n")
         for k in sorted(reg[section]):
             e = reg[section][k]
@@ -267,6 +270,9 @@ JS_CODE_TABLES = (
     ("ACCESSORY_ADMIN_OP", "accessory_admin_ops", True,  0),
     ("JOIN_RESULT",        "join_results",        True,  0),
     ("ACCESSORY_RECORD_K", "accessory_record_keys", False, 0),
+    ("ACCESSORY_STATE",    "accessory_states",    True,  0),
+    ("RELATIONSHIP_MAP",   "relationship_maps",   True,  0),
+    ("RELATIONSHIP_K",     "relationship_keys",   False, 0),
     ("UI_ARCHETYPE",       "ui_archetypes",       True,  0),
     ("UI_REGION",          "ui_regions",          True,  0),
     ("RENDERER_CLASS",     "renderer_classes",    True,  0),

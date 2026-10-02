@@ -132,6 +132,7 @@ registry's own rationale where it records one.
 | `spoke_beacon_interval_ms` | `1000` | an accessory host's BEACON cadence while the spoke is up (500 ms while a pairing window is open) |
 | `spoke_deadman_ms` | `5000` | accessory deadman default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms. |
 | `accessory_slice_ids` | `32` | RFC-076 (§8.10): ids per accessory slice in the user space 0x8000-0xBFFF (512 slices). r 0 session-scoped, r 1 accessory-status, r 2-31 the accessory's own (30 at most). Narrowed from the draft's 0x80 by ruling. |
+| `relationships_max` | `16` | RFC-078 (§8.11): most relationships a host stores; the relationships-roster masks are 2 x bitfield8. |
 | `accessory_declaration_max_bytes` | `4096` | RFC-076 (§8.10): largest encoded accessory declaration a host accepts. A worst-case 30-channel declaration is about 3.5 KB (19 chunks of catalog_chunk_payload). |
 | `spoke_scan_dwell_ms` | `150` | an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join. |
 

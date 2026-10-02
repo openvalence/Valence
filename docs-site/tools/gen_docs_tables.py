@@ -140,6 +140,10 @@ SECTION_HOMES: dict[str, str] = {
     "accessory_admin_ops": "pairing.md",
     "join_results": "pairing.md",
     "accessory_record_keys": "pairing.md",
+    "accessory_status": "pairing.md",
+    "accessory_states": "pairing.md",
+    "relationship_maps": "pairing.md",
+    "relationship_keys": "pairing.md",
     "ui_archetypes": "rendering.md",
     "ui_regions": "rendering.md",
     "renderer_classes": "rendering.md",
@@ -699,6 +703,16 @@ def page_pairing(reg: dict, reg_display: str) -> str:
                "Index 0 is op-select filler.")
     enum_table(p, reg["accessory_record_keys"], "Accessory record keys",
                "The registered item grammar of the `accessories` store (`0x0010`).")
+    st = reg["accessory_status"]
+    p(f"## Accessory status\n\nRelative id `0x{st['rel_id']:02X}` of every slice: "
+      f"{cell(st['layout'])}.\n\n")
+    enum_table(p, reg["accessory_states"], "Accessory states",
+               "The accessory-status `state` byte (SPEC §17.1.1).")
+    enum_table(p, reg["relationship_maps"], "Relationship maps",
+               "A relationship item's `map` (SPEC §8.11). Every output is clamped "
+               "into the target's declared range.")
+    enum_table(p, reg["relationship_keys"], "Relationship keys",
+               "The registered item grammar of the `relationships` store (`0x0013`).")
     return w.getvalue()
 
 

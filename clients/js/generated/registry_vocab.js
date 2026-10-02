@@ -177,6 +177,9 @@ export const CORE_CHANNEL = {
   accessories: 0x0010,  // RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered
   accessories_roster: 0x0011,  // RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield
   accessory_admin: 0x0012,  // RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops
+  relationships: 0x0013,  // RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered ite
+  relationships_roster: 0x0014,  // RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfie
+  relationships_write: 0x0015,  // RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, d
 };
 export const CORE_CHANNEL_NAME = {
   0x0001: 'catalog',
@@ -197,6 +200,9 @@ export const CORE_CHANNEL_NAME = {
   0x0010: 'accessories',
   0x0011: 'accessories-roster',
   0x0012: 'accessory-admin',
+  0x0013: 'relationships',
+  0x0014: 'relationships-roster',
+  0x0015: 'relationships-write',
 };
 
 // ---- cbor_keys -----------------------------------------------------
@@ -881,6 +887,61 @@ export const ACCESSORY_RECORD_K = {
   declaration_etag: 6,  // bstr 8: etag of the stored declaration (§8.3)
 };
 
+// ---- accessory_states ----------------------------------------------
+export const ACCESSORY_STATE = {
+  live: 0,  // commanded and running normally
+  safe_joined: 1,  // joined, holding safe values, awaiting its first command
+  safe_deadman: 2,  // safe: no matching BEACON for its deadman window (§13.3.1)
+  safe_goodbye: 3,  // safe: a GOODBYE arrived from its hub
+  safe_estop: 4,  // safe: an ESTOP frame or a BEACON with estop_latched; the host's acknowledgment that the e-stop r
+  safe_fault: 5,  // safe: a local fault (see `fault`)
+};
+export const ACCESSORY_STATE_NAME = {
+  0: 'live',
+  1: 'safe_joined',
+  2: 'safe_deadman',
+  3: 'safe_goodbye',
+  4: 'safe_estop',
+  5: 'safe_fault',
+};
+
+// ---- relationship_maps ---------------------------------------------
+export const RELATIONSHIP_MAP = {
+  linear_clamp: 1,  // out = L(in) = out_min + (clamp(in, in_min, in_max) - in_min) * (out_max - out_min) / (in_max - i
+  invert: 2,  // out = out_max + out_min - L(in): in_min maps to out_max
+  threshold_hysteresis: 3,  // params on_above, off_below (source units, off_below <= on_above): out_max once the source rises 
+  slew_limit: 4,  // L(in) with its rate of change bounded by params rise_per_s, fall_per_s (target units/s; one valu
+  lowpass: 5,  // L(in) through a first-order low-pass, param tau_s (seconds)
+  gate: 6,  // out = L(in) while in_min <= in <= in_max, else the target's `safe` value
+  piecewise_table: 7,  // params: up to 8 (in, out) points flattened, in strictly ascending; linear between, held at the e
+};
+export const RELATIONSHIP_MAP_NAME = {
+  1: 'linear_clamp',
+  2: 'invert',
+  3: 'threshold_hysteresis',
+  4: 'slew_limit',
+  5: 'lowpass',
+  6: 'gate',
+  7: 'piecewise_table',
+};
+
+// ---- relationship_keys ---------------------------------------------
+export const RELATIONSHIP_K = {
+  rel_id: 1,  // uint: 0..relationships_max-1; bit index in the roster masks
+  name: 2,  // tstr: client-authored label
+  source_channel: 3,  // uint: absolute id of an h2c STATE or STREAM channel
+  source_field: 4,  // uint: layout index of a numeric field on source_channel
+  target_channel: 5,  // uint: absolute id of an accessory INTENT or c2h STREAM channel
+  target_field: 6,  // uint: schema key (INTENT) or layout index (STREAM) of a value-bearing field
+  map: 7,  // uint: a `relationship_maps` value
+  in_min: 8,  // float: source physical units
+  in_max: 9,  // float: source physical units
+  out_min: 10,  // float: target physical units
+  out_max: 11,  // float: target physical units
+  params: 12,  // array of up to 16 floats, in the order the map lists them
+  enabled: 13,  // bool: persisted. `armed` is volatile, never stored, false at boot (§11.6)
+};
+
 // ---- ui_archetypes -------------------------------------------------
 export const UI_ARCHETYPE = {
   readout: 0,  // display of a value; bounds present -> bar/gauge projection
@@ -1191,6 +1252,7 @@ export const LIMITS = {
   spoke_beacon_interval_ms: 1000,
   spoke_deadman_ms: 5000,
   accessory_slice_ids: 32,
+  relationships_max: 16,
   accessory_declaration_max_bytes: 4096,
   spoke_scan_dwell_ms: 150,
   ws_subprotocol: 'valence.v1',

@@ -177,6 +177,9 @@ core_channels:
   0x0010: { name: accessories,        class: STORE, status: reserved, note: "RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered item grammar `accessory_record_keys` (§8.7 carve-out: protocol content). One item per paired accessory." }
   0x0011: { name: accessories-roster, class: STATE, status: reserved, note: "RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity. RFC-077 tail (§5.4 append): per_accessory_entries u8, free_entries u16, free_layout_fields u16, free_schema_fields u16, free_catalog_bytes u16 = 25 B total; a host MUST NOT advertise room it lacks." }
   0x0012: { name: accessory-admin,    class: INTENT, status: reserved, note: "RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only." }
+  0x0013: { name: relationships,       class: STORE, status: reserved, note: "RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered item grammar `relationship_keys` (§8.7 carve-out: the hub interprets the item). Capacity at most relationships_max." }
+  0x0014: { name: relationships-roster, class: STATE, status: reserved, note: "RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfield8} = 8 B, `watch`; bit i = rel_id i. Carries store_id (entry key 17) naming 0x0013." }
+  0x0015: { name: relationships-write,  class: INTENT, status: reserved, note: "RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with `enabled` changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-intents resume (§11.6)." }
 
 # ---------------------------------------------------------------------------
 # CBOR map integer keys (control plane). Global key space — a key means the
@@ -1110,6 +1113,60 @@ accessory_admin_ops:
   3: { name: rename,      note: "set the hub-authored name of the accessory named by accessory_id" }
 
 # ---------------------------------------------------------------------------
+# Accessory-status (RFC-078, §17.1.1) — the registered STATE every accessory
+# carries at RELATIVE id 0x01 of its slice. A declaration whose r = 0x01 entry
+# differs from this layout is invalid (§8.10).
+# ---------------------------------------------------------------------------
+accessory_status:
+  rel_id: 0x01
+  layout: "state u8 (accessory_states) + fault u8 (device-defined, 0 none) + beacon_seq u16 (header seq of the last accepted BEACON) = 4 B; pushed on change and at least every spoke_beacon_interval_ms"
+
+# ---------------------------------------------------------------------------
+# Accessory states (u8) — accessory-status `state` (RFC-078, §17.1.1).
+# ---------------------------------------------------------------------------
+accessory_states:
+  0: { name: live,          note: "commanded and running normally" }
+  1: { name: safe_joined,   note: "joined, holding safe values, awaiting its first command" }
+  2: { name: safe_deadman,  note: "safe: no matching BEACON for its deadman window (§13.3.1)" }
+  3: { name: safe_goodbye,  note: "safe: a GOODBYE arrived from its hub" }
+  4: { name: safe_estop,    note: "safe: an ESTOP frame or a BEACON with estop_latched; the host's acknowledgment that the e-stop reached it" }
+  5: { name: safe_fault,    note: "safe: a local fault (see `fault`)" }
+
+# ---------------------------------------------------------------------------
+# Relationship maps (u8) — relationship item `map` (RFC-078, §8.11). Bounds
+# and params are in each field's physical units; every output is finally
+# clamped into the target's min/max. L(in) is the linear_clamp line.
+# ---------------------------------------------------------------------------
+relationship_maps:
+  1: { name: linear_clamp,         note: "out = L(in) = out_min + (clamp(in, in_min, in_max) - in_min) * (out_max - out_min) / (in_max - in_min), in_min != in_max" }
+  2: { name: invert,               note: "out = out_max + out_min - L(in): in_min maps to out_max" }
+  3: { name: threshold_hysteresis, note: "params on_above, off_below (source units, off_below <= on_above): out_max once the source rises to on_above, out_min once it falls to off_below, unchanged between; starts at out_min when armed" }
+  4: { name: slew_limit,           note: "L(in) with its rate of change bounded by params rise_per_s, fall_per_s (target units/s; one value serves both when the second is absent)" }
+  5: { name: lowpass,              note: "L(in) through a first-order low-pass, param tau_s (seconds)" }
+  6: { name: gate,                 note: "out = L(in) while in_min <= in <= in_max, else the target's `safe` value" }
+  7: { name: piecewise_table,      note: "params: up to 8 (in, out) points flattened, in strictly ascending; linear between, held at the end values outside; the four bounds unused" }
+
+# ---------------------------------------------------------------------------
+# Relationship ITEM key space (RFC-078) — the CBOR map encoding one
+# relationship, an item of the `relationships` STORE (0x0013). Registered
+# because the hub interprets it (§8.7 carve-out).
+# ---------------------------------------------------------------------------
+relationship_keys:
+  1:  { name: rel_id,         note: "uint: 0..relationships_max-1; bit index in the roster masks" }
+  2:  { name: name,           note: "tstr: client-authored label" }
+  3:  { name: source_channel, note: "uint: absolute id of an h2c STATE or STREAM channel" }
+  4:  { name: source_field,   note: "uint: layout index of a numeric field on source_channel" }
+  5:  { name: target_channel, note: "uint: absolute id of an accessory INTENT or c2h STREAM channel" }
+  6:  { name: target_field,   note: "uint: schema key (INTENT) or layout index (STREAM) of a value-bearing field" }
+  7:  { name: map,            note: "uint: a `relationship_maps` value" }
+  8:  { name: in_min,         note: "float: source physical units" }
+  9:  { name: in_max,         note: "float: source physical units" }
+  10: { name: out_min,        note: "float: target physical units" }
+  11: { name: out_max,        note: "float: target physical units" }
+  12: { name: params,         note: "array of up to 16 floats, in the order the map lists them" }
+  13: { name: enabled,        note: "bool: persisted. `armed` is volatile, never stored, false at boot (§11.6)" }
+
+# ---------------------------------------------------------------------------
 # Join results (u8) — JOIN_REPLY (0x22) `result` (RFC-076, §13.3.2).
 # ---------------------------------------------------------------------------
 join_results:
@@ -1325,6 +1382,7 @@ limits:
   spoke_beacon_interval_ms: 1000    # an accessory host's BEACON cadence while the spoke is up (500 ms while a pairing window is open)
   spoke_deadman_ms: 5000            # accessory deadman default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms.
   accessory_slice_ids: 0x20         # RFC-076 (§8.10): ids per accessory slice in the user space 0x8000-0xBFFF (512 slices). r 0 session-scoped, r 1 accessory-status, r 2-31 the accessory's own (30 at most). Narrowed from the draft's 0x80 by ruling.
+  relationships_max: 16             # RFC-078 (§8.11): most relationships a host stores; the relationships-roster masks are 2 x bitfield8.
   accessory_declaration_max_bytes: 4096  # RFC-076 (§8.10): largest encoded accessory declaration a host accepts. A worst-case 30-channel declaration is about 3.5 KB (19 chunks of catalog_chunk_payload).
   spoke_scan_dwell_ms: 150          # an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join.
 

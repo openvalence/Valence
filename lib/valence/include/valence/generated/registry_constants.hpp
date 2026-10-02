@@ -108,6 +108,9 @@ inline constexpr uint16_t provisioning = 0x000F;  // INTENT: RFC-069 (§13.9), s
 inline constexpr uint16_t accessories = 0x0010;  // STORE: RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered item grammar `accessory_record_keys` (§8.7 carve-out: protocol content). One item per paired accessory.
 inline constexpr uint16_t accessories_roster = 0x0011;  // STATE: RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity. RFC-077 tail (§5.4 append): per_accessory_entries u8, free_entries u16, free_layout_fields u16, free_schema_fields u16, free_catalog_bytes u16 = 25 B total; a host MUST NOT advertise room it lacks.
 inline constexpr uint16_t accessory_admin = 0x0012;  // INTENT: RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only.
+inline constexpr uint16_t relationships = 0x0013;  // STORE: RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered item grammar `relationship_keys` (§8.7 carve-out: the hub interprets the item). Capacity at most relationships_max.
+inline constexpr uint16_t relationships_roster = 0x0014;  // STATE: RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfield8} = 8 B, `watch`; bit i = rel_id i. Carries store_id (entry key 17) naming 0x0013.
+inline constexpr uint16_t relationships_write = 0x0015;  // INTENT: RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with `enabled` changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-intents resume (§11.6).
 }  // namespace channels
 
 enum class CborKey : uint8_t {
@@ -437,6 +440,41 @@ inline constexpr uint8_t fw_version = 5;  // tstr: the JOIN_REQ fw_version strin
 inline constexpr uint8_t declaration_etag = 6;  // bstr 8: etag of the stored declaration (§8.3)
 }  // namespace accessory_record
 
+namespace accessory_states {
+inline constexpr uint8_t live = 0;  // commanded and running normally
+inline constexpr uint8_t safe_joined = 1;  // joined, holding safe values, awaiting its first command
+inline constexpr uint8_t safe_deadman = 2;  // safe: no matching BEACON for its deadman window (§13.3.1)
+inline constexpr uint8_t safe_goodbye = 3;  // safe: a GOODBYE arrived from its hub
+inline constexpr uint8_t safe_estop = 4;  // safe: an ESTOP frame or a BEACON with estop_latched; the host's acknowledgment that the e-stop reached it
+inline constexpr uint8_t safe_fault = 5;  // safe: a local fault (see `fault`)
+}  // namespace accessory_states
+
+namespace relationship_maps {
+inline constexpr uint8_t linear_clamp = 1;  // out = L(in) = out_min + (clamp(in, in_min, in_max) - in_min) * (out_max - out_min) / (in_max - in_min), in_min != in_max
+inline constexpr uint8_t invert = 2;  // out = out_max + out_min - L(in): in_min maps to out_max
+inline constexpr uint8_t threshold_hysteresis = 3;  // params on_above, off_below (source units, off_below <= on_above): out_max once the source rises to on_above, out_min once it falls to off_below, unchanged between; starts at out_min when armed
+inline constexpr uint8_t slew_limit = 4;  // L(in) with its rate of change bounded by params rise_per_s, fall_per_s (target units/s; one value serves both when the second is absent)
+inline constexpr uint8_t lowpass = 5;  // L(in) through a first-order low-pass, param tau_s (seconds)
+inline constexpr uint8_t gate = 6;  // out = L(in) while in_min <= in <= in_max, else the target's `safe` value
+inline constexpr uint8_t piecewise_table = 7;  // params: up to 8 (in, out) points flattened, in strictly ascending; linear between, held at the end values outside; the four bounds unused
+}  // namespace relationship_maps
+
+namespace relationship {
+inline constexpr uint8_t rel_id = 1;  // uint: 0..relationships_max-1; bit index in the roster masks
+inline constexpr uint8_t name = 2;  // tstr: client-authored label
+inline constexpr uint8_t source_channel = 3;  // uint: absolute id of an h2c STATE or STREAM channel
+inline constexpr uint8_t source_field = 4;  // uint: layout index of a numeric field on source_channel
+inline constexpr uint8_t target_channel = 5;  // uint: absolute id of an accessory INTENT or c2h STREAM channel
+inline constexpr uint8_t target_field = 6;  // uint: schema key (INTENT) or layout index (STREAM) of a value-bearing field
+inline constexpr uint8_t map = 7;  // uint: a `relationship_maps` value
+inline constexpr uint8_t in_min = 8;  // float: source physical units
+inline constexpr uint8_t in_max = 9;  // float: source physical units
+inline constexpr uint8_t out_min = 10;  // float: target physical units
+inline constexpr uint8_t out_max = 11;  // float: target physical units
+inline constexpr uint8_t params = 12;  // array of up to 16 floats, in the order the map lists them
+inline constexpr uint8_t enabled = 13;  // bool: persisted. `armed` is volatile, never stored, false at boot (§11.6)
+}  // namespace relationship
+
 namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
 inline constexpr uint8_t restart_required = 1u << 1;  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)
@@ -643,6 +681,7 @@ inline constexpr uint32_t log_replay_depth_default = 32;
 inline constexpr uint32_t spoke_beacon_interval_ms = 1000;
 inline constexpr uint32_t spoke_deadman_ms = 5000;
 inline constexpr uint32_t accessory_slice_ids = 32;
+inline constexpr uint32_t relationships_max = 16;
 inline constexpr uint32_t accessory_declaration_max_bytes = 4096;
 inline constexpr uint32_t spoke_scan_dwell_ms = 150;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";

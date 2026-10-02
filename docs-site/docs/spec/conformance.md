@@ -29,8 +29,30 @@ generated: true
 | **client-configure** | client-control, plus the [§12.7](security.md#s12-7) administration surface and the [§8.9](catalog.md#s8-9) rendering checklist | stores it does not use |
 | **constrained-client** | the [§8.5](catalog.md#s8-5) static profile including declared mismatch behavior, prefix parsing, canned-template correctness, CATALOG_READY with a stale etag | dynamic catalog, general CBOR decode, all crypto |
 | **relay** | [§14](transports.md#s14) complete: dual-queue forwarding, the segment exception, ESTOP fast path, one of the [§14.3](transports.md#s14-3) timestamp rules | everything session-layer |
+| **accessory** | [§17.1](#s17-1).1: a hub whose only peer is its accessory host over the [§13.3](transports.md#s13-3).1 spoke | the session layer and everything listed absent in [§17.1](#s17-1).1 |
+| **accessory-host** | a hub duty set, [§17.1](#s17-1).1: required of any hub that sets BEACON `accessory_host` | nothing in [§17.1](#s17-1).1 |
 
 Every profile, without exception, MUST satisfy [§5.8](wire-format.md#s5-8) (parser totality). A client is not exempt because it is "only" a client.
+
+#### 17.1.1 The accessory profiles *(RFC-078)*
+
+**`accessory`.** An accessory MUST:
+
+- satisfy parser totality ([§5.8](wire-format.md#s5-8)) and encode its frames golden-vector exact ([§5.1](wire-format.md#s5-1) header, [§5.3](wire-format.md#s5-3) CBOR profile, [§5.4](wire-format.md#s5-4) layouts);
+- declare itself as a [§8.1](catalog.md#s8-1) catalog with relative ids, `safe` values and the [§8.10](catalog.md#s8-10) validation rules, and serve it as blob namespace 0 over BLOB_REQ/BLOB_CHUNK with [§8.4](catalog.md#s8-4) pacing;
+- answer every INTENT with ECHO or NACK, post-clamp and key-complete ([§9.3](channels.md#s9-3)), keeping idempotency over at least its most recent `intent_id` (stop-and-wait allows one outstanding control frame per direction);
+- accept c2h STREAM bundles on its declared stream channels, validating the [§5.4](wire-format.md#s5-4) caps and dropping violators whole, and apply a bundle's samples on arrival keeping their relative offsets (`t_off`): it runs no CLOCK and the spoke has no time sync;
+- push each declared STATE channel to its host at its declared `max_rate_hz` (on change for 0) with no SUBSCRIBE: the host is its sole, implicit subscriber;
+- carry the registered **accessory-status** STATE at relative id `0x01`: `{state u8, fault u8, beacon_seq u16}` = 4 bytes (registry `accessory_status`), `state` an `accessory_states` value (0 `live`, 1 `safe_joined`, 2 `safe_deadman`, 3 `safe_goodbye`, 4 `safe_estop`, 5 `safe_fault`), `fault` device-defined (0 none), `beacon_seq` the header seq of the last BEACON it accepted; pushed on change and at least every `spoke_beacon_interval_ms`;
+- honor every [§13.3](transports.md#s13-3).1 duty (channel follow, the deadman and the safe state, clamping, the 250-byte budget, no ESTOP rebroadcast), and keep a durable `accessory_id` and join per [§13.3](transports.md#s13-3).2.
+
+**Absent, never required of an accessory:** HELLO/WELCOME and the rest of the session layer, the readiness gate, SUBSCRIBE/UNSUBSCRIBE/GRANT/PUBLISH, PROBE, CLOCK, access tiers, pairing tokens, AUTH, HUB_SIG, the trust ledger, every core channel, control ownership (its host is its only caller), multiple peers, BLE GATT, WebSocket, discovery, and the rendering annotations (`category`, `rank` and the rest stay optional).
+
+**`accessory-host`.** A hub that sets BEACON `accessory_host` MUST beacon, answer probes and broadcast ESTOP ([§13.3](transports.md#s13-3).1); run the join, declaration fetch, validation, persistence and sticky slices with the three accessory core channels ([§8.10](catalog.md#s8-10), [§13.3](transports.md#s13-3).2); grow its catalog per [§8.6](catalog.md#s8-6) and advertise its capacity; run the relationship engine ([§8.11](catalog.md#s8-11)) and the interlock ([§11.6](safety.md#s11-6)); and:
+
+- **proxy, never expose.** Clients never address an accessory. The host serves client subscriptions to accessory STATE from its retained copy. It forwards a client INTENT on an accessory channel only after its own checks (tier, declared range, relationship ownership, the interlock), under its own spoke `intent_id`, and answers the client with an ECHO carrying the **accessory's** applied values: the accessory is the ground truth ([§1.2](foundations.md#s1-2)), not the forward. No answer after [§13.3](transports.md#s13-3)'s retransmits: NACK `ACCESSORY_OFFLINE`. c2h bundles are forwarded the same way under the client's publication grant.
+- **The sole-caller rule extends to accessories** ([§11.4](safety.md#s11-4)): the host is the only thing that commands one.
+- **Never widen access.** An actuating accessory channel is at least `control` in the host's catalog whatever its declaration says; the host MAY raise any declared floor further.
 
 ## 17.2 Golden vectors {#s17-2}
 

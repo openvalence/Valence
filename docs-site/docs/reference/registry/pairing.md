@@ -124,3 +124,54 @@ The registered item grammar of the `accessories` store (`0x0010`).
 | `5` | `fw_version` | tstr: the JOIN_REQ fw_version string (<= 16 B) |
 | `6` | `declaration_etag` | bstr 8: etag of the stored declaration (§8.3) |
 
+## Accessory status
+
+Relative id `0x01` of every slice: state u8 (accessory_states) + fault u8 (device-defined, 0 none) + beacon_seq u16 (header seq of the last accepted BEACON) = 4 B; pushed on change and at least every spoke_beacon_interval_ms.
+
+## Accessory states
+
+The accessory-status `state` byte (SPEC §17.1.1).
+
+| Value | Name | Notes |
+|---|---|---|
+| `0` | `live` | commanded and running normally |
+| `1` | `safe_joined` | joined, holding safe values, awaiting its first command |
+| `2` | `safe_deadman` | safe: no matching BEACON for its deadman window (§13.3.1) |
+| `3` | `safe_goodbye` | safe: a GOODBYE arrived from its hub |
+| `4` | `safe_estop` | safe: an ESTOP frame or a BEACON with estop_latched; the host's acknowledgment that the e-stop reached it |
+| `5` | `safe_fault` | safe: a local fault (see `fault`) |
+
+## Relationship maps
+
+A relationship item's `map` (SPEC §8.11). Every output is clamped into the target's declared range.
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `linear_clamp` | out = L(in) = out_min + (clamp(in, in_min, in_max) - in_min) * (out_max - out_min) / (in_max - in_min), in_min != in_max |
+| `2` | `invert` | out = out_max + out_min - L(in): in_min maps to out_max |
+| `3` | `threshold_hysteresis` | params on_above, off_below (source units, off_below <= on_above): out_max once the source rises to on_above, out_min once it falls to off_below, unchanged between; starts at out_min when armed |
+| `4` | `slew_limit` | L(in) with its rate of change bounded by params rise_per_s, fall_per_s (target units/s; one value serves both when the second is absent) |
+| `5` | `lowpass` | L(in) through a first-order low-pass, param tau_s (seconds) |
+| `6` | `gate` | out = L(in) while in_min <= in <= in_max, else the target's `safe` value |
+| `7` | `piecewise_table` | params: up to 8 (in, out) points flattened, in strictly ascending; linear between, held at the end values outside; the four bounds unused |
+
+## Relationship keys
+
+The registered item grammar of the `relationships` store (`0x0013`).
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `rel_id` | uint: 0..relationships_max-1; bit index in the roster masks |
+| `2` | `name` | tstr: client-authored label |
+| `3` | `source_channel` | uint: absolute id of an h2c STATE or STREAM channel |
+| `4` | `source_field` | uint: layout index of a numeric field on source_channel |
+| `5` | `target_channel` | uint: absolute id of an accessory INTENT or c2h STREAM channel |
+| `6` | `target_field` | uint: schema key (INTENT) or layout index (STREAM) of a value-bearing field |
+| `7` | `map` | uint: a `relationship_maps` value |
+| `8` | `in_min` | float: source physical units |
+| `9` | `in_max` | float: source physical units |
+| `10` | `out_min` | float: target physical units |
+| `11` | `out_max` | float: target physical units |
+| `12` | `params` | array of up to 16 floats, in the order the map lists them |
+| `13` | `enabled` | bool: persisted. `armed` is volatile, never stored, false at boot (§11.6) |
+

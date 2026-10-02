@@ -87,3 +87,11 @@ Whatever dies — a client, a relay, a transport, the network — all of the fol
 3. A relay's death makes its clients *silent*, which triggers the same deadman path as client death. The hub cannot distinguish them and does not need to.
 4. No failure mode results in a client displaying motion as stopped while the machine moves, because displays render only adopted hub state and go visibly stale when the link dies.
 5. Every session-end path releases ownership identically ([§6.9](session.md#s6-9)), so no departed session can hold a source hostage.
+
+## 11.6 Accessories under the stop taxonomy *(RFC-078)* {#s11-6}
+
+The accessory interlock is hub policy and never depends on a client session, exactly as the relationships it governs ([§8.11](catalog.md#s8-11)). An accessory host MUST:
+
+- **While ESTOP is latched** in `safety` (`0x0003`): disarm every relationship; drive every relationship target to its `safe` value (accessories also self-safe on the broadcast ESTOP frame, [§13.3](transports.md#s13-3).1); refuse client writes to actuating accessory fields with `ESTOP_ACTIVE`.
+- **On PAUSE latching:** disarm every relationship and drive every target to its `safe` value, once. PAUSE does not refuse later direct client writes: under pause they are the operator's own act, allowed. *(RFC-085, a draft, retires STOP and HOLD in favor of PAUSE; until it lands, STOP and HOLD latching disarm exactly as PAUSE does.)*
+- **Arming is `resume`.** The `resume` op, the one explicit operator act, arms every enabled relationship, the same operator-act principle RFC-074 applies to streams. Nothing else arms one: an ESTOP clear re-arms nothing ([§11.2](#s11-2), "clearing never restarts motion", applied to accessories), a reboot leaves every relationship disarmed, and saving an enabled relationship arms it only at the next `resume`.
