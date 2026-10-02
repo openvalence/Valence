@@ -2587,14 +2587,15 @@ def _run_session(ws, args):
             bad("estop_clear", "could not clear the latch after 5 attempts: reply=%s snap=%s"
                 % (reply, snap))
 
-    # ---- Step 5.96: BENCH home ops (0x3101 ops 2/3, RFC-025) ----------------
+    # ---- Step 5.96: BENCH force_home (0x3101 op 2, RFC-025) -----------------
     # *** OP 2 (force_home) CLEARS AN E-STOP LATCH and asserts a stroke window
     # NOTHING MEASURED. *** On a rig with a motor attached that is a real
     # collision hazard, which is exactly why RFC-025 filed these under safety
     # review and why this step is opt-in. It exists because motorless bench
     # work is otherwise impossible, and it is the in-band replacement for
-    # POST /api/machine/homeoverride.
-    scene("Step 5.96: BENCH home ops (0x3101 force_home / clear_override)")
+    # POST /api/machine/homeoverride. There is no in-band undo on 0x3101:
+    # override is left only by the safety-intents `return` op (RFC-085).
+    scene("Step 5.96: BENCH force_home (0x3101 op 2)")
     if not args.bench_home:
         skip("bench_home", "bench home ops skipped (pass --bench-home; op 2 asserts an "
              "UNMEASURED stroke window and clears the e-stop latch)")
@@ -2625,32 +2626,6 @@ def _run_session(ws, args):
             # Ground truth: the ECHO carries the stroke the MACHINE adopted,
             # which is not necessarily the one we asked for.
             ok("bench_home", "force_home ECHOed: applied=%s" % applied)
-
-        # And put it back, so a --bench-home run is not a one-way door -- unless
-        # the caller explicitly wants the fake-home left ON (--bench-home-no-revert).
-        if args.bench_home_no_revert:
-            skip("bench_home_clear", "clear_override skipped (--bench-home-no-revert) -- "
-                 "machine left fake-homed on purpose")
-        else:
-            payload = build_intent(CH_HOME_INTENT, 931, [(1, cb_uint(3))])
-            send_frame(ws, FRAME["INTENT"], CH_HOME_INTENT, payload)
-            deadline = time.time() + args.timeout
-            reply = None
-            while time.time() < deadline:
-                got = recv_frame(ws, deadline)
-                if got is None:
-                    break
-                hdr, pl = got
-                if hdr["type"] == FRAME["STATE"]:
-                    record_state(hdr, pl)
-                    continue
-                if hdr["type"] in (FRAME["ECHO"], FRAME["NACK"]):
-                    reply = ("ECHO" if hdr["type"] == FRAME["ECHO"] else "NACK", cb_decode_full(pl))
-                    break
-            if reply and reply[0] == "ECHO":
-                ok("bench_home_clear", "clear_override ECHOed -- back to real homing")
-            else:
-                bad("bench_home_clear", "clear_override did not ECHO: %s" % (reply,))
 
     # ---- Step 5.98: motion-anomaly EVENTs (0x4100) -------------------------
     # THE FIRST DEVICE-AUTHORED EVENT CHANNEL, and the proof that the v1.0
@@ -3435,14 +3410,10 @@ def main():
                               "(safety_ops::estop, RFC-010) and then clear it. This really "
                               "does latch the machine and leave it UNHOMED -- opt-in on purpose")
     parser.add_argument("--bench-home", action="store_true",
-                         help="exercise step 5.96: the BENCH home ops on 0x3101 (2 force_home "
-                              "{stroke}, 3 clear_override). Op 2 asserts a stroke window nothing "
-                              "measured AND clears an e-stop latch -- motorless rigs only")
-    parser.add_argument("--bench-home-no-revert", action="store_true",
-                         help="with --bench-home, skip the op 3 clear_override that normally puts "
-                              "the override back -- leaves the machine fake-homed after the run "
-                              "(bench-only, one-way door; the in-band replacement for the retired "
-                              "POST /api/machine/homeoverride left ON)")
+                         help="exercise step 5.96: the BENCH force_home on 0x3101 (op 2 "
+                              "{stroke}). It asserts a stroke window nothing measured AND clears "
+                              "an e-stop latch, and leaves the machine fake-homed (no in-band "
+                              "undo) -- motorless rigs only")
     parser.add_argument("--pair", action="store_true",
                          help="run the M4b PAIRING/TRUST scenario instead of the motion session: "
                               "push-to-pair bootstrap, then TWO full knock->approve->token->"

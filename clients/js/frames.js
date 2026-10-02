@@ -152,7 +152,7 @@ export function decodeSafetySnapshot(payload) {
 // ---- Home intent ops (ValenceCatalog.h 0x3101) ----------------------------
 // A DEVICE channel's op numbering, not a registry vocabulary — a different hub
 // may number its homing ops differently and still conform.
-export const HOME_OP = { home: 1, force_home: 2, clear_override: 3 };
+export const HOME_OP = { home: 1, force_home: 2 };
 
 /**
  * GOODBYE reason codes. RFC-022.2: GOODBYE has NO separate code space — its
