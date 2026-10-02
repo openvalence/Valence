@@ -1672,7 +1672,7 @@ B/C/D. Status column matches each entry's own line; cross-check against
 | [034](#rfc-034--placeholder-entries-in-options-lists) | Placeholder `options` entries | Landed |
 | [035](#rfc-035--a-role-vocabulary-for-motion-plan-telemetry) | Motion-plan telemetry roles | Landed |
 | [036](#rfc-036--renderability-of-string-settings) | Renderability of string settings | Landed items 1+3; item 2 (`max_len`) deferred |
-| [037](#rfc-037--forward-decodable-packed-layouts-explicit-per-field-width) | Forward-decodable packed layouts | Partially landed (vocabulary); encoder half (key 18 emission, K-01/K-02 re-pin) accepted 2026-10-02, option (a) |
+| [037](#rfc-037--forward-decodable-packed-layouts-explicit-per-field-width) | Forward-decodable packed layouts | Landed: vocabulary 2026-07-27; encoder half (key 18 emission, K-01/K-02 re-pin to 805 B) 968d0ae, option (a) |
 | [038](#rfc-038--client-negotiated-deadman-window) | Client-negotiated deadman window | Landed |
 | [039](#rfc-039--every-refusal-is-answered-rfc-033s-principle-generalized) | Every refusal is answered | Landed |
 | [040](#rfc-040--spec-says-what-the-reference-implementation-knows-editorial-batch) | Spec-says-what-the-reference-knows (editorial) | Landed |
@@ -1703,9 +1703,9 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [052](#rfc-052--the-authoring-layer-tables-released-markers-generated-vocabularies-group-descriptions) | Authoring layer (tables, released markers, generated vocabularies) | Accepted 2026-07-29, phased |
 | [053](#rfc-053--estop-over-connectionless-datagrams-udp-broadcast--esp-now-opt-in) | ESTOP over UDP broadcast + ESP-NOW | Accepted 2026-07-29 (opt-out, default on) |
 | [054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff) | Hub discloses WiFi credentials over BLE | Withdrawn 2026-10-01 (RFC-069 covers provisioning) |
-| [055](#rfc-055--admission-control-a-hub-that-cannot-serve-you-must-say-so) | Admission control: a hub that cannot serve you says so | Accepted 2026-10-02 |
-| [056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip) | Modular conformance: duties, not a chip | Accepted 2026-10-02 (BLE: SHOULD, MUST where config mode is offered) |
-| [057](#rfc-057--the-two-http-escapees-are-hub-duties-not-chip-duties) | The two HTTP escapees are hub duties | Accepted 2026-10-02 (with 056) |
+| [055](#rfc-055--admission-control-a-hub-that-cannot-serve-you-must-say-so) | Admission control: a hub that cannot serve you says so | Landed 16266af |
+| [056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip) | Modular conformance: duties, not a chip | Landed 99584a6 (BLE: SHOULD, MUST where config mode is offered) |
+| [057](#rfc-057--the-two-http-escapees-are-hub-duties-not-chip-duties) | The two HTTP escapees are hub duties | Landed 99584a6 (with 056) |
 | [058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule) | End-velocity `unspecified`, rest-before-hold, dwell rule | Landed a48c03a |
 | [059](#rfc-059----hub-advertised-scheduling-latency) | Hub-advertised scheduling latency | Landed 876ca7c (with 084) |
 | [060](#rfc-060----rename-slopsync-becomes-valence) | Rename: SlopSync becomes Valence | Landed 2026-09-21 |
@@ -1722,7 +1722,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [071](#rfc-071----motion-input-field-roles-find-the-stream-target-without-a-name) | Motion-input field roles | Landed 4ea91d8 |
 | [072](#rfc-072----discovery-identity-the-mdns-service-record-retires-the-scan-response-company-id-is-pinned) | Discovery identity: mDNS record retired, MSD id pinned | Landed d2348d9 (accepted as rescoped); client moves owed |
 | [073](#rfc-073----store-item-encoding-a-registered-cbor-map-a-kind-namespace-and-an-optional-per-item-digest) | Store item encoding + digest | Landed 1b4a1af |
-| [074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command) | Streams under a latched stop | Clauses 1, 2, 4 landed ef003e3; clause 3 with RFC-085 (accepted 2026-10-02) |
+| [074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command) | Streams under a latched stop | Landed: clauses 1, 2, 4 ef003e3; clause 3 1ddf8af (with RFC-085) |
 | [075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories) | ESP-NOW spoke binding | Landed 8484552 |
 | [076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space) | Accessory join and declaration | Landed b18fac1 |
 | [077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions) | Live catalog growth; capacity | Landed 4c0ede7 |
@@ -1733,10 +1733,10 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [082](#rfc-082----one-home-for-the-rendering-wiring-state) | One home for the rendering wiring state | Landed d12403e |
 | [083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role) | Archetype hint struck; color/datetime by role | Landed e22bd8e (option B) |
 | [084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap) | Future-anchored samples are arrival times | Landed 876ca7c (with 059) |
-| [085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release) | Three safety pairs (pause, override, estop) | Accepted 2026-10-02 |
+| [085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release) | Three safety pairs (pause, override, estop) | Landed 1ddf8af + test f144928 |
 | [086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
-| [087](#rfc-087----segments-kind-bundles-span-the-schedule-horizon-the-horizon-is-advertised-per-grant) | Segments bundles span the schedule horizon | Accepted 2026-10-02 |
-| [088](#rfc-088----flip-a-rail-bound-direction-flip-home-swaps-ends) | Flip: rail-bound direction flip | Accepted 2026-10-02 |
+| [087](#rfc-087----segments-kind-bundles-span-the-schedule-horizon-the-horizon-is-advertised-per-grant) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
+| [088](#rfc-088----flip-a-rail-bound-direction-flip-home-swaps-ends) | Flip: rail-bound direction flip | Landed a7415b0 |
 
 ---
 
@@ -2116,7 +2116,9 @@ own Status line as of that date; the entry wins on any disagreement.*
   exactly the state [RFC-036](#rfc-036--renderability-of-string-settings).3 warns about, so the follow-up carries a "add an
   emitting fixture" obligation with it.
 - **Remaining half: ACCEPTED (operator, 2026-10-02; rfc-bmy), option (a).**
-  Not landed. The reference catalog encoder emits catalog key 18 `size` on
+  LANDED 968d0ae (2026-10-02): K-01/K-02 re-pinned 775 to 805 B, etag
+  `8C5D68F41AD0325E`; the C-6 amendment is recorded in SPEC §17.2 (Valence
+  has no governance.md). The reference catalog encoder emits catalog key 18 `size` on
   every layout field, with the declared==derived conformance check, and the
   golden vectors K-01 and K-02 are re-pinned (775 to 805 B, new etag) with a
   Canon C-6 amendment row stating that pins may be re-pinned before the
@@ -3596,7 +3598,8 @@ positive application-level acknowledgment that a transfer completed"
 
 ## RFC-055 — Admission control: a hub that cannot serve you must SAY SO
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-a90). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-a90). LANDED 16266af
+  (2026-10-02).
 - **Ruling (operator, 2026-10-02).** Accepted as drafted. No open
   questions were posed.
 - **Origin — a live failure, with receipts.** Valence Drive fw 2.2.1,
@@ -3663,11 +3666,12 @@ positive application-level acknowledgment that a transfer completed"
     cannot see.
 - **Proposed change.**
   1. **Advertise capacity.** WELCOME gains `max_sessions` and
-     `sessions_in_use`. A client that can see the ceiling can decide whether
+     `sessions_in_use` (`welcome_limits_keys` 5 and 6 as landed). A client that can see the ceiling can decide whether
      to queue, degrade, or not connect at all.
   2. **A REFUSED terminal with a reason and a delay.** New NACK/close codes
      in the existing space (`0x0103 PAIRING_REQUIRED` … `0x0105
-     SESSION_EVICTED` are precedent): `HUB_AT_CAPACITY` and `HUB_SHEDDING`,
+     SESSION_EVICTED` are precedent): `HUB_AT_CAPACITY` (`0x010E`) and
+     `HUB_SHEDDING` (`0x010F`), as landed,
      each REQUIRED to carry `retry_after_ms`. A hub MUST NOT refuse silently
      and MUST NOT close bare when it knows the reason.
   3. **`retry_after_ms` is normative for clients.** A client MUST NOT retry
@@ -3698,8 +3702,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-056 — Modular conformance: a hub is a set of duties, not a chip
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-qqq). Not landed. Ruled
-  together with RFC-057.
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-qqq). LANDED 99584a6
+  (2026-10-02). (with RFC-057). Ruled together with RFC-057.
 - **Ruling (operator, 2026-10-02).** Accepted as drafted, with the BLE
   sentence of item 2 landing as "SHOULD, and MUST where config mode is
   offered", together with
@@ -3803,9 +3807,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-057 — The two HTTP escapees are HUB duties, not chip duties
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-qqq). Not landed. Ruled in
-  the same ruling as RFC-056; additive, landable later with no break, landed
-  with RFC-056 because it is a paragraph.
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-qqq). LANDED 99584a6
+  (2026-10-02). (with RFC-056). Ruled in the same ruling as RFC-056;
+  additive, landable later with no break, landed with RFC-056 because it is
+  a paragraph.
 - **Ruling (operator, 2026-10-02).** Accepted, noted by the operator as
   additive (landable later with no break) and landed now with RFC-056
   since it is a paragraph. No open questions were posed.
@@ -5338,9 +5343,10 @@ say exactly which, future-us will want the receipts.*
 ## RFC-074 -- STOP semantics for streams: refused while latched, re-armed only by an explicit command
 
 - **Status:** ACCEPTED (operator, 2026-10-01; rfc-2ly). LANDED ef003e3
-  (2026-10-01) for clauses 1, 2 and 4, written against today's STOP level
-  (SPEC §11.1) until RFC-085 folds it into PAUSE; clause 3 (RESUME as the
-  re-arm) lands with RFC-085. Accepted under the safety fold ruled the same day,
+  (2026-10-01) for clauses 1, 2 and 4, written against the STOP level of
+  the day; clause 3 (RESUME as the re-arm) and the STOP-to-PAUSE fold
+  LANDED 1ddf8af (2026-10-02) with RFC-085. Accepted under the safety fold
+  ruled the same day,
   [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)
   (accepted 2026-10-02): read STOP below as PAUSE.
   The title keeps the draft's wording as the record.
@@ -6922,7 +6928,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-085 -- Three safety pairs, one control each: pause and resume, override and return, estop and release
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-crn). Not landed. Pre-tag
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-crn). LANDED 1ddf8af plus
+  test f144928 (2026-10-02), which also landed RFC-074 clause 3. Pre-tag
   restructuring: numbers retire as gaps, nothing is renumbered. Folds in
   [RFC-074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command),
   whose clause 3 lands with this entry.
@@ -6935,7 +6942,13 @@ say exactly which, future-us will want the receipts.*
   refused `ESTOP_ACTIVE` / `INTERLOCK` / `NOT_HOMED`; release by
   press-and-hold; the per-move `bypass` key retired. The three open
   questions are answered at landing by the lander's best reading and
-  recorded; their answers are stamped here with the landing sha.
+  recorded. **Answered at landing (1ddf8af, veto-able):** (1)
+  `home_required` is modes bit 1 (freed by `bypass_limits`' retirement),
+  set by an ESTOP on a hub declaring `estop_cuts_power`, cleared when a
+  home completes; (2) a point move on an idle, unpaused, unowned rail is an
+  ordinary source activation, and jog is override-only only while some
+  source owns the rail; (3) the home verb stays allowed under PAUSE whether
+  or not the hub is unhomed.
 - **Origin:** operator rulings 2026-10-01 on rfc-crn, in this order: the
   fold of STOP and HOLD into PAUSE; the override refinement (override
   carries pause, jog only under override, return to the paused position,
@@ -7063,11 +7076,12 @@ say exactly which, future-us will want the receipts.*
        (on a power-cutting hub the paused position is no longer known, item
        3); release lands in plain PAUSE.
      - **Ops.** `override_on` (7) is renamed `override` and `override_off`
-       (8) is renamed `return`, both with the merged semantics, both
+       (8) is renamed `return` (registry identifier `return_op`, wire name
+       `return`, as landed), both with the merged semantics, both
        `control`. `bypass_on` (9) and `bypass_off` (10) are retired as gaps.
      - **Modes byte.** bit0 is `override` (was `manual_override`); bit1
-       (`bypass_limits`) is retired, see open question 1 for a proposed
-       reuse.
+       (was `bypass_limits`) is `home_required` as landed (open question
+       1).
      - **The per-move `bypass` key retires.** A jog under override is
        already outside the limits by mode, so a per-intent escape hatch has
        nothing left to do. A hub that offers one drops it.
@@ -7204,7 +7218,7 @@ say exactly which, future-us will want the receipts.*
   relabel the strip, one control per pair, the rail carries
   override/return, and its TCode and buttplug adapters send `resume`
   explicitly, never implicitly.
-- **Open questions (answered at landing per the 2026-10-02 ruling; stamped with the landing sha).**
+- **Open questions (answered at landing, 1ddf8af; see Ruling).**
   1. **Surfacing "home required".** `resume` is refused `NOT_HOMED` after a
      power-cutting ESTOP, and a client must say why. Proposed: the freed
      modes bit1 becomes `home_required` (set by ESTOP on a `true` hub,
@@ -7275,7 +7289,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-087 -- Segments-kind bundles span the schedule horizon; the horizon is advertised per grant
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-66i). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-66i). LANDED 1dbdc3e
+  (2026-10-02).
 - **Ruling (operator, 2026-10-02).** Accepted as drafted, including open
   question 1's proposal: c2h `segments`-kind `t_off` counts in 100 µs units
   (limit `segment_t_off_unit_us`); per-transport bundle counts as stated
@@ -7321,7 +7336,7 @@ say exactly which, future-us will want the receipts.*
      BLE (236) 28. At 32 per bundle that is 128 segments/s at 250 ms, 64/s
      at 500 and 32/s at 1000, all above dense funscript rates.
   2. **The horizon is advertised per grant.** A new CBOR key
-     `schedule_horizon_ms` on `granted_publishes` entry maps, beside
+     `schedule_horizon_ms` (key 50 as landed) on `granted_publishes` entry maps, beside
      [RFC-059](#rfc-059----hub-advertised-scheduling-latency)'s
      `schedule_latency_us`, present on `segments`-kind grants. Its value is
      one of 250 (the default, today's `max_future_schedule_ms`), 500 or
@@ -7371,8 +7386,8 @@ say exactly which, future-us will want the receipts.*
   c2h `segments` bundles only (pre-tag; the reference hub must follow in
   the same release, see compatibility). Span rule 3 is kind-dependent. No
   frame type changes.
-- **Registry impact.** `cbor_keys` gains `schedule_horizon_ms` (number by
-  the registry owner); `limits` gains `schedule_horizon_max_ms` (1000), the
+- **Registry impact.** `cbor_keys` gains `schedule_horizon_ms` (key 50 as
+  landed); `limits` gains `schedule_horizon_max_ms` (1000), the
   pinned steps (250, 500, 1000) and `segment_t_off_unit_us` (100);
   `max_future_schedule_ms` note: the default horizon for `segments` and the
   lead cap for `samples`; `bundle_max_span_ms` note: `samples` and h2c
@@ -7401,7 +7416,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-088 -- Flip: a rail-bound direction flip, home swaps ends
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-tnm). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-02; rfc-tnm). LANDED a7415b0
+  (2026-10-02).
 - **Ruling (operator, 2026-10-02).** Accepted as drafted: label **Flip**,
   role `axis.flipped` (open question 1). Open question 2 (category) was
   not ruled separately; as drafted the spec binds the role, never the
