@@ -1691,6 +1691,53 @@ B/C/D. Status column matches each entry's own line; cross-check against
 > disposition above against registry.yaml/SPEC.md's actual current state,
 > flagging drift the moment an entry goes stale.
 
+
+## Index: RFC-051 onward
+
+*Added 2026-10-01 after the queue run. Status column matches each entry's
+own Status line as of that date; the entry wins on any disagreement.*
+
+| RFC | Scope | Status |
+|---|---|---|
+| [051](#rfc-051--critical-stall-parks-the-session-instead-of-evicting-it) | Critical stall parks the session | Landed (v1.0), 2026-07-28 |
+| [052](#rfc-052--the-authoring-layer-tables-released-markers-generated-vocabularies-group-descriptions) | Authoring layer (tables, released markers, generated vocabularies) | Accepted 2026-07-29, phased |
+| [053](#rfc-053--estop-over-connectionless-datagrams-udp-broadcast--esp-now-opt-in) | ESTOP over UDP broadcast + ESP-NOW | Accepted 2026-07-29 (opt-out, default on) |
+| [054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff) | Hub discloses WiFi credentials over BLE | Withdrawn 2026-10-01 (RFC-069 covers provisioning) |
+| [055](#rfc-055--admission-control-a-hub-that-cannot-serve-you-must-say-so) | Admission control: a hub that cannot serve you says so | Proposed, not yet ruled |
+| [056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip) | Modular conformance: duties, not a chip | Proposed, not yet ruled |
+| [057](#rfc-057--the-two-http-escapees-are-hub-duties-not-chip-duties) | The two HTTP escapees are hub duties | Proposed, not yet ruled |
+| [058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule) | End-velocity `unspecified`, rest-before-hold, dwell rule | Landed a48c03a |
+| [059](#rfc-059----hub-advertised-scheduling-latency) | Hub-advertised scheduling latency | Landed 876ca7c (with 084) |
+| [060](#rfc-060----rename-slopsync-becomes-valence) | Rename: SlopSync becomes Valence | Landed 2026-09-21 |
+| [061](#rfc-061----tcode-passthrough-adapter-conventions-ingest-port-l0-mapping-loopback) | TCode adapter conventions | Accepted 2026-10-01; lands with RFC-044 |
+| [062](#rfc-062----live-renderer-class-selection) | Live renderer-class selection | Landed 0342526 |
+| [063](#rfc-063----a-wire-carrier-for-the-destructive-flag) | Wire carrier for `destructive` | Landed 778d534 |
+| [064](#rfc-064----index-0-filler-applies-to-op-selects-only) | Index-0 filler on op selects only | Landed fe50cc4 |
+| [065](#rfc-065----event-channel-purpose-roles-and-event-kind-labels) | Event-channel purpose roles, event-kind labels | Landed b46c2d9 |
+| [066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride) | Modulators (`mod.*`, `mod_target`) | Landed b75e482 + affa61a (accepted as amended) |
+| [067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags) | Store verbs: one op select | Landed 1a50ff8 |
+| [068](#rfc-068----substituted-widget-conformance-bindings-host-owned-regions-one-intent-path) | Substituted-widget conformance | Landed 23a8b9d |
+| [069](#rfc-069----client-pushed-wifi-provisioning-over-ble) | Client-pushed WiFi provisioning (BLE + serial) | Landed 4f98e6b |
+| [070](#rfc-070----store-to-roster-linkage) | Store-to-roster-to-writer linkage | Landed a7c9295 |
+| [071](#rfc-071----motion-input-field-roles-find-the-stream-target-without-a-name) | Motion-input field roles | Landed 4ea91d8 |
+| [072](#rfc-072----discovery-identity-the-mdns-service-record-retires-the-scan-response-company-id-is-pinned) | Discovery identity: mDNS record retired, MSD id pinned | Landed d2348d9 (accepted as rescoped); client moves owed |
+| [073](#rfc-073----store-item-encoding-a-registered-cbor-map-a-kind-namespace-and-an-optional-per-item-digest) | Store item encoding + digest | Landed 1b4a1af |
+| [074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command) | Streams under a latched stop | Clauses 1, 2, 4 landed ef003e3; clause 3 with RFC-085 |
+| [075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories) | ESP-NOW spoke binding | Landed 8484552 |
+| [076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space) | Accessory join and declaration | Landed b18fac1 |
+| [077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions) | Live catalog growth; capacity | Landed 4c0ede7 |
+| [078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine) | Accessory profile + relationship engine | Landed ede1f46 |
+| [079](#rfc-079----config-mode-and-the-setup-category) | Config mode and the setup category | Landed 4d267b0 (BLE sentence awaits RFC-056) |
+| [080](#rfc-080----user-authored-surfaces-and-presentation-choice) | User-authored surfaces | Landed efb23fc |
+| [081](#rfc-081----advanced-generator-master-roles) | Advanced-generator master roles | Landed 3725a6b |
+| [082](#rfc-082----one-home-for-the-rendering-wiring-state) | One home for the rendering wiring state | Landed d12403e |
+| [083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role) | Archetype hint struck; color/datetime by role | Landed e22bd8e (option B) |
+| [084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap) | Future-anchored samples are arrival times | Landed 876ca7c (with 059) |
+| [085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release) | Three safety pairs (pause, override, estop) | Draft, ruling pending the operator's read |
+| [086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
+| [087](#rfc-087----segments-kind-bundles-span-the-schedule-horizon-the-horizon-is-advertised-per-grant) | Segments bundles span the schedule horizon | Draft, ruling pending |
+| [088](#rfc-088----flip-a-rail-bound-direction-flip-home-swaps-ends) | Flip: rail-bound direction flip | Draft, ruling pending |
+
 ---
 
 ## RFC-030 — Curve family on the stream: say WHICH spline the segments describe
