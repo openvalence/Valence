@@ -757,6 +757,9 @@ export const UNIT_ID = {
   ml_min: 20,  // flow rate, over-provisioned: lube dosing
   rpm: 21,  // rotational speed, over-provisioned: rotary actuators
   bpm: 22,  // beats per minute, over-provisioned: bio-sync accessories
+  deg: 23,  // RFC-086: angle in degrees. Radians are a math convenience, not a knob unit.
+  us: 24,  // RFC-086: microseconds, the §7 hub-time resolution (only ms and s were registered)
+  hub_s: 25,  // RFC-086: seconds in the hub's own §7.1 timebase, distinct from `s` so a client knows to apply it
 };
 export const UNIT_ID_NAME = {
   0: 'mm',
@@ -782,6 +785,9 @@ export const UNIT_ID_NAME = {
   20: 'ml_min',
   21: 'rpm',
   22: 'bpm',
+  23: 'deg',
+  24: 'us',
+  25: 'hub_s',
 };
 
 // ---- ui_archetypes -------------------------------------------------

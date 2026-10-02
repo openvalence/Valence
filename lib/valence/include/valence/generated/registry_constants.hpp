@@ -387,6 +387,9 @@ inline constexpr uint8_t ml = 19;  // volume, over-provisioned: lube dosing
 inline constexpr uint8_t ml_min = 20;  // flow rate, over-provisioned: lube dosing
 inline constexpr uint8_t rpm = 21;  // rotational speed, over-provisioned: rotary actuators
 inline constexpr uint8_t bpm = 22;  // beats per minute, over-provisioned: bio-sync accessories
+inline constexpr uint8_t deg = 23;  // RFC-086: angle in degrees. Radians are a math convenience, not a knob unit.
+inline constexpr uint8_t us = 24;  // RFC-086: microseconds, the §7 hub-time resolution (only ms and s were registered)
+inline constexpr uint8_t hub_s = 25;  // RFC-086: seconds in the hub's own §7.1 timebase, distinct from `s` so a client knows to apply its CLOCK offset; the unit of the RFC-083 datetime.* roles. Temperature stays deg_c only: K and F are display conversions.
 }  // namespace unit_ids
 
 namespace setting_flags {

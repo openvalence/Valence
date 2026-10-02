@@ -199,8 +199,15 @@ Provenance is already real on this machine's wire: demand (raw), planned (target
 | 20 | `mL/min` | flow rate *(over-provisioned: lube dosing)* |
 | 21 | `rpm` | rotational speed *(over-provisioned: rotary actuators)* |
 | 22 | `bpm` | beats per minute *(over-provisioned: bio-sync accessories)* |
+| 23 | `°` | angle in degrees (RFC-086; radians are a math convenience, not a knob unit) |
+| 24 | `µs` | time (microseconds, the SPEC §7 hub-time resolution; RFC-086) |
+| 25 | `hub s` | hub-time stamp: seconds in the hub's own SPEC §7.1 timebase, distinct from `s` so a client knows to apply its CLOCK offset; the unit the `datetime.*` roles carry (RFC-086) |
+
+Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not wire units.
 
 **Formatting (SHOULD):** a client SHOULD render a value with its unit's conventional suffix and a precision appropriate to the unit's own resolution (whole `count`/`bytes`, 0-2 decimals for physical quantities, percent-scaled display for `0-1` where the field's role calls for it). This is styling guidance, not a wire rule — no formatting choice here changes a byte.
+
+**Autoranging (RFC-086):** a client MAY autorange SI prefixes for display (85 mV for a `V` field reading 0.085) and MUST NOT alter the wire unit or scale. Magnitude lives in the field's `scale`, never in a prefix, so no prefix or range vocabulary exists.
 
 **Unknown-unit rule (MUST):** a client meeting an unrecognized unit id MUST render the catalog's own label string verbatim, never a blank or a guess.
 

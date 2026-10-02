@@ -114,6 +114,9 @@ Units are a frozen numeric companion to the existing free-string `unit` field. B
 | `20` | `ml_min` | flow rate, over-provisioned: lube dosing |
 | `21` | `rpm` | rotational speed, over-provisioned: rotary actuators |
 | `22` | `bpm` | beats per minute, over-provisioned: bio-sync accessories |
+| `23` | `deg` | RFC-086: angle in degrees. Radians are a math convenience, not a knob unit. |
+| `24` | `us` | RFC-086: microseconds, the §7 hub-time resolution (only ms and s were registered) |
+| `25` | `hub_s` | RFC-086: seconds in the hub's own §7.1 timebase, distinct from `s` so a client knows to apply its CLOCK offset; the unit of the RFC-083 datetime.* roles. Temperature stays deg_c only: K and F are display conversions. |
 
 ## Action tags
 
