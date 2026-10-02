@@ -385,6 +385,17 @@ machine's physical state changed on its own.*
 
 **Rationale (informative):** a dead *stream* leaves the machine still (SPEC §11.3's SETTLE) — no switch exists for streams and none is wanted. A dead *controller* with a running generator does not leave the machine still, so continuation must be an explicit, visible choice rather than an implicit one, on both the setting itself and the state it produces.
 
+### 10.2 Substituted widgets *(normative, RFC-068)*
+
+The *host* is the conformant client; a *substituted widget* is any rendering component, not authored as part of the host, that the host renders in place of a whole §10 pattern or a single §8 archetype instance. Substitution of part of a pattern is not allowed: the unit is the whole pattern or one archetype instance. Nothing about substitution reaches the wire; a hub cannot tell a substituted widget's intent from the host's.
+
+1. **Inherited contract (MUST).** A substituted widget inherits, from the pattern or archetype it replaces, every essential binding, every extra state, its region and every §13 law. The host MUST NOT mount a substitute whose declared bindings do not cover the replaced pattern's essential bindings; it renders the pattern itself instead (law 7: decline, never partial).
+2. **Host-owned regions (MUST).** The `persistent` and `overlay` regions (§9) belong to the host. A substituted widget MUST NOT render into them, over them, or in any way that obscures or displaces them, and the host MUST enforce this structurally: the widget is given a bounded surface inside `primary` or `content`, never the page. Confirms are host-rendered: a widget requests an invocation, and the host applies the destructive rule (SPEC §8.8) and its own confirm.
+3. **Safety bindings stay the host's (MUST).** The `stop` archetype and the `safety-strip` pattern cannot be substituted; law 2 binds them to core identity.
+4. **One intent path (MUST).** A substituted widget sends intents and stream input only through the host's intent path, which applies access gating, the destructive confirm, the §8.1 write lifecycle and rate limiting exactly as for host-rendered controls. It MUST NOT hold a transport, a socket, or any channel to the hub of its own. It reads state only from the host's shadow of the catalog and STATE (law 4), never from a private copy.
+5. **Failure is a fallback (MUST).** If a substituted widget fails (throws, fails to mount, or stops rendering), the host unmounts it and renders the replaced pattern or archetype itself. In-flight intents keep their lifecycle state, as across a class switch (§12.1).
+6. **Conformance claim.** A host that enforces items 1 to 5 structurally keeps its conformance claim with any set of substituted widgets loaded. A host that cannot enforce them for some component (for example, one given unrestricted page access) MUST NOT claim conformance while that component is loaded.
+
 ---
 
 ## 11. Page composition rules *(normative)*
@@ -449,6 +460,8 @@ Each earned by a documented field regression in the reference client. A client c
 11. Never scroll pinned chrome (safety facts) out of view.
 12. Meet a minimum touch-target size (40 CSS px, the figure §12.1's floor derives from) and support reduced motion, as conformance floors, not nice-to-haves.
 13. Never make a safety color themeable.
+
+A host that loads substituted widgets keeps these laws only under §10.2's containment rules.
 
 **The Phosphor Tier-0 renderer is the REFERENCE renderer for this section** — every law above was earned there first.
 
