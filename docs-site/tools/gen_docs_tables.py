@@ -105,6 +105,7 @@ SECTION_HOMES: dict[str, str] = {
     "blob_namespaces": "cbor-keys.md",
     "packed_field_types": "catalog-vocabulary.md",
     "field_roles": "catalog-vocabulary.md",
+    "channel_roles": "catalog-vocabulary.md",
     # setting_categories is RETIRED (Phase C2 tombstone in registry.yaml);
     # ui_categories is its wire-key-10 successor, homed on rendering.md.
     "setting_flags": "catalog-vocabulary.md",
@@ -503,6 +504,14 @@ def page_catalog_vocabulary(reg: dict, reg_display: str) -> str:
     p("Two conventions extend the list without registering entries:\n\n")
     p("- `<role>.peak` is the peak companion of any telemetry role.\n")
     p("- `action.<name>` marks an INTENT field as a verb, not a value.\n\n")
+
+    p("## Channel roles\n\n")
+    p("A channel role is the entry-level `role` (catalog entry key 18). It\n")
+    p("names the purpose of a whole channel, where a field role names one\n")
+    p("field. The same doctrine applies: unknown roles render generically.\n\n")
+    rows = [[code(role), cell((reg["channel_roles"][role] or {}).get("note", ""))]
+            for role in reg["channel_roles"]]
+    table(p, ["Role", "Meaning"], rows)
 
     # `setting_categories` was retired in favor of `ui_categories` (RFC-047/048,
     # Phase C2 tombstone in registry.yaml) — see "Categories" on rendering.md.

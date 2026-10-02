@@ -93,6 +93,17 @@ Two conventions extend the list without registering entries:
 - `<role>.peak` is the peak companion of any telemetry role.
 - `action.<name>` marks an INTENT field as a verb, not a value.
 
+## Channel roles
+
+A channel role is the entry-level `role` (catalog entry key 18). It
+names the purpose of a whole channel, where a field role names one
+field. The same doctrine applies: unknown roles render generically.
+
+| Role | Meaning |
+|---|---|
+| `events.anomaly` | EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a planner fallback, a rejected plan). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name. |
+| `anomaly.summary` | STATE entry: the latched counters twin of an events.anomaly channel (§9.4 duality rule), so the event log and its counters bind together. |
+
 ## Setting flags
 
 | Mask | Bit | Name | Notes |

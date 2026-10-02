@@ -764,6 +764,18 @@ field_roles:
   "source.background_run": { note: "bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one." }
 
 # ---------------------------------------------------------------------------
+# Channel roles (tstr) — catalog ENTRY-level `role` (channel-entry key 18,
+# RFC-065). A field role tags one field; a channel role tags the whole entry's
+# purpose. Same doctrine as field_roles: unregistered values are legal,
+# recognition is an opportunity, generic fallback is mandatory. Unlike a field
+# role, a channel role MAY appear on more than one entry (a client renders
+# each, ascending by id).
+# ---------------------------------------------------------------------------
+channel_roles:
+  "events.anomaly":  { ref: "§9.4", note: "EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a planner fallback, a rejected plan). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name." }
+  "anomaly.summary": { ref: "§9.4", note: "STATE entry: the latched counters twin of an events.anomaly channel (§9.4 duality rule), so the event log and its counters bind together." }
+
+# ---------------------------------------------------------------------------
 # Curve families (u8) — the `curve_family` (cbor key 45) wish/echo value on a
 # segment-class publish (RFC-030).
 #

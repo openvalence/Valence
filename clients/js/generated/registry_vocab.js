@@ -954,6 +954,12 @@ export const FIELD_ROLE = {
   source_background_run: 'source.background_run',  // bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning sess
 };
 
+// ---- channel_roles (tstr wire values) -----------------------------
+export const CHANNEL_ROLE = {
+  events_anomaly: 'events.anomaly',  // §9.4
+  anomaly_summary: 'anomaly.summary',  // §9.4
+};
+
 // ---- action_tags (tstr wire values) -------------------------------
 export const ACTION_TAG = {
   move: 'move',  // the primary positional command: usually already the axis archetype's own binding, rarely a separ

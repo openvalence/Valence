@@ -439,6 +439,11 @@ inline constexpr std::string_view plan_style = "plan.style";  // which planning 
 inline constexpr std::string_view source_background_run = "source.background_run";  // bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one.
 }  // namespace field_roles
 
+namespace channel_roles {
+inline constexpr std::string_view events_anomaly = "events.anomaly";  // EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a planner fallback, a rejected plan). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name.
+inline constexpr std::string_view anomaly_summary = "anomaly.summary";  // STATE entry: the latched counters twin of an events.anomaly channel (§9.4 duality rule), so the event log and its counters bind together.
+}  // namespace channel_roles
+
 enum class NackCode : uint16_t {
     MALFORMED = 0x0000,  // undecodable frame/CBOR
     UNSUPPORTED_VERSION = 0x0001,  // HELLO proto_ver not servable

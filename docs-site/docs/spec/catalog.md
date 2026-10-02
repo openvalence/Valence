@@ -41,6 +41,8 @@ Plus these optional entry-level keys:
 | `replay_depth` | entries the hub MAY replay on grant — presence is **the** exception to [§9.4](channels.md#s9-4)'s no-replay rule |
 | `setting_channel` | the u16 INTENT channel that writes this entry's setting-annotated fields; REQUIRED iff any field carries `setting_key` |
 | `stream_kind` | `stream_kinds` value; STREAM class only; **absent means `samples` (0)** |
+| `role` | a `channel_roles` string (≤ 24 B) naming the whole entry's purpose (RFC-065; [§9.4](channels.md#s9-4)). The `field_roles` doctrine applies: unregistered values are legal, recognition is an opportunity, generic fallback is mandatory. Unlike a field role, a channel role MAY appear on more than one entry; a client renders each, ascending by id |
+| `event_kinds` | EVENT class only: a map uint → tstr (label ≤ 24 B) labeling this channel's `event_kind` values (RFC-065; [§9.4](channels.md#s9-4)). MUST be absent on spec-core channels, whose kinds are registry tables |
 
 **Encoding structure rule.** The catalog on the wire is its outer array header followed by each entry encoded as an independent, self-delimiting document. Every entry document individually satisfies the [§5.3](wire-format.md#s5-3) depth-4 cap; decoders MAY — and depth-4 decoders MUST — process entries one at a time with per-entry decoder state. The etag ([§8.3](#s8-3)) is computed over exactly these concatenated bytes.
 

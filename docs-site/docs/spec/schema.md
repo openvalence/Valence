@@ -92,6 +92,12 @@ channel-entry = {
   ? 16 => uint,            ; rank: registry ui_ranks (RENDERING.md §4) — how much THIS CHANNEL
                            ;   matters, independent of any per-field key-19 rank (a separate axis,
                            ;   not inheritance). Absent = detail (2), per the unknown/absent-rank rule.
+  ; ---- RFC-065 (key 17 reserved for RFC-070 store_id) ----
+  ? 18 => tstr .size (1..24),  ; role: registry channel_roles; the whole entry's purpose (SPEC §8.1, §9.4).
+                               ;   Unregistered values legal; MAY repeat across entries.
+  ? 19 => { + uint => tstr .size (1..24) },  ; event_kinds: EVENT class only; event_kind -> label.
+                               ;   Append-only across firmware. MUST be absent on spec-core channels.
+                               ;   Depth: entry -> map -> tstr = 2.
 }
 ; Exactly one of key 8 / key 9 / key 12 MUST be present, matching the class:
 ;   STATE | STREAM -> 8  (layout)

@@ -176,11 +176,12 @@ def gen(reg: dict) -> str:
     # These are TSTR values on the wire (dotted namespace, device-extensible),
     # not an integer enum — RFC-019's `action.<name>` roles carry a
     # device-chosen suffix that no enum can express.
-    p("namespace field_roles {\n")
-    for role in reg["field_roles"]:  # registry order
-        e = reg["field_roles"][role] or {}
-        p(f'inline constexpr std::string_view {ident(role)} = "{esc(role)}";  // {e.get("note", "")}\n')
-    p("}  // namespace field_roles\n\n")
+    for section in ("field_roles", "channel_roles"):
+        p(f"namespace {section} {{\n")
+        for role in reg[section]:  # registry order
+            e = reg[section][role] or {}
+            p(f'inline constexpr std::string_view {ident(role)} = "{esc(role)}";  // {e.get("note", "")}\n')
+        p(f"}}  // namespace {section}\n\n")
 
     # ---- NACK codes ---------------------------------------------------------
     p("enum class NackCode : uint16_t {\n")
@@ -269,6 +270,7 @@ JS_BIT_TABLES = (
 # (JS export, registry section) — tstr-keyed spaces: the KEY is the wire value.
 JS_TSTR_TABLES = (
     ("FIELD_ROLE", "field_roles"),
+    ("CHANNEL_ROLE", "channel_roles"),
     ("ACTION_TAG", "action_tags"),
 )
 
