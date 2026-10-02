@@ -1740,6 +1740,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [089](#rfc-089----store-writer-field-roles-find-slot-name-and-item-by-identity) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
 | [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
 | [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
+| [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Draft 2026-10-02 |
 
 ---
 
@@ -7720,3 +7721,91 @@ say exactly which, future-us will want the receipts.*
   (`ValenceCatalog.h`; val board). Phosphor: the factory plugin's tabs
   (ph-e82.18) and `roles.js` (`advgenMode` retires).
 - **Open questions.** None.
+
+## RFC-094 -- Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system`
+
+- **Status:** DRAFT (operator-originated, 2026-10-02).
+- **Origin:** operator review of the Phosphor sidebar, 2026-10-02: "control
+  doesn't fit what it holds, which is generators, patterns etc"; "motion
+  library and system seem to be all things that could live in system under
+  sections, tuning seems to fit in motion better, system feels diag and
+  config"; "3 categories on the left: Machine, all on the machine things;
+  Valence, things on or between the machine and phosphor/clients; then
+  Phosphor, which are all local settings." Raised as a Valence RFC because
+  RENDERING §3 makes the category tree, in registry order, the navigation
+  skeleton every renderer shares; a client-local regroup would fork it.
+- **Problem.**
+  1. **`control` (1) is misnamed for what it holds.** Its note reads
+     "driving the machine now: move, pattern run/speed/depth, streams"; on
+     the reference hub it holds the classic and advanced generators and
+     the stream surface. "Control" also names an access tier (§12) and the
+     strip's "in control" state, so one word carries three meanings.
+  2. **`tuning` (9) and `motion` (2) are one subject at two depths**, and
+     `library` (5) is stored state of the system. As separate top-level
+     categories they make a flat sidebar of one page per id for a single
+     machine; the reference hub emits seven of the fifteen.
+  3. **The tree has no tier above categories.** Things on the machine,
+     things on or between the machine and its clients (pairing and trust,
+     the session view, the log channel), and renderer-local settings are
+     three kinds of place. The reference client already draws Machine,
+     Console and Phosphor groups by a rule of its own (`App.svelte`),
+     which no other renderer shares; §3 exists to prevent exactly that.
+- **Proposed change.**
+  1. **Rename `ui_categories` 1 `control` to `generator`.** Same id, same
+     contents (generators, streams, move). Codegen identifier changes;
+     the wire does not.
+  2. **Fold `tuning` (9) into `motion` (2) and `library` (5) into
+     `system` (13).** Entries move; the former category name becomes the
+     entry's `subgroup` (RENDERING §3 already allows one). Ids 5 and 9 are
+     retired pre-tag and never reissued. `system` is read as diagnostics
+     and configuration: power, thermals, memory, firmware, logs, stored
+     content.
+  3. **Register `ui_nav_tiers`**, three values, and give every
+     `ui_categories` row a `tier`:
+     - 1 `machine`: generator, motion, safety, limits, playback,
+       auxiliary, automation, hardware, system, setup, other, and every
+       vendor id.
+     - 2 `link`: `session` (12) and `network` (11), plus the
+       renderer-provided views of the protocol itself (pairing, the
+       session view, the 0x0008 log). The reference client labels this
+       tier "Valence".
+     - 3 `client`: renderer-local settings (display, plugins, saved hubs,
+       the embedded server). No catalog entry ever lands here; the
+       registry reserves the tier so every renderer draws the same three
+       and in the same order.
+  4. **RENDERING §3** gains the tier rule: tiers in registry order, then
+     categories in registry order within a tier, subgroups within a
+     category; labels stay the renderer's and localizable. The "frozen at
+     the v1.0 tag" sentence is unchanged in force: the tag has not
+     happened, and this is the last change to the set before it.
+- **Pros.** One skeleton all renderers share, now including the tiers the
+  reference client was already drawing by itself. Honest names. A shorter
+  sidebar for a one-machine hub. Subgroups keep Tuning and Library
+  findable without a top-level page each.
+- **Cons.** Pre-tag churn of two ids and one name. Every hub emitting 5
+  or 9 changes its catalog (etag moves). The tier-2 views that are not
+  catalog entries (pairing, session view, log) are named by membership
+  only; the spec cannot place what it does not emit.
+- **Cost.** Spec: RENDERING §3 table and one rule, registry two retirements,
+  one rename, one new table, codegen. Nucleus: `ValenceCatalog.h` has
+  eight category sites to move (six tuning, two library) and the sim etag
+  moves, so Phosphor re-records its fixture. Phosphor: the sidebar reads
+  tiers from the generated vocabulary instead of its own rule (already
+  planned work). MFP plugin: untouched (no categories).
+- **Wire impact.** Category ids on the moved entries; etag. Nothing else.
+- **Registry impact.** `ui_categories`: 1 renamed, 5 and 9 retired,
+  `tier` per row; `ui_nav_tiers` added; generated headers follow.
+- **Conformance impact.** Client: draws the three tiers in order; the
+  graceful-extension rule is unchanged (an untaught id still lands under
+  `other`, tier 1). Hub: emits 2 and 13 with `subgroup` where it emitted
+  9 and 5.
+- **Open questions.**
+  1. Retire 5 and 9 (this draft) or keep them with a registered parent so
+     renderers nest them and no hub catalog changes? Retiring is cleaner
+     pre-tag; keeping is cheaper now.
+  2. The tier-2 identifier: `link` (this draft) or the protocol's own
+     name. Registry identifiers have so far avoided naming the protocol.
+  3. Does all of `session` (12) belong in tier 2, or only pairing and
+     trust, with ownership and roles staying on the machine side?
+  4. Whether the generated-vocabulary header exposes tier membership as a
+     table clients iterate, or only as a per-category attribute.
