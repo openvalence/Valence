@@ -31,3 +31,10 @@ if command -v bd >/dev/null 2>&1; then
   if [ $_bd_exit -ne 0 ]; then exit $_bd_exit; fi
 fi
 # --- END BEADS INTEGRATION v1.1.2 ---
+
+# RFC gate (rfc-5rv): staged spec/SPEC.md or spec/registry/registry.yaml
+# needs an accepted-family RFC. Outside the beads markers on purpose.
+_rfc_gate="$(git rev-parse --show-toplevel)/tools/rfc-gate-check.sh"
+if [ -f "$_rfc_gate" ]; then
+  sh "$_rfc_gate" || exit 1
+fi
