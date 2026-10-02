@@ -964,6 +964,10 @@ export const FIELD_ROLE = {
   pattern_stroke: 'pattern.stroke',  // pattern generator stroke-length knob, as a percentage of the available depth
   pattern_sensation: 'pattern.sensation',  // pattern generator character knob; what it changes depends on the selected pattern
   command_position: 'command.position',  // RFC-032: INTENT field carrying a commanded ABSOLUTE target position in the channel's own unit. A
+  input_target: 'input.target',  // RFC-071: the commanded position of a motion-input sample or segment, in the field's own unit and
+  input_velocity: 'input.velocity',  // RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a client that does not un
+  input_duration: 'input.duration',  // RFC-071: a segments-kind sample's commanded time extent
+  input_end_velocity: 'input.end_velocity',  // RFC-071: a segments-kind sample's velocity at its end (the §9.6 handoff); its type minimum means
   plan_start: 'plan.start',  // normalized start position of the segment in flight
   plan_end: 'plan.end',  // normalized end position of the segment in flight
   plan_current: 'plan.current',  // normalized current position along the plan

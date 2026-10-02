@@ -79,6 +79,10 @@ role is never an error.
 | `pattern.stroke` | pattern generator stroke-length knob, as a percentage of the available depth |
 | `pattern.sensation` | pattern generator character knob; what it changes depends on the selected pattern |
 | `command.position` | RFC-032: INTENT field carrying a commanded ABSOLUTE target position in the channel's own unit. A client that finds it MAY render a positional control (rail, tape, slider) and send the value on that field's channel. |
+| `input.target` | RFC-071: the commanded position of a motion-input sample or segment, in the field's own unit and scale. REQUIRED on a c2h STREAM entry that accepts motion. |
+| `input.velocity` | RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a client that does not understand it leaves the field at its unspecified sentinel (§5.4). |
+| `input.duration` | RFC-071: a segments-kind sample's commanded time extent |
+| `input.end_velocity` | RFC-071: a segments-kind sample's velocity at its end (the §9.6 handoff); its type minimum means unspecified (RFC-058) |
 | `plan.start` | normalized start position of the segment in flight |
 | `plan.end` | normalized end position of the segment in flight |
 | `plan.current` | normalized current position along the plan |

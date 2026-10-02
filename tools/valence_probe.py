@@ -60,6 +60,7 @@ import math
 import os
 import queue
 import random
+import re
 import struct
 import sys
 import threading
@@ -453,18 +454,24 @@ DESC_MAX_BYTES = 128         # limits::desc_max_bytes
 # registry `field_roles`. A role a client does not recognize must render
 # generically (fallback mandatory, upgrade optional) -- but a role the hub
 # INVENTED is silently identical to no role at all, which is why the probe
-# checks membership rather than merely presence.
-FIELD_ROLES = {
-    "limit.user.speed", "limit.user.accel", "limit.input.speed", "limit.input.accel",
-    "limit.input.jerk", "geometry.max_travel", "geometry.measured_travel",
-    "window.min", "window.max", "telemetry.position", "telemetry.target",
-    "telemetry.velocity", "telemetry.current", "telemetry.power.bus", "telemetry.temp",
-    "telemetry.uptime", "identity.name", "meta.enabled_mask", "meta.reset_gen",
-    "pattern.running", "pattern.select", "pattern.speed", "pattern.depth",
-    "pattern.stroke", "pattern.sensation", "command.position",
-    "plan.start", "plan.end", "plan.current", "plan.velocity", "plan.elapsed",
-    "plan.duration", "plan.style", "source.background_run",
-}
+# checks membership rather than merely presence. Read from the registry, never
+# hand-copied: a copy lags every role RFC and FAILs a conformant hub.
+def _registry_field_roles():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "spec",
+                        "registry", "registry.yaml")
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    roles = set()
+    for line in text.split("\nfield_roles:\n", 1)[1].splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            break
+        m = re.match(r'\s+"([^"]+)":', line)
+        if m:
+            roles.add(m.group(1))
+    return roles
+
+
+FIELD_ROLES = _registry_field_roles()
 
 
 def _catalog_entries(catalog_bytes):
