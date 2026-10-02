@@ -284,7 +284,7 @@ Rows 16-17 (and, commonly, row 4) rely on the explicit hint because automatic de
 | 2 | `slider` | Bounded numeric intent | *(primitive)* | Commit-on-release; pre-echo value renders as a ghost/ghost-outline, never as truth. |
 | 3 | `stepper` | Precision numeric | *(primitive)* | Increments in `step`-sized ticks; typeable value on handheld/full. |
 | 4 | `toggle` | Boolean | *(primitive)* | |
-| 5 | `select` | Enum + options | *(primitive)* | Index-aligned; index 0 is a filler label (SPEC §8.9) and MUST NOT render as actionable. |
+| 5 | `select` | Enum + options | *(primitive)* | Index-aligned. On an op select (SPEC §8.9) index 0 is filler and MUST NOT render as actionable; on every other select index 0 is a real value (RFC-064). |
 | 6 | `trigger` | Payload-less intent (button) | *(primitive)* | `destructive` flag ⇒ mandatory confirm, every class, no exception. |
 | 7 | `axis` | 1-D positional hero control | *(primitive)* | Commanded-vs-actual overlay is MANDATORY (`command.position` + `telemetry.target`/`telemetry.position`, never one alone); domain is the *reported* window. |
 | 8 | `chart` | Time-series | *(primitive)* | Glance degrades to sparkline/value; missing samples render as GAPS, never zeros. |
@@ -294,6 +294,9 @@ Rows 16-17 (and, commonly, row 4) rely on the explicit hint because automatic de
 | 12 | `pad2d` | Two-axis control | `slider` + `slider` | The multi-axis runway; each axis keeps its own commanded-vs-actual overlay. |
 | 13 | `color` | Chromatic actuator setpoint | `slider` + `slider` + `slider` | Lighting/glow accessories; a client with no color-picker affordance renders the three-slider fallback and is fully conformant. |
 | 14 | `datetime` | Moment/interval input | `text` | Automation schedules; a client with no date-picker renders the ISO-8601 text fallback and is fully conformant. |
+
+Authoring note *(informative, RFC-064)*: a settings select that wants a
+"none" choice declares it at index 0 as a real, selectable option.
 
 > DEMO-CANDIDATE: a living gallery, one tile per archetype, each showing its
 > real interaction (drag, tap, confirm-gate) across all three renderer

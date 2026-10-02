@@ -1020,7 +1020,7 @@ ui_archetypes:
   2:  { name: slider,    note: "bounded numeric intent; commit-on-release",                                   fallback: [slider] }
   3:  { name: stepper,   note: "precision numeric, increments in `step`-sized ticks",                         fallback: [stepper] }
   4:  { name: toggle,    note: "boolean",                                                                     fallback: [toggle] }
-  5:  { name: select,    note: "enum + options; wire value is the array index",                               fallback: [select] }
+  5:  { name: select,    note: "enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, RFC-064)", fallback: [select] }
   6:  { name: trigger,   note: "payload-less intent (button); destructive flag -> mandatory confirm on every class", fallback: [trigger] }
   7:  { name: axis,      note: "1-D positional hero control (role command.position) with commanded-vs-actual overlay", fallback: [axis] }
   8:  { name: chart,     note: "time-series; glance degrades to sparkline/value; missing samples render as gaps",     fallback: [chart] }

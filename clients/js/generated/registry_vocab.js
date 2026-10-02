@@ -791,7 +791,7 @@ export const UI_ARCHETYPE = {
   slider: 2,  // bounded numeric intent; commit-on-release
   stepper: 3,  // precision numeric, increments in `step`-sized ticks
   toggle: 4,  // boolean
-  select: 5,  // enum + options; wire value is the array index
+  select: 5,  // enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, 
   trigger: 6,  // payload-less intent (button); destructive flag -> mandatory confirm on every class
   axis: 7,  // 1-D positional hero control (role command.position) with commanded-vs-actual overlay
   chart: 8,  // time-series; glance degrades to sparkline/value; missing samples render as gaps
