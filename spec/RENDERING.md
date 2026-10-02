@@ -165,7 +165,7 @@ Provenance is already real on this machine's wire: demand (raw), planned (target
 ### 5.4 Rules governing all three axes (MUST)
 
 - **Companion composition (SHOULD).** Fields sharing a role/unit but differing in `aspect` are companions — a client SHOULD render them as one instrument (the peak-hold idiom: a live gauge with a peak marker; odometer totals grouped as one card). *That* they belong together is not the developer's choice; *how* it looks is.
-- **Reset linkage.** An intent MAY declare itself the RESET for an aspect group (`meta.reset_gen`, SPEC §8.8, is the worked example). A client MUST place the reset affordance **with** the group it resets, and MUST confirm-gate it per the destructive-trigger contract (§8.7).
+- **Reset linkage.** An intent MAY declare itself the RESET for an aspect group (`meta.reset_gen`, SPEC §8.8, is the worked example). A client MUST place the reset affordance **with** the group it resets, and MUST confirm-gate it per the destructive-trigger contract (§8.4 `trigger`).
 - **Honesty (MUST).** A client MUST NOT present a `live` value as a `peak` or vice versa. `scope` (session/lifetime/window) MUST always be displayed or unambiguously implied — a total with no visible scope is a value the reader cannot trust.
 
 ---
@@ -252,7 +252,7 @@ Evaluated top-to-bottom; the first matching row wins.
 | 3 | Schema field, role `command.position` | `axis` |
 | 4 | Two co-instanced `command.position` fields (one multi-axis capability) | `pad2d` |
 | 5 | STORE-class channel + its roster STATE pair (SPEC §8.7) | `list` |
-| 6 | Schema field, role `action.<name>`, no value payload | `trigger` (destructive flag ⇒ mandatory confirm, every class) |
+| 6 | Schema field, role `action.<name>`, no value payload | `trigger` (destructive invocation, SPEC §8.8 ⇒ mandatory confirm, every class) |
 | 7 | Writable (`setting_key` present) `bool` field | `toggle` |
 | 8 | Writable u8 field + `options` | `select` |
 | 9 | Writable numeric field + `min`/`max`, range wide enough for a drag gesture | `slider` |
@@ -285,7 +285,7 @@ Rows 16-17 (and, commonly, row 4) rely on the explicit hint because automatic de
 | 3 | `stepper` | Precision numeric | *(primitive)* | Increments in `step`-sized ticks; typeable value on handheld/full. |
 | 4 | `toggle` | Boolean | *(primitive)* | |
 | 5 | `select` | Enum + options | *(primitive)* | Index-aligned. On an op select (SPEC §8.9) index 0 is filler and MUST NOT render as actionable; on every other select index 0 is a real value (RFC-064). |
-| 6 | `trigger` | Payload-less intent (button) | *(primitive)* | `destructive` flag ⇒ mandatory confirm, every class, no exception. |
+| 6 | `trigger` | Payload-less intent (button) | *(primitive)* | A destructive invocation (SPEC §8.8: the `destructive` flag, the invoked option's `destructive_options` bit, or role `action.reboot`/`action.reset`) ⇒ mandatory confirm, every class, no exception: the §8.3 primitive (long-press on `glance`, modal confirm otherwise) in the `overlay` region (§9), naming the op by its catalog label. Destructiveness is never inferred from labels, names or `desc`. |
 | 7 | `axis` | 1-D positional hero control | *(primitive)* | Commanded-vs-actual overlay is MANDATORY (`command.position` + `telemetry.target`/`telemetry.position`, never one alone); domain is the *reported* window. |
 | 8 | `chart` | Time-series | *(primitive)* | Glance degrades to sparkline/value; missing samples render as GAPS, never zeros. |
 | 9 | `list` | Roster/store items + item actions | *(primitive)* | Pending is a THIRD state, distinct from success/failure; locked-by-role is honestly distinct from empty. |

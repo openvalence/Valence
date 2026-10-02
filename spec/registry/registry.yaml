@@ -667,6 +667,7 @@ setting_flags:
   bit0: { name: advanced,         note: "hide behind an 'advanced' affordance by default; NEVER remove from the surface" }
   bit1: { name: restart_required, note: "the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)" }
   bit2: { name: secret,           note: "NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive." }
+  bit3: { name: destructive,      note: "RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator cannot restore from the client (configuration, stored items, counters, sessions, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a client MUST confirm-gate (RENDERING.md §8.4 `trigger`), a hub MUST NOT change wire behavior on it. Per-option form: schema-field `destructive_options` (SPEC §8.8)." }
 
 # ---------------------------------------------------------------------------
 # Field roles — the semantic vocabulary for catalog field annotation `role`
@@ -1021,7 +1022,7 @@ ui_archetypes:
   3:  { name: stepper,   note: "precision numeric, increments in `step`-sized ticks",                         fallback: [stepper] }
   4:  { name: toggle,    note: "boolean",                                                                     fallback: [toggle] }
   5:  { name: select,    note: "enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, RFC-064)", fallback: [select] }
-  6:  { name: trigger,   note: "payload-less intent (button); destructive flag -> mandatory confirm on every class", fallback: [trigger] }
+  6:  { name: trigger,   note: "payload-less intent (button); destructive invocation (setting_flags.destructive, destructive_options, action.reboot/reset; SPEC §8.8) -> mandatory confirm on every class", fallback: [trigger] }
   7:  { name: axis,      note: "1-D positional hero control (role command.position) with commanded-vs-actual overlay", fallback: [axis] }
   8:  { name: chart,     note: "time-series; glance degrades to sparkline/value; missing samples render as gaps",     fallback: [chart] }
   9:  { name: list,      note: "roster/store items + item actions; pending is a THIRD state distinct from success/failure", fallback: [list] }

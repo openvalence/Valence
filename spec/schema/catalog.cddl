@@ -109,7 +109,7 @@ layout-field = {
   ? 12 => tstr .size (1..128),       ; desc: user-facing description/tooltip (limits.desc_max_bytes)
   ? 13 => tstr .size (1..24),        ; role: registry field_roles vocabulary; unknown roles render generically
   ? 14 => float32,         ; step: range granularity hint
-  ? 15 => uint,            ; flags: bitmask of registry setting_flags (advanced / restart_required / secret)
+  ? 15 => uint,            ; flags: bitmask of registry setting_flags (advanced / restart_required / secret / destructive)
   ; ---- RFC-037 forward decodability ----
   ? 18 => uint,            ; size: this field's packed width in BYTES, stated explicitly.
                            ;   Decoders prefer this over the type-derived width; an unknown TYPE
@@ -202,6 +202,9 @@ schema-field = {
   ? 21 => uint,            ; scope
   ? 22 => uint,            ; provenance
   ? 23 => uint,            ; unit_id
+  ; ---- RFC-063 ----
+  ? 24 => uint,            ; destructive_options: bit i marks option i (key 10) destructive (SPEC §8.8).
+                           ;   Options past bit 63 cannot be marked; split the op table across fields.
 }
 
 cbor-type = 0 ; uint

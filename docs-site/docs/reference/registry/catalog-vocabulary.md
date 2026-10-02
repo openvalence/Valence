@@ -100,6 +100,7 @@ Two conventions extend the list without registering entries:
 | `0x01` | `bit 0` | `advanced` | hide behind an 'advanced' affordance by default; NEVER remove from the surface |
 | `0x02` | `bit 1` | `restart_required` | the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit) |
 | `0x04` | `bit 2` | `secret` | NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive. |
+| `0x08` | `bit 3` | `destructive` | RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator cannot restore from the client (configuration, stored items, counters, sessions, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a client MUST confirm-gate (RENDERING.md §8.4 `trigger`), a hub MUST NOT change wire behavior on it. Per-option form: schema-field `destructive_options` (SPEC §8.8). |
 
 ## Procedure phases
 

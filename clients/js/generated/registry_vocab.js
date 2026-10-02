@@ -792,7 +792,7 @@ export const UI_ARCHETYPE = {
   stepper: 3,  // precision numeric, increments in `step`-sized ticks
   toggle: 4,  // boolean
   select: 5,  // enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, 
-  trigger: 6,  // payload-less intent (button); destructive flag -> mandatory confirm on every class
+  trigger: 6,  // payload-less intent (button); destructive invocation (setting_flags.destructive, destructive_opt
   axis: 7,  // 1-D positional hero control (role command.position) with commanded-vs-actual overlay
   chart: 8,  // time-series; glance degrades to sparkline/value; missing samples render as gaps
   list: 9,  // roster/store items + item actions; pending is a THIRD state distinct from success/failure
@@ -885,11 +885,13 @@ export const SETTING_FLAG = {
   advanced: 1 << 0,  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
   restart_required: 1 << 1,  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is 
   secret: 1 << 2,  // NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset p
+  destructive: 1 << 3,  // RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator c
 };
 export const SETTING_FLAG_NAME = {
   1: 'advanced',
   2: 'restart_required',
   4: 'secret',
+  8: 'destructive',
 };
 
 // ---- pairing_modes (bit flags) -------------------------------------

@@ -393,6 +393,7 @@ namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
 inline constexpr uint8_t restart_required = 1u << 1;  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)
 inline constexpr uint8_t secret = 1u << 2;  // NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive.
+inline constexpr uint8_t destructive = 1u << 3;  // RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator cannot restore from the client (configuration, stored items, counters, sessions, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a client MUST confirm-gate (RENDERING.md §8.4 `trigger`), a hub MUST NOT change wire behavior on it. Per-option form: schema-field `destructive_options` (SPEC §8.8).
 }  // namespace setting_flags
 
 namespace pairing_modes {
