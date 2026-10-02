@@ -3811,7 +3811,12 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-058 -- End-velocity `unspecified` semantics and the rest-before-hold rule
 
-- **Status:** DRAFT (Valence Drive bench, 2026-09-02). Ruling pending (rfc-zj1).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-zj1). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted with the firmware receipt's
+  correction: the dwell rule reports its own anomaly kind 10
+  `dwell_zeroed`, not `HandoffBounded` (item 3 below now reads so). Landing
+  verifies that no golden vector encodes the segment layout before claiming
+  no vector change.
 - **Receipt 2026-09-03 (Valence Drive fw 2.5.2, after the RP-owns-motion port
   and the kinetic refactor of the same day).** What the reference does
   now, item by item: (1) the sentinel value is unchanged and still lives only
@@ -3885,8 +3890,10 @@ say exactly which, future-us will want the receipts.*
      `limits.segment_dwell_span` (registry, normalized units; reference
      0.02) of the previous accepted segment's target on the same source is a
      hold. A declared nonzero end velocity on it SHOULD be bounded to zero
-     and surfaced exactly as a handoff bound is today (the existing
-     `HandoffBounded` anomaly kind, no new kind). Tested against the
+     and surfaced as its own anomaly kind, 10 `dwell_zeroed` (the draft
+     had said: the existing `HandoffBounded` kind, no new kind; the
+     2026-09-03 receipt showed the census unreadable with the two
+     conflated). Tested against the
      TARGET, never position: each whip displaces position, so a position
      test never re-arms.
   4. **State the client's freedom, not a duty.** A client MAY emit explicit
@@ -3904,7 +3911,13 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-059 -- Hub-advertised scheduling latency
 
-- **Status:** DRAFT (Valence Drive bench, 2026-09-02). Ruling pending (rfc-r4v).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-r4v). Not landed. Ruled
+  together with
+  [RFC-084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap).
+- **Ruling (operator, 2026-10-01).** Accepted as drafted, ruled together
+  with RFC-084: for `samples`-kind grants, `schedule_latency_us` states the
+  chase-planning budget (the bound RFC-084's conformance test measures).
+  Item 1 below now says so.
 - **Receipt 2026-09-03.** The origin's numbers are gone and the mechanism
   is still right. The reference deleted its sample-synthesis holdback (the
   two-knot, 120 ms plus 40 ms pipeline) on 2026-09-03, and after the
@@ -3948,7 +3961,9 @@ say exactly which, future-us will want the receipts.*
      declared fixed delay between a sample's scheduled time (segments:
      `t_base + t_off`; samples: the sample's own stamp) and the start of its
      execution, inclusive of every hub-internal hop. Per entry, because it
-     differs by mode.
+     differs by mode. On a `samples`-kind grant it states the hub's
+     chase-planning budget: how far behind a sample's arrival time
+     (RFC-084) the commanded curve passes through it.
   2. **It is a commitment, not an estimate.** The hub keeps the declared
      value constant for the life of the grant; a change is an unsolicited
      GRANT (§10.2), never a silent drift. Absent or zero means unspecified,
@@ -4105,10 +4120,12 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-061 -- TCode passthrough adapter conventions: ingest port, L0 mapping, loopback
 
-- **Status:** DRAFT (Phosphor plugin surface, 2026-09-25). Ruling pending
-  (rfc-b9m). Rides on [RFC-044](#rfc-044--client-onramp-doctrine-tcode-passthrough-as-a-client-side-adapter),
-  itself Draft and deprioritized; this entry is useless without it and asks
-  for no ruling ahead of it.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-b9m). Not landed. Lands
+  together with
+  [RFC-044](#rfc-044--client-onramp-doctrine-tcode-passthrough-as-a-client-side-adapter)
+  whenever that is picked up; nothing to do until then.
+- **Ruling (operator, 2026-10-01).** Accepted; lands with RFC-044. No open
+  questions were posed.
 - **Origin -- the first adapter needed a port and found none.** Phosphor's
   example `tcode-adapter` plugin (`plugins/examples/tcode-adapter/`) is the
   "Phosphor kernel module" SPEC §9.6 names, shipped as a tier-2 plugin. To
@@ -4158,8 +4175,17 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-062 -- Live renderer-class selection
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-l8p).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-l8p). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted, with open question 1
+  answered: RENDERING §12.1 RECOMMENDS boundary values informatively in CSS
+  px (handheld/full near 600 to 960, the client's choice stated), and
+  defines the FLOOR by derivation: the width at which the persistent strip
+  still holds its mandatory controls at law 12's 40 px targets. Below the
+  floor no client degrades further; a desktop client MUST enforce the floor
+  as its OS minimum window size (Phosphor: 320 today); phones sit above it
+  by construction. Prior art cited: Material 600/840 dp, Windows 640/1008
+  epx, Apple size classes. Open question 2: as drafted, a hub never needs
+  a client's class. Item 2 below now reads so.
 - **Origin:** Phosphor ph-vdk.5. The reference client runs in a resizable
   desktop window, on a phone that rotates and splits its screen, and on a
   tablet that is touch-driven and desktop-sized at once. It has no class
@@ -4195,10 +4221,18 @@ say exactly which, future-us will want the receipts.*
      (mouse, stylus).
   2. **Selection.** Primary pointer `none` selects `glance`. Otherwise the
      client compares the usable viewport against two client-chosen
-     boundaries, glance/handheld and handheld/full. This document fixes no
-     boundary values (§1: nothing here is a pixel); a client SHOULD choose
-     them so that every control of the selected class meets law 12's floor
-     at that size.
+     boundaries, glance/handheld and handheld/full. This document
+     RECOMMENDS values informatively, in CSS px: handheld/full near 600 to
+     960, the client stating its choice. It defines the **floor** by
+     derivation: the usable width at which the persistent strip still holds
+     its mandatory controls at law 12's 40 px targets. Below the floor no
+     client degrades further, and a desktop client MUST enforce the floor as
+     its OS minimum window size (Phosphor: 320 today); phones sit above it
+     by construction. Prior art: Material 600/840 dp, Windows 640/1008 epx,
+     Apple size classes. (The draft had said: no boundary values, §1:
+     nothing here is a pixel.) A client SHOULD choose its boundaries so that
+     every control of the selected class meets law 12's floor at that
+     size.
   3. **Input primitives follow the pointer, not the class.** §8.3's input
      columns are selected by the primary pointer: `coarse` gets the
      `handheld` primitives (tap, modal confirm, touch-target floor) at any
@@ -4242,7 +4276,7 @@ say exactly which, future-us will want the receipts.*
   fixture catalog through a viewport sweep in both directions and assert the
   class sequence, the preserved category, and an in-flight intent's
   lifecycle state across the switch (Phosphor ph-vdk.9 is that harness).
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. §11's consistency invariant is only as strong as the boundaries.
      Should this document RECOMMEND boundary values, informatively and in
      physical length, so two clients at the same size pick the same class?
@@ -4250,13 +4284,14 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-063 -- A wire carrier for the `destructive` flag
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-c5u). **Separable item (2026-10-01, spec contradiction
-  bead rfc-dmf):** item 6's pointer repair is editorial and MAY land
-  alone, ahead of the flag ruling: RENDERING §5.4's "(§8.7)" names a
-  section RENDERING does not have (§8 ends at §8.4), and §8.4 `trigger`
-  is the confirm contract that exists today. Landing it alone changes no
-  wire, registry or conformance text.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-c5u). Not landed. Item 6,
+  the RENDERING §5.4 pointer repair (spec contradiction bead rfc-dmf), lands
+  with it.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted: `setting_flags`
+  gains `destructive`; schema-field key `destructive_options` (64-bit
+  mask); `action.reboot`/`action.reset` imply it; `source.background_run`
+  stays confirm-gated by role (open question 2 confirmed); item 6's pointer
+  repair lands with it. Open question 1: as drafted, no entry-level flag.
 - **Origin:** Phosphor ph-vdk.4 and ph-vdk.3. Building the confirm layer
   RENDERING requires, the reference client found that the flag it is told
   to confirm on cannot arrive.
@@ -4318,7 +4353,7 @@ say exactly which, future-us will want the receipts.*
   `action.reboot` field, asserting a confirm for exactly the destructive
   invocations and for no others. Reference-hub authoring follow-up: flag
   the destructive admin and preset ops.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Should `destructive` also be legal at entry level, gating every
      writable field of a channel? This RFC says no: per field keeps one home.
   2. `source.background_run` false-to-true (RENDERING §10.1 rule 2) stays
@@ -4327,9 +4362,11 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-064 -- Index-0 filler applies to op selects only
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-8pk). Open question 2 (the archetype hint, bead rfc-vdc)
-  is carried by [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8pk). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 2
+  (the archetype hint) was carried and ruled by
+  [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role):
+  option B, the hint is struck.
 - **Origin:** Phosphor ph-vdk.3, implementing generic select rendering from
   both documents at once.
 - **Problem -- the two documents contradict.** SPEC §8.9 (the paragraph
@@ -4366,7 +4403,7 @@ say exactly which, future-us will want the receipts.*
 - **Conformance impact.** Fixture: one settings select, one read-only select
   and one op select, each with a meaningful label at index 0; assert index 0
   is selectable, displayed, and not actionable respectively.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. None on the filler rule itself. It is a correction, queued because
      RENDERING is normative and changes to it ride the queue.
   2. **The same two documents contradict on the archetype hint (bead
@@ -4383,8 +4420,12 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-065 -- Event-channel purpose roles and event-kind labels
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-x3n). Closes SPEC §18 item 2 on landing.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-x3n). Not landed. Closes
+  SPEC §18 item 2 on landing.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted, with open
+  question 1 answered yes: the STATE twin carries the channel role
+  `anomaly.summary`, so log and counters bind together (item 1 below now
+  registers it). Open question 2: as drafted, nothing further pre-tag.
 - **Origin:** Phosphor ph-vdk.7 and ph-vdk.14. The reference client finds
   the anomaly channel by regex over the entry NAME, which law 6 forbids,
   because nothing else identifies it; it then prints anomaly kinds as bare
@@ -4416,7 +4457,11 @@ say exactly which, future-us will want the receipts.*
      than what it was asked (a clamped command, a planner fallback, a
      rejected plan). Its latched counters, where present, are the §9.4
      STATE twin. Unlike a field role, a channel role MAY appear on more than
-     one entry; a client renders each, ascending by id.
+     one entry; a client renders each, ascending by id. A second value, for
+     STATE entries: `anomaly.summary`, the latched counters that are the
+     STATE twin of an `events.anomaly` channel, so a client binds the log
+     and its counters together (ruling on open question 1; the draft
+     registered `events.anomaly` alone).
   2. **Binding rule (MUST).** A client that gives anomaly events a
      dedicated surface (RENDERING §10 `event-stream`, a safety-adjacent
      log) MUST select the channels by `events.anomaly` or by core identity,
@@ -4442,13 +4487,13 @@ say exactly which, future-us will want the receipts.*
   skip unknown keys (§4.3). Etags move only for catalogs that adopt them. No
   frame changes.
 - **Registry impact.** New string vocabulary section (proposed name
-  `channel_roles`) with `events.anomaly`. Catalog CDDL `entry` gains `role`
+  `channel_roles`) with `events.anomaly` and `anomaly.summary`. Catalog CDDL `entry` gains `role`
   and `event_kinds`; the registry owner allocates both keys. SPEC §18 item 2
   struck; §9.4 gains one paragraph pointing here.
 - **Conformance impact.** Fixture: a device EVENT entry carrying both keys,
   one kind labeled and one not; assert the channel is found with its name
   changed, the labeled kind renders by label, the unlabeled one by number.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Should the STATE twin carry a role too (for example
      `anomaly.summary`) so the event log and its counters bind together?
   2. Other EVENT purposes worth registering pre-tag (a procedure-completion
@@ -4592,8 +4637,14 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-067 -- Store verbs: one registered op select, not split preset tags
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-2n5).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2n5). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted: tag named
+  `store` (open question 1), `store_ops` {`save` 1, `load` 2, `delete` 3,
+  `rename` 4}, `preset_save` and `preset_recall` retired pre-tag, `delete`
+  destructive by registration. Open question 2 (linking the CRUD channel)
+  is folded into
+  [RFC-070](#rfc-070----store-to-roster-linkage)'s `store_id`, carried on
+  the `action.store` INTENT entry too.
 - **Origin:** Phosphor ph-vdk.11 and ph-vdk.3; the drift is the reference
   hub's. Nucleus's `pattern-presets-cmd` INTENT carries its CRUD verb as one
   op select, `{"reserved", "save", "load", "delete", "rename"}`, tagged
@@ -4652,7 +4703,7 @@ say exactly which, future-us will want the receipts.*
 - **Conformance impact.** Fixture: a STORE pair plus an `action.store` op
   select; assert four actions rendered by op number, `delete` confirm-gated,
   index 0 not actionable.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Keep the tag name `preset` (zero reference change) instead of `store`?
      This RFC prefers `store` because the verbs are kind-agnostic.
   2. Nothing links a STORE entry to its CRUD channel; the reference hub
@@ -4661,13 +4712,13 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-068 -- Substituted-widget conformance: bindings, host-owned regions, one intent path
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-8qh). Companion to
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8qh). Not landed.
+  Companion to
   [RFC-061](#rfc-061----tcode-passthrough-adapter-conventions-ingest-port-l0-mapping-loopback),
-  drafted the same day from the Phosphor plugin surface: that entry fixes
-  what an input-adapter plugin must agree on; this one fixes what any
-  third-party rendering component must obey. The RFC-061 adapter already
-  follows item 4 below (it submits through the host's motion-input door).
+  whose adapter already follows item 4 below.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 1:
+  whole-pattern or single-archetype substitution only, never part of a
+  pattern. Open question 2: as drafted, nothing reaches the wire.
 - **Origin:** Phosphor ph-vdk.20, from DESIGN §2 (the Prime Rule: "Plugins
   add features through Valence, not around it") and §3 (a Tier-2 plugin
   widget renders instead of the Tier-0/1 rendering for a channel). The
@@ -4736,7 +4787,7 @@ say exactly which, future-us will want the receipts.*
   draw over `persistent`, open its own confirm, and bind a partial role
   set; assert each attempt is contained and the stop affordance stays
   reachable.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Should a substitute be allowed to replace only part of a pattern (one
      lane of `generator-advanced`), or always the whole pattern? This RFC
      assumes the whole pattern or a single archetype instance.
@@ -4745,21 +4796,26 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-069 -- Client-pushed WiFi provisioning over BLE
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-qf5). Companion to
-  [RFC-054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff),
-  which is still PROPOSED. **Separable item (2026-10-01, spec
-  contradiction bead rfc-bry):** item 4's secret-ECHO encoding resolves
-  the SPEC §8.8 Secrets vs §9.3 key-completeness contradiction for every
-  `secret` field, not only the credentials, and MAY be accepted alone if
-  the provisioning channel is denied or deferred. Landed alone, §8.8
-  Secrets reads: "ECHO confirms application by carrying the applied key
-  with the CBOR value `true` in place of its value, so §9.3's
-  key-completeness holds; a client decoding `applied` against the schema
-  MUST accept `true` for a `secret`-flagged key whatever the field's
-  type." The registry `setting_flags` `secret` note gains the same
-  sentence; conformance gains one test (a secret write's ECHO carries the
-  key as `true` and never the value).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-qf5). Not landed. Item 4's
+  secret-ECHO encoding (spec contradiction bead rfc-bry) lands with it and
+  binds every `secret` field: §8.8 Secrets reads "ECHO confirms application
+  by carrying the applied key with the CBOR value `true` in place of its
+  value, so §9.3's key-completeness holds; a client decoding `applied`
+  against the schema MUST accept `true` for a `secret`-flagged key whatever
+  the field's type." Its one-time companion
+  [RFC-054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff)
+  is WITHDRAWN.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted (the gate already
+  admits BLE GATT, serial and in-process), with the ruling that the §13.5
+  USB serial binding is a first-class provisioning path beside BLE: in
+  config mode
+  ([RFC-079](#rfc-079----config-mode-and-the-setup-category)) both are
+  active at once and both accept `wifi_join`. Open question 2: no
+  hub-published SSID scan list; the client enters the SSID. Open question
+  1: moot, RFC-054 is withdrawn and no ESP-NOW key material exists to carry
+  (the RFC-075 spoke is unencrypted). Reference provisioning client: a
+  public browser tool (Web Bluetooth + Web Serial) hosted from the docs
+  site, bead rfc-cat.
 - **Origin:** Phosphor ph-vdk.24 (the provisioning `wizard`, RENDERING §10).
   RFC-054 frames only one direction: a hub that already knows its WiFi
   credentials disclosing them to a BLE client. The first-run case runs the
@@ -4787,8 +4843,8 @@ say exactly which, future-us will want the receipts.*
   1. **A core provisioning channel.** A new spec-core INTENT channel,
      `provisioning` (id allocated by the registry owner), `configure`
      access, with an op select (`action.provision`) over a registered op
-     table `provisioning_ops`. This RFC registers op `wifi_join`; RFC-054's
-     disclosure op, if accepted, joins the same table. A core id, not a
+     table `provisioning_ops`. This RFC registers op `wifi_join` (the draft
+     left room for RFC-054's disclosure op; RFC-054 is withdrawn). A core id, not a
      device channel plus role, because the first-run client binds by
      identity (law 2's reasoning) and a headless hub has no other surface.
   2. **`wifi_join` schema:** `op`, `ssid` (tstr), `passphrase` (tstr, MAY be
@@ -4823,7 +4879,9 @@ say exactly which, future-us will want the receipts.*
      `ws_port` in WELCOME (§6.3), `ble_adv_flags.ws_available` (§13.4). A
      client MUST NOT log or persist the credentials beyond the send.
   7. **Then the upgrade.** On success the client SHOULD perform the §6.3
-     BLE-to-WS migration using the returned endpoint.
+     migration to WS (from BLE or from serial) using the returned endpoint.
+     The §13.5 USB serial binding is a first-class provisioning path beside
+     BLE GATT, not a fallback (ruling).
 - **Wire impact.** Additive: one core INTENT channel, one op table, one NACK
   code, one limit. The secret-ECHO encoding is a clarification that binds
   existing `secret` fields; no shipped hub is known to echo one today.
@@ -4837,7 +4895,7 @@ say exactly which, future-us will want the receipts.*
   the window closed; success ECHO carries `true` for both credentials;
   failure leaves prior credentials in effect; the log ring and every STATE
   snapshot captured during the run contain neither credential bytes.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. ESP-NOW material (RFC-054 item 2) in the same op table, or later?
   2. Should the hub scan and publish visible SSIDs for the wizard to offer?
      A scan list is not secret but is a privacy surface; this RFC leaves
@@ -4845,8 +4903,14 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-070 -- Store-to-roster linkage
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-ind).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ind). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted with the CRUD link folded in:
+  `store_id` (entry key 17) on the roster STATE entry AND on the
+  `action.store` INTENT entry, so one key joins store, roster and writer.
+  Optional, consistent with the other rendering annotations (open question
+  3), with a catalog lint warning when a roster-shaped STATE lacks it. Open
+  question 2 answered by the fold. Open question 1 is a Nucleus follow-up
+  on its own board, unchanged. Items 1 to 3 below now read so.
 - **Origin:** Phosphor ph-vdk.11. Building the REQUIRED `generator-advanced`
   pattern's preset store against the reference hub: a renderer that has
   found a STORE entry and a STATE entry shaped like §8.7's dynamic half
@@ -4876,17 +4940,19 @@ say exactly which, future-us will want the receipts.*
      17, the next free entry-level slot after RFC-048's `rank` at 16;
      `uint`, same u8 vocabulary as `store-descriptor` key 1 / `blob_keys`
      key 2). Applies to a **STATE**-class entry whose layout is exactly
-     `{generation, count, capacity}` (§8.7's dynamic half). Its value is the
-     `store_id` of the STORE entry it enumerates. `store_id` is unique per
+     `{generation, count, capacity}` (§8.7's dynamic half), naming the
+     `store_id` of the STORE entry it enumerates, AND to the INTENT entry
+     carrying the `action.store` op select
+     ([RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags))
+     that writes that store's items. One key joins store, roster and writer
+     (ruling; the draft linked roster to store only). `store_id` is unique per
      hub (`store-descriptor`'s own comment), so the match is exact and
      never ambiguous, unlike matching by id adjacency or name suffix.
   2. **Renderer rule.** A client matches a roster-shaped STATE entry
      carrying `store_id = N` against the STORE-class entry whose
      `store.store_id = N`. On a match, render `list` (archetype 9) sited
-     inside that store's card, alongside its CRUD verbs when an
-     `action.store` (RFC-067) op select names the same store (via whatever
-     channel the accepted CRUD-linkage RFC settles on -- open question 2
-     below). **A roster-shaped STATE entry with `store_id` absent, or naming
+     inside that store's card, alongside its CRUD verbs when the
+     `action.store` (RFC-067) INTENT entry carries the same `store_id`. **A roster-shaped STATE entry with `store_id` absent, or naming
      no STORE entry in the catalog, renders as a plain, unlinked list**: its
      `{generation, count, capacity}` fields shown generically, with no
      assumed relationship to any store. This is the fallback law 7 already
@@ -4901,7 +4967,8 @@ say exactly which, future-us will want the receipts.*
   roster STATE entries; an adopting hub's etag moves (T11), matching every
   other RFC-048-era rendering annotation.
 - **Registry impact.** SPEC §8.1's entry-level key table gains `store_id`
-  (REQUIRED iff the STATE entry is a store's roster, per item 1 above);
+  (OPTIONAL on a store's roster STATE and on its `action.store` INTENT
+  entry; the catalog linter warns when a roster-shaped STATE lacks it);
   `schema/catalog.cddl` gains `? 17 => uint` on `channel-entry` with the
   same note. `store-descriptor`'s comment on its own `store_id` (key 1)
   gains a pointer to this key as its roster-side counterpart. No number
@@ -4911,7 +4978,7 @@ say exactly which, future-us will want the receipts.*
   `store_id: 1` and one carrying no `store_id` at all; assert the first
   renders `list` inside the store's card and the second renders as a plain,
   unlinked list, never guessed into the wrong store or into no store at all.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Reference-hub follow-up (Nucleus): emit `store_id` on
      `paired-devices-roster` naming `paired-devices`'s `store_id`, and on the
      preset store's roster once [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride)/[RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
@@ -4928,8 +4995,14 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-071 -- Motion-input field roles: find the stream target without a name
 
-- **Status:** DRAFT (clients/js STREAM sender, 2026-09-25). Ruling pending
-  (rfc-xul).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-xul). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 1:
+  the absent value for an untagged field is
+  [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)'s
+  registered sentinel (`limits.segment_end_vel_unspecified`), one home.
+  Open question 2: `input.velocity` stays registered and optional; a client
+  that does not understand it leaves the field at its default. Item 3
+  below now reads so.
 - **Origin:** rfc-ts3, the reference JS client's publish path. Proving it
   live against the Nucleus sim (0.1.5-p4hub) meant finding the motion-input
   channel and its target field from the catalog. The channel is findable
@@ -4970,8 +5043,11 @@ say exactly which, future-us will want the receipts.*
      finds the motion-input channel as the c2h STREAM entry of the wanted
      `stream_kind` carrying an `input.target` field; a c2h STREAM with no
      `input.target` is some other input, never motion.
-  3. **An untagged field is filled with its own "absent" value**, which is
-     the open question below, never with a guessed zero.
+  3. **An untagged field is filled with its own "absent" value**, never
+     with a guessed zero: for an end velocity, RFC-058's registered
+     sentinel (one home, ruling); any other field the client does not
+     understand, `input.velocity` included, is left at its catalog
+     default.
 - **Wire impact.** None on frames or layouts. Tagging a field adds one
   annotation key the entry already supports, so an adopting hub's etag
   moves (T11).
@@ -4980,7 +5056,7 @@ say exactly which, future-us will want the receipts.*
   `stream_kind` is `segments` tags `input.target` and `input.duration`.
   A client test: a hub whose motion-input fields are renamed still receives
   the correct target.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. The "absent" encoding for an untagged or unused field is
      [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)'s
      sentinel question (Nucleus uses -32768 on `end_vel_norm`, stated only in
@@ -5068,8 +5144,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-073 -- Store item encoding: a registered CBOR map, a kind namespace, and an optional per-item digest
 
-- **Status:** DRAFT (Nucleus pattern-engine port, 2026-09-25). Ruling pending
-  (rfc-019).
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-019). Not landed.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted: `digest` over
+  `payload` only (open question 1); `kind` domains open, advisory grouping
+  never validated against a list (open question 2).
 - **Origin:** Nucleus commit 631f31d, `flagship_p4/src/hub/ValenceDevice.cpp`
   `encodePresetItem`/`readBlob` and `PatternPresetStore.h` (val-091.12), first
   live store-item transfer against the pattern-presets store (`store_id` 2,
@@ -5159,7 +5237,7 @@ say exactly which, future-us will want the receipts.*
   carries no `digest` today and will need one to make its own `BLOB_DONE`
   usable for status-1 detection; this RFC does not require backfilling it
   before the RFC lands.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. `digest` over `payload` alone, or over the whole 4-field map (`slot`,
      `name`, `kind`, `payload`)? Payload-only means renaming a slot's item
      (`rename`) never invalidates a digest a client cached from a prior
@@ -5175,10 +5253,20 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-074 -- STOP semantics for streams: refused while latched, re-armed only by an explicit command
 
-- **Status:** DRAFT (Nucleus val-2w2, 2026-09-25). Ruling pending
-  (rfc-2ly). Nucleus implements clauses 1, 2 and 4 today because they are the
-  reading of §11.1 that fails safe; clause 3 is proposed only and no hub
-  codes against it before acceptance.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2ly). Not landed. Accepted
+  under the safety fold ruled the same day,
+  [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)
+  (DRAFT, its text not yet read by the operator): read STOP below as PAUSE.
+  The title keeps the draft's wording as the record.
+- **Ruling (operator, 2026-10-01).** Accepted under the RFC-085 fold: STOP
+  and HOLD are retired; PAUSE is the one latched non-emergency level
+  (decelerate, hold position, every source suspended, stream bundles
+  dropped and counted, generator parked), cleared ONLY by RESUME. Clauses
+  1, 2 and 4 apply to PAUSE unchanged; clause 3's re-arm is RESUME, with no
+  PUBLISH side effect and no new op (open question 1). PAUSE inherits
+  STOP's role exemption (any tier may pause); RESUME stays `control`. Open
+  question 2 moot (no intent clears PAUSE); open question 3 moot (HOLD
+  retired). The proposed change below now reads so.
 - **Origin:** val-2w2 in Nucleus, found landing val-cu2. The 0x0005 `stop`
   op halted the pattern generator and braked the plan in flight, but a
   client still streaming 0x2100 samples replanned the machine on its next
@@ -5205,43 +5293,41 @@ say exactly which, future-us will want the receipts.*
      streaming client performs before sending. So "an explicit restart"
      has no stream-native spelling today.
 - **Proposed change.**
-  1. **While STOP is latched, a hub MUST NOT act on c2h motion-input
+  1. **While PAUSE is latched, a hub MUST NOT act on c2h motion-input
      bundles** (`samples` or `segments` kind, any channel the application
      maps to a source, §11.4). Each such bundle is dropped whole and
-     counted, exactly as §9.2's ingress drops are. It is NEVER NACKed: a
+     counted, exactly as §9.2's ingress drops are (the draft said STOP;
+     the RFC-085 fold made it PAUSE). It is NEVER NACKed: a
      per-bundle NACK at stream rate is the storm §9.2 carve-outs exist to
      avoid, and the latched `safety` snapshot is the signal (§9.4).
-  2. **A stream sample never clears STOP.** §11.1's "new accepted motion
-     intent" means an INTENT (§9.3) on a channel mapped to a source: a
-     manual point move, a generator start. That is the reference hub's
-     behavior since RFC-045; this makes it normative.
-  3. **Stream re-arm: a PUBLISH that grants a source-mapped c2h channel
-     clears STOP**, as an INTENT on a mapped channel does, with the same
-     `safety` republish and `stop_cleared` edge. PUBLISH is the one
-     deliberate, per-channel act a streaming client already performs, so
-     re-arming costs no new frame and no new op. A PUBLISH that grants
-     nothing, or only unmapped channels, clears nothing.
+  2. **A stream sample never clears PAUSE**, and under the RFC-085 fold
+     no motion intent does either.
+  3. **Stream re-arm is RESUME.** The `resume` op on `safety-intents`
+     (`control`) is the only clear, for streams as for every other source.
+     No PUBLISH side effect and no new op. (The draft had proposed that a
+     PUBLISH granting a source-mapped c2h channel clears STOP, as an INTENT
+     on a mapped channel then did.)
   4. **The drop counter is the hub's existing stream-drop counter.** A hub
      that publishes one (the Nucleus `kinetic-diag` `sync_dropped`) counts
-     STOP drops there; no new registry counter.
+     PAUSE drops there; no new registry counter.
   5. **ESTOP is unchanged and stricter.** It refuses every source until the
      §11.2 explicit clear, and a clear re-arms nothing on its own.
-- **Wire impact.** None. No new frame, key or op; clause 3 attaches a
-  latch effect to an existing frame.
+- **Wire impact.** None of its own. No new frame, key or op; the op and
+  safety-word changes are RFC-085's.
 - **Registry impact.** None.
 - **Conformance impact.**
-  - **Hubs:** a test streams samples, sends `stop`, keeps streaming, and
-    asserts position holds and `safety` STOP stays latched; then re-arms
-    (an INTENT move, and after acceptance a PUBLISH) and asserts the next
-    bundle moves the machine. The Nucleus sim run under val-2w2 is the
+  - **Hubs:** a test streams samples, sends `pause`, keeps streaming, and
+    asserts position holds and `safety` PAUSE stays latched; then sends
+    `resume` and asserts the next bundle moves the machine (an INTENT and a
+    PUBLISH under PAUSE each clear nothing). The Nucleus sim run under val-2w2 is the
     reference shape: 87 of 87 samples sent under STOP refused and counted,
     position range 0.000 mm over 2 s, motion resumed after a 0x3100 move.
-  - **Clients:** a client streaming through STOP MUST expect its bundles to
-    be dropped silently and MUST re-arm explicitly to resume. A client
-    SHOULD subscribe `safety` so it can show the operator why its stream
-    went still, and MUST NOT re-arm automatically on seeing STOP latch;
-    re-arming is an operator act, or STOP is decorative.
-- **Open questions.**
+  - **Clients:** a client streaming through PAUSE MUST expect its bundles
+    to be dropped silently and resumes only by `resume`. A client SHOULD
+    subscribe `safety` so it can show the operator why its stream went
+    still, and MUST NOT resume automatically on seeing PAUSE latch;
+    resuming is an operator act, or PAUSE is decorative.
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. **Is PUBLISH the right re-arm, or should it be an op?** An op on the
      motion source (a `stream_arm` on `safety-intents`, `control`) is more
      explicit and auditable than a side effect of renegotiating a grant;
@@ -5257,16 +5343,23 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-075 -- ESP-NOW spoke binding: an unencrypted hub-and-spoke profile for accessories
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
-  (rfc-2lo). First of five companion entries:
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2lo). Not landed. First of
+  five companion entries:
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)
   (join and declaration),
   [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions)
   (live catalog growth),
   [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine)
   (conformance and relationships) and
-  [RFC-079](#rfc-079----config-mode-and-the-setup-category) (config mode). No
-  hub or accessory codes against any of them before acceptance.
+  [RFC-079](#rfc-079----config-mode-and-the-setup-category) (config mode),
+  all accepted the same day.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted. Open questions:
+  (1) active scan, yes; (2) unicast does not refresh the deadman, one
+  clock; (3) scan channels 1 to 13 everywhere, and a regional accessory MAY
+  scan a subset; (4) no STOP bit on the beacon: under
+  [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)
+  pause reaches accessories through the RFC-078 interlock as commanded safe
+  values, and only `estop_latched` is broadcast.
 - **Origin:** operator rulings 2026-09-26. Accessories (a peristaltic pump, a
   vibrator, a motorized stand) run a small accessory firmware (Isotope, the
   reference accessory) and attach to the hub over ESP-NOW in a star: the hub
@@ -5362,7 +5455,8 @@ say exactly which, future-us will want the receipts.*
   4. **Channel follow.** The host never changes channel for its accessories;
      it follows its access point. The accessory does the searching:
      1. At boot, and on every deadman fire (item 5), the accessory scans
-        channels 1 to 13 (a hub-region subset is permitted). On each channel
+        channels 1 to 13 everywhere (a regional accessory MAY scan a
+        subset, ruling). On each channel
         it broadcasts one DISCOVER_PROBE (`0x1E`, the §13.8 raw payload
         unchanged) and listens `spoke_scan_dwell_ms` (150) for a BEACON from
         its hub: source address and `hub_instance_id` both match its stored
@@ -5474,7 +5568,7 @@ say exactly which, future-us will want the receipts.*
   at 1000 ms with the window closed and 500 ms with it open; a probe draws
   one broadcast BEACON; `estop_latched` tracks `safety`; ESTOP is broadcast
   on latch and repeats stop when every accessory reports `safe_estop`.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Active scan (DISCOVER_PROBE reused, ~2 s) as proposed, or passive only
      (13 s worst case, zero host work)?
   2. Should unicast host traffic also refresh the deadman? Proposed no: one
@@ -5487,13 +5581,27 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-076 -- Accessory join and declaration: accessory channels in the user channel space
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
-  (rfc-7bq). Rides the spoke of
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-7bq). Not landed. Rides
+  the spoke of
   [RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories);
   its catalog consequences are
   [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions),
   which also owns capacity; the duty sets are
   [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine).
+- **Ruling (operator, 2026-10-01).** Accepted with the slice narrowed: 128
+  ids per accessory is excessive. Slice width is 32 ids
+  (`accessory_slice_ids` `0x20`): `r = 0` session-scoped, `r = 1`
+  accessory-status, `r = 2` to `r = 31` the accessory's own (30 at most).
+  The user space `0x8000`-`0xBFFF` then holds 512 slices, so a forgotten
+  slice is never reused for the life of a hub. Rationale: a pump is 3
+  channels, a three-motor vibrator about 6, a motorized stand 6 to 8; a
+  worst-case 30-channel declaration is about 3.5 KB (19 chunks). Open
+  questions: (1) carve from reserved, yes; (2) one join per window, yes;
+  (3) a `configure` session may open the window in-band, yes; (4) no STORE
+  entries in a declaration for now; (5) the hub does not rewrite `group`
+  strings. Isotope DESIGN.md §16's budget and the Nucleus accessory-store
+  sizing are recomputed at 30 channels per slice (owed on those boards).
+  Items 1, 5, 6 and 10 below now read so.
 - **Origin:** operator rulings 2026-09-26. Pairing: the operator holds the
   hub's pairing button to open a window; an accessory in pairing state
   broadcasts a join request; the hub accepts during the window, assigns a
@@ -5522,16 +5630,17 @@ say exactly which, future-us will want the receipts.*
 - **Proposed change.**
   1. **The user channel space.** `channel_id_ranges` gains `0x8000-0xBFFF`,
      name `user`, carved from the reserved `0x8000`-`0xFFFF`
-     (`0xC000`-`0xFFFF` stays reserved). It is divided into 128 **slices**
-     of `0x80` ids; slice *k* has base `0x8000 + 0x80 * k`. Slices are
+     (`0xC000`-`0xFFFF` stays reserved). It is divided into 512 **slices**
+     of `0x20` ids; slice *k* has base `0x8000 + 0x20 * k` (the draft had
+     128 slices of `0x80`). Slices are
      assigned by the hub at join (item 6), never allocated by hub firmware.
      An accessory declares **relative** ids: relative id *r* maps to absolute
      id `base + r` in the hub's catalog. `r = 0x00` is never a channel (on the
      spoke it is the session-scoped channel BEACON, ACKMASK and GOODBYE ride);
      `r = 0x01` is the registered accessory-status STATE (RFC-078 item 1);
-     `r = 0x02` to `0x7F` are the accessory's own, 126 at most. On the spoke
+     `r = 0x02` to `0x1F` are the accessory's own, 30 at most. On the spoke
      the header carries the relative id; everywhere else, the absolute one.
-     Slice membership (`id & 0xFF80`) is how a client groups one accessory's
+     Slice membership (`id & 0xFFE0`) is how a client groups one accessory's
      channels: a structural rule, not name matching. How many of those ids a
      given hub can actually carry is RFC-077 item 7's capacity question; the
      slice width is an address space, not a promise.
@@ -5589,7 +5698,7 @@ say exactly which, future-us will want the receipts.*
      SHOULD carry `category` on its entries (`auxiliary`, 7, is the natural
      home for a secondary actuator).
      **Validation (hub MUST; on failure JOIN_REPLY `declaration_invalid` and
-     nothing is stored):** every id in `0x01`-`0x7F`; the `r = 0x01` entry
+     nothing is stored):** every id in `0x01`-`0x1F`; the `r = 0x01` entry
      matches RFC-078's registered layout exactly; every STATE layout fits
      `min_transport_payload` (§9.1); every INTENT and EVENT schema's
      worst-case encoded frame fits 250 bytes (RFC-075 item 6); every
@@ -5604,7 +5713,8 @@ say exactly which, future-us will want the receipts.*
      accessory keeps it across reboots of either side and across declaration
      replacement until it is forgotten, so an absolute id a client layout or
      a relationship stored stays valid (RENDERING §13 law 10). A forgotten
-     slice MUST NOT be reassigned while any never-used slice remains. At
+     slice is never reassigned: 512 slices outlast the life of a hub, and a
+     hub whose every slice has been used refuses further joins `capacity`. At
      boot the hub rebuilds its catalog from persisted declarations before
      admitting sessions, so the etag is stable across hub reboots for an
      unchanged accessory set. **A paired accessory that is absent keeps its
@@ -5647,9 +5757,12 @@ say exactly which, future-us will want the receipts.*
         `declaration_etag`). §8.7's carve-out applies for the trust ledger's
         reason: this is protocol content every client must read the same way.
       - `accessories-roster`, STATE, `watch`: `{generation u16, count u8,
-        capacity u8, online 16 x bitfield8, safe 16 x bitfield8,
-        unconfirmed_estop 16 x bitfield8}` = 52 bytes, bit *k* of each mask
-        being slice *k*. `capacity` is the hub's accessory capacity (at most
+        capacity u8, online 4 x bitfield8, safe 4 x bitfield8,
+        unconfirmed_estop 4 x bitfield8}` = 16 bytes, bit *i* of each mask
+        being the accessory held in slot *i* of the `accessories` store.
+        (The draft indexed 128 bits by slice; at 512 slices a slice-indexed
+        mask would cost 64 bytes per mask, so the masks index store slots,
+        32 of them, above any ESP-NOW capacity.) `capacity` is the hub's accessory capacity (at most
         19 over ESP-NOW, RFC-075 item 9). One tiny snapshot answers "which
         accessory is online, which is safe, which has not confirmed an
         e-stop" without re-enumerating the store.
@@ -5668,7 +5781,7 @@ say exactly which, future-us will want the receipts.*
   `accessory_record_keys`, `accessory_admin_ops`; `action_tags` gains
   `accessory`; `core_channels` gains the three entries; `nack_codes` gains
   `ACCESSORY_OFFLINE`; `limits` gains `accessory_declaration_max_bytes` and
-  `accessory_slice_ids` (`0x80`). CHANNEL-GRID.md gains the user-space row.
+  `accessory_slice_ids` (`0x20`). CHANNEL-GRID.md gains the user-space row.
 - **Conformance impact.** (1) Happy path: window open, JOIN_REQ, JOIN_REPLY
   `accepted` with `declaration_needed`, BLOB_REQ/CHUNK/DONE, entries appear
   at `base + r`, window closes. (2) Unknown accessory, window closed:
@@ -5680,7 +5793,7 @@ say exactly which, future-us will want the receipts.*
   join from a fresh accessory gets a never-used slice. (8) A forged GOODBYE
   from the accessory's address deletes nothing. (9) A write to an offline
   accessory: `ACCESSORY_OFFLINE`.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Carve the user space from the reserved `0x8000`-`0xFFFF` (proposed), or
      from unused device-range domains?
   2. One join per window (single grant, proposed), or a window that admits
@@ -5693,12 +5806,21 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-077 -- Live catalog growth: announcing a new etag to live sessions
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
-  (rfc-cou). Consequence of
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-cou). Not landed.
+  Consequence of
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space);
-  item 7 (capacity) gates every join RFC-076 describes. Item 8 needs an
-  explicit operator ruling before the reference library can carry more than
-  a token accessory.
+  item 7 (capacity) gates every join RFC-076 describes.
+- **Ruling (operator, 2026-10-01).** Accepted. Item 8 ruled: break it now,
+  before any tag: the reference library's catalog capacities (`Catalog32`
+  entries, layout and schema field counts, `kCatalogScratchBytes`) become a
+  build-time parameter of the hub; the Flagship build is sized for its
+  accessory count (RFC-076 at 30 channels per slice; val-9u0.5 sizing
+  recomputed). Open questions: (1) no base etag, degraded mode is the
+  answer for pinned clients; (2) `CHANNEL_WITHDRAWN` as an unsolicited
+  NACK; (3) subscribing to `catalog` `0x0001` becomes a MUST for every
+  client; (4) the user space is accessories only. Risk accepted knowingly:
+  a client with stale layouts is covered by the byte-identical core
+  guarantee and law 10 inert keys. Items 2, 7 and 8 below now read so.
 - **Origin:** operator rulings 2026-09-26: once paired, an accessory's
   channels join the hub's catalog. The orchestrator's read, recorded with the
   rulings: the catalog therefore changes at runtime, and the spec needs a
@@ -5724,7 +5846,7 @@ say exactly which, future-us will want the receipts.*
   4. **Nothing confines the change**, so a client cannot know which of its
      cached layouts survive.
   5. **Capacity is unbounded on paper and tiny in practice.** RFC-076's slice
-     has room for 126 channels; the reference library has 11 spare layout
+     had room for 126 channels as drafted (30 as accepted); the reference library has 11 spare layout
      fields. Nothing tells a client or an accessory how much room a hub has,
      or what refusal looks like.
 - **Proposed change.**
@@ -5739,8 +5861,8 @@ say exactly which, future-us will want the receipts.*
      reboot (a simulator, a host hub) keeps §4.2 rule 3 exactly as written.
   2. **Announcement reuses `catalog` (`0x0001`).** No CATALOG_CHANGED frame:
      the hub publishes `0x0001` carrying the new etag, which §4.2 rule 3
-     already requires. A client that wants to track growth MUST subscribe to
-     `0x0001`; every client SHOULD.
+     already requires. Every client MUST subscribe to `0x0001` (ruling; the
+     draft said MUST for clients tracking growth, SHOULD for the rest).
   3. **A user-space change does not revoke readiness.** §4.2 rule 3's
      "re-enter SYNCING" and §6.4's gate are narrowed to changes outside the
      user space. A LIVE session stays ready across a user-space change: the
@@ -5778,8 +5900,9 @@ say exactly which, future-us will want the receipts.*
   7. **Capacity.** A hub that hosts accessories declares its budgets, and
      refuses honestly past them.
      1. **Per-accessory budget:** the most entries, layout fields and schema
-        fields one declaration may use on this hub. At most 127 entries
-        (RFC-076's slice, the status entry included); in practice far fewer.
+        fields one declaration may use on this hub. At most 31 entries
+        (RFC-076's 32-id slice less `r = 0`, the status entry included); in
+        practice far fewer.
      2. **User-space budget:** the total entries, layout fields, schema
         fields and encoded catalog bytes the hub can add beyond its own
         catalog, across all accessories.
@@ -5799,15 +5922,16 @@ say exactly which, future-us will want the receipts.*
         op `window_open` is answered NACK `ACCESSORY_CAPACITY` (new code) when
         the hub has no free slice, no free peer entry, or less budget than the
         smallest legal declaration (the status entry plus one channel).
-  8. **The reference library limit is a frozen-API change.** Raising
-     `Catalog32`'s capacities or `kCatalogScratchBytes` reshapes the frozen
-     `hub.hpp`/`catalog.hpp` public API. That needs the operator's explicit
-     "yes, break compatibility" under the frozen-list rule, and this RFC does
-     not presume it. Until that ruling, the reference hub's user-space budget
-     is the headroom it has (on Nucleus: 11 layout fields) and it MUST
-     advertise exactly that under item 7.3. The "up to about 128 channels per
-     accessory" of the rulings is RFC-076's address space; whether any
-     reference hub can fill it is this item's open ruling.
+  8. **The reference library's capacities become a build-time parameter.**
+     The operator's explicit "break it now, before any tag" (2026-10-01):
+     `Catalog32`'s entry, layout-field and schema-field counts and
+     `kCatalogScratchBytes` stop being fixed in the `hub.hpp`/`catalog.hpp`
+     public API and become parameters a hub build sets. The Flagship build
+     is sized for its accessory count at RFC-076's 30 channels per slice
+     (val-9u0.5's sizing recomputed). Whatever a build chooses, the hub MUST
+     advertise exactly the headroom it has under item 7.3. (The draft held
+     this open as a frozen-API change and capped the reference at its
+     11-field headroom until ruled.)
   9. **Etag and reconnect are unchanged.** The etag covers the whole catalog,
      user entries included (§8.3); sorted by id, user entries follow every
      device entry. A reconnecting client with a stale etag runs §6.8 SYNCING
@@ -5838,7 +5962,7 @@ say exactly which, future-us will want the receipts.*
   does not move. (6) Remaining-capacity fields drop by exactly the admitted
   declaration's use. (7) A client over its reassembly budget stays LIVE
   degraded.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Static-profile clients (§8.5) see an etag mismatch after every pairing.
      Add a second, "base" etag over the non-user entries so a pinned client
      matches exactly, or accept degraded mode as the answer?
@@ -5854,15 +5978,26 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-078 -- Accessory conformance profile and the hub relationship engine
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Isotope). Ruling pending
-  (rfc-j5f). Builds on
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-j5f). Not landed. Builds
+  on
   [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip)
   (still PROPOSED): if RFC-056 is refused, the duty lists below still stand
-  as profile text in §17.1. Companion to
-  [RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories),
-  [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)
-  and
-  [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions).
+  as profile text in §17.1. Companion to RFC-075, RFC-076 and RFC-077, all
+  accepted the same day.
+- **Ruling (operator, 2026-10-01).** Accepted with the map table
+  anticipated: `relationship_maps` registers 1 `linear_clamp`, 2 `invert`,
+  3 `threshold_hysteresis`, 4 `slew_limit`, 5 `lowpass`, 6 `gate` (output
+  only while the source is inside a range, else safe), 7
+  `piecewise_table`, each defined below with its parameters in physical
+  units (open question 1). Open questions: (2) pause disarms relationships
+  (the [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release) model; no HOLD exists);
+  (3) direct client writes under pause are the operator's act, allowed;
+  (4) stream stamps are applied on arrival with relative offsets, no spoke
+  time sync; (5) relationships are authored through RFC-067 store verbs (a
+  relationships STORE with `action.store`), and `relationship-admin` is
+  dropped; (6) chains allowed, feedback loops rejected at save. Companion:
+  Phosphor authors relationships as a node graph (ph board), the seven
+  maps as nodes. Items 2 to 4 below now read so.
 - **Origin:** operator rulings 2026-09-26. Isotope, the reference accessory
   firmware, is ESPHome-shaped: a declarative config goes through a generator
   to an image. An accessory driven by the machine (a pump following stroke
@@ -5929,7 +6064,10 @@ say exactly which, future-us will want the receipts.*
        client with an ECHO carrying the **accessory's** applied values: the
        accessory is the ground truth (§1.2), not the forward. No answer after
        §13.3's retransmits: NACK `ACCESSORY_OFFLINE`. c2h bundles are
-       forwarded the same way under the client's publication grant.
+       forwarded the same way under the client's publication grant. An
+       accessory runs no CLOCK: it applies a forwarded bundle's samples on
+       arrival, keeping their relative offsets (`t_off`); the spoke has no
+       time sync (ruling).
      - **the sole-caller rule extends to accessories** (§11.4): the host is
        the only thing that commands one.
      - **never widen access.** An actuating accessory channel is at least
@@ -5945,17 +6083,41 @@ say exactly which, future-us will want the receipts.*
      - **target:** a value-bearing field of an accessory's INTENT schema or
        c2h STREAM layout, named by `(absolute channel id, schema key or layout
        index)`;
-     - **map:** from a registered `relationship_maps` table. This RFC
-       registers 1 `linear_clamp`: `out = out_min + (clamp(in, in_min, in_max)
-       - in_min) * (out_max - out_min) / (in_max - in_min)`, with `in_min !=
-       in_max`, then clamped into the target's declared `min`/`max`. All four
-       bounds are in each field's physical units (post-`scale`). Others are
-       open question 1.
+     - **map:** from the registered `relationship_maps` table, seven maps
+       (ruling; the draft registered `linear_clamp` alone). Every bound and
+       parameter is in each field's physical units (post-`scale`), and every
+       map's output is finally clamped into the target's declared
+       `min`/`max`. Let `L(in) = out_min + (clamp(in, in_min, in_max) -
+       in_min) * (out_max - out_min) / (in_max - in_min)`, with `in_min !=
+       in_max`.
+       1. `linear_clamp`: `out = L(in)`.
+       2. `invert`: `out = out_max + out_min - L(in)`, the same line
+          reversed (`in_min` maps to `out_max`).
+       3. `threshold_hysteresis`: parameters `on_above` and `off_below`
+          (source units, `off_below <= on_above`). The output is `out_max`
+          once the source rises to `on_above` and `out_min` once it falls
+          to `off_below`, unchanged in between; it starts at `out_min` when
+          armed.
+       4. `slew_limit`: `L(in)`, with the output's rate of change bounded
+          by `rise_per_s` and `fall_per_s` (target units per second; one
+          value serves both when the second is absent).
+       5. `lowpass`: `L(in)` through a first-order low-pass with time
+          constant `tau_s` (seconds).
+       6. `gate`: `out = L(in)` while `in_min <= in <= in_max`, else the
+          target's `safe` value: output exists only while the source is
+          inside the range.
+       7. `piecewise_table`: up to 8 `(in, out)` points, `in` strictly
+          ascending; linear between points, held at the end values outside
+          them; the four bounds are unused.
+       Parameters beyond the four bounds ride the item's `params` key, an
+       array of up to 16 numbers in the order listed for its map.
      **Evaluation.** On the host, on every source update, writing the target
      only when the mapped output moved by at least the target field's `step`
      (any change if none is declared), no faster than the target channel's
      `max_rate_hz` and, for an INTENT target, within
-     `intent_ingress_default_per_s`. Writes take the proxy path of item 2, so
+     `intent_ingress_default_per_s`. A map with internal state
+     (`slew_limit`, `lowpass`) is also evaluated at the target's
+     `max_rate_hz` while its output is still converging. Writes take the proxy path of item 2, so
      the accessory's ECHO is the truth the relationship reports.
      **Persistence and independence.** Relationships are stored in the host's
      non-volatile storage and survive every session ending and every reboot;
@@ -5976,42 +6138,56 @@ say exactly which, future-us will want the receipts.*
      `"relationship.map"`, `watch` access, with a registered item grammar
      (`relationship_keys`: `rel_id`, `name`, `source_channel`,
      `source_field`, `target_channel`, `target_field`, `map`, `in_min`,
-     `in_max`, `out_min`, `out_max`, `enabled`); §8.7's carve-out applies
-     because the hub interprets the item. Its roster STATE
+     `in_max`, `out_min`, `out_max`, `params`, `enabled`); §8.7's carve-out
+     applies because the hub interprets the item. Its roster STATE
      `relationships-roster`: `{generation u16, count u8, capacity u8, armed
      2 x bitfield8, faulted 2 x bitfield8}`, bit *i* for `rel_id` *i*,
-     `capacity` at most `relationships_max` (16). A core INTENT
-     `relationship-admin` with op select `action.relationship` over
-     `relationship_admin_ops`: `put` (create or replace, the item's fields in
-     the value), `delete`, `enable`/`disable` (`configure`, per-op `access`),
-     `arm`/`disarm` (`control`). Names and relationships are authored from a
-     client, per the rulings; the host only stores and evaluates them.
+     `capacity` at most `relationships_max` (16), joined to the store by
+     RFC-070's `store_id`. **Relationships are authored through [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
+     store verbs** (ruling): a core INTENT carrying an `action.store` op
+     select and the same `store_id`, `configure` access. `save` creates or
+     replaces an item (enabling or disabling is a `save` with `enabled`
+     changed), `delete` removes one, `rename` renames it. **Chains are
+     allowed** (an accessory field may be the source of another
+     accessory's target); a `save` that would close a feedback loop (a
+     cycle through source and target fields) is refused `INVALID_VALUE`.
+     (The draft had a dedicated `relationship-admin` INTENT over
+     `relationship_admin_ops` with `put`, `delete`, `enable`/`disable` and
+     `arm`/`disarm`; it is dropped.) Names and relationships are authored
+     from a client, per the rulings; the host only stores and evaluates
+     them. Phosphor authors them as a node graph, the seven maps as nodes.
   4. **Safety interlock (MUST).**
      - While ESTOP is latched in `safety` (`0x0003`): every relationship is
        disarmed; every relationship target is driven to its `safe` value (the
        accessories also self-safe on the broadcast ESTOP frame, RFC-075 item
        8); client writes to actuating accessory fields are refused
        `ESTOP_ACTIVE`.
-     - On STOP latching: every relationship is disarmed and every target
-       driven to its `safe` value, once. STOP does not refuse later direct
-       client writes (open question 3).
-     - **Nothing re-arms on its own.** An ESTOP clear re-arms nothing (§11.2:
-       "clearing never restarts motion", applied to accessories). STOP's
-       ordinary clear (the next accepted motion intent, §11.1) re-arms
-       nothing either: relationships resume only on an explicit `arm`, the
-       same operator-act principle
+     - On PAUSE latching ([RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)):
+       every relationship is disarmed and every target driven to its `safe`
+       value, once. PAUSE does not refuse later direct client writes: under
+       pause they are the operator's own act, allowed. (The draft said STOP
+       and asked about HOLD and PAUSE; STOP and HOLD are retired.)
+     - **Arming is `resume`.** The `resume` op, the one explicit operator
+       act that clears PAUSE, arms every enabled relationship, the same
+       operator-act principle
        [RFC-074](#rfc-074----stop-semantics-for-streams-refused-while-latched-re-armed-only-by-an-explicit-command)
-       applies to streams.
+       applies to streams. Nothing else arms one: an ESTOP release lands in
+       PAUSE (§11.2, "clearing never restarts motion", applied to
+       accessories), a reboot leaves every relationship disarmed, and
+       saving an enabled relationship arms it only at the next `resume`.
+       (The draft armed through explicit `arm`/`disarm` ops on the dropped
+       `relationship-admin` channel.)
      - The interlock is hub policy and never depends on a client session,
        exactly as the relationships it governs.
 - **Wire impact.** No new frame. New core channels (`relationships` STORE,
-  `relationships-roster` STATE, `relationship-admin` INTENT), the registered
+  `relationships-roster` STATE, and its `action.store` writer INTENT), the registered
   accessory-status layout, and new vocabularies. No existing behavior moves
   for a hub that is not an accessory host.
 - **Registry impact.** §17.1 gains profiles `accessory` and
-  `accessory-host`. New `accessory_states`, `relationship_maps`
-  (`1 linear_clamp`), `relationship_keys`, `relationship_admin_ops`;
-  `action_tags` gains `relationship`; `core_channels` gains the three
+  `accessory-host`. New `accessory_states`, `relationship_maps` (1 to 7
+  as above), `relationship_keys` (with `params`); no
+  `relationship_admin_ops` and no `relationship` action tag (authoring
+  rides `action.store`); `core_channels` gains the three
   entries (ids from `0x000F` headroom); an `accessory_status` layout entry
   for relative id `0x01`; `limits` gains `relationships_max` (16).
 - **Conformance impact.** Accessory profile: a harness over the §13.6
@@ -6020,13 +6196,13 @@ say exactly which, future-us will want the receipts.*
   RFC-075 safe-state entry; it asserts the status snapshot's `state` at each
   step. Host: (1) close every session, move the source: the target follows.
   (2) Latch ESTOP: every target reaches `safe`, statuses read `safe_estop`,
-  a client write is refused `ESTOP_ACTIVE`. (3) Clear ESTOP: targets stay
-  `safe` until `arm`. (4) Reboot: relationships persist, `enabled` intact,
+  a client write is refused `ESTOP_ACTIVE`. (3) Release ESTOP: targets
+  stay `safe` until `resume`. (4) Reboot: relationships persist, `enabled` intact,
   `armed` false. (5) A client write to an armed target: `SOURCE_CONFLICT`.
   (6) Forget the target accessory: the relationship is disabled, one
   `CHANNEL_WITHDRAWN` per grant (RFC-077). (7) A declaration asking for
   `watch` on an actuating channel is served at `control`.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Which maps beyond `linear_clamp`: invert, piecewise table, threshold
      with hysteresis, smoothing or slew limit, speed-to-duty?
   2. HOLD and PAUSE: should they disarm relationships like STOP, or leave
@@ -6043,15 +6219,31 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-079 -- Config mode and the setup category
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Isotope and provisioning).
-  Ruling pending (rfc-ewm). Gives
-  [RFC-069](#rfc-069----client-pushed-wifi-provisioning-over-ble) (client-pushed
-  WiFi provisioning) the hub state it assumes; places
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ewm). Not landed. Gives
+  [RFC-069](#rfc-069----client-pushed-wifi-provisioning-over-ble)
+  (client-pushed WiFi provisioning) the hub state it assumes; places
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)'s
-  accessory pairing control; interacts with
-  [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip)
-  item 2 (item 1 below). Prerequisite on the reference hub: Nucleus has no
-  BLE today.
+  accessory pairing control. Lands together with RFC-055/056/057 (not yet
+  ruled) so the §13.1 BLE sentence reads SHOULD, and MUST where config mode
+  is offered. Prerequisite on the reference hub: Nucleus has no BLE today.
+- **Ruling (operator, 2026-10-01).** Accepted with ui category 15 `setup`
+  (open question 1: a category, not a binding over three existing ones).
+  Config mode activates BLE advertising AND the §13.5 USB serial binding
+  together; both accept RFC-069 `wifi_join`. Open question 2: accessory
+  pairing waits until the hub has joined WiFi (the spoke follows the
+  access point's channel and there is none in config mode). Open question
+  3: `configure` to the first knock in config mode, as drafted. Open
+  question 4: the advertisement bit is enough. **Scope of `setup`
+  (second ruling the same night):** the machine COMMISSIONING surface, not
+  only first-run network: every writable configuration a person needs to
+  make the machine usable, including its geometry and ceilings; pinout and
+  board-level facts stay out. Nucleus follow-up: `machine-config`
+  (0x1000) and the kinetic ceilings move to category `setup`, the wizard
+  steps through them in authoring order, and machine geometry and the
+  ceilings become setup-category settings with sane defaults and a
+  required first-run pass, not compile-time constants. RFC-054 is
+  withdrawn (no hub-discloses-credentials path). Items 1, 4 and 5 below now
+  read so.
 - **Origin:** operator rulings 2026-09-26. First-time WiFi provisioning:
   boot the machine with the pairing button held and it enters **config
   mode**: pairing window open, BLE advertising with the window flag, no WiFi,
@@ -6098,7 +6290,13 @@ say exactly which, future-us will want the receipts.*
      - does **not** associate to WiFi and runs no WebSocket listener
        (`ws_available` clear);
      - MUST NOT operate a softAP. This binds every mode, not only this one:
-       an accessory host never runs a softAP (RFC-075 item 10).
+       an accessory host never runs a softAP (RFC-075 item 10);
+     - activates the §13.5 USB serial binding alongside BLE GATT; both
+       accept RFC-069 `wifi_join`, as first-class paths (ruling; the draft
+       was BLE only);
+     - does not run the RFC-075 spoke: accessory pairing waits until the
+       hub has joined WiFi, because the spoke follows the access point's
+       channel and there is none in config mode (ruling).
      A hub that offers config mode MUST implement BLE GATT; under RFC-056's
      proposed demotion of BLE to SHOULD, config mode is the condition that
      makes it MUST again. Config mode does not wipe anything: factory reset
@@ -6120,8 +6318,11 @@ say exactly which, future-us will want the receipts.*
      so its later WebSocket session after migration is `configure` too.
      Sessions that did not win the grant stay `watch`.
   4. **The `setup` ui category.** `ui_categories` gains **15 `setup`**:
-     "first-run and re-provisioning: network credentials, machine name,
-     accessory pairing". A hub that offers config mode SHOULD place there:
+     the machine's COMMISSIONING surface, "network credentials, machine
+     name, accessory pairing, and the machine's own geometry and ceilings"
+     (ruling; the draft scoped it to first-run and re-provisioning). A hub
+     places there every writable configuration a person needs to make the
+     machine usable. In particular it SHOULD place there:
      - RFC-069's `provisioning` channel;
      - the settings channel carrying `identity.name` (the writable machine
        name, RFC-026; its read-only twin is WELCOME `identity.hub_name`,
@@ -6130,14 +6331,23 @@ say exactly which, future-us will want the receipts.*
        because `category` is entry-level;
      - RFC-076's `accessory-admin` channel (its `window_open` op is the
        accessory pairing control).
-     It MAY add other first-run settings. Categories are static: these
-     entries carry `setup` in every mode, and the catalog does not change
-     with the mode (§8.6 invariance holds).
+     - the machine's own geometry and ceilings: rail length, travel
+       window, speed, accel and jerk ceilings, geometry, the degree-to-mm
+       ratio and the like.
+     Pinout and board-level facts stay out of the catalog. Operator
+     principle (2026-10-01): the Flagship is a motor controller that can be
+     strapped to any machine with a motor; how motor motion becomes machine
+     motion is the OWNER's configuration, entered through `setup`, never
+     firmware knowledge, and the `axis` archetype is the presentation of
+     that configuration, not an assumption in the firmware. Categories are
+     static: these entries carry `setup` in every mode, and the catalog does
+     not change with the mode (§8.6 invariance holds).
   5. **Client conformance.** A client connected to a hub whose advertisement
      carried `config_mode` SHOULD open on the `setup` category, presented
      with the `wizard` widget pattern (RENDERING §10): one step per entry in
      authoring order (§8.9 item 4), the provisioning step showing RFC-069's
-     ECHO or NACK outcome, ending with the §6.3 BLE-to-WS migration. It MUST
+     ECHO or NACK outcome, ending with the §6.3 migration to WS (from BLE or
+     serial). It MUST
      render the category generically from the catalog: never a hub-specific
      screen, never a channel found by name (RENDERING §13 law 6). A client
      that does not know id 15 renders it under `other` (RENDERING §3's
@@ -6156,7 +6366,7 @@ say exactly which, future-us will want the receipts.*
   `wifi_join` sets `ws_available` and clears `config_mode`. Client: a
   fixture catalog whose setup entries carry renamed channels still renders
   the wizard; a client built before id 15 shows those entries under `other`.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. RENDERING §3 freezes the category set "at the v1.0 tag" and records the
      ruling that "adding categories later makes things awful". No tag exists,
      so id 15 is legal today, but it cuts against that intent. A new
@@ -6173,8 +6383,18 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-080 -- User-authored surfaces and presentation choice
 
-- **Status:** DRAFT (operator rulings 2026-09-26, Phosphor builder). Ruling
-  pending (rfc-94c). Amends RENDERING.md only; no wire change.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-94c). Not landed. Amends
+  RENDERING.md only; no wire change. Phosphor implements it (204480e, built
+  "as though accepted" earlier the same day); the RENDERING text is not
+  landed.
+- **Ruling (operator, 2026-10-01).** Accepted. The open questions were
+  decided as veto-able defaults by the orchestrator (operator: "idk"):
+  (1) no hub-side hold-to-run now, its own RFC if an accessory needs it;
+  (2) presentations stay client craft, no portable layout format until a
+  second client exists; (3) single fields placeable anywhere, as coded;
+  (4) a display-only instance of a writable field shows the pending ladder
+  for writes from elsewhere, never only the settled value (law 5). Item 3
+  below now reads so.
 - **Origin:** operator rulings 2026-09-26 for the Phosphor UI builder
   (Phosphor ph-e82.1). Phosphor becomes a builder: a user places controls on
   a grid, where a control is one catalog field with a chosen presentation
@@ -6225,8 +6445,8 @@ say exactly which, future-us will want the receipts.*
      - place a composite without all its essential bindings (law 7): it
        declines, exactly as on a derived page.
   3. **Archetype fixed, presentation chosen.** The archetype is the §8.2
-     first match (including an explicit `archetype` annotation, row 1) and
-     is not user-editable. Within it the user picks a **presentation** by
+     first match and is not user-editable. (The draft added "including an
+     explicit `archetype` annotation, row 1"; RFC-083 struck that row.) Within it the user picks a **presentation** by
      read/write class:
      - a **writable** field (one that writes, per §8.2 rows 3 and 6 to 11)
        may take any writable presentation: knob, slider, stepper,
@@ -6235,7 +6455,9 @@ say exactly which, future-us will want the receipts.*
        bar, bulb, graph, hero numeral and the like;
      - a writable field MAY ALSO be placed with a read-only presentation, as
        a **display-only instance** (the set speed shown as a hero numeral).
-       It writes nothing and shows the applied value.
+       It writes nothing, shows the applied value, and shows the pending
+       ladder (law 5) for writes made elsewhere, never only the settled
+       value (ruling on open question 4).
      Presentations are client vocabulary, not registered. The `stop`
      archetype (row 2) is bound by identity and takes no presentation
      choice beyond the client's own rendering of it.
@@ -6293,7 +6515,7 @@ say exactly which, future-us will want the receipts.*
   `max`; (5) a firmware
   update renaming an unroled field orphans its placement, which is shown as
   missing and never silently rebound.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Should the protocol offer a hub-side hold-to-run (a write that reverts
      unless refreshed) for fields where a held state matters, such as an
      accessory pump? The client-side momentary mode was withdrawn; if the
@@ -6308,13 +6530,16 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-081 -- Advanced-generator master roles
 
-- **Status:** DRAFT (spec contradiction bead rfc-bf4, 2026-10-01). Ruling
-  pending (rfc-bf4). Completes
-  [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride),
-  which binds the lanes and leaves the master controls as its open
-  question 2; this entry answers "separately" so the lane ruling is not held
-  on it, and folds into RFC-066 if the operator prefers one pass. No wire
-  numbers.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-bf4). Not landed. Lands
+  together with
+  [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride)
+  as amended (modulators). No wire numbers.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted, family
+  `advgen.*` (open question 1), landed together with RFC-066 as amended.
+  Masters bind by `advgen.*` roles; modulators attach to them by
+  `mod_target` (open question 2: a modulator names its base by
+  `mod_target`, not by a role). Items 1, 3 and 4 below are aligned with
+  RFC-066 as amended.
 - **Origin:** board bead rfc-bf4 (Phosphor ph-vdk.11 audit). Reference
   shape: Nucleus `flagship_p4/src/hub/ValenceCatalog.h`, entry
   `pattern-advanced` (0x1210), whose eight master fields (`ap_mode`,
@@ -6350,20 +6575,22 @@ say exactly which, future-us will want the receipts.*
      - `advgen.mode`: bool, present only where the advanced program is a mode
        of a generator that also plays the classic `pattern.select` set: true
        = the generator plays the advanced program.
-     These are the six base controls RFC-066's lanes modulate, plus the
-     master scale and the mode switch.
+     These are the six base controls RFC-066's modulators target (by
+     `mod_target`), plus the master scale and the mode switch.
   2. **Run/stop is `pattern.running`.** The master run/stop RENDERING §10
      names binds the `pattern.running` role. A hub offering an advanced
      generator MUST carry `pattern.running` for it; `source.background_run`
      co-locates with it per RENDERING §10.1 unchanged.
   3. **Essential bindings (law 7).** `generator-advanced` binds only when
-     `pattern.running`, `advgen.master`, the six base roles, and RFC-066's
-     minimum of four complete lanes are all present. `advgen.mode` is
+     `pattern.running`, `advgen.master` and the six base roles are all
+     present; modulators attach by `mod_target` and are not essential (the
+     draft also required RFC-066's four-lane minimum, which the RFC-066
+     ruling withdrew). `advgen.mode` is
      essential only when `pattern.select` is present. Anything less falls
      through to `settings-card` (RENDERING §10), which is conformant.
   4. **Cardinality unchanged.** Each `advgen.*` role appears once per
      catalog; SPEC §8.8's SHOULD and first-in-catalog-order tiebreak apply
-     as written (contrast RFC-066 item 3, which exempts lane roles only).
+     as written (RFC-066 as amended writes no exemption either).
   5. **Text corrected.** RENDERING §2.2 "master state" and §10 "master
      controls" gain "(the `advgen.*` roles plus `pattern.running`, RFC-081)";
      the registry `widget_patterns` 10 note gains the same pointer.
@@ -6373,13 +6600,13 @@ say exactly which, future-us will want the receipts.*
 - **Registry impact.** `field_roles` gains eight `advgen.*` strings (string
   vocabulary, nothing numeric to allocate). `widget_patterns` 10 note text.
   No number moves; codegen regenerates the role constants.
-- **Conformance impact.** Fixture: the RFC-066 six-lane catalog plus a
+- **Conformance impact.** Fixture: the RFC-066 six-modulator catalog plus a
   master entry carrying all eight roles and a `pattern-state` entry carrying
   `pattern.running`; assert `generator-advanced` binds. Variants: drop
   `advgen.depth_min` (assert decline to `settings-card`); rename every
   master field (assert the binding survives, law 6). Nucleus follow-up on
   its own board: eight role annotations on 0x1210.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. Family name: `advgen.*` (short, unambiguous) versus folding into
      RFC-066's naming once its open question 3 settles.
   2. Should a lane name its base control by role (lane `ctrl`, RFC-066 open
@@ -6387,8 +6614,11 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-082 -- One home for the rendering wiring state
 
-- **Status:** DRAFT (spec contradiction bead rfc-6au, 2026-10-01). Ruling
-  pending (rfc-6au). Editorial: no wire, registry or conformance change.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-6au). Not landed.
+  Editorial: no wire, registry or conformance change.
+- **Ruling (operator, 2026-10-01).** Accepted; re-measure the annotation
+  counts on Nucleus `ValenceCatalog.h` at landing and stamp Phosphor as the
+  client half. Item 2 below now reads so.
 - **Origin:** board bead rfc-6au. Verified against the reference catalog,
   Nucleus `flagship_p4/src/hub/ValenceCatalog.h` (the `.hasCategory`,
   `.hasRank`, `.hasUnitId` and value-axis annotations on its entries and
@@ -6414,8 +6644,9 @@ say exactly which, future-us will want the receipts.*
      annotation counts are re-measured there (the 113 desc / 44 role figures
      were counted on the archived catalog). Its client half ("no reference
      client yet renders from it", `webui/src`) is re-stamped against
-     Phosphor, the reference renderer named by RENDERING §13, by whoever
-     lands this; this draft does not assert Phosphor's coverage.
+     Phosphor, the reference renderer named by RENDERING §13, as the client
+     half (ruling); the landing measures Phosphor's coverage rather than
+     this text asserting it.
 - **Wire impact.** None.
 - **Registry impact.** None.
 - **Conformance impact.** None; the change removes a self-contradiction a
@@ -6424,11 +6655,21 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-083 -- The archetype hint is struck; `color` and `datetime` bind by role
 
-- **Status:** DRAFT (spec contradiction bead rfc-vdc, 2026-10-01). Ruling
-  pending (rfc-vdc). Carries
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-vdc). Not landed. Option
+  B. Carried
   [RFC-064](#rfc-064----index-0-filler-applies-to-op-selects-only) open
-  question 2. Two options are written out; option B is recommended. No wire
-  numbers under either.
+  question 2. No wire numbers.
+- **Ruling (operator, 2026-10-01).** Accepted, option B: strike the
+  archetype hint; row 4 `pad2d` by identity, rows 16 and 17 by role. RGB
+  only: `color.red`/`green`/`blue`, no HSV role set (convert in firmware;
+  open question 1). `datetime.moment`, `datetime.start` and `datetime.end`
+  carry HUB TIME, seconds in the hub's own §7.1 timebase (unit `hub_s`,
+  [RFC-086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice)),
+  never Unix epoch: the hub needs no RTC and no NTP, and the client
+  converts to wall time with the CLOCK offset it already holds. A stored
+  moment is valid for the hub's current `boot_id`; a client re-arms after a
+  hub reboot. No outside-network time source is assumed anywhere (open
+  question 2). Items 3 and 4 below now read so.
 - **Origin:** board bead rfc-vdc (Phosphor ph-vdk.3 audit), recorded first
   as RFC-064 open question 2.
 - **Problem -- RENDERING derives from an input SPEC forbids.**
@@ -6447,13 +6688,13 @@ say exactly which, future-us will want the receipts.*
   No hub can send the hint and no client can read it, so rows 16 and 17 can
   never fire and `color` and `datetime` are unreachable archetypes, frozen
   into the vocabulary (§14) with no path to them.
-- **Option A -- register the hint.** A new optional layout- and
+- **Option A -- register the hint (not chosen; kept as the record).** A new optional layout- and
   schema-field key `archetype` (uint, a `ui_archetypes` id); §8.9 item 3,
   §1.2 principle 7, §19.1 and the CDDL banner are amended to carve it out.
   Cost: reverses a principle stated in four places, and every hub author
   gains a styling knob the protocol was designed not to have; an archetype
   chosen by firmware also collides with RFC-080's user presentation choice.
-- **Option B (recommended) -- strike row 1, trigger by role.**
+- **Proposed change (as accepted, option B) -- strike row 1, trigger by role.**
   1. **Row 1 is struck**, with the §8 intro clause ("an optional explicit
      `archetype` hint exists for overrides only, and always wins") and the
      §14(c) "unrecognized archetype hint" clause. SPEC is unchanged: it was
@@ -6464,13 +6705,19 @@ say exactly which, future-us will want the receipts.*
      `group` carrying the registered roles `color.red`, `color.green` and
      `color.blue`. All three are essential (law 7); fewer fall through to the
      fallback composition `slider` + `slider` + `slider` (§8.4), which is
-     what they render as today.
+     what they render as today. RGB only: no HSV role set is registered; a
+     hub with an HSV light converts in firmware (ruling).
   4. **Row 17 (`datetime`)** triggers on a writable field carrying the
-     registered role `datetime.moment` (a `u32` count of seconds since the
-     Unix epoch, UTC), or on two fields in one `group` carrying
-     `datetime.start` and `datetime.end` (an interval). A field without the
+     registered role `datetime.moment`, or on two fields in one `group`
+     carrying `datetime.start` and `datetime.end` (an interval). All three
+     carry **hub time**: seconds in the hub's own §7.1 timebase, unit
+     `hub_s` (RFC-086), never Unix epoch. The hub needs no RTC and no NTP;
+     the client converts to wall time with the CLOCK offset it already
+     holds. A stored moment is valid for the hub's current `boot_id`, and a
+     client re-arms it after a hub reboot. (The draft had said a `u32` count
+     of seconds since the Unix epoch, UTC.) A field without the
      role renders as its type says (§8.2 rows 9 to 13), never as a date.
-  5. **Cardinality.** Like RFC-066's lane roles, `color.*` and `datetime.*`
+  5. **Cardinality.** `color.*` and `datetime.*`
      repeat by construction (two lights, two schedules). They are exempt
      from SPEC §8.8's per-catalog SHOULD and MUST appear at most once per
      `group`; the §8.8 first-in-order tiebreak applies within a group.
@@ -6490,7 +6737,7 @@ say exactly which, future-us will want the receipts.*
   sliders), a `datetime.moment` field (assert `datetime`), and an unroled
   `u32` named `start_time` (assert a numeric control, law 6). RENDERING §8.2
   becomes implementable as written, which no client can claim today.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. RGB only, or also an HSV role set? An HSV light could ship
      `color.hue` / `color.saturation` / `color.value` as a second trigger
      set; this draft registers RGB only, the shape the over-provisioned
@@ -6501,8 +6748,15 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-084 -- Future-anchored `samples` points: an arrival time under the same lead cap
 
-- **Status:** DRAFT (spec gap bead rfc-csn, 2026-10-01). Ruling pending
-  (rfc-csn). No wire numbers; widens one existing limit's scope.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-csn). Not landed. Ruled
+  together with [RFC-059](#rfc-059----hub-advertised-scheduling-latency). No
+  wire numbers; widens one existing limit's scope.
+- **Ruling (operator, 2026-10-01).** Accepted as drafted, ruled together
+  with RFC-059 (open question 1): for `samples`-kind grants
+  `schedule_latency_us` states the chase-planning budget. Open question 2:
+  the cross-check holds, no RFC-058 or RFC-071 text moves. Nucleus
+  follow-up: `commit()` treats a chase point's future anchor as its arrival
+  time; ph-vdk.26's sine is the regression case.
 - **Origin:** Phosphor ph-vdk.26, 2026-09-25, against Nucleus. A client that
   stamped `samples` points ahead of hub time (a duration lead, to meet the
   machine at the curve) measured +5.5 % overshoot on a 1 Hz sine at about
@@ -6560,7 +6814,7 @@ say exactly which, future-us will want the receipts.*
   rejected. Nucleus follow-up on its own board: `commit()` treats a chase
   point's future anchor as its arrival time; ph-vdk.26's sine is the
   regression case.
-- **Open questions.**
+- **Open questions (answered 2026-10-01; see Ruling).**
   1. [RFC-059](#rfc-059----hub-advertised-scheduling-latency)'s
      `schedule_latency_us` (rfc-r4v) is where a client learns how far
      behind its stamps the hub executes. Under arrival semantics, for
