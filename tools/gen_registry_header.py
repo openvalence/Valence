@@ -199,6 +199,8 @@ def gen(reg: dict) -> str:
             p(f'inline constexpr std::string_view {ident(key)} = "{v}";\n')
         elif isinstance(v, float):
             p(f"inline constexpr float {ident(key)} = {v}f;\n")
+        elif v < 0:
+            p(f"inline constexpr int32_t {ident(key)} = {v};\n")
         else:
             p(f"inline constexpr uint32_t {ident(key)} = {v};\n")
     p("}  // namespace limits\n\n")

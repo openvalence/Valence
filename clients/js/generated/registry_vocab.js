@@ -1074,6 +1074,8 @@ export const LIMITS = {
   idle_reap_multiplier: 3,
   max_future_schedule_ms: 250,
   max_burst_multiple: 4,
+  segment_end_vel_unspecified: -32768,
+  segment_dwell_span: 0.02,
   segment_handoff_k: 1.5,
   desc_max_bytes: 128,
   nack_detail_max_bytes: 48,

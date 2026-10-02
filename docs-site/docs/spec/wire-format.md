@@ -83,6 +83,8 @@ STATE and STREAM payloads are **packed little-endian structs**. There is no enco
 
 **Explicit field width (forward decodability).** A layout field MAY carry `size` (catalog key 18) — the field's packed width in **bytes**, stated explicitly. Decoders MUST prefer the declared size over the type-derived width; an unknown TYPE with a declared SIZE is then a **skippable hole** rather than a decode wall. Without it, the first registry-added packed type strands every existing client at the first field that uses it: later offsets become unknowable and the entire layout tail goes dark — both shipped generic clients independently carried the identical defensive truncation, which is why this key exists. For known types the declared width MUST equal the type-derived width; conformance checks the agreement, and a mismatch is a catalog-authoring error, never a runtime override.
 
+**The `unspecified` sentinel** (RFC-058). On a motion-input layout ([§9.6](channels.md#s9-6)), a signed integer field reserves its type's minimum value as `unspecified`; zero is a real value (a reversal ends at rest). For the i16 end-velocity field of a segment that is `segment_end_vel_unspecified` (-32768, registry `limits`). It is also the value a sender puts in any field it has no value for (RFC-071).
+
 **STREAM bundle payload layout** (applies to every STREAM channel; the catalog defines only the per-sample struct):
 
 ```

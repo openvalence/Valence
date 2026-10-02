@@ -295,6 +295,8 @@ STATE and STREAM payloads are **packed little-endian structs**. There is no enco
 
 **Explicit field width (forward decodability).** A layout field MAY carry `size` (catalog key 18) — the field's packed width in **bytes**, stated explicitly. Decoders MUST prefer the declared size over the type-derived width; an unknown TYPE with a declared SIZE is then a **skippable hole** rather than a decode wall. Without it, the first registry-added packed type strands every existing client at the first field that uses it: later offsets become unknowable and the entire layout tail goes dark — both shipped generic clients independently carried the identical defensive truncation, which is why this key exists. For known types the declared width MUST equal the type-derived width; conformance checks the agreement, and a mismatch is a catalog-authoring error, never a runtime override.
 
+**The `unspecified` sentinel** (RFC-058). On a motion-input layout (§9.6), a signed integer field reserves its type's minimum value as `unspecified`; zero is a real value (a reversal ends at rest). For the i16 end-velocity field of a segment that is `segment_end_vel_unspecified` (-32768, registry `limits`). It is also the value a sender puts in any field it has no value for (RFC-071).
+
 **STREAM bundle payload layout** (applies to every STREAM channel; the catalog defines only the per-sample struct):
 
 ```
@@ -825,6 +827,8 @@ This section states, as protocol obligation, where kinematic work lives. It exis
 5. **Carry intent, not pre-chewed motion.** Wire design prefers the sender's authored `{target, duration, end_velocity}` over a pre-rendered approximation. A hub can always degrade intent; it can never recover information the client threw away.
 
 **Motion-input field roles** (RFC-071). The layout fields of a c2h STREAM entry carry the §9.6 vocabulary as registered `field_roles`: `input.target` (the commanded position of the sample or segment, in the field's own unit and scale), `input.velocity` (a `samples`-kind point's instantaneous velocity hint), `input.duration` (a `segments`-kind sample's commanded time extent) and `input.end_velocity` (a `segments`-kind sample's velocity at its end, the handoff). **A c2h STREAM entry that accepts motion MUST tag `input.target`**; the other three are tagged where the layout has the field. A client finds the motion-input channel as the c2h STREAM entry of the wanted `stream_kind` carrying an `input.target` field, never by name; a c2h STREAM without `input.target` is some other input, never motion. A client fills every field it has no value for, untagged or not understood (including `input.velocity`, which stays optional), with its `unspecified` value: the §5.4 sentinel registered by RFC-058, one home, never a guessed zero.
+
+**Resolving `unspecified`, and the dwell rule** (RFC-058). A segment whose end velocity is `unspecified` (§5.4) leaves the boundary velocity to the hub. With a scheduled successor the hub MAY derive it from the adjoining chords (the handoff guard's lookahead, below). **Without a scheduled successor the hub MUST resolve `unspecified` to rest (0)**, never to an estimate derived from prior motion: arrival before a hold, a gap or the end of content is rest by definition, and an estimate of past motion cannot know that (measured: a stale estimate coasted past a hold and darted back at 300-800 mm/s). A segment whose target lies within `segment_dwell_span` (registry `limits`, normalized units) of the previous accepted segment's target on the same source is a **hold**: a declared nonzero end velocity on it SHOULD be bounded to zero and surfaced as its own anomaly kind, distinct from a handoff bound (the reference hub's `dwell_zeroed`, kind 10, labeled per §9.4). The test is against the previous **target**, never position: each whip displaces position, so a position test never re-arms. A client MAY emit explicit hold segments across gaps and MAY declare rest explicitly; neither is required for good motion, and a gap with no segment settles the machine (§6.6).
 
 **Limits discovery is for display and optional pre-adaptation.** A hub SHOULD tag its kinematic ceilings and window bounds with `field_roles` (`limit.*`, `window.*`) so a client can find them on *any* hub without hardcoding a channel number. But the normative word for a client acting on them is **MAY, never SHOULD**: a client MUST NOT be required to reason about feasibility in order to produce good motion. Limits are shown to the operator; the machine's job is to play back whatever it is fed as well as it possibly can.
 
@@ -1622,6 +1626,8 @@ The fixture's coverage gaps at v1.0 are stated in §18-7 rather than implied by 
 | `max_future_schedule_ms` | 250 | §5.4 |
 | `max_burst_multiple` | 4 | §10.5 |
 | `segment_handoff_k` | 1.5 | §9.6 |
+| `segment_end_vel_unspecified` | -32768 | §5.4, §9.6 |
+| `segment_dwell_span` | 0.02 | §9.6 |
 | `pairing_window_default_s` | 120 | §12.3 |
 | `pairing_pin_digits` | 4 | §12.3 |
 | `pairing_gesture_boot_count` | 3 | §12.3 |
