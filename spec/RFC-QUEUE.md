@@ -1741,6 +1741,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
 | [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Draft 2026-10-02 |
+| [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Draft 2026-10-02 |
 
 ---
 
@@ -7809,3 +7810,81 @@ say exactly which, future-us will want the receipts.*
      trust, with ownership and roles staying on the machine side?
   4. Whether the generated-vocabulary header exposes tier membership as a
      table clients iterate, or only as a per-category attribute.
+
+## RFC-095 -- Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods
+
+- **Status:** DRAFT (operator-originated, 2026-10-02).
+- **Origin:** operator review of the Advanced Penetration plugin
+  (ph-e82.18), 2026-10-02: "add a crest and trough dwell as a float of
+  periods so a trough dwell @0.5 with a stroke period of 200ms would be
+  100ms of dwell, I get the at min and at max rhythm modifiers do
+  something similar but the dwell is more curve shaping than
+  patternization." The plugin cannot draw what the wire does not carry
+  (RFC-068, RFC-080: plugins present the protocol, never extend it), so
+  the parameter is registered here first.
+- **Problem.** The advanced program (RFC-081) shapes one stroke with six
+  base controls: two depths, two speeds, two accelerations. Its curve
+  reverses the instant it reaches either depth. A hold at the deep end or
+  the shallow end is a property of the stroke's shape, like its
+  acceleration, not a variation across strokes. The rhythm modifiers'
+  `mod.hold` and `mod.rest` (RFC-066) vary a control across strokes and
+  cannot express "every stroke pauses at the top for a tenth of a period".
+- **Proposed change.**
+  1. **Two roles, `field_roles`:** `advgen.dwell_crest` (the hold at the
+     deep bound, `advgen.depth_max`) and `advgen.dwell_trough` (the hold
+     at the shallow bound, `advgen.depth_min`). Each is a layout field of
+     the advanced generator's STATE entry with a `setting_key` on its
+     writer, unit `strokes` (the period of one stroke as the clock, the
+     same unit the modifiers already use), numeric with two decimals, zero
+     = no hold. A dwell of 0.5 on a 200 ms stroke holds 100 ms. No
+     maximum is implied by the role; the field's own `max` bounds it.
+  2. **Semantics (hub MUST):** the dwell is inserted at the bound after
+     the inward or outward half completes and before the reversal starts;
+     the stroke period grows by the dwell (dwell is additive, it does not
+     compress the moving halves). Speed and acceleration bases are
+     unchanged. A modifier whose `mod_target` is a dwell field varies it
+     per stroke exactly as it varies any other base control.
+  3. **Rendering (RENDERING §10 `generator-advanced`):** the two dwells
+     are optional bindings; a client that finds them renders them with the
+     base controls (the reference plugin draws them as handles on the
+     stroke curve and marks a long hold as a truncated flat). Absent
+     roles: nothing to draw, the widget does not decline.
+  4. **Reference hub:** two new base controls in `AdvancedPattern`,
+     appended to 0x1210 at the tail per SPEC §5.4 with writer keys 46 and
+     47 on 0x3210, each a u16 at 0.01 strokes (0 to 655.35), gated by a
+     second `meta.enabled_mask` bitfield (the first is full: seven knobs
+     and `running`). Two more modifier entries (RFC-066) ride their
+     `mod_target`s. Etag moves.
+- **Pros.** The hold is a stroke-shape control where it belongs; presets
+  capture it; modifiers can ride it; the plugin's curve and the hub's
+  motion agree. Additive dwell keeps every existing preset's stroke
+  identical at dwell 0.
+- **Cons.** Two more fields and two more modifier entries on a hub whose
+  0x1210 enabled mask is already full. A dwell is a hold at a bound where
+  the rail is at rest, which is also where a stall is least visible: the
+  plan strip must keep showing "holding" so a long dwell is not mistaken
+  for a stalled source.
+- **Cost.** Registry: two role strings and codegen. Spec: one paragraph in
+  RENDERING §10. Nucleus: `AdvancedPattern` stroke planner, catalog
+  fields, second mask, two modifier entries, presets payload grows by two
+  values (migration: absent reads 0), sim rebuild, fixture re-record in
+  Phosphor. Phosphor: the plugin's dwell handles (designed, waiting on
+  this); the generic widget renders the fields by role for free.
+- **Wire impact.** Two new layout fields, two writer keys, one mask byte,
+  two modifier entries on an adopting hub; etag moves. No numbers in the
+  registry beyond the role strings.
+- **Registry impact.** `field_roles`: two additions; `widget_patterns` 10
+  note names them as optional.
+- **Conformance impact.** Hub: dwell 0 reproduces today's stroke exactly;
+  a modifier targeting a dwell varies it. Client: optional bindings only.
+- **Compatibility.** Presets stored before this RFC load with dwell 0.
+- **Open questions.**
+  1. Additive dwell (this draft) or dwell within the period (the moving
+     halves compress so the period holds)? Additive matches "a float of
+     periods" and keeps old presets identical; within-period keeps the
+     rate under a modifier ride.
+  2. u16 at 0.01 strokes (this draft) or f32? Two bytes each is the
+     cheaper snapshot; f32 is the honest "float of periods".
+  3. Does a dwell count toward the modifiers' stroke clock (one stroke =
+     move in, hold, move out, hold)? This draft says yes: a period is
+     the whole cycle.
