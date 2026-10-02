@@ -756,6 +756,7 @@ field_roles:
   # by a client hardcoding the channel id. A command role generally has a
   # telemetry.* counterpart to pair with (command.position <-> telemetry.target).
   "command.position":    { note: "RFC-032: INTENT field carrying a commanded ABSOLUTE target position in the channel's own unit. A client that finds it MAY render a positional control (rail, tape, slider) and send the value on that field's channel." }
+  "axis.flipped":        { note: "RFC-088 (§9.6): a stored, writable bool (or two-option select) setting: the rail's direction flip. On, position 0 is the far end; the hub mirrors telemetry, the travel window and every c2h target against geometry.measured_travel. A change is refused SOURCE_CONFLICT while a source owns the rail, NOT_HOMED while unhomed, INTERLOCK under override or in motion. Rendered as the confirm-gated Flip toggle on the axis control row." }
   # ---- input.* (RFC-071): the §9.6 motion-input vocabulary on the layout
   # fields of a c2h STREAM entry. A motion-accepting entry MUST tag
   # input.target; it is how a client finds the motion input without a name.

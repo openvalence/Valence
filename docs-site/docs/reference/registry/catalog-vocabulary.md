@@ -79,6 +79,7 @@ role is never an error.
 | `pattern.stroke` | pattern generator stroke-length knob, as a percentage of the available depth |
 | `pattern.sensation` | pattern generator character knob; what it changes depends on the selected pattern |
 | `command.position` | RFC-032: INTENT field carrying a commanded ABSOLUTE target position in the channel's own unit. A client that finds it MAY render a positional control (rail, tape, slider) and send the value on that field's channel. |
+| `axis.flipped` | RFC-088 (§9.6): a stored, writable bool (or two-option select) setting: the rail's direction flip. On, position 0 is the far end; the hub mirrors telemetry, the travel window and every c2h target against geometry.measured_travel. A change is refused SOURCE_CONFLICT while a source owns the rail, NOT_HOMED while unhomed, INTERLOCK under override or in motion. Rendered as the confirm-gated Flip toggle on the axis control row. |
 | `input.target` | RFC-071: the commanded position of a motion-input sample or segment, in the field's own unit and scale. REQUIRED on a c2h STREAM entry that accepts motion. |
 | `input.velocity` | RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a client that does not understand it leaves the field at its unspecified sentinel (§5.4). |
 | `input.duration` | RFC-071: a segments-kind sample's commanded time extent |

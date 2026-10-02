@@ -1116,6 +1116,7 @@ export const FIELD_ROLE = {
   pattern_stroke: 'pattern.stroke',  // pattern generator stroke-length knob, as a percentage of the available depth
   pattern_sensation: 'pattern.sensation',  // pattern generator character knob; what it changes depends on the selected pattern
   command_position: 'command.position',  // RFC-032: INTENT field carrying a commanded ABSOLUTE target position in the channel's own unit. A
+  axis_flipped: 'axis.flipped',  // RFC-088 (§9.6): a stored, writable bool (or two-option select) setting: the rail's direction fli
   input_target: 'input.target',  // RFC-071: the commanded position of a motion-input sample or segment, in the field's own unit and
   input_velocity: 'input.velocity',  // RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a client that does not un
   input_duration: 'input.duration',  // RFC-071: a segments-kind sample's commanded time extent
