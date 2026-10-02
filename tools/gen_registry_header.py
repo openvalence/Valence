@@ -173,6 +173,7 @@ def gen(reg: dict) -> str:
     # ---- Bit-flag spaces ----------------------------------------------------
     emit_bits(p, reg["setting_flags"], "setting_flags")
     emit_bits(p, reg["pairing_modes"], "pairing_modes")
+    emit_bits(p, reg["beacon_flags"], "beacon_flags")
 
     # ---- Field roles --------------------------------------------------------
     # These are TSTR values on the wire (dotted namespace, device-extensible),
@@ -271,6 +272,7 @@ JS_BIT_TABLES = (
     ("SETTING_FLAG", "setting_flags"),
     ("PAIRING_MODE", "pairing_modes"),
     ("BLE_ADV_FLAG", "ble_adv_flags"),
+    ("BEACON_FLAG",  "beacon_flags"),
 )
 
 # (JS export, registry section) — tstr-keyed spaces: the KEY is the wire value.

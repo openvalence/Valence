@@ -47,14 +47,14 @@ header always carries the length, so skipping is safe.
 | `0x14` | `PAIR_REQ` | `c2h` | `control` | §12.2 |
 | `0x15` | `PAIR_GRANT` | `h2c` | `control` | §12.2 |
 | `0x16` | `ACKMASK` | `any` | `raw` | §13.3 |
-| `0x17` | `BEACON` | `h2c` | `raw` | §13.7 |
+| `0x17` | `BEACON` | `h2c` | `raw` | §13.7, §13.3.1 |
 | `0x18` | `PUBLISH` | `c2h` | `control` | §6.6 |
 | `0x19` | `CATALOG_READY` | `c2h` | `raw` | §8.4 |
 | `0x1A` | `BLOB_REQ` | `c2h` | `control` | §8.4 |
 | `0x1B` | `BLOB_CHUNK` | `h2c` | `raw` | §8.4 |
 | `0x1C` | `AUTH` | `c2h` | `control` | §12.2 |
 | `0x1D` | `HUB_SIG` | `h2c` | `control` | §12.2 |
-| `0x1E` | `DISCOVER_PROBE` | `c2h` | `raw` | §13.8 |
+| `0x1E` | `DISCOVER_PROBE` | `c2h` | `raw` | §13.8, §13.3.1 |
 | `0x1F` | `DISCOVER_REPLY` | `h2c` | `raw` | §13.8 |
 | `0x20` | `BLOB_DONE` | `any` | `raw` | §8.4 |
 | `0xE5` | `ESTOP` | `any` | `raw` | §5.5, §11.2 |

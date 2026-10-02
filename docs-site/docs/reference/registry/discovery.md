@@ -47,6 +47,18 @@ zero.
 | `0x02` | `bit 1` | `ws_available` | the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected client SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME `ws_port`/`ipv4` (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway. |
 | `0x04` | `bit 2` | `config_mode` | RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A client SHOULD mark the hub 'needs setup' and open on ui_categories 15 setup. |
 
+## ESP-NOW BEACON flags
+
+The `flags` byte of the pinned BEACON (`0x17`) payload, the accessory
+spoke's heartbeat (SPEC §13.3.1). Bits not listed are zero.
+
+| Mask | Bit | Name | Notes |
+|---|---|---|---|
+| `0x01` | `bit 0` | `pairing_window_open` | a §12.3 association window is open (the original BEACON pairing flag) |
+| `0x02` | `bit 1` | `datagram_estop` | this hub accepts ESTOP frames from any peer on its channel (the RFC-053 item 2b mirror bit, ratified by RFC-075) |
+| `0x04` | `bit 2` | `accessory_host` | RFC-075: this hub runs the ESP-NOW spoke and accepts accessory joins (§13.3.1, §8.10) |
+| `0x08` | `bit 3` | `estop_latched` | RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every ESTOP repeat. |
+
 ## UDP discovery
 
 This is the canonical WS-side discovery path for a LAN client without

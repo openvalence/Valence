@@ -85,6 +85,7 @@ Each of the following is a normative limitation of `valence/1`. An implementatio
 | H10 | Relay reliability is **hop-by-hop**. The hub knowing a frame reached the relay does not mean the client got it. | [§14.2](transports.md#s14-2) |
 | H11 | The hub's handoff sanity bound ([§9.6](channels.md#s9-6)) is **lookahead-bounded**: it can only act when a segment's successor is already scheduled, which is not guaranteed for long segments. | [§9.6](channels.md#s9-6), [§18](limitations.md#s18) |
 | H12 | Denial of service is out of scope. A LAN attacker can jam the radio regardless of anything this document says. | [§12.1](security.md#s12-1) |
+| H13 | The ESP-NOW accessory spoke is **unencrypted and unauthenticated** at every tier. Anyone in radio range with an ESP32 can read every spoke frame, forge a BEACON, ESTOP, GOODBYE, INTENT or STREAM bundle an accessory will act on, forge accessory telemetry to the host, keep an accessory alive after its hub died by forging beacons, or jam the channel (H12). The accessory deadman protects against a dead or departed hub, not against an attacker, and is not a substitute for the accessory's own hardware interlocks (H1 applies to accessories verbatim). | [§13.3](transports.md#s13-3).1 |
 
 > DEMO-CANDIDATE: a single searchable page, one card per honesty clause,
 > linking each straight to its section — the thing a security reviewer

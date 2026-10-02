@@ -125,3 +125,11 @@ registry's own rationale where it records one.
 | `provision_join_timeout_ms` | `20000` | RFC-069 (§13.9): longest a hub defers its answer to a provisioning wifi_join before NACK NETWORK_JOIN_FAILED. Covers association plus DHCP on a slow access point. |
 | `log_replay_depth_default` | `32` | entries the hub MAY replay from its ring tail when a session is granted the log channel. THE named exception to §9.4's no-replay rule ("except where a channel's catalog entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every grant a burst. |
 
+## ESP-NOW accessory spoke (RFC-075, §13.3.1)
+
+| Name | Value | Notes |
+|---|---|---|
+| `spoke_beacon_interval_ms` | `1000` | an accessory host's BEACON cadence while the spoke is up (500 ms while a pairing window is open) |
+| `spoke_deadman_ms` | `5000` | accessory deadman default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms. |
+| `spoke_scan_dwell_ms` | `150` | an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join. |
+

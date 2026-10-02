@@ -37,14 +37,14 @@ export const FRAME = {
   PAIR_REQ: 0x14,  // §12.2
   PAIR_GRANT: 0x15,  // §12.2
   ACKMASK: 0x16,  // §13.3
-  BEACON: 0x17,  // §13.7
+  BEACON: 0x17,  // §13.7, §13.3.1
   PUBLISH: 0x18,  // §6.6
   CATALOG_READY: 0x19,  // §8.4
   BLOB_REQ: 0x1a,  // §8.4
   BLOB_CHUNK: 0x1b,  // §8.4
   AUTH: 0x1c,  // §12.2
   HUB_SIG: 0x1d,  // §12.2
-  DISCOVER_PROBE: 0x1e,  // §13.8
+  DISCOVER_PROBE: 0x1e,  // §13.8, §13.3.1
   DISCOVER_REPLY: 0x1f,  // §13.8
   BLOB_DONE: 0x20,  // §8.4
   ESTOP: 0xe5,  // §5.5, §11.2
@@ -957,6 +957,20 @@ export const BLE_ADV_FLAG_NAME = {
   4: 'config_mode',
 };
 
+// ---- beacon_flags (bit flags) --------------------------------------
+export const BEACON_FLAG = {
+  pairing_window_open: 1 << 0,  // a §12.3 association window is open (the original BEACON pairing flag)
+  datagram_estop: 1 << 1,  // this hub accepts ESTOP frames from any peer on its channel (the RFC-053 item 2b mirror bit, rati
+  accessory_host: 1 << 2,  // RFC-075: this hub runs the ESP-NOW spoke and accepts accessory joins (§13.3.1, §8.10)
+  estop_latched: 1 << 3,  // RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing
+};
+export const BEACON_FLAG_NAME = {
+  1: 'pairing_window_open',
+  2: 'datagram_estop',
+  4: 'accessory_host',
+  8: 'estop_latched',
+};
+
 // ---- field_roles (tstr wire values) -------------------------------
 export const FIELD_ROLE = {
   limit_user_speed: 'limit.user.speed',  // speed ceiling of the USER (manual) limit set. CEILING, never a target.
@@ -1115,5 +1129,8 @@ export const LIMITS = {
   auth_attempts_max: 3,
   provision_join_timeout_ms: 20000,
   log_replay_depth_default: 32,
+  spoke_beacon_interval_ms: 1000,
+  spoke_deadman_ms: 5000,
+  spoke_scan_dwell_ms: 150,
   ws_subprotocol: 'valence.v1',
 };

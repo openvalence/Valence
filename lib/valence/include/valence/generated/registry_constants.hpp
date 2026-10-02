@@ -34,14 +34,14 @@ enum class FrameType : uint8_t {
     PAIR_REQ = 0x14,  // c2h, control, §12.2
     PAIR_GRANT = 0x15,  // h2c, control, §12.2
     ACKMASK = 0x16,  // any, raw, §13.3
-    BEACON = 0x17,  // h2c, raw, §13.7
+    BEACON = 0x17,  // h2c, raw, §13.7, §13.3.1
     PUBLISH = 0x18,  // c2h, control, §6.6
     CATALOG_READY = 0x19,  // c2h, raw, §8.4
     BLOB_REQ = 0x1A,  // c2h, control, §8.4
     BLOB_CHUNK = 0x1B,  // h2c, raw, §8.4
     AUTH = 0x1C,  // c2h, control, §12.2
     HUB_SIG = 0x1D,  // h2c, control, §12.2
-    DISCOVER_PROBE = 0x1E,  // c2h, raw, §13.8
+    DISCOVER_PROBE = 0x1E,  // c2h, raw, §13.8, §13.3.1
     DISCOVER_REPLY = 0x1F,  // h2c, raw, §13.8
     BLOB_DONE = 0x20,  // any, raw, §8.4
     ESTOP = 0xE5,  // any, raw, §5.5, §11.2
@@ -420,6 +420,13 @@ inline constexpr uint8_t pin_proof = 1u << 1;  // the HMAC-PIN flow, for keyboar
 inline constexpr uint8_t push_to_pair = 1u << 2;  // PHYSICAL-PRESENCE proof opens a short SINGLE-GRANT window. The spec requires the PROOF, not a GPIO; minimum hardware is NONE, because the power cord is the button: factory-fresh (zero configure tokens) boots claimable and the first knock gets `configure` (possession is root); later, N=3 consecutive boots with uptime <10 s opens the window (NVS counter only; cannot collide with a session, since any power loss already stops motion and forces re-home). A hub with a real button MAY bind it: a UX upgrade, never required. FACTORY RESET MUST BE A HARDER GESTURE than opening pairing.
 }  // namespace pairing_modes
 
+namespace beacon_flags {
+inline constexpr uint8_t pairing_window_open = 1u << 0;  // a §12.3 association window is open (the original BEACON pairing flag)
+inline constexpr uint8_t datagram_estop = 1u << 1;  // this hub accepts ESTOP frames from any peer on its channel (the RFC-053 item 2b mirror bit, ratified by RFC-075)
+inline constexpr uint8_t accessory_host = 1u << 2;  // RFC-075: this hub runs the ESP-NOW spoke and accepts accessory joins (§13.3.1, §8.10)
+inline constexpr uint8_t estop_latched = 1u << 3;  // RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every ESTOP repeat.
+}  // namespace beacon_flags
+
 namespace field_roles {
 inline constexpr std::string_view limit_user_speed = "limit.user.speed";  // speed ceiling of the USER (manual) limit set. CEILING, never a target.
 inline constexpr std::string_view limit_user_accel = "limit.user.accel";  // accel ceiling of the user limit set
@@ -600,6 +607,9 @@ inline constexpr uint32_t hub_sig_timeout_ms = 3000;
 inline constexpr uint32_t auth_attempts_max = 3;
 inline constexpr uint32_t provision_join_timeout_ms = 20000;
 inline constexpr uint32_t log_replay_depth_default = 32;
+inline constexpr uint32_t spoke_beacon_interval_ms = 1000;
+inline constexpr uint32_t spoke_deadman_ms = 5000;
+inline constexpr uint32_t spoke_scan_dwell_ms = 150;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";
 }  // namespace limits
 

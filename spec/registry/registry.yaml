@@ -50,14 +50,14 @@ frame_types:
   0x14: { name: PAIR_REQ,       dir: c2h, plane: control, ref: "§12.2" }
   0x15: { name: PAIR_GRANT,     dir: h2c, plane: control, ref: "§12.2" }
   0x16: { name: ACKMASK,        dir: any, plane: raw,     ref: "§13.3" }  # ESP-NOW binding: base_seq:u16 + mask:u32
-  0x17: { name: BEACON,         dir: h2c, plane: raw,     ref: "§13.7" }  # ESP-NOW discovery: hub id + etag + pairing flag
+  0x17: { name: BEACON,         dir: h2c, plane: raw,     ref: "§13.7, §13.3.1" }  # ESP-NOW discovery and, on an accessory host, the spoke heartbeat (RFC-075). Pinned payload, LE, tail-extensible: boot_id:u32 + catalog_etag:8B + flags:u8 (`beacon_flags`) + hub_instance_id:u64 + wifi_channel:u8 = 22 B. Header channel 0x0000, header seq = beacon sequence. Cadence: 500 ms while a pairing window is open; an accessory host also every spoke_beacon_interval_ms always.
   0x18: { name: PUBLISH,        dir: c2h, plane: control, ref: "§6.6" }   # RFC-013: mid-session publish renegotiation — carries `publishes` (11); answered like SUBSCRIBE (GRANT / granted_publishes)
   0x19: { name: CATALOG_READY,  dir: c2h, plane: raw,     ref: "§8.4" }   # RFC-015: payload = the 8-byte etag the client now operates against. Idempotent; re-sent at catalog_chunk_gap_timeout_ms until retained STATE arrives.
   0x1A: { name: BLOB_REQ,       dir: c2h, plane: control, ref: "§8.4" }   # RFC-021: generalizes CATALOG_REQ — carries `blob` (38) to select namespace/store/slot, plus `chunks` (27) for repair
   0x1B: { name: BLOB_CHUNK,     dir: h2c, plane: raw,     ref: "§8.4" }   # RFC-021: generalizes CATALOG_CHUNK — raw header names the same identity fields as `blob_keys`, then chunk bytes
   0x1C: { name: AUTH,           dir: c2h, plane: control, ref: "§12.2" }  # RFC-029: post-WELCOME token proof (`trust`.token_proof); hub re-issues `roles` (23) on success, NACK UNAUTHORIZED on failure. Exists because a 2nd HELLO would self-evict via §6.3's duplicate-instance rule.
   0x1D: { name: HUB_SIG,        dir: h2c, plane: control, ref: "§12.2" }  # RFC-029 item 1, DEFERRED DELIVERY of the WELCOME signature. Payload is the `trust` (39) sub-map carrying `welcome_sig` (5) — nothing else, so the decode surface is one already-fuzzed sub-map. EXISTS BECAUSE SIGNING IS SLOW WHERE IT MATTERS: the S3 has no ECC accelerator, so mbedtls software ECDSA is ~30-80 ms in ONE uninterruptible call, and a hub that signed inline in WELCOME would stall its own tick (5 ms period) for 6-16 ticks — stalling STATE pacing, deadman detection and any motion-input drain sharing that task, for EVERY connecting client. A hub that CAN sign cheaply (host, sim, a C3/C6/H2 with the ECC peripheral) MAY instead put `welcome_sig` directly in WELCOME; the two are wire-alternatives with identical signature material and identical client handling, and a hub that never signs at all sends neither and stays conformant.
-  0x1E: { name: DISCOVER_PROBE, dir: c2h, plane: raw,     ref: "§13.8" }   # RFC-046 §5: UDP discovery probe, broadcast on `udp_discovery.port` by a client with no BLE (or wanting WS-side discovery). No session; unicast REPLY answers it. Raw payload: magic(4B, `udp_discovery.magic`) + proto_ver:u8 + nonce:u32 (client entropy, echoed in the reply).
+  0x1E: { name: DISCOVER_PROBE, dir: c2h, plane: raw,     ref: "§13.8, §13.3.1" }   # RFC-046 §5: UDP discovery probe, broadcast on `udp_discovery.port` by a client with no BLE (or wanting WS-side discovery). No session; unicast REPLY answers it. RFC-075: also broadcast on the ESP-NOW spoke by a scanning accessory, payload unchanged; an accessory host answers with an out-of-cadence broadcast BEACON. Raw payload: magic(4B, `udp_discovery.magic`) + proto_ver:u8 + nonce:u32 (client entropy, echoed in the reply).
   0x1F: { name: DISCOVER_REPLY, dir: h2c, plane: raw,     ref: "§13.8" }   # RFC-046 §5, corrected by RFC-048 (operator veto, 2026-07-27): UDP discovery reply, hub-unicast back to the probe's source. Raw payload: magic(4B) + nonce:u32 (echoed) + hub_name:str32 (packed_field_types 9, RFC-026) + hub_instance_id:u64 (the hub's DURABLE cross-boot identity, identity_keys 5 — replaces this field's original RFC-046 payload, which reused the per-boot `boot_id`, §6.1; a boot-scoped id cannot deduplicate "two hubs sharing a name" across a reboot, which was this field's whole job) + proto_ver:u8 + ws_port:u16 + fw_version:str16 (packed_field_types 8) + catalog_etag:8B + flags:u8 (bit0 pairing_window_open — same philosophy as the 0x17 BEACON payload, plus the endpoint). Total payload grows 72B -> 76B (+4, u32->u64). Read-only identity, no control surface. Replies are rate-limited (`udp_discovery.reply_rate_limit_per_source_s`) so a probe storm cannot load the hub. RFC-046's own entry flagged this exact field for operator veto at landing; RFC-048 is that veto.
   0x20: { name: BLOB_DONE,      dir: any, plane: raw,     ref: "§8.4" }   # RFC-050: positive transfer-completion signal, generalizing CATALOG_READY's pattern (§6.4) to every blob namespace rather than a second frame per namespace. Raw payload: the same identity fields as `blob_keys` (namespace, store_id, slot, generation) + status:u8 (0 verified-complete, 1 hash-mismatch, 2 aborted). **Sent by the RECEIVER of a transfer** — for a hub-to-client blob (the common case) that is the client; for a client-to-hub STORE import it is the hub. Idempotent, like CATALOG_READY: safe to re-send on a duplicate or a retried reassembly. The sender treats a nonzero `status` per its own retry policy (this frame reports outcome, it does not itself request a retry). Implementation: Phase D (post-batch hub work) — see RFC-050.
   0xE5: { name: ESTOP,          dir: any, plane: raw,     ref: "§5.5, §11.2" }
@@ -918,6 +918,19 @@ ble_adv_flags:
   # bits 3-7 reserved, zero
 
 # ---------------------------------------------------------------------------
+# BEACON flags (u8) — the `flags` byte of the pinned BEACON (0x17) payload
+# (RFC-075, §13.3.1). No STOP/PAUSE bit by ruling: those reach accessories
+# as commanded safe values through the relationship interlock. Bits not
+# listed MUST be zero.
+# ---------------------------------------------------------------------------
+beacon_flags:
+  bit0: { name: pairing_window_open, note: "a §12.3 association window is open (the original BEACON pairing flag)" }
+  bit1: { name: datagram_estop,      note: "this hub accepts ESTOP frames from any peer on its channel (the RFC-053 item 2b mirror bit, ratified by RFC-075)" }
+  bit2: { name: accessory_host,      note: "RFC-075: this hub runs the ESP-NOW spoke and accepts accessory joins (§13.3.1, §8.10)" }
+  bit3: { name: estop_latched,       note: "RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every ESTOP repeat." }
+  # bits 4-7 reserved, zero
+
+# ---------------------------------------------------------------------------
 # UDP discovery (RFC-046 §5) — a minimal broadcast probe/reply pair, the
 # canonical WS-side discovery path for LAN clients without BLE (desktop
 # shells, MFP, Intiface): plain sockets both ends, immune to the
@@ -1261,6 +1274,11 @@ limits:
   # ---- logging (RFC-017) ---------------------------------------------------
   provision_join_timeout_ms: 20000  # RFC-069 (§13.9): longest a hub defers its answer to a provisioning wifi_join before NACK NETWORK_JOIN_FAILED. Covers association plus DHCP on a slow access point.
   log_replay_depth_default: 32      # entries the hub MAY replay from its ring tail when a session is granted the log channel. THE named exception to §9.4's no-replay rule ("except where a channel's catalog entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every grant a burst.
+
+  # ---- ESP-NOW accessory spoke (RFC-075, §13.3.1) -------------------------
+  spoke_beacon_interval_ms: 1000    # an accessory host's BEACON cadence while the spoke is up (500 ms while a pairing window is open)
+  spoke_deadman_ms: 5000            # accessory deadman default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms.
+  spoke_scan_dwell_ms: 150          # an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join.
 
   ws_subprotocol: "valence.v1"
   # mdns_service ("_valence._tcp") RETIRED pre-tag by RFC-072: no mDNS service

@@ -126,6 +126,7 @@ SECTION_HOMES: dict[str, str] = {
     "limits": "limits.md",
     "ble_identity": "discovery.md",
     "ble_adv_flags": "discovery.md",
+    "beacon_flags": "discovery.md",
     "udp_discovery": "discovery.md",
     "ui_categories": "rendering.md",
     "ui_ranks": "rendering.md",
@@ -719,6 +720,11 @@ def page_discovery(reg: dict, reg_display: str) -> str:
     p("after the service UUID and a shortened hub name. Bits not listed are\n")
     p("zero.\n\n")
     table(p, ["Mask", "Bit", "Name", "Notes"], bit_rows(reg["ble_adv_flags"]))
+
+    p("## ESP-NOW BEACON flags\n\n")
+    p("The `flags` byte of the pinned BEACON (`0x17`) payload, the accessory\n")
+    p("spoke's heartbeat (SPEC §13.3.1). Bits not listed are zero.\n\n")
+    table(p, ["Mask", "Bit", "Name", "Notes"], bit_rows(reg["beacon_flags"]))
 
     p("## UDP discovery\n\n")
     p("This is the canonical WS-side discovery path for a LAN client without\n")
