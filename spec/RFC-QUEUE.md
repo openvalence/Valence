@@ -3491,8 +3491,15 @@ positive application-level acknowledgment that a transfer completed"
 
 ## RFC-054 — WiFi and ESP-NOW provisioning over BLE: the credentials handoff
 
-- **Status:** **PROPOSED** (queued for operator ruling, 2026-07-29 —
-  problem statement + option space; the design gets pinned at the ruling).
+- **Status:** **WITHDRAWN** (operator, 2026-10-01; rfc-rbe). A hub never
+  discloses its own WiFi credentials: there is no hub-discloses-credentials
+  path. [RFC-069](#rfc-069----client-pushed-wifi-provisioning-over-ble)
+  covers provisioning in the only direction that matters (the client holds
+  the credentials and pushes them in, over BLE GATT or §13.5 USB serial in
+  [RFC-079](#rfc-079----config-mode-and-the-setup-category)'s config mode).
+  Embedded clients and Isotope accessories are ESP-NOW only unless they can
+  be provisioned on their own through RFC-069/079. The text below is kept
+  as the record.
 - **Origin:** §13.2 already names BLE GATT the hardware-hub conformance
   floor partly because *"the future WiFi-provisioning admin channel"*
   wants it — this RFC is that named future arriving. Made immediate by
@@ -3668,7 +3675,8 @@ say exactly which, future-us will want the receipts.*
      36 KB** — to satisfy a checkbox its deployment never uses.
   3. **The credential bootstrap has no stated owner once BLE is optional.**
      §13.1 leans on BLE as "the infrastructure-free path… the future
-     WiFi-provisioning admin channel"; RFC-054 builds provisioning ON BLE. Drop
+     WiFi-provisioning admin channel"; RFC-069 (repointed 2026-10-01 from the
+     withdrawn RFC-054) pushes provisioning over BLE or serial. Drop
      the BLE MUST and a WiFi-only hardware hub has no spec'd way to receive
      credentials, which is a hole, not a simplification.
 - **Proposed change.**
@@ -3691,8 +3699,9 @@ say exactly which, future-us will want the receipts.*
      and no BLE is fully conformant.
   3. **New client duty, replacing what the BLE MUST implicitly guaranteed:**
      a client that can provision a HARDWARE hub **MUST** provide a way for the
-     user to enter WiFi credentials — a form, a QR scan, a BLE handoff
-     (RFC-054), a captive portal, an SD card, whatever suits it. The spec
+     user to enter WiFi credentials — a form, a QR scan, an RFC-069 push
+     over BLE or serial (repointed 2026-10-01 from the withdrawn RFC-054), a
+     captive portal, an SD card, whatever suits it. The spec
      mandates the CAPABILITY, never the mechanism. Without this, dropping the
      BLE MUST would strand a factory-fresh hub with no route onto a network.
   4. **Amend §13.1's "Clients SHOULD auto-upgrade BLE→WS"** to be conditional
@@ -4446,17 +4455,42 @@ say exactly which, future-us will want the receipts.*
      stream, RFC-020)? This RFC registers only the one with a shipping
      instance.
 
-## RFC-066 -- Advanced-generator lanes are catalog-declared instances
+## RFC-066 -- Modulators: catalog-declared modifiers attached to the field they ride
 
-- **Status:** DRAFT (Phosphor reference-client audit, 2026-09-25). Ruling
-  pending (rfc-0sm). Item 3 is the resolution of spec contradiction bead
-  rfc-oy6 (SPEC §8.8 per-catalog role cardinality vs one lane role per
-  lane); items 1-2 resolve the lane half of rfc-bf4, whose master half is
-  [RFC-081](#rfc-081----advanced-generator-master-roles).
+- **Status:** ACCEPTED AS AMENDED (operator, 2026-10-01; rfc-0sm). Not
+  landed. Retitled from "Advanced-generator lanes are catalog-declared
+  instances": the term "lane" is retired, the role family is `mod.*`, one
+  modulator per entry, attached to its base field by `mod_target`. Lands
+  together with
+  [RFC-081](#rfc-081----advanced-generator-master-roles) (accepted the same
+  day), whose `advgen.*` base controls are what modulators target. Resolves
+  spec contradiction bead rfc-oy6 (SPEC §8.8 per-catalog role cardinality)
+  by construction rather than by exemption, and the modulator half of
+  rfc-bf4.
+- **Ruling (operator, 2026-10-01).** Accepted as amended: retitle to
+  modulators; term "modulator", role family `mod.*` on the modulator's
+  fields (`mod.amount`, `mod.rise`, `mod.hold`, `mod.fall`, `mod.rest`,
+  `mod.phase`, plus optional `mod.shape`, a select; absent = the cycling
+  trapezoid); the field unit carries the clock (strokes or seconds) and no
+  role bakes in a time base; one optional entry-level key `mod_target` on
+  the modulator's channel naming the field it rides as (channel id, field
+  index), the RFC-078 relationship-target addressing; one modulator per
+  entry is the normative shape and no §8.8 cardinality exemption is needed;
+  a complete modulator renders as a group attached under its target
+  wherever that field is placed; `generator-advanced` is the RFC-081 base
+  controls plus whatever modulators target them, and the "four or more"
+  minimum is withdrawn; `mod.amount` is defined clean (0 = no modulation),
+  and Nucleus flips its 100 = off field semantic in the same release.
+  Open questions answered: (1) yes, a machine-readable link, and it is
+  `mod_target`; (2) separately, as RFC-081, landed together; (3) the family
+  is `mod.*` and "lane" is retired. **The draft had said:** six `lane.*`
+  roles on a fixed lane shape, one lane per STATE channel, lane roles exempt
+  from §8.8's per-catalog cardinality, at least four lanes drawn in id
+  order.
 - **Origin:** Phosphor ph-vdk.11. Building the REQUIRED `generator-advanced`
   pattern (RENDERING §10) against the reference hub, whose shape disagrees
   with the spec's.
-- **Problem.**
+- **Problem.** (Kept from the draft; it is the receipt.)
   1. **Four in the spec, six on the wire.** RENDERING §2.2 defines the
      advanced generator as "master state + four modifier lanes (in-speed,
      out-speed, in-accel, out-accel, each `{ctrl, amplitude, step, wait,
@@ -4475,48 +4509,86 @@ say exactly which, future-us will want the receipts.*
   3. **The role cardinality rule blocks the obvious fix.** SPEC §8.8: "A
      registered role SHOULD appear on at most one field per catalog". A lane
      role repeats once per lane by construction.
-- **Proposed change.**
-  1. **One lane shape.** A *lane* is the field set `{amplitude, in_step,
-     in_wait, out_step, out_wait, offset}`, each field carrying a registered
-     lane role (proposed `lane.amplitude`, `lane.in_step`, `lane.in_wait`,
-     `lane.out_step`, `lane.out_wait`, `lane.offset`). The shape is the one
-     the only implementation ships; RENDERING §2.2's `{ctrl, amplitude, step,
-     wait, offset}` is replaced.
-  2. **A lane instance is a channel.** A STATE entry carrying all six lane
-     roles is one lane. A client binds a lane only when all six are present
-     (law 7); a partial set falls through to generic rendering. The lane's
-     display label is its fields' `group`.
-  3. **Cardinality is per channel for lane roles.** Lane roles are exempt
-     from §8.8's per-catalog cardinality SHOULD; each MUST appear at most
-     once per entry. The §8.8 first-in-catalog-order tiebreak applies
-     within an entry.
-  4. **Count is declared, not fixed.** An advanced generator declares at
-     least four lanes. A renderer MUST draw every declared lane, ascending
-     by channel id (§8.9 item 4), and MUST NOT cap the count. Fewer than
-     four lanes is not the advanced-generator interface; its channels render
-     through `settings-card`.
-  5. **Text corrected.** RENDERING §2.2 and §10 `generator-advanced`, and the
-     registry `widget_patterns` note, say "four or more catalog-declared
-     modifier lanes" and point here.
-- **Wire impact.** None beyond role strings, which are catalog text: an
-  adopting hub's etag moves (T11). Reference cost: 36 role annotations
-  across six lane entries, roughly 90 bytes per entry, far inside
-  `catalog_max_entry_bytes`.
-- **Registry impact.** `field_roles` gains six `lane.*` values and a
-  convention line making lane roles per-channel. `widget_patterns`
-  `generator-advanced` note text. No number moves.
-- **Conformance impact.** Fixture: an advanced-generator catalog with six
-  lanes and one decoy channel carrying five of the six roles; assert six
-  lanes drawn in id order, the decoy rendered generically.
-- **Open questions.**
-  1. RENDERING's `ctrl` field has no counterpart on the wire. If it meant
-     "which base control this lane modulates", should a lane carry a
-     machine-readable link to that control (so a renderer can co-locate
-     them) rather than only a label?
-  2. The advanced generator's master controls carry no registered roles
-     either. Register a master role set in the same pass, or separately?
-  3. Role family name: `lane.*` is short but generic (a `scope` pattern
-     also has lanes). The 24-byte role cap rules out long prefixes.
+  4. **RENDERING's `ctrl` has no carrier.** The spec's lane names the base
+     control it modulates; the wire has no field or key that does, so a
+     renderer cannot put a modifier next to the thing it modifies.
+- **Proposed change (as accepted).**
+  1. **The term.** A *modulator* is a periodic modifier that rides one base
+     field of a generator: it swings that field's effective value by its
+     amount through a cycle. "Lane" is retired everywhere it named this
+     concept (RENDERING §2.2 and §10, the registry `widget_patterns` note).
+  2. **The roles.** Registered `field_roles`, on the modulator's own fields:
+     - `mod.amount`: how far the modulator swings its target. **0 means no
+       modulation**, cleanly: a modulator at 0 leaves its target exactly at
+       its base value.
+     - `mod.rise`, `mod.hold`, `mod.fall`, `mod.rest`: the four phases of
+       the cycle (rising toward the swing, held there, falling back, resting
+       at base).
+     - `mod.phase`: the cycle's offset against its siblings.
+     - `mod.shape` (OPTIONAL): a select naming the waveform. Absent means
+       the cycling trapezoid the four phase roles describe.
+     The field's unit carries the clock: a phase counted in strokes declares
+     `count`, one counted in seconds declares `s`. No role bakes in a time
+     base. The reference hub's six fields map one to one: `amplitude` to
+     `mod.amount`, `in_step` to `mod.rise`, `in_wait` to `mod.hold`,
+     `out_step` to `mod.fall`, `out_wait` to `mod.rest`, `offset` to
+     `mod.phase`.
+  3. **One modulator per entry.** A STATE entry carrying `mod.amount`,
+     `mod.rise`, `mod.hold`, `mod.fall`, `mod.rest` and `mod.phase` is one
+     complete modulator; each `mod.*` role appears at most once per entry. A
+     client binds a modulator only when all six are present (law 7); a
+     partial set falls through to generic rendering. The modulator's display
+     label is its fields' `group`.
+  4. **`mod_target` (new optional entry-level key).** On the modulator's
+     channel entry, naming the field it rides as `[channel id, field
+     index]`: the layout index of a layout field, the same
+     (channel, field) addressing
+     [RFC-078](#rfc-078----accessory-conformance-profile-and-the-hub-relationship-engine)
+     uses for a relationship target. Entry key number by the registry owner.
+     A `mod_target` that names no field in the catalog is ignored and the
+     modulator renders unattached (item 6).
+  5. **No cardinality exemption.** A modulator is found through its own
+     entry and attached through `mod_target`, never through a catalog-wide
+     role search, so §8.8's one-per-catalog SHOULD and its
+     first-in-catalog-order tiebreak are never the binding path and no
+     exemption is written (operator ruling).
+  6. **Rendering.** A complete modulator with a resolving `mod_target`
+     renders as a group attached under its target, wherever that field is
+     placed: on a derived page, inside `generator-advanced`, or on a
+     user-authored surface
+     ([RFC-080](#rfc-080----user-authored-surfaces-and-presentation-choice)).
+     A complete modulator with no resolving target renders as its own group
+     in the generator's `settings-card`. A renderer MUST draw every declared
+     modulator and MUST NOT cap the count.
+  7. **`generator-advanced` is the base controls plus their modulators.**
+     The pattern binds on RFC-081's essential bindings (the `advgen.*` base
+     controls and `pattern.running`) and draws whatever modulators target
+     them. The "four or more" minimum is withdrawn: zero modulators is a
+     legal advanced generator.
+  8. **Text corrected.** RENDERING §2.2 ("master state + four modifier
+     lanes ...") and §10 `generator-advanced`, and the registry
+     `widget_patterns` note, read "master controls (RFC-081) plus whatever
+     modulators target them (RFC-066)".
+- **Wire impact.** Role strings (catalog text) and one optional entry-level
+  key; an adopting hub's etag moves (T11). No frame changes. Reference
+  cost: 36 role annotations and six `mod_target` keys across six entries,
+  far inside `catalog_max_entry_bytes`.
+- **Registry impact.** `field_roles` gains `mod.amount`, `mod.rise`,
+  `mod.hold`, `mod.fall`, `mod.rest`, `mod.phase`, `mod.shape`; the catalog
+  CDDL `channel-entry` gains `mod_target` (`[uint, uint]`, number by the
+  registry owner); `widget_patterns` `generator-advanced` note text. No
+  number already in use moves.
+- **Conformance impact.** Fixture: an advanced generator with six
+  modulators, each `mod_target`ing one base control, plus a decoy entry
+  carrying five of the six roles; assert each modulator renders under its
+  target, the decoy renders generically, and a modulator whose target is
+  placed on a user-authored surface renders there. A modulator at
+  `mod.amount` 0 leaves its target at base.
+- **Compatibility.** Nucleus follow-up, same release: the seven role
+  annotations and `mod_target` on its six modulator entries, and
+  `amplitude` flips from "100 = off" to "0 = no modulation". Phosphor:
+  bind by `mod.*` and `mod_target`, drop the lane renderer.
+- **Open questions.** All answered by the ruling above.
 
 ## RFC-067 -- Store verbs: one registered op select, not split preset tags
 
@@ -4842,7 +4914,7 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.**
   1. Reference-hub follow-up (Nucleus): emit `store_id` on
      `paired-devices-roster` naming `paired-devices`'s `store_id`, and on the
-     preset store's roster once [RFC-066](#rfc-066----advanced-generator-lanes-are-catalog-declared-instances)/[RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
+     preset store's roster once [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride)/[RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
      land.
   2. This RFC links roster to store; it does not link either to the CRUD
      INTENT channel that writes items. [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)'s
@@ -4917,13 +4989,28 @@ say exactly which, future-us will want the receipts.*
   2. Is `input.velocity` worth a role, or is a samples-kind velocity hint a
      device extension a generic client should leave at its default?
 
-## RFC-072 -- Discovery identity: a durable id in mDNS TXT, a pinned scan-response company id
+## RFC-072 -- Discovery identity: the mDNS service record retires; the scan-response company id is pinned
 
-- **Status:** DRAFT (Phosphor shell audit, 2026-09-25). Ruling pending
-  (rfc-uvh).
+- **Status:** ACCEPTED AS RESCOPED (operator, 2026-10-01; rfc-uvh). Not
+  landed. Retitled from "Discovery identity: a durable id in mDNS TXT, a
+  pinned scan-response company id": instead of adding an `id` key to the
+  TXT record, the record itself retires.
+- **Ruling (operator, 2026-10-01).** Accepted as rescoped. The
+  `_valence._tcp` mDNS service record and its TXT key set are RETIRED: the
+  §13.7 service text and the `mdns_service` limit are struck. Native
+  clients discover by the §13.8 UDP probe, which already carries
+  `hub_instance_id`. A hub that serves a page SHOULD run an mDNS hostname
+  responder (`machine.local`) so a browser can reach the served page; that
+  is hostname resolution, not service browsing. Item 3 survives: pin the BLE
+  manufacturer-data layout `company_id 0xFFFF + flags u8`. Open questions
+  answered: (1) the `0xFFFF` testing-id question stays OPEN pre-v1.0; (2) no
+  TXT `fw` key, because there is no TXT. Phosphor drops its mDNS browse.
+  **The draft had said:** add TXT `id=<hub_instance_id>` and a registry
+  `mdns_txt` block, keeping the service record.
 - **Origin:** Phosphor ph-vdk.25 (mDNS browse beside the §13.8 UDP probe)
   and ph-vdk.16 (reading `ble_adv_flags` for the BLE-to-WS upgrade).
-- **Problem.**
+- **Problem.** (Kept from the draft; problems 1 and 2 are now answered by
+  removal rather than repair.)
   1. **mDNS TXT carries no durable identity.** §13.7 lists `v`, `name`,
      `etag` and `pairing`. §13.8 gave the UDP reply `hub_instance_id`
      precisely so a client can deduplicate one hub across reboots (the
@@ -4940,29 +5027,44 @@ say exactly which, future-us will want the receipts.*
      `0xFFFF`, the Bluetooth SIG's testing id. A client must guess which MSD
      entry is Valence's, and an implementation that picks another id is
      invisible to every client.
-- **Proposed change.**
-  1. **TXT `id`.** `id=<hub_instance_id>` as 16 lowercase hex digits, SHOULD
-     whenever the hub carries `identity.hub_instance_id` (§6.3). The same
-     value as the UDP reply and WELCOME. Clients deduplicate mDNS and UDP
-     results on it and treat it as untrusted display data (§13.7).
-  2. **Registry block `mdns_txt`** holding the TXT keys (`v`, `name`,
-     `etag`, `pairing`, `id`) and their value forms, so the codegen can emit
-     them. Whether `mdns_service` moves beside it is the registry owner's
-     call.
+  Two discovery paths that must be merged by a key one of them lacks is one
+  path too many: §13.8 already says it is the canonical WS-side discovery
+  path for a LAN client without BLE, and browsers cannot mDNS-browse at all
+  (§13.7).
+- **Proposed change (as accepted).**
+  1. **The mDNS service record retires.** §13.7's `_valence._tcp` bullet and
+     its TXT key set are struck, and registry `limits.mdns_service` is
+     removed. Native clients discover WS-side hubs by the §13.8 UDP probe;
+     BLE discovery (§13.4) is unchanged.
+  2. **A hostname responder, not a service.** A hub that serves a page
+     SHOULD answer mDNS hostname queries for its own name
+     (`<name>.local`, `machine.local` in the reference), so a browser can
+     reach the served page by name. This is hostname resolution only: no
+     service type, no TXT, nothing a client browses or parses.
   3. **Pin the MSD layout.** `ble_adv_flags` gains `company_id: 0xFFFF` and
      the record layout `company_id:u16le + flags:u8`. A client reads the
      flags byte only from that company id's record.
-- **Wire impact.** Additive. TXT gains one key; item 3 pins what the
-  reference hub already sent.
-- **Registry impact.** New `mdns_txt`; `ble_adv_flags` gains `company_id`.
-- **Conformance impact.** A hub that carries `hub_instance_id` advertises the
-  same value in WELCOME, the UDP reply and TXT `id`.
+- **Wire impact.** Subtractive for mDNS (a hub stops advertising a service
+  record no conformant client needs); item 3 pins what the reference hub
+  already sent.
+- **Registry impact.** `limits.mdns_service` removed; `ble_adv_flags` gains
+  `company_id`. No `mdns_txt` block.
+- **Conformance impact.** A hub carrying `hub_instance_id` advertises the
+  same value in WELCOME and the UDP reply (already §13.8); no test reads
+  mDNS. A BLE scan finds the flags byte under company id `0xFFFF`.
+- **Compatibility.** Phosphor drops its mDNS browse (ph-vdk.25) and
+  discovers by UDP and BLE. **The MFP plugin discovers only by mDNS today**
+  (`clients/mfp/ValenceConnect.cs` `MdnsDiscovery`, a PTR query for
+  `_valence._tcp.local`): it must move to the §13.8 UDP probe in the same
+  landing, or its device list goes empty against a conformant hub.
+  clients/js re-exports the generated `MDNS_SERVICE` (`index.js`,
+  `frames.js`); the export goes with the limit.
 - **Open questions.**
-  1. `0xFFFF` is reserved by the SIG for testing. Ship on it, apply for an
-     assigned id, or move the byte into Service Data under the Valence
-     service UUID (a 19-byte record that does not fit beside the full name)?
-  2. Should TXT also carry `fw`, so an mDNS-only row can show a firmware
-     version the way a UDP row does?
+  1. **Still open pre-v1.0:** `0xFFFF` is reserved by the SIG for testing.
+     Ship on it, apply for an assigned id, or move the byte into Service
+     Data under the Valence service UUID (a 19-byte record that does not fit
+     beside the full name)?
+  2. ~~Should TXT also carry `fw`?~~ Answered: no TXT exists.
 
 ## RFC-073 -- Store item encoding: a registered CBOR map, a kind namespace, and an optional per-item digest
 
@@ -6208,7 +6310,7 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** DRAFT (spec contradiction bead rfc-bf4, 2026-10-01). Ruling
   pending (rfc-bf4). Completes
-  [RFC-066](#rfc-066----advanced-generator-lanes-are-catalog-declared-instances),
+  [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride),
   which binds the lanes and leaves the master controls as its open
   question 2; this entry answers "separately" so the lane ruling is not held
   on it, and folds into RFC-066 if the operator prefers one pass. No wire
