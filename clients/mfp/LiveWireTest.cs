@@ -48,10 +48,14 @@ internal static class LiveWireTest
         // --segments selects the 0x2101 timed-segment path (was 0x0085); positional args
         // (ip, port) are read ignoring any --flags.
         bool segments = Array.Exists(args, a => a == "--segments");
-        var pos = Array.FindAll(args, a => !a.StartsWith("--"));
+        // --http N: HTTP port of the target (valencesim --http N; default 80).
+        // --sim: declare the target a simulator when it serves no /api/capabilities.
+        int httpPort = 80, hi = Array.IndexOf(args, "--http");
+        if (hi >= 0 && hi + 1 < args.Length) httpPort = int.Parse(args[hi + 1]);
+        var pos = Array.FindAll(args, a => !a.StartsWith("--") && !(hi >= 0 && a == args[hi + 1] && Array.IndexOf(args, a) == hi + 1));
         string ip = pos.Length > 0 ? pos[0] : "192.168.1.229";
         int port = pos.Length > 1 ? int.Parse(pos[1]) : 82;
-        string baseUrl = $"http://{ip}";
+        string baseUrl = httpPort == 80 ? $"http://{ip}" : $"http://{ip}:{httpPort}";
 
         // --lag is a DIFFERENT test with a different contract: it deliberately
         // MOVES the machine, because a lag meter pointed at a machine that is
@@ -77,11 +81,11 @@ internal static class LiveWireTest
         // physical to move, so `sim: true` in /api/capabilities is an explicit
         // waiver. An endpoint we cannot read on a machine that is NOT a
         // declared sim is an ABORT — "unknown machine state" is never a pass.
-        bool isSim = false;
+        bool isSim = Array.Exists(args, a => a == "--sim");
         try
         {
             var caps = JObject.Parse(await http.GetStringAsync($"{baseUrl}/api/capabilities"));
-            isSim = caps.Value<bool?>("sim") ?? false;
+            isSim |= caps.Value<bool?>("sim") ?? false;
             Console.WriteLine($"[gate] target: fw={caps.Value<string>("fw_version")} sim={isSim}");
         }
         catch (Exception ex)
@@ -285,8 +289,10 @@ internal static class LiveWireTest
         var nackLog = new List<(ushort code, ushort channel)>();
         var roleValues = new Dictionary<string, double>();
 
+        string homeNack = null;   // NACK answering the Home proof intent (id 201); not a stream failure
         void OnNack(HubClient.NackInfo n)
         {
+            if (n.IntentSeq == 201) { homeNack = n.Name; Console.WriteLine($"    [recv] NACK {n.Name} channel=0x{n.Channel:X4} intent_seq=201 (home proof)"); return; }
             nackCount++;
             nackLog.Add((n.Code, n.Channel));
             Console.WriteLine($"    [recv] NACK {n.Name} channel=0x{n.Channel:X4} intent_seq={n.IntentSeq?.ToString() ?? "-"}");
@@ -394,6 +400,22 @@ internal static class LiveWireTest
         else if (!isSim)
         {
             Console.WriteLine("[intent] SKIPPED — target is not a declared simulator; this harness does not write config to real hardware.");
+            Console.WriteLine();
+        }
+
+        // ---- Home intent proof (SIMULATOR ONLY) -----------------------------
+        // Same channel/key/op resolution the plugin's OnHomeClick uses. Sent
+        // on an unhomed sim; the proof is the hub's ECHO or named NACK.
+        if (isSim && catalog?.LocateAction(ValenceWire.RoleActionHome) is { } hl &&
+            hl.OpFor(ValenceWire.HomeOpLabel) is long hop)
+        {
+            Console.WriteLine($"[home] locator action.home -> channel 0x{hl.ChannelId:X4} key {hl.Key} op '{ValenceWire.HomeOpLabel}'={hop} (intent_id=201)");
+            HubClient.EchoInfo homeEcho = null;
+            client.SetEchoHandler(e => { if (e.IntentId == 201) { homeEcho = e; Console.WriteLine($"    [recv] ECHO channel=0x{e.Channel:X4} intent_id=201 (home proof)"); } });
+            await client.SendIntentAsync(hl.ChannelId, 201, new (int, byte[])[] { (hl.Key, ValenceWire.CborUInt(hop)) }, token);
+            await Task.Delay(800, token);
+            client.SetEchoHandler(null);
+            Console.WriteLine($"[home] hub answered: {(homeEcho != null ? "ECHO" : homeNack != null ? "NACK " + homeNack : "NOTHING")}");
             Console.WriteLine();
         }
 
@@ -878,7 +900,9 @@ internal static class LiveWireTest
 
     private static async Task<(long bundles, long samples, long enqueued, long dropped)> ReadSyncCounters(HttpClient http, string baseUrl)
     {
-        var body = await http.GetStringAsync($"{baseUrl}/api/kinetic");
+        string body;
+        try { body = await http.GetStringAsync($"{baseUrl}/api/kinetic"); }
+        catch (HttpRequestException ex) { Console.WriteLine($"[kinetic] unavailable ({ex.Message}); counters read as 0"); return (0, 0, 0, 0); }
         var obj = JObject.Parse(body);
         var sync = obj["sync"];
         long bundles = sync?.Value<long?>("bundles") ?? 0;
