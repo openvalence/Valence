@@ -147,6 +147,10 @@ layout-field = {
   ? 23 => uint,            ; unit_id: registry unit_ids (RENDERING.md §6), a frozen numeric companion
                            ;   to the existing tstr `unit` (key 3). Absent/unrecognized -> the client
                            ;   renders `unit` (key 3) verbatim, per the unknown-unit rule.
+  ; key 24 is schema-field destructive_options (RFC-063), unused here under the shared numbering.
+  ? 25 => setting-default, ; safe (RFC-076): the value this field takes in an accessory's safe state
+                           ;   (SPEC §8.10, §13.3.1); same type, within min/max. REQUIRED in an
+                           ;   accessory declaration on every c2h STREAM layout field.
 }
 
 setting-default = int / float32 / bool / tstr
@@ -220,6 +224,8 @@ schema-field = {
   ; ---- RFC-063 ----
   ? 24 => uint,            ; destructive_options: bit i marks option i (key 10) destructive (SPEC §8.8).
                            ;   Options past bit 63 cannot be marked; split the op table across fields.
+  ? 25 => setting-default, ; safe (RFC-076): as layout-field key 25. REQUIRED in an accessory
+                           ;   declaration on every value-bearing INTENT field (action.* verbs exempt).
 }
 
 cbor-type = 0 ; uint

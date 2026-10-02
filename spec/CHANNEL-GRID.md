@@ -8,7 +8,7 @@ for the change history this grid landed in).*
 This document is the protocol-side half of channel numbering: the
 **convention** every Valence hub's device-defined channel space (`0x0080`
 –`0x7FFF`) is RECOMMENDED to follow, plus the fixed core channel list
-(`0x0001`–`0x000E`) that every hub shares. It does not enumerate any single
+(`0x0001`–`0x0012`) that every hub shares. It does not enumerate any single
 hub's actual device channels — that allocation is each hub's own, documented
 in its own repository. Nucleus's `CHANNEL-MAP.md` is the worked example
 of a real hub applying this convention.
@@ -82,7 +82,7 @@ domain as a whole rather than on one of its channels.
   `channel_id_ranges`). It exists so a vendor prototyping a new channel has
   somewhere collision-safe to work before requesting a real allocation.
 
-## Core channels (`0x0001`-`0x000E`)
+## Core channels (`0x0001`-`0x0012`)
 
 Fixed, spec-governed, identical on every conforming hub — never
 device-allocated. `0x0000` is reserved for session-scoped frames (never
@@ -105,8 +105,20 @@ subscribable). Full field-level detail lives in `registry/registry.yaml`'s
 | `0x000C` | paired-devices | STORE | active |
 | `0x000D` | paired-devices-roster | STATE | active |
 | `0x000E` | safety-events | EVENT | active |
+| `0x000F` | provisioning | INTENT | reserved (RFC-069, SPEC §13.9) |
+| `0x0010` | accessories | STORE | reserved (RFC-076, SPEC §8.10) |
+| `0x0011` | accessories-roster | STATE | reserved (RFC-076) |
+| `0x0012` | accessory-admin | INTENT | reserved (RFC-076) |
 
-`0x000F`-`0x007F` are reserved spec-core headroom for future core channels.
+`0x0013`-`0x007F` are reserved spec-core headroom for future core channels.
+
+## User space (`0x8000`-`0xBFFF`)
+
+Accessory channels that arrive at runtime (RFC-076, SPEC §8.10), never
+allocated by hub firmware: 512 slices of `0x20` ids, slice *k* at
+`0x8000 + 0x20·k`, relative id *r* at `base + r` (`r = 0x00` never a
+channel, `0x01` accessory-status, `0x02`-`0x1F` the accessory's own). Slices
+are sticky and never reused. `0xC000`-`0xFFFF` stays reserved.
 
 ## Worked example
 

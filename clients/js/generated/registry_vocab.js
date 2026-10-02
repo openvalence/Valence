@@ -47,6 +47,8 @@ export const FRAME = {
   DISCOVER_PROBE: 0x1e,  // §13.8, §13.3.1
   DISCOVER_REPLY: 0x1f,  // §13.8
   BLOB_DONE: 0x20,  // §8.4
+  JOIN_REQ: 0x21,  // §13.3.2
+  JOIN_REPLY: 0x22,  // §13.3.2
   ESTOP: 0xe5,  // §5.5, §11.2
 };
 export const FRAME_NAME = {
@@ -80,6 +82,8 @@ export const FRAME_NAME = {
   0x1e: 'DISCOVER_PROBE',
   0x1f: 'DISCOVER_REPLY',
   0x20: 'BLOB_DONE',
+  0x21: 'JOIN_REQ',
+  0x22: 'JOIN_REPLY',
   0xe5: 'ESTOP',
 };
 
@@ -170,6 +174,9 @@ export const CORE_CHANNEL = {
   paired_devices_roster: 0x000d,  // the 0x000C store's roster: {generation u16, count u8, capacity u8}. On-change, tiny; a generatio
   safety_events: 0x000e,  // RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_
   provisioning: 0x000f,  // RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network creden
+  accessories: 0x0010,  // RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered
+  accessories_roster: 0x0011,  // RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield
+  accessory_admin: 0x0012,  // RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops
 };
 export const CORE_CHANNEL_NAME = {
   0x0001: 'catalog',
@@ -187,6 +194,9 @@ export const CORE_CHANNEL_NAME = {
   0x000d: 'paired-devices-roster',
   0x000e: 'safety-events',
   0x000f: 'provisioning',
+  0x0010: 'accessories',
+  0x0011: 'accessories-roster',
+  0x0012: 'accessory-admin',
 };
 
 // ---- cbor_keys -----------------------------------------------------
@@ -593,6 +603,7 @@ export const NACK = {
   INVALID_VALUE: 0x0302,  // outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RF
   UNSUPPORTED_OP: 0x0303,  // intent op not implemented on this hub
   NETWORK_JOIN_FAILED: 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, tim
+  ACCESSORY_OFFLINE: 0x0305,  // RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no an
   ESTOP_ACTIVE: 0x0400,  // refused while e-stop latched
   NOT_HOMED: 0x0401,  // motion intent before homing
   INTERLOCK: 0x0402,  // hub-specific safety interlock
@@ -634,6 +645,7 @@ export const NACK_NAME = {
   0x0302: 'INVALID_VALUE',
   0x0303: 'UNSUPPORTED_OP',
   0x0304: 'NETWORK_JOIN_FAILED',
+  0x0305: 'ACCESSORY_OFFLINE',
   0x0400: 'ESTOP_ACTIVE',
   0x0401: 'NOT_HOMED',
   0x0402: 'INTERLOCK',
@@ -821,6 +833,46 @@ export const PROVISIONING_OP = {
 };
 export const PROVISIONING_OP_NAME = {
   1: 'wifi_join',
+};
+
+// ---- accessory_admin_ops -------------------------------------------
+export const ACCESSORY_ADMIN_OP = {
+  window_open: 1,  // open the §12.3 association window for an accessory join: the in-band twin of the pairing button.
+  forget: 2,  // GOODBYE the accessory, delete its record and every relationship targeting it, retire its slice, 
+  rename: 3,  // set the hub-authored name of the accessory named by accessory_id
+};
+export const ACCESSORY_ADMIN_OP_NAME = {
+  1: 'window_open',
+  2: 'forget',
+  3: 'rename',
+};
+
+// ---- join_results --------------------------------------------------
+export const JOIN_RESULT = {
+  accepted: 0,  // joined (or rejoined); the accessory waits in its safe state for a command
+  window_closed: 1,  // unknown accessory and no association window open
+  capacity: 2,  // no free slice, no peer entry, or the declaration exceeds the host's advertised capacity
+  unsupported: 3,  // proto_ver not servable
+  declaration_invalid: 4,  // the declaration failed §8.10 validation; nothing stored
+  not_paired: 5,  // a rejoin from an accessory this host has forgotten; the accessory MAY clear its stored hub
+};
+export const JOIN_RESULT_NAME = {
+  0: 'accepted',
+  1: 'window_closed',
+  2: 'capacity',
+  3: 'unsupported',
+  4: 'declaration_invalid',
+  5: 'not_paired',
+};
+
+// ---- accessory_record_keys -----------------------------------------
+export const ACCESSORY_RECORD_K = {
+  accessory_id: 1,  // bstr 8: the accessory's durable identity (§8.10), the record's primary key
+  slice: 2,  // uint: slice index k; the accessory's channels are 0x8000 + 0x20*k + r
+  name: 3,  // tstr: the hub-authored name (renamed via accessory-admin rename)
+  product: 4,  // tstr: the JOIN_REQ product string (<= 16 B)
+  fw_version: 5,  // tstr: the JOIN_REQ fw_version string (<= 16 B)
+  declaration_etag: 6,  // bstr 8: etag of the stored declaration (§8.3)
 };
 
 // ---- ui_archetypes -------------------------------------------------
@@ -1054,6 +1106,7 @@ export const ACTION_TAG = {
   identify: 'identify',  // blink-to-find: every device ecosystem needs one
   admin: 'admin',  // a generic administrative action not covered by a more specific tag
   reboot: 'reboot',  // firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)
+  accessory: 'accessory',  // RFC-076: the accessory-admin op select on core channel 0x0012 (§8.10), options index-aligned wit
   provision: 'provision',  // RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `
   store: 'store',  // RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options bey
 };
@@ -1131,6 +1184,8 @@ export const LIMITS = {
   log_replay_depth_default: 32,
   spoke_beacon_interval_ms: 1000,
   spoke_deadman_ms: 5000,
+  accessory_slice_ids: 32,
+  accessory_declaration_max_bytes: 4096,
   spoke_scan_dwell_ms: 150,
   ws_subprotocol: 'valence.v1',
 };

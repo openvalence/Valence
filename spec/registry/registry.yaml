@@ -60,8 +60,10 @@ frame_types:
   0x1E: { name: DISCOVER_PROBE, dir: c2h, plane: raw,     ref: "§13.8, §13.3.1" }   # RFC-046 §5: UDP discovery probe, broadcast on `udp_discovery.port` by a client with no BLE (or wanting WS-side discovery). No session; unicast REPLY answers it. RFC-075: also broadcast on the ESP-NOW spoke by a scanning accessory, payload unchanged; an accessory host answers with an out-of-cadence broadcast BEACON. Raw payload: magic(4B, `udp_discovery.magic`) + proto_ver:u8 + nonce:u32 (client entropy, echoed in the reply).
   0x1F: { name: DISCOVER_REPLY, dir: h2c, plane: raw,     ref: "§13.8" }   # RFC-046 §5, corrected by RFC-048 (operator veto, 2026-07-27): UDP discovery reply, hub-unicast back to the probe's source. Raw payload: magic(4B) + nonce:u32 (echoed) + hub_name:str32 (packed_field_types 9, RFC-026) + hub_instance_id:u64 (the hub's DURABLE cross-boot identity, identity_keys 5 — replaces this field's original RFC-046 payload, which reused the per-boot `boot_id`, §6.1; a boot-scoped id cannot deduplicate "two hubs sharing a name" across a reboot, which was this field's whole job) + proto_ver:u8 + ws_port:u16 + fw_version:str16 (packed_field_types 8) + catalog_etag:8B + flags:u8 (bit0 pairing_window_open — same philosophy as the 0x17 BEACON payload, plus the endpoint). Total payload grows 72B -> 76B (+4, u32->u64). Read-only identity, no control surface. Replies are rate-limited (`udp_discovery.reply_rate_limit_per_source_s`) so a probe storm cannot load the hub. RFC-046's own entry flagged this exact field for operator veto at landing; RFC-048 is that veto.
   0x20: { name: BLOB_DONE,      dir: any, plane: raw,     ref: "§8.4" }   # RFC-050: positive transfer-completion signal, generalizing CATALOG_READY's pattern (§6.4) to every blob namespace rather than a second frame per namespace. Raw payload: the same identity fields as `blob_keys` (namespace, store_id, slot, generation) + status:u8 (0 verified-complete, 1 hash-mismatch, 2 aborted). **Sent by the RECEIVER of a transfer** — for a hub-to-client blob (the common case) that is the client; for a client-to-hub STORE import it is the hub. Idempotent, like CATALOG_READY: safe to re-send on a duplicate or a retried reassembly. The sender treats a nonzero `status` per its own retry policy (this frame reports outcome, it does not itself request a retry). Implementation: Phase D (post-batch hub work) — see RFC-050.
+  0x21: { name: JOIN_REQ,       dir: c2h, plane: raw,     ref: "§13.3.2" }  # RFC-076: accessory -> host on the ESP-NOW spoke, unicast (c2h = accessory to hub). Raw LE payload: accessory_id:u64 + proto_ver:u8 + declaration_etag:8B + deadman_ms:u16 (0 = spoke_deadman_ms) + flags:u8 (bit0 pairing_state) + fw_version:str16 + product:str16 = 52 B. Sent once per matching BEACON until answered; a paired accessory sends it on every reacquisition.
+  0x22: { name: JOIN_REPLY,     dir: h2c, plane: raw,     ref: "§13.3.2" }  # RFC-076: host -> accessory, unicast. Raw LE payload: hub_instance_id:u64 + accessory_id:u64 (echoed) + result:u8 (`join_results`) + flags:u8 (bit0 declaration_needed) = 18 B. Every JOIN_REQ is answered; answers to unknown accessories are rate-limited per source.
   0xE5: { name: ESTOP,          dir: any, plane: raw,     ref: "§5.5, §11.2" }
-# 0x02 and 0x21–0x3F reserved for spec/core (31 slots free; 0x09/0x0A burned, see above; 0x1E/0x1F allocated to RFC-046 UDP discovery; 0x20 allocated to RFC-050 BLOB_DONE).
+# 0x02 and 0x23–0x3F reserved for spec/core (0x09/0x0A burned, see above; 0x1E/0x1F allocated to RFC-046 UDP discovery; 0x20 allocated to RFC-050 BLOB_DONE; 0x21/0x22 allocated to RFC-076 JOIN_REQ/JOIN_REPLY).
 # 0x40–0x7F reserved for future spec use.
 # 0x80–0xDF experimental (never in tagged releases). 0xE0–0xFF reserved except 0xE5.
 
@@ -138,7 +140,8 @@ channel_id_ranges:
   0x0000:            { name: SESSION, note: "session-scoped frames; never subscribable" }
   0x0001-0x007F:     { name: spec-core, note: "allocated below; spec-governed" }
   0x0080-0x7FFF:     { name: device-defined, note: "hub firmware allocates; described by catalog. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=STATE/2=STREAM/3=INTENT/4=EVENT/5=STORE, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each hub documents its own device-range allocations; Valence Drive's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped catalog." }
-  0x8000-0xFFFF:     { name: reserved }
+  0x8000-0xBFFF:     { name: user, note: "RFC-076 (§8.10): accessory channels that arrive at runtime, never allocated by hub firmware. 512 slices of accessory_slice_ids (0x20); slice k has base 0x8000 + 0x20*k; relative id r -> base + r (r 0 never a channel, r 1 accessory-status, r 2-31 the accessory's own). Slices are sticky and never reused after a forget." }
+  0xC000-0xFFFF:     { name: reserved }
 
 core_channels:
   0x0001: { name: catalog,        class: STATE, status: active,   note: "catalog meta: etag, chunk count, entry count" }
@@ -171,6 +174,9 @@ core_channels:
   # true: 0x0003 is the latch, 0x000E is its edge, same domain, same priority.
   0x000E: { name: safety-events, class: EVENT, status: active, note: "RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_kinds`; fields ride the scoped `body` (40) sub-map keyed by this channel's own catalog schema (word, cause, owner_session, estop_seq, level). `critical` priority and `watch` access, matching its STATE twin exactly: an edge nobody is allowed to be denied and nobody is allowed to shed. Carries `seq_of_state` (34) naming the 0x0003 frame it corresponds to, which is what lets a client that missed the edge reconcile against the latch it DID receive. Emitted on TRANSITIONS ONLY: a repeated ESTOP frame re-broadcasts the STATE (that is §11.2's loss recovery) but does NOT re-emit the edge, because an edge that did not happen is a lie." }
   0x000F: { name: provisioning,  class: INTENT, status: reserved, note: "RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network credentials. `configure` access. Schema: 1 op (action.provision over provisioning_ops), 2 ssid (tstr, secret), 3 passphrase (tstr, secret, may be empty), 4 ipv4 / 5 ws_port (uint, ECHO result keys). Accepted only on BLE GATT, serial or in-process bindings, with a pairing window open or the hub factory-fresh; else NACK ACCESS_DENIED. Answer deferred until the join concludes (provision_join_timeout_ms): ECHO with `true` for each secret key, or NACK NETWORK_JOIN_FAILED. Credentials never appear anywhere else." }
+  0x0010: { name: accessories,        class: STORE, status: reserved, note: "RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered item grammar `accessory_record_keys` (§8.7 carve-out: protocol content). One item per paired accessory." }
+  0x0011: { name: accessories-roster, class: STATE, status: reserved, note: "RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity." }
+  0x0012: { name: accessory-admin,    class: INTENT, status: reserved, note: "RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only." }
 
 # ---------------------------------------------------------------------------
 # CBOR map integer keys (control plane). Global key space — a key means the
@@ -611,6 +617,7 @@ nack_codes:
   0x0302: { name: INVALID_VALUE,        note: "outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RFC-021.5)" }
   0x0303: { name: UNSUPPORTED_OP,       note: "intent op not implemented on this hub" }
   0x0304: { name: NETWORK_JOIN_FAILED,  note: "RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect." }
+  0x0305: { name: ACCESSORY_OFFLINE,    note: "RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone." }
   # 0x04xx — safety refusals (UIs SHOULD render these distinctly)
   0x0400: { name: ESTOP_ACTIVE,         note: "refused while e-stop latched" }
   0x0401: { name: NOT_HOMED,            note: "motion intent before homing" }
@@ -1067,7 +1074,7 @@ unit_ids:
 # (ui_archetypes) into a purpose-specific rendering. An unregistered
 # action.<name> suffix remains legal (nothing here is a requirement on the
 # device); unknown tag -> generic trigger/control per the derivation table
-# (RENDERING.md §7/§8.2). Frozen, thirteen, v1.0 (RFC-067 store, RFC-069 provision).
+# (RENDERING.md §7/§8.2). Frozen, fourteen, v1.0 (RFC-067 store, RFC-069 provision, RFC-076 accessory).
 #
 # RETIRED PRE-TAG (RFC-067): `preset_save` and `preset_recall` had zero
 # emitters and covered two of §8.7's four store verbs; `store` replaces both
@@ -1085,8 +1092,44 @@ action_tags:
   identify:      { note: "blink-to-find: every device ecosystem needs one" }
   admin:         { note: "a generic administrative action not covered by a more specific tag" }
   reboot:        { note: "firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)" }
+  accessory:     { note: "RFC-076: the accessory-admin op select on core channel 0x0012 (§8.10), options index-aligned with `accessory_admin_ops`. Op forget is destructive." }
   provision:     { note: "RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `provisioning_ops`" }
   store:         { note: "RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8)." }
+
+# ---------------------------------------------------------------------------
+# Accessory admin ops (u8) — the `action.accessory` op select on core channel
+# 0x0012 (RFC-076, §8.10). Index 0 is op-select filler (§8.9). Schema keys:
+# 1 op, 2 accessory_id (bstr 8), 3 name (tstr).
+# ---------------------------------------------------------------------------
+accessory_admin_ops:
+  1: { name: window_open, note: "open the §12.3 association window for an accessory join: the in-band twin of the pairing button. One accepted join closes it." }
+  2: { name: forget,      note: "GOODBYE the accessory, delete its record and every relationship targeting it, retire its slice, remove its channels. Destructive (§8.8 destructive_options on the reference op select)." }
+  3: { name: rename,      note: "set the hub-authored name of the accessory named by accessory_id" }
+
+# ---------------------------------------------------------------------------
+# Join results (u8) — JOIN_REPLY (0x22) `result` (RFC-076, §13.3.2).
+# ---------------------------------------------------------------------------
+join_results:
+  0: { name: accepted,            note: "joined (or rejoined); the accessory waits in its safe state for a command" }
+  1: { name: window_closed,       note: "unknown accessory and no association window open" }
+  2: { name: capacity,            note: "no free slice, no peer entry, or the declaration exceeds the host's advertised capacity" }
+  3: { name: unsupported,         note: "proto_ver not servable" }
+  4: { name: declaration_invalid, note: "the declaration failed §8.10 validation; nothing stored" }
+  5: { name: not_paired,          note: "a rejoin from an accessory this host has forgotten; the accessory MAY clear its stored hub" }
+
+# ---------------------------------------------------------------------------
+# Accessory-record ITEM key space (RFC-076) — the CBOR map encoding one paired
+# accessory, an item of the `accessories` STORE (0x0010). Registered for the
+# trust ledger's reason (§8.7 carve-out): protocol content every client reads
+# the same way.
+# ---------------------------------------------------------------------------
+accessory_record_keys:
+  1: { name: accessory_id,     note: "bstr 8: the accessory's durable identity (§8.10), the record's primary key" }
+  2: { name: slice,            note: "uint: slice index k; the accessory's channels are 0x8000 + 0x20*k + r" }
+  3: { name: name,             note: "tstr: the hub-authored name (renamed via accessory-admin rename)" }
+  4: { name: product,          note: "tstr: the JOIN_REQ product string (<= 16 B)" }
+  5: { name: fw_version,       note: "tstr: the JOIN_REQ fw_version string (<= 16 B)" }
+  6: { name: declaration_etag, note: "bstr 8: etag of the stored declaration (§8.3)" }
 
 # ---------------------------------------------------------------------------
 # Provisioning ops (u8) — the `action.provision` op select on core channel
@@ -1278,6 +1321,8 @@ limits:
   # ---- ESP-NOW accessory spoke (RFC-075, §13.3.1) -------------------------
   spoke_beacon_interval_ms: 1000    # an accessory host's BEACON cadence while the spoke is up (500 ms while a pairing window is open)
   spoke_deadman_ms: 5000            # accessory deadman default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms.
+  accessory_slice_ids: 0x20         # RFC-076 (§8.10): ids per accessory slice in the user space 0x8000-0xBFFF (512 slices). r 0 session-scoped, r 1 accessory-status, r 2-31 the accessory's own (30 at most). Narrowed from the draft's 0x80 by ruling.
+  accessory_declaration_max_bytes: 4096  # RFC-076 (§8.10): largest encoded accessory declaration a host accepts. A worst-case 30-channel declaration is about 3.5 KB (19 chunks of catalog_chunk_payload).
   spoke_scan_dwell_ms: 150          # an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join.
 
   ws_subprotocol: "valence.v1"

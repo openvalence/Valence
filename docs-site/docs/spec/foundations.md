@@ -210,7 +210,7 @@ Additions (new frame types, keys, channels, codes, roles, categories) land in `r
 
 **Numbers are never reused or renumbered after a tagged release.** This rule binds from the **v1.0 tag forward**. The preceding v1-draft was a feasibility exercise and never a public release; the v1.0 base pass therefore restructured freely, retiring frame types `0x09` (CATALOG_REQ) and `0x0A` (CATALOG_CHUNK) without reallocating them — a stale draft-era peer meets an unknown type and fails loudly rather than misreading a BLOB frame ([§4.3](#s4-3) makes "loudly" mean "ignored", which is the correct failure).
 
-Reserved ranges: frame types `0x02` and `0x21–0x3F` spec/core, `0x40–0x7F` future spec, `0x80–0xDF` experimental, `0xE0–0xFF` reserved except `0xE5`. CBOR keys 1–63 core, 64–127 reserved, 128+ experimental. Channel ids per `channel_id_ranges`. Blob namespaces 0–127 spec, 128–255 device. Setting categories 0–127 spec, 128–255 device. Procedure phases 0–127 spec, 128–255 device.
+Reserved ranges: frame types `0x02` and `0x23–0x3F` spec/core, `0x40–0x7F` future spec, `0x80–0xDF` experimental, `0xE0–0xFF` reserved except `0xE5`. CBOR keys 1–63 core, 64–127 reserved, 128+ experimental. Channel ids per `channel_id_ranges`. Blob namespaces 0–127 spec, 128–255 device. Setting categories 0–127 spec, 128–255 device. Procedure phases 0–127 spec, 128–255 device.
 
 **Experimental ranges MUST NOT appear in tagged releases.**
 

@@ -44,6 +44,8 @@ enum class FrameType : uint8_t {
     DISCOVER_PROBE = 0x1E,  // c2h, raw, §13.8, §13.3.1
     DISCOVER_REPLY = 0x1F,  // h2c, raw, §13.8
     BLOB_DONE = 0x20,  // any, raw, §8.4
+    JOIN_REQ = 0x21,  // c2h, raw, §13.3.2
+    JOIN_REPLY = 0x22,  // h2c, raw, §13.3.2
     ESTOP = 0xE5,  // any, raw, §5.5, §11.2
 };
 
@@ -103,6 +105,9 @@ inline constexpr uint16_t paired_devices = 0x000C;  // STORE: trust-ledger store
 inline constexpr uint16_t paired_devices_roster = 0x000D;  // STATE: the 0x000C store's roster: {generation u16, count u8, capacity u8}. On-change, tiny; a generation bump means 're-enumerate' (fetch again over BLOB_REQ). `configure` access: the paired-device list is not open reading.
 inline constexpr uint16_t safety_events = 0x000E;  // EVENT: RFC/§9.4 duality: the EVENT TWIN of the `safety` STATE channel (0x0003). Kinds in `safety_event_kinds`; fields ride the scoped `body` (40) sub-map keyed by this channel's own catalog schema (word, cause, owner_session, estop_seq, level). `critical` priority and `watch` access, matching its STATE twin exactly: an edge nobody is allowed to be denied and nobody is allowed to shed. Carries `seq_of_state` (34) naming the 0x0003 frame it corresponds to, which is what lets a client that missed the edge reconcile against the latch it DID receive. Emitted on TRANSITIONS ONLY: a repeated ESTOP frame re-broadcasts the STATE (that is §11.2's loss recovery) but does NOT re-emit the edge, because an edge that did not happen is a lie.
 inline constexpr uint16_t provisioning = 0x000F;  // INTENT: RFC-069 (§13.9), specified, not yet implemented by a reference hub: client-pushed network credentials. `configure` access. Schema: 1 op (action.provision over provisioning_ops), 2 ssid (tstr, secret), 3 passphrase (tstr, secret, may be empty), 4 ipv4 / 5 ws_port (uint, ECHO result keys). Accepted only on BLE GATT, serial or in-process bindings, with a pairing window open or the hub factory-fresh; else NACK ACCESS_DENIED. Answer deferred until the join concludes (provision_join_timeout_ms): ECHO with `true` for each secret key, or NACK NETWORK_JOIN_FAILED. Credentials never appear anywhere else.
+inline constexpr uint16_t accessories = 0x0010;  // STORE: RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', `watch` access, registered item grammar `accessory_record_keys` (§8.7 carve-out: protocol content). One item per paired accessory.
+inline constexpr uint16_t accessories_roster = 0x0011;  // STATE: RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, `watch`. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity.
+inline constexpr uint16_t accessory_admin = 0x0012;  // INTENT: RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only.
 }  // namespace channels
 
 enum class CborKey : uint8_t {
@@ -407,6 +412,30 @@ namespace provisioning_ops {
 inline constexpr uint8_t wifi_join = 1;  // join the WiFi network named by `ssid` with `passphrase`; answered after the join concludes (§13.9)
 }  // namespace provisioning_ops
 
+namespace accessory_admin_ops {
+inline constexpr uint8_t window_open = 1;  // open the §12.3 association window for an accessory join: the in-band twin of the pairing button. One accepted join closes it.
+inline constexpr uint8_t forget = 2;  // GOODBYE the accessory, delete its record and every relationship targeting it, retire its slice, remove its channels. Destructive (§8.8 destructive_options on the reference op select).
+inline constexpr uint8_t rename = 3;  // set the hub-authored name of the accessory named by accessory_id
+}  // namespace accessory_admin_ops
+
+namespace join_results {
+inline constexpr uint8_t accepted = 0;  // joined (or rejoined); the accessory waits in its safe state for a command
+inline constexpr uint8_t window_closed = 1;  // unknown accessory and no association window open
+inline constexpr uint8_t capacity = 2;  // no free slice, no peer entry, or the declaration exceeds the host's advertised capacity
+inline constexpr uint8_t unsupported = 3;  // proto_ver not servable
+inline constexpr uint8_t declaration_invalid = 4;  // the declaration failed §8.10 validation; nothing stored
+inline constexpr uint8_t not_paired = 5;  // a rejoin from an accessory this host has forgotten; the accessory MAY clear its stored hub
+}  // namespace join_results
+
+namespace accessory_record {
+inline constexpr uint8_t accessory_id = 1;  // bstr 8: the accessory's durable identity (§8.10), the record's primary key
+inline constexpr uint8_t slice = 2;  // uint: slice index k; the accessory's channels are 0x8000 + 0x20*k + r
+inline constexpr uint8_t name = 3;  // tstr: the hub-authored name (renamed via accessory-admin rename)
+inline constexpr uint8_t product = 4;  // tstr: the JOIN_REQ product string (<= 16 B)
+inline constexpr uint8_t fw_version = 5;  // tstr: the JOIN_REQ fw_version string (<= 16 B)
+inline constexpr uint8_t declaration_etag = 6;  // bstr 8: etag of the stored declaration (§8.3)
+}  // namespace accessory_record
+
 namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface
 inline constexpr uint8_t restart_required = 1u << 1;  // the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit)
@@ -524,6 +553,7 @@ enum class NackCode : uint16_t {
     INVALID_VALUE = 0x0302,  // outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RFC-021.5)
     UNSUPPORTED_OP = 0x0303,  // intent op not implemented on this hub
     NETWORK_JOIN_FAILED = 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect.
+    ACCESSORY_OFFLINE = 0x0305,  // RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone.
     ESTOP_ACTIVE = 0x0400,  // refused while e-stop latched
     NOT_HOMED = 0x0401,  // motion intent before homing
     INTERLOCK = 0x0402,  // hub-specific safety interlock
@@ -609,6 +639,8 @@ inline constexpr uint32_t provision_join_timeout_ms = 20000;
 inline constexpr uint32_t log_replay_depth_default = 32;
 inline constexpr uint32_t spoke_beacon_interval_ms = 1000;
 inline constexpr uint32_t spoke_deadman_ms = 5000;
+inline constexpr uint32_t accessory_slice_ids = 32;
+inline constexpr uint32_t accessory_declaration_max_bytes = 4096;
 inline constexpr uint32_t spoke_scan_dwell_ms = 150;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";
 }  // namespace limits

@@ -137,6 +137,9 @@ SECTION_HOMES: dict[str, str] = {
     "action_tags": "rendering.md",
     "store_ops": "rendering.md",
     "provisioning_ops": "rendering.md",
+    "accessory_admin_ops": "pairing.md",
+    "join_results": "pairing.md",
+    "accessory_record_keys": "pairing.md",
     "ui_archetypes": "rendering.md",
     "ui_regions": "rendering.md",
     "renderer_classes": "rendering.md",
@@ -684,7 +687,18 @@ def page_pairing(reg: dict, reg_display: str) -> str:
     p("an honest update. A deliberately malicious one reports whatever version\n")
     p("it likes and keeps its token. What bounds a hostile client is role\n")
     p("scoping, immediate revocation, its visibility in the roster, and the\n")
-    p("fact that safety operations are role-exempt for everyone.\n")
+    p("fact that safety operations are role-exempt for everyone.\n\n")
+
+    p("# Accessories\n\n")
+    p("Accessories join a hub over the ESP-NOW spoke (SPEC §13.3.1, §13.3.2) and\n")
+    p("their channels live in the user space (SPEC §8.10).\n\n")
+    enum_table(p, reg["join_results"], "Join results",
+               "The `result` byte of JOIN_REPLY (`0x22`).")
+    enum_table(p, reg["accessory_admin_ops"], "Accessory admin ops",
+               "The `action.accessory` op select on core channel `0x0012`. "
+               "Index 0 is op-select filler.")
+    enum_table(p, reg["accessory_record_keys"], "Accessory record keys",
+               "The registered item grammar of the `accessories` store (`0x0010`).")
     return w.getvalue()
 
 

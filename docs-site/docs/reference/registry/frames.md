@@ -57,6 +57,8 @@ header always carries the length, so skipping is safe.
 | `0x1E` | `DISCOVER_PROBE` | `c2h` | `raw` | §13.8, §13.3.1 |
 | `0x1F` | `DISCOVER_REPLY` | `h2c` | `raw` | §13.8 |
 | `0x20` | `BLOB_DONE` | `any` | `raw` | §8.4 |
+| `0x21` | `JOIN_REQ` | `c2h` | `raw` | §13.3.2 |
+| `0x22` | `JOIN_REPLY` | `h2c` | `raw` | §13.3.2 |
 | `0xE5` | `ESTOP` | `any` | `raw` | §5.5, §11.2 |
 
 ## Burned and reserved ranges

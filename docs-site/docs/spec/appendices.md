@@ -60,11 +60,13 @@ generated: true
 | 0x1E | DISCOVER_PROBE | c→h | raw | [§13.8](transports.md#s13-8) |
 | 0x1F | DISCOVER_REPLY | h→c | raw | [§13.8](transports.md#s13-8) |
 | 0x20 | BLOB_DONE | any | raw | [§8.4](catalog.md#s8-4) |
+| 0x21 | JOIN_REQ | accessory→host | raw | [§13.3](transports.md#s13-3).2 |
+| 0x22 | JOIN_REPLY | host→accessory | raw | [§13.3](transports.md#s13-3).2 |
 | 0xE5 | ESTOP | any | raw | [§5.5](wire-format.md#s5-5), [§11.2](safety.md#s11-2) |
 
 **Burned, never to be reallocated:** `0x09` (was CATALOG_REQ) and `0x0A` (was CATALOG_CHUNK), superseded by BLOB_REQ/BLOB_CHUNK when chunked transfer was generalized into a namespaced verb ([§8.4](catalog.md#s8-4)). They stay burned so that a stale v1-draft peer meets an *unknown* type and is ignored per [§4.3](foundations.md#s4-3), rather than silently misreading a blob frame.
 
-**Reserved:** `0x02` and `0x21–0x3F` spec/core (31 slots free); `0x40–0x7F` future spec; `0x80–0xDF` experimental (never in tagged releases); `0xE0–0xFF` reserved except `0xE5`.
+**Reserved:** `0x02` and `0x23–0x3F` spec/core (`0x21`/`0x22` allocated to RFC-076's JOIN_REQ/JOIN_REPLY); `0x40–0x7F` future spec; `0x80–0xDF` experimental (never in tagged releases); `0xE0–0xFF` reserved except `0xE5`.
 
 **Header flags:** bit0 `FRAG_START`, bit1 `FRAG_MORE` ([§5.6](wire-format.md#s5-6)). Other bits are zero on send and ignored on receive.
 
@@ -131,7 +133,7 @@ The catalog's CDDL definition lives in [`schema/catalog.cddl`](schema.md). It is
 
 > ### ⚠ EXAMPLE ONLY — NEVER ALLOCATE THESE IDS
 >
-> Every channel id below is drawn from the **reserved** range `0x8000–0xFFFF` ([§4.4](foundations.md#s4-4)), which no conforming hub may allocate. They exist to make the shape of a device catalog legible and **cannot** be mistaken for, or collide with, any real allocation.
+> Every channel id below is drawn from the **reserved** range `0xC000–0xFFFF` ([§4.4](foundations.md#s4-4)), which no conforming hub may allocate (`0x8000`-`0xBFFF` is the accessory user space, [§8.10](catalog.md#s8-10)). They exist to make the shape of a device catalog legible and **cannot** be mistaken for, or collide with, any real allocation.
 >
 > This is deliberate. An earlier draft sketched device channels using ids inside the real device-defined range; a hub had already spent one of those ids on something else, and the sketch — despite carrying a disclaimer — read like an assignment and misled an implementation once. **The shipped hub's catalog is self-describing and authoritative. It is the only source of a channel id.**
 
@@ -214,6 +216,7 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `segment_end_vel_unspecified` | -32768 | [§5.4](wire-format.md#s5-4), [§9.6](channels.md#s9-6) |
 | `segment_dwell_span` | 0.02 | [§9.6](channels.md#s9-6) |
 | `spoke_beacon_interval_ms` / `spoke_deadman_ms` / `spoke_scan_dwell_ms` | 1000 / 5000 / 150 | [§13.3](transports.md#s13-3).1 |
+| `accessory_slice_ids` / `accessory_declaration_max_bytes` | 0x20 (32) / 4096 | [§8.10](catalog.md#s8-10) |
 | `pairing_window_default_s` | 120 | [§12.3](security.md#s12-3) |
 | `pairing_pin_digits` | 4 | [§12.3](security.md#s12-3) |
 | `pairing_gesture_boot_count` | 3 | [§12.3](security.md#s12-3) |

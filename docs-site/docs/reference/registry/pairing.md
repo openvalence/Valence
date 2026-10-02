@@ -82,3 +82,45 @@ an honest update. A deliberately malicious one reports whatever version
 it likes and keeps its token. What bounds a hostile client is role
 scoping, immediate revocation, its visibility in the roster, and the
 fact that safety operations are role-exempt for everyone.
+
+# Accessories
+
+Accessories join a hub over the ESP-NOW spoke (SPEC §13.3.1, §13.3.2) and
+their channels live in the user space (SPEC §8.10).
+
+## Join results
+
+The `result` byte of JOIN_REPLY (`0x22`).
+
+| Value | Name | Notes |
+|---|---|---|
+| `0` | `accepted` | joined (or rejoined); the accessory waits in its safe state for a command |
+| `1` | `window_closed` | unknown accessory and no association window open |
+| `2` | `capacity` | no free slice, no peer entry, or the declaration exceeds the host's advertised capacity |
+| `3` | `unsupported` | proto_ver not servable |
+| `4` | `declaration_invalid` | the declaration failed §8.10 validation; nothing stored |
+| `5` | `not_paired` | a rejoin from an accessory this host has forgotten; the accessory MAY clear its stored hub |
+
+## Accessory admin ops
+
+The `action.accessory` op select on core channel `0x0012`. Index 0 is op-select filler.
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `window_open` | open the §12.3 association window for an accessory join: the in-band twin of the pairing button. One accepted join closes it. |
+| `2` | `forget` | GOODBYE the accessory, delete its record and every relationship targeting it, retire its slice, remove its channels. Destructive (§8.8 destructive_options on the reference op select). |
+| `3` | `rename` | set the hub-authored name of the accessory named by accessory_id |
+
+## Accessory record keys
+
+The registered item grammar of the `accessories` store (`0x0010`).
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `accessory_id` | bstr 8: the accessory's durable identity (§8.10), the record's primary key |
+| `2` | `slice` | uint: slice index k; the accessory's channels are 0x8000 + 0x20*k + r |
+| `3` | `name` | tstr: the hub-authored name (renamed via accessory-admin rename) |
+| `4` | `product` | tstr: the JOIN_REQ product string (<= 16 B) |
+| `5` | `fw_version` | tstr: the JOIN_REQ fw_version string (<= 16 B) |
+| `6` | `declaration_etag` | bstr 8: etag of the stored declaration (§8.3) |
+

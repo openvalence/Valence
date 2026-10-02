@@ -79,6 +79,7 @@ The intent is refused on its own merits.
 | `0x0302` | `INVALID_VALUE` | outside schema min/max or wrong type; also a store import whose kind or size the hub refuses (RFC-021.5) |
 | `0x0303` | `UNSUPPORTED_OP` | intent op not implemented on this hub |
 | `0x0304` | `NETWORK_JOIN_FAILED` | RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect. |
+| `0x0305` | `ACCESSORY_OFFLINE` | RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone. |
 
 ## `0x04xx`: safety refusal
 

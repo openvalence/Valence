@@ -216,7 +216,7 @@ Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not
 
 ## 7. Action tags *(normative)*
 
-`action_tags` names the specific verbs a client can recognize under the existing `action.<name>` field-role convention (SPEC §8.8) to upgrade a generic `trigger` (§8) into a purpose-specific rendering (icon, placement, confirm posture). An unregistered `action.<name>` suffix remains legal (SPEC §8.8's "nothing hardcoded as a requirement" doctrine is unchanged) — these are the ones a conformant client MAY special-case. **Frozen set, thirteen tags, v1.0** (RFC-067 replaced `preset_save`/`preset_recall` with `store` before the tag; RFC-069 added `provision`)**:**
+`action_tags` names the specific verbs a client can recognize under the existing `action.<name>` field-role convention (SPEC §8.8) to upgrade a generic `trigger` (§8) into a purpose-specific rendering (icon, placement, confirm posture). An unregistered `action.<name>` suffix remains legal (SPEC §8.8's "nothing hardcoded as a requirement" doctrine is unchanged) — these are the ones a conformant client MAY special-case. **Frozen set, fourteen tags, v1.0** (RFC-067 replaced `preset_save`/`preset_recall` with `store` before the tag; RFC-069 added `provision`, RFC-076 `accessory`)**:**
 
 | Tag | Typical rendering |
 |---|---|
@@ -231,6 +231,7 @@ Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not
 | `identify` | Blink-to-find (§2.2) — every device ecosystem needs one |
 | `admin` | A generic administrative action not covered by a more specific tag |
 | `reboot` | Firmware reboot; SHOULD always confirm (SPEC §9.3 `reboot_in_ms`) |
+| `accessory` | The accessory-admin op select on core channel `0x0012` (SPEC §8.10, RFC-076), index-aligned with `accessory_admin_ops`; `forget` is destructive |
 | `provision` | The network-provisioning op select on core channel `0x000F` (SPEC §13.9, RFC-069), index-aligned with `provisioning_ops`; commonly the step a provisioning `wizard` (§10) drives |
 | `store` | The store CRUD op select (SPEC §8.7, RFC-067): one field whose `options` are index-aligned with `store_ops` (`save` 1, `load` 2, `delete` 3, `rename` 4; index 0 is op-select filler). It MUST NOT declare options beyond the registered ops; a device-specific store verb rides a separate `action.*` field. `delete` is destructive by registration (SPEC §8.8). The store's `kind`, not the tag, says what it holds |
 

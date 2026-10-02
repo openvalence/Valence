@@ -136,6 +136,7 @@ A conformant client MAY special-case the specific `action.<name>` suffixes below
 | `identify` | blink-to-find: every device ecosystem needs one |
 | `admin` | a generic administrative action not covered by a more specific tag |
 | `reboot` | firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms) |
+| `accessory` | RFC-076: the accessory-admin op select on core channel 0x0012 (§8.10), options index-aligned with `accessory_admin_ops`. Op forget is destructive. |
 | `provision` | RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `provisioning_ops` |
 | `store` | RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8). |
 
