@@ -68,7 +68,6 @@ registry's own rationale where it records one.
 | `max_subscriptions_per_session` | `64` |  |
 | `max_subscriptions_per_frame` | `16` | RFC-033.3: wishes one SUBSCRIBE/HELLO frame may carry (= the reference decoder's kSubscribeMaxWishes, which was previously discoverable only by binary-searching a live hub). Advertised in WELCOME limits key 4; a hub MAY advertise less, never more than it decodes. Overflow answers SUBSCRIBE_REJECTED, never silence. |
 | `ws_subprotocol` | `valence.v1` |  |
-| `mdns_service` | `_valence._tcp` |  |
 
 ## Per-binding max_frame defaults
 

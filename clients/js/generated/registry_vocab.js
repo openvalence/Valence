@@ -11,7 +11,9 @@
 export const PROTO_VER = 1;
 export const HEADER_BYTES = 8;
 export const WS_SUBPROTOCOL = 'valence.v1';
-export const MDNS_SERVICE = '_valence._tcp';
+// RETIRED by RFC-072: no mDNS service record exists (SPEC §13.7). Null only so
+// existing re-exports still link.
+export const MDNS_SERVICE = null;
 
 // ---- frame_types ---------------------------------------------------
 export const FRAME = {
@@ -1114,5 +1116,4 @@ export const LIMITS = {
   provision_join_timeout_ms: 20000,
   log_replay_depth_default: 32,
   ws_subprotocol: 'valence.v1',
-  mdns_service: '_valence._tcp',
 };

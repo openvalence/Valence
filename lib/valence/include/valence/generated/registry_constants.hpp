@@ -601,7 +601,6 @@ inline constexpr uint32_t auth_attempts_max = 3;
 inline constexpr uint32_t provision_join_timeout_ms = 20000;
 inline constexpr uint32_t log_replay_depth_default = 32;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";
-inline constexpr std::string_view mdns_service = "_valence._tcp";
 }  // namespace limits
 
 }  // namespace valence

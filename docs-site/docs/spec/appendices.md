@@ -243,4 +243,3 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `conformance_min_clients` | 4 | [§6.3](session.md#s6-3), [§17.1](conformance.md#s17-1) |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | [§6.3](session.md#s6-3) |
 | `ws_subprotocol` | `valence.v1` | [§13.2](transports.md#s13-2) |
-| `mdns_service` | `_valence._tcp` | [§13.7](transports.md#s13-7) |

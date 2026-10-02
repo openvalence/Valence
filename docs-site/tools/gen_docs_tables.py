@@ -711,6 +711,8 @@ def page_discovery(reg: dict, reg_display: str) -> str:
         [cell("Notify characteristic (h2c)"), code(ble["notify_char_uuid"])],
     ]
     table(p, ["Role", "UUID"], rows)
+    p(f"The scan-response flags record is Manufacturer-Specific Data under company id "
+      f"`0x{ble['msd_company_id']:04X}`: `company_id:u16le + flags:u8`.\n\n")
 
     p("## BLE advertising flags\n\n")
     p("A legacy (≤31 B) advertising payload can spare one byte for flags,\n")

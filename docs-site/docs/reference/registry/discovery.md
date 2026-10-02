@@ -33,6 +33,8 @@ in ASCII, deliberately, so the UUID is greppable rather than an opaque v4.
 | Write characteristic (c2h) | `56414C45-4E43-4531-8000-000000000002` |
 | Notify characteristic (h2c) | `56414C45-4E43-4531-8000-000000000003` |
 
+The scan-response flags record is Manufacturer-Specific Data under company id `0xFFFF`: `company_id:u16le + flags:u8`.
+
 ## BLE advertising flags
 
 A legacy (≤31 B) advertising payload can spare one byte for flags,

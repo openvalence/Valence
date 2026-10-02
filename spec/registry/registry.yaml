@@ -900,6 +900,7 @@ ble_identity:
   service_uuid:     "56414C45-4E43-4531-8000-000000000001"
   write_char_uuid:  "56414C45-4E43-4531-8000-000000000002"   # c2h (write) — client submits frames here
   notify_char_uuid: "56414C45-4E43-4531-8000-000000000003"   # h2c (notify) — hub delivers frames here
+  msd_company_id: 0xFFFF   # RFC-072: company id of the scan-response Manufacturer-Specific-Data record carrying `ble_adv_flags` (layout company_id:u16le + flags:u8, §13.4). 0xFFFF is the SIG testing id; keeping it is an open question pre-v1.0.
 
 # ---------------------------------------------------------------------------
 # BLE advertising flags (u8) — RFC-046 §2. Rides the SCAN RESPONSE (active
@@ -907,7 +908,8 @@ ble_identity:
 # payload has no room left for this byte's Manufacturer-Specific-Data record
 # once the service UUID and shortened hub name are in it (TRAPS T14); the
 # fuller name rides alongside it in the same scan response. Bits not listed
-# MUST be zero.
+# MUST be zero. Record layout pinned by RFC-072: company_id:u16le
+# (`ble_identity.msd_company_id`, 0xFFFF) + flags:u8.
 # ---------------------------------------------------------------------------
 ble_adv_flags:
   bit0: { name: pairing_window_open, note: "a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag, ESP-NOW's equivalent)" }
@@ -1261,4 +1263,5 @@ limits:
   log_replay_depth_default: 32      # entries the hub MAY replay from its ring tail when a session is granted the log channel. THE named exception to §9.4's no-replay rule ("except where a channel's catalog entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every grant a burst.
 
   ws_subprotocol: "valence.v1"
-  mdns_service: "_valence._tcp"
+  # mdns_service ("_valence._tcp") RETIRED pre-tag by RFC-072: no mDNS service
+  # record exists (§13.7); discovery is the §13.8 UDP probe and BLE.
