@@ -1739,6 +1739,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [088](#rfc-088----flip-a-rail-bound-direction-flip-home-swaps-ends) | Flip: rail-bound direction flip | Landed a7415b0 |
 | [089](#rfc-089----store-writer-field-roles-find-slot-name-and-item-by-identity) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
 | [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
+| [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 
 ---
 
@@ -7667,8 +7668,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-093 -- Classic and Advanced generators are two rail sources, not one generator with a mode
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-cs9). Pre-approved: lands
-  directly as accepted, like
+- **Status:** LANDED 4ca8592 (2026-10-02). ACCEPTED (operator, 2026-10-02;
+  rfc-cs9). Pre-approved: landed directly as accepted, like
   [RFC-086](#rfc-086----units-deg-us-and-a-hub-time-stamp-unit-display-autoranging-is-a-client-choice).
 - **Origin:** operator ruling 2026-10-02 (bead rfc-cs9), while the
   Phosphor factory plugin (ph-e82.18) and the Nucleus arbiter were being
