@@ -24,6 +24,17 @@ static_assert(Catalog32::kLabelCapacity == 256);
 static_assert(Catalog32::kStoreCapacity == 6);
 static_assert(Hub::catalogScratchCapacity() == 65536);
 
+// rfc-bhd: RFC-076 `safe` is a side pool. A field carries only a 2-byte index,
+// and the pool is the only cost that scales with SafeSlots: 0 -> 32 slots
+// adds 32 SettingDefaults, within one alignment unit (an empty std::array
+// still occupies one).
+static_assert(sizeof(LayoutField::safeSlot) == 2);
+static_assert(sizeof(SchemaField::safeSlot) == 2);
+using CapNoSafe = BasicCatalog<48, 200, 160, 192, 4, 0>;
+using CapSafe32 = BasicCatalog<48, 200, 160, 192, 4, 32>;
+static_assert(sizeof(CapSafe32) - sizeof(CapNoSafe) + alignof(SettingDefault) >= 32 * sizeof(SettingDefault));
+static_assert(sizeof(CapSafe32) - sizeof(CapNoSafe) <= 32 * sizeof(SettingDefault) + alignof(SettingDefault));
+
 TEST_CASE("CAP-01 an overridden Catalog32 holds more entries than the default 48") {
     static Catalog32 cat;
     for (uint16_t i = 0; i < 60; ++i) {

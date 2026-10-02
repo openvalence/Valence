@@ -159,7 +159,8 @@ inline void encodeSettingDefault(CborWriter& w, const SettingDefault& d) {
 // field's own map) [+1 more if it opens the bits map or the options array].
 inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
                               std::span<const std::string_view> bits,
-                              std::span<const std::string_view> options) {
+                              std::span<const std::string_view> options,
+                              const SettingDefault& safe) {
     uint32_t nBits = 0;
     for (std::string_view name : bits) {
         if (!name.empty()) ++nBits;
@@ -181,7 +182,7 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     if (f.hasScope) ++nKeys;
     if (f.hasProvenance) ++nKeys;
     if (f.hasUnitId) ++nKeys;
-    if (f.safe.has()) ++nKeys;
+    if (safe.has()) ++nKeys;
 
     w.mapHeader(nKeys);
     w.key(1).tstrVal(f.name);
@@ -220,9 +221,9 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     if (f.hasScope) w.key(21).uintVal(f.scope);
     if (f.hasProvenance) w.key(22).uintVal(f.provenance);
     if (f.hasUnitId) w.key(23).uintVal(f.unitId);
-    if (f.safe.has()) {  // RFC-076; 24 is schema-only
+    if (safe.has()) {  // RFC-076; 24 is schema-only
         w.key(25);
-        encodeSettingDefault(w, f.safe);
+        encodeSettingDefault(w, safe);
     }
 }
 
@@ -230,7 +231,8 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
 // every present optional in ascending key order.
 inline void encodeSchemaField(CborWriter& w, const SchemaField& f,
                               std::span<const std::string_view> options,
-                              std::span<const AccessLevel> optionAccess) {
+                              std::span<const AccessLevel> optionAccess,
+                              const SettingDefault& safe) {
     uint32_t nKeys = 3;
     if (f.hasMin) ++nKeys;
     if (f.hasMax) ++nKeys;
@@ -249,7 +251,7 @@ inline void encodeSchemaField(CborWriter& w, const SchemaField& f,
     if (f.hasProvenance) ++nKeys;
     if (f.hasUnitId) ++nKeys;
     if (f.destructiveOptions != 0) ++nKeys;
-    if (f.safe.has()) ++nKeys;
+    if (safe.has()) ++nKeys;
 
     w.mapHeader(nKeys);
     w.key(1).tstrVal(f.name);
@@ -282,9 +284,9 @@ inline void encodeSchemaField(CborWriter& w, const SchemaField& f,
     if (f.hasProvenance) w.key(22).uintVal(f.provenance);
     if (f.hasUnitId) w.key(23).uintVal(f.unitId);
     if (f.destructiveOptions != 0) w.key(24).uintVal(f.destructiveOptions);  // RFC-063
-    if (f.safe.has()) {  // RFC-076
+    if (safe.has()) {  // RFC-076
         w.key(25);
-        encodeSettingDefault(w, f.safe);
+        encodeSettingDefault(w, safe);
     }
 }
 
@@ -305,8 +307,8 @@ inline void encodeStoreDescriptor(CborWriter& w, const StoreDescriptor& d) {
 // `cat` — exactly one of layout / schema / store, selected by its class.
 // Returns nothing; caller reads w.size() to learn success/length (0 =>
 // failure, same convention as every encoder in this library).
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, const CatalogEntry& e) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T, F>& cat, const CatalogEntry& e) {
     const auto layout = cat.layoutFields(e);
     const auto schema = cat.schemaFields(e);
     const StoreDescriptor* store = cat.storeDescriptor(e);
@@ -357,7 +359,7 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, c
         case FieldForm::Layout: {
             w.key(8).arrayHeader(uint32_t(layout.size()));
             for (const LayoutField& lf : layout) {
-                encodeLayoutField(w, lf, cat.bitLabels(lf), cat.optionLabels(lf));
+                encodeLayoutField(w, lf, cat.bitLabels(lf), cat.optionLabels(lf), cat.safe(lf));
             }
             break;
         }
@@ -376,7 +378,7 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, c
             for (size_t f = 0; f < n; ++f) {
                 const SchemaField& sf = schema[order[f]];
                 w.key(uint64_t(sf.key));
-                encodeSchemaField(w, sf, cat.optionLabels(sf), cat.optionAccess(sf));
+                encodeSchemaField(w, sf, cat.optionLabels(sf), cat.optionAccess(sf), cat.safe(sf));
             }
             break;
         }
@@ -417,8 +419,8 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, c
 // pools, an entry exceeding limits::catalog_max_entry_bytes, or entries not
 // strictly ascending by id (§8.3). Encoders otherwise can't fail
 // (core/result.hpp's convention).
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-size_t encodeCatalog(const BasicCatalog<E, L, S, B, T>& cat, std::span<std::byte> out) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+size_t encodeCatalog(const BasicCatalog<E, L, S, B, T, F>& cat, std::span<std::byte> out) {
     for (uint16_t i = 1; i < cat.count; ++i) {
         if (cat.entries[i].id <= cat.entries[i - 1].id) return 0;
     }
@@ -510,8 +512,8 @@ inline Result<SettingDefault, DecodeError> decodeSettingDefault(CborReader& r) {
 
 // Reads an `[ + tstr ]` option-label array straight into `cat`'s label pool,
 // writing the resulting ref to `out`.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<std::monostate, DecodeError> decodeOptions(CborReader& r, BasicCatalog<E, L, S, B, T>& cat,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<std::monostate, DecodeError> decodeOptions(CborReader& r, BasicCatalog<E, L, S, B, T, F>& cat,
                                                          LabelRef& out) {
     using Ret = Result<std::monostate, DecodeError>;
     auto aR = r.readArrayHeader();
@@ -530,8 +532,8 @@ inline Result<std::monostate, DecodeError> decodeOptions(CborReader& r, BasicCat
     return Ret::ok(std::monostate{});
 }
 
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<LayoutField, DecodeError> decodeLayoutField(CborReader& r, BasicCatalog<E, L, S, B, T>& cat) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<LayoutField, DecodeError> decodeLayoutField(CborReader& r, BasicCatalog<E, L, S, B, T, F>& cat) {
     using Ret = Result<LayoutField, DecodeError>;
     auto mR = r.readMapHeader();
     if (!mR) return Ret::err(mR.error());
@@ -715,7 +717,7 @@ inline Result<LayoutField, DecodeError> decodeLayoutField(CborReader& r, BasicCa
             case 25: {  // RFC-076 safe
                 auto v = decodeSettingDefault(r);
                 if (!v) return Ret::err(v.error());
-                f.safe = v.value();
+                if (!cat.poolAddSafe(v.value(), f.safeSlot)) return Ret::err(DecodeError::CapacityExceeded);
                 break;
             }
             default: {
@@ -729,8 +731,8 @@ inline Result<LayoutField, DecodeError> decodeLayoutField(CborReader& r, BasicCa
     return Ret::ok(f);
 }
 
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<SchemaField, DecodeError> decodeSchemaField(CborReader& r, BasicCatalog<E, L, S, B, T>& cat,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<SchemaField, DecodeError> decodeSchemaField(CborReader& r, BasicCatalog<E, L, S, B, T, F>& cat,
                                                           uint8_t key) {
     using Ret = Result<SchemaField, DecodeError>;
     auto mR = r.readMapHeader();
@@ -908,7 +910,7 @@ inline Result<SchemaField, DecodeError> decodeSchemaField(CborReader& r, BasicCa
             case 25: {  // RFC-076 safe
                 auto v = decodeSettingDefault(r);
                 if (!v) return Ret::err(v.error());
-                f.safe = v.value();
+                if (!cat.poolAddSafe(v.value(), f.safeSlot)) return Ret::err(DecodeError::CapacityExceeded);
                 break;
             }
             default: {
@@ -998,8 +1000,8 @@ inline Result<StoreDescriptor, DecodeError> decodeStoreDescriptor(CborReader& r)
 // addEntryVerbatim(). Failure may leave orphaned fields/labels in the pools:
 // harmless (the counts are the truth, and decodeCatalog fails whole either
 // way).
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<CatalogEntry, DecodeError> decodeEntry(CborReader& r, BasicCatalog<E, L, S, B, T>& cat) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<CatalogEntry, DecodeError> decodeEntry(CborReader& r, BasicCatalog<E, L, S, B, T, F>& cat) {
     using Ret = Result<CatalogEntry, DecodeError>;
 
     auto mR = r.readMapHeader();
@@ -1266,8 +1268,8 @@ inline Result<CatalogEntry, DecodeError> decodeEntry(CborReader& r, BasicCatalog
 // rather than untouched. A failed decode yields no usable catalog either
 // way, so callers must check the Result before reading `cat` — they always
 // did.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-Result<std::monostate, DecodeError> decodeCatalog(std::span<const std::byte> in, BasicCatalog<E, L, S, B, T>& cat) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+Result<std::monostate, DecodeError> decodeCatalog(std::span<const std::byte> in, BasicCatalog<E, L, S, B, T, F>& cat) {
     using Ret = Result<std::monostate, DecodeError>;
 
     cat.clear();

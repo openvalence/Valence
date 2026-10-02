@@ -64,8 +64,8 @@ struct ConformanceReport {
 // (a 4 KiB + 64 B array is the usual choice); a smaller buffer makes an
 // oversize entry indistinguishable from a buffer-too-small failure, and both
 // report EntryTooLarge.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T>& c,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T, F>& c,
                                       std::span<std::byte> scratch) {
     ConformanceReport r;
     uint16_t prevId = 0;
@@ -146,8 +146,8 @@ inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T>& c,
 // Structural-only convenience: everything above EXCEPT EntryTooLarge, which
 // cannot be evaluated without a buffer to encode into. Tooling that wants the
 // complete verdict passes a scratch span.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T>& c) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T, F>& c) {
     return checkCatalog(c, std::span<std::byte>{});
 }
 

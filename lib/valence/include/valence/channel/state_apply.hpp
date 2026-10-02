@@ -101,8 +101,8 @@ inline Result<size_t, DecodeError> appendOnlyRead(std::span<const LayoutField> k
 }
 
 // (catalog, entry) convenience, mirroring decodeByLayout's.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<size_t, DecodeError> appendOnlyRead(const BasicCatalog<E, L, S, B, T>& cat,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<size_t, DecodeError> appendOnlyRead(const BasicCatalog<E, L, S, B, T, F>& cat,
                                                    const CatalogEntry& knownLayout,
                                                    std::span<const std::byte> payload,
                                                    std::span<float> outPhysical) {

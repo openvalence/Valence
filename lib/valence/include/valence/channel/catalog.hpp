@@ -32,6 +32,15 @@
 // index-aligned with key 10 by definition). A LabelRef is 4 bytes; the labels
 // themselves are paid for once, by whoever actually declares any.
 //
+// A FIFTH pool holds the RFC-076 `safe` values (field key 25), which only
+// accessory declarations carry:
+//
+//   * safePool    — SettingDefault, one slot per field that declares `safe`
+//
+// A field holds a 2-byte `safeSlot` index into it (kNoSafeSlot = absent).
+// Author with setFieldSafe(); read with cat.safe(field). Sized by the
+// SafeSlots capacity (VALENCE_CATALOG_SAFE_SLOTS).
+//
 // WHY POOLS (measured, xtensa 32-bit):
 //   * M2a: the previous model gave every entry BOTH a std::array<LayoutField,8>
 //     AND a std::array<SchemaField,8> — 800 + 288 B per entry, of which exactly
@@ -160,6 +169,9 @@ struct LabelRef {
     constexpr bool empty() const { return count == 0; }
 };
 
+// LayoutField/SchemaField::safeSlot when the field declares no `safe`.
+inline constexpr uint16_t kNoSafeSlot = 0xFFFF;
+
 // A packed field of a STATE/STREAM layout (CDDL `layout-field`).
 //
 // Keys 1..7 are the wire description; keys 8..15 are the RFC-009 ANNOTATION
@@ -232,9 +244,10 @@ struct LayoutField {
     bool hasUnitId = false;
     uint8_t unitId = 0;
 
-    // key 25 (RFC-076): the value this field takes in an accessory's safe
-    // state (SPEC §8.10, §13.3.1). Absent = Kind::None.
-    SettingDefault safe{};
+    // key 25 (RFC-076): index of this field's safe-state value (SPEC §8.10,
+    // §13.3.1) in the owning catalog's safePool. Set by setFieldSafe() or the
+    // decoder, never authored directly; read with cat.safe(field).
+    uint16_t safeSlot = kNoSafeSlot;
 
     // Bytes this field occupies in a packed payload. EXHAUSTIVE by design:
     // no `default:` arm, so adding a PackedFieldType without giving it a
@@ -316,12 +329,13 @@ struct SchemaField {
     uint8_t provenance = 0;
     bool hasUnitId = false;
     uint8_t unitId = 0;
+    // key 25 (RFC-076): as LayoutField::safeSlot. Sits in the padding before
+    // the 8-byte member below; never authored directly.
+    uint16_t safeSlot = kNoSafeSlot;
 
     // key 24 (RFC-063): bit i marks option i destructive (SPEC §8.8). 0 is
     // absent on the wire. Options past bit 63 cannot be marked.
     uint64_t destructiveOptions = 0;
-    // key 25 (RFC-076): as LayoutField::safe.
-    SettingDefault safe{};
 };
 
 // A STORE-class entry's descriptor (CDDL `store-descriptor`, RFC-021). The
@@ -465,25 +479,29 @@ constexpr size_t layoutWireSize(std::span<const LayoutField> fields) {
 
 // Fixed-capacity catalog: `Entries` channel entries drawing payload from a
 // `LayoutFields`-slot layout pool, a `SchemaFields`-slot schema pool, a
-// `Stores`-slot store pool, and a `Labels`-slot label pool (bit labels +
-// option labels + their per-option access levels).
+// `Stores`-slot store pool, a `Labels`-slot label pool (bit labels +
+// option labels + their per-option access levels), and a `SafeSlots`-slot
+// pool of RFC-076 safe values.
 // Entries MUST be kept sorted ascending by id — the etag (§8.3) is computed
 // over the deterministic encoding in that order, and the authoring API
 // appends, so authoring order IS wire order.
 template <size_t Entries = 32, size_t LayoutFields = 200, size_t SchemaFields = 48,
-          size_t Labels = 128, size_t Stores = 4>
+          size_t Labels = 128, size_t Stores = 4, size_t SafeSlots = 32>
 struct BasicCatalog {
     static constexpr size_t kEntryCapacity = Entries;
     static constexpr size_t kLayoutCapacity = LayoutFields;
     static constexpr size_t kSchemaCapacity = SchemaFields;
     static constexpr size_t kLabelCapacity = Labels;
     static constexpr size_t kStoreCapacity = Stores;
+    static constexpr size_t kSafeCapacity = SafeSlots;
+    static_assert(SafeSlots < kNoSafeSlot, "safeSlot is a uint16_t index with 0xFFFF reserved");
 
     uint16_t count = 0;        // entries in use
     uint16_t layoutUsed = 0;   // layout-pool slots in use
     uint16_t schemaUsed = 0;   // schema-pool slots in use
     uint16_t labelUsed = 0;    // label-pool slots in use
     uint16_t storeUsed = 0;    // store-pool slots in use
+    uint16_t safeUsed = 0;     // safe-pool slots in use
     // Sticky: set by ANY adder that could not fit. Never silently truncates
     // without recording it — check ok() after building.
     bool overflow = false;
@@ -497,6 +515,7 @@ struct BasicCatalog {
     // option label at the same index. Meaningless (and left at watch) for bit
     // labels and for options whose field declares no option_access.
     std::array<AccessLevel, Labels> labelAccessPool{};
+    std::array<SettingDefault, SafeSlots> safePool{};
 
     bool ok() const { return !overflow; }
 
@@ -506,6 +525,7 @@ struct BasicCatalog {
         schemaUsed = 0;
         labelUsed = 0;
         storeUsed = 0;
+        safeUsed = 0;
         overflow = false;
     }
 
@@ -635,6 +655,26 @@ struct BasicCatalog {
         return internLabels(labels, LabelRef::kMaxCount, entries[count - 1].eventKinds);
     }
 
+    // Attaches an RFC-076 `safe` value (field key 25) to the most recently
+    // added field of the most recent entry (layout or schema). Setting it
+    // again on the same field overwrites in place; a Kind::None value is a
+    // no-op. Latches overflow when there is no such field or the pool is full.
+    bool setFieldSafe(const SettingDefault& v) {
+        if (count == 0 || entries[count - 1].fieldCount == 0 || entries[count - 1].usesStore()) {
+            overflow = true;
+            return false;
+        }
+        if (!v.has()) return true;
+        const CatalogEntry& e = entries[count - 1];
+        const size_t idx = size_t(e.fieldOffset) + e.fieldCount - 1;
+        uint16_t& slot = e.usesLayout() ? layoutPool[idx].safeSlot : schemaPool[idx].safeSlot;
+        if (slot < safeUsed) {
+            safePool[slot] = v;
+            return true;
+        }
+        return poolAddSafe(v, slot);
+    }
+
     // Attaches the STORE descriptor to the most recent entry (which must be a
     // STORE-class entry). Exactly one per entry — a second call is an
     // authoring error.
@@ -658,8 +698,8 @@ struct BasicCatalog {
     // this catalog and the refs remapped). The "superset catalog" idiom: build
     // on top of a frozen fixture without duplicating its content or copying a
     // whole catalog by value.
-    template <size_t E2, size_t L2, size_t S2, size_t B2, size_t T2>
-    bool addEntryFrom(const BasicCatalog<E2, L2, S2, B2, T2>& src, const CatalogEntry& e) {
+    template <size_t E2, size_t L2, size_t S2, size_t B2, size_t T2, size_t F2>
+    bool addEntryFrom(const BasicCatalog<E2, L2, S2, B2, T2, F2>& src, const CatalogEntry& e) {
         CatalogEntry* added = addEntry(e);
         if (added == nullptr) return false;
         if (!reintern(src, e.eventKinds, added->eventKinds)) return false;
@@ -667,16 +707,20 @@ struct BasicCatalog {
             case FieldForm::Layout:
                 for (const LayoutField& f : src.layoutFields(e)) {
                     LayoutField copy = f;
+                    copy.safeSlot = kNoSafeSlot;   // src's index means nothing here
                     if (!reintern(src, f.bits, copy.bits)) return false;
                     if (!reintern(src, f.options, copy.options)) return false;
                     if (!addLayoutField(copy)) return false;
+                    if (!setFieldSafe(src.safe(f))) return false;
                 }
                 break;
             case FieldForm::Schema:
                 for (const SchemaField& f : src.schemaFields(e)) {
                     SchemaField copy = f;
+                    copy.safeSlot = kNoSafeSlot;
                     if (!reintern(src, f.options, copy.options)) return false;
                     if (!addSchemaField(copy)) return false;
+                    if (!setFieldSafe(src.safe(f))) return false;
                 }
                 break;
             case FieldForm::Store: {
@@ -727,6 +771,17 @@ struct BasicCatalog {
         }
         labelAccessPool[labelUsed] = a;
         labelPool[labelUsed++] = s;
+        return true;
+    }
+    // Stores one safe value and writes its slot to `slotOut` (the decoder's
+    // path for field key 25; authoring code wants setFieldSafe()).
+    bool poolAddSafe(const SettingDefault& v, uint16_t& slotOut) {
+        if (safeUsed >= SafeSlots) {
+            overflow = true;
+            return false;
+        }
+        safePool[safeUsed] = v;
+        slotOut = safeUsed++;
         return true;
     }
     // Overwrites the access level of an already-interned label slot — how a
@@ -807,6 +862,9 @@ struct BasicCatalog {
         if (!f.hasOptionAccess) return {};
         return labelAccess(f.options);
     }
+    // RFC-076 `safe` (key 25): Kind::None when absent or unresolvable here.
+    SettingDefault safe(const LayoutField& f) const { return safeAt(f.safeSlot); }
+    SettingDefault safe(const SchemaField& f) const { return safeAt(f.safeSlot); }
 
     // Packed payload size of a layout-class entry (see the free
     // layoutWireSize(span) above for the append-only prefix case).
@@ -824,6 +882,11 @@ struct BasicCatalog {
     }
 
   private:
+    SettingDefault safeAt(uint16_t slot) const {
+        if (slot >= safeUsed) return {};
+        return safePool[slot];
+    }
+
     // OPTION labels (CDDL key 10) may not be empty, and this is asymmetric
     // with BIT labels on purpose: an unnamed BIT is meaningful ("bit 5 has no
     // name"), whereas an unnamed OPTION is unrenderable — there is no way for
@@ -871,8 +934,8 @@ struct BasicCatalog {
 
     // Copies `src`'s labels (and their access levels) into THIS catalog's pool
     // and writes the remapped ref to `out`. Used by addEntryFrom().
-    template <size_t E2, size_t L2, size_t S2, size_t B2, size_t T2>
-    bool reintern(const BasicCatalog<E2, L2, S2, B2, T2>& src, LabelRef ref, LabelRef& out) {
+    template <size_t E2, size_t L2, size_t S2, size_t B2, size_t T2, size_t F2>
+    bool reintern(const BasicCatalog<E2, L2, S2, B2, T2, F2>& src, LabelRef ref, LabelRef& out) {
         if (ref.count == 0) {
             out = LabelRef{};
             return true;
@@ -942,8 +1005,19 @@ struct BasicCatalog {
 #ifndef VALENCE_CATALOG_STORES
 #define VALENCE_CATALOG_STORES 4
 #endif
+// RFC-076 safe values (rfc-bhd). Only accessory declarations carry them, so a
+// hub hosting no accessories may build with 0. A CLIENT must size it for the
+// hubs it talks to: a hub catalog carrying more safe values than this fails
+// to decode (CapacityExceeded), exactly like the other capacities. 16 B per
+// slot on the ESP32-P4 (riscv32 GCC 14.2), 24 B on a 64-bit host.
+// Keep BasicCatalog's SafeSlots default at 32: the frozen
+// conformance::buildMiniCatalog names five capacities, so it accepts only
+// catalogs whose SafeSlots equals that default.
+#ifndef VALENCE_CATALOG_SAFE_SLOTS
+#define VALENCE_CATALOG_SAFE_SLOTS 32
+#endif
 using Catalog32 = BasicCatalog<VALENCE_CATALOG_ENTRIES, VALENCE_CATALOG_LAYOUT_FIELDS,
                                VALENCE_CATALOG_SCHEMA_FIELDS, VALENCE_CATALOG_LABELS,
-                               VALENCE_CATALOG_STORES>;
+                               VALENCE_CATALOG_STORES, VALENCE_CATALOG_SAFE_SLOTS>;
 
 }  // namespace valence

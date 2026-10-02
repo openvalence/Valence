@@ -1027,13 +1027,66 @@ void buildRulingKeysCatalog(Catalog32& c) {
                 .access = AccessLevel::watch, .maxRateHz = 0.0f, .defaultPriority = Priority::normal,
                 .hasModTarget = true, .modTargetChannel = 0x0095, .modTargetField = 1});
     c.addLayoutField({.name = "amount", .type = PackedFieldType::u8, .unit = "%", .scale = 1.0f,
-                      .role = field_roles::mod_amount, .safe = SettingDefault::ofInt(0)});
+                      .role = field_roles::mod_amount});
+    c.setFieldSafe(SettingDefault::ofInt(0));
     c.addEntry({.id = 0x0095, .name = "drive", .cls = ChannelClass::INTENT, .dir = Direction::c2h,
                 .access = AccessLevel::control, .maxRateHz = 20.0f, .defaultPriority = Priority::normal});
-    c.addSchemaField({.key = 1, .name = "speed", .type = CborFieldType::f32_t, .unit = "mm/s",
-                      .safe = SettingDefault::ofFloat(0.0f)});
+    c.addSchemaField({.key = 1, .name = "speed", .type = CborFieldType::f32_t, .unit = "mm/s"});
+    c.setFieldSafe(SettingDefault::ofFloat(0.0f));
 }
 }  // namespace
+
+// rfc-bhd: `safe` lives in the catalog's own pool; a field holds an index.
+TEST_CASE("safe pool: one slot per declaring field, overwrite in place, re-pooled by addEntryFrom") {
+    static Catalog32 cat;
+    buildRulingKeysCatalog(cat);
+    REQUIRE(cat.ok());
+    CHECK(cat.safeUsed == 2);
+
+    // A second set on the same field overwrites its slot.
+    cat.setFieldSafe(SettingDefault::ofFloat(1.5f));
+    CHECK(cat.safeUsed == 2);
+    const CatalogEntry* drive = cat.find(0x0095);
+    REQUIRE(drive != nullptr);
+    CHECK(cat.safe(cat.schemaFields(*drive)[0]) == SettingDefault::ofFloat(1.5f));
+
+    // addEntryFrom re-pools the value; the copy's index is this catalog's.
+    static Catalog32 copy;
+    copy.clear();
+    const CatalogEntry* mod = cat.find(0x0094);
+    REQUIRE(mod != nullptr);
+    REQUIRE(copy.addEntryFrom(cat, *mod));
+    REQUIRE(copy.ok());
+    CHECK(copy.safeUsed == 1);
+    CHECK(copy.safe(copy.layoutFields(copy.entries[0])[0]) == SettingDefault::ofInt(0));
+
+    // A field without one reads Kind::None and costs no slot.
+    CHECK_FALSE(cat.safe(cat.layoutFields(*cat.find(0x0091))[0]).has());
+}
+
+TEST_CASE("safe pool: a zero-slot catalog overflows on authoring and refuses a decode that needs a slot") {
+    using NoSafe = BasicCatalog<Catalog32::kEntryCapacity, Catalog32::kLayoutCapacity,
+                                Catalog32::kSchemaCapacity, Catalog32::kLabelCapacity,
+                                Catalog32::kStoreCapacity, 0>;
+    static NoSafe none;
+    none.clear();
+    none.addEntry({.id = 0x0094, .name = "m", .cls = ChannelClass::STATE, .dir = Direction::h2c});
+    none.addLayoutField({.name = "a", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+    CHECK(none.setFieldSafe(SettingDefault{}));     // absent: no slot needed
+    CHECK(none.ok());
+    CHECK_FALSE(none.setFieldSafe(SettingDefault::ofInt(0)));
+    CHECK_FALSE(none.ok());
+
+    static Catalog32 cat;
+    buildRulingKeysCatalog(cat);
+    static std::array<std::byte, 4096> buf{};
+    const size_t n = encodeCatalog(cat, buf);
+    REQUIRE(n > 0);
+    static NoSafe back;
+    auto r = decodeCatalog(std::span<const std::byte>(buf).first(n), back);
+    REQUIRE_FALSE(r.isOk());
+    CHECK(r.error() == DecodeError::CapacityExceeded);
+}
 
 TEST_CASE("catalog codec: entry keys 17-20, field keys 24-25 and the destructive flag round-trip") {
     static Catalog32 cat;
@@ -1080,9 +1133,10 @@ TEST_CASE("catalog codec: entry keys 17-20, field keys 24-25 and the destructive
     CHECK(wipe->destructiveOptions == 0);
     CHECK((wipe->flags & setting_flags::destructive) != 0);
 
-    CHECK(back.layoutFields(*mod)[0].safe == SettingDefault::ofInt(0));
-    CHECK(back.schemaFields(*drive)[0].safe == SettingDefault::ofFloat(0.0f));
-    CHECK_FALSE(back.layoutFields(*roster)[0].safe.has());
+    CHECK(back.safe(back.layoutFields(*mod)[0]) == SettingDefault::ofInt(0));
+    CHECK(back.safe(back.schemaFields(*drive)[0]) == SettingDefault::ofFloat(0.0f));
+    CHECK_FALSE(back.safe(back.layoutFields(*roster)[0]).has());
+    CHECK(back.safeUsed == 2);   // only the two fields that declare one take a slot
 
     // Decode -> re-encode reproduces the bytes, label holes included.
     static std::array<std::byte, 4096> buf2{};

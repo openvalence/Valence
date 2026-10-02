@@ -198,15 +198,15 @@ inline Result<size_t, DecodeError> decodeByLayout(std::span<const LayoutField> f
 // (catalog, entry) conveniences — resolve `entry`'s fields through its owning
 // catalog and apply the layout-class check the entry-shaped API used to do
 // internally. 0 / Malformed if `entry` isn't a STATE/STREAM entry.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline size_t encodeByLayout(const BasicCatalog<E, L, S, B, T>& cat, const CatalogEntry& entry,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline size_t encodeByLayout(const BasicCatalog<E, L, S, B, T, F>& cat, const CatalogEntry& entry,
                              std::span<const float> physicalValues, std::span<std::byte> out) {
     if (!entry.usesLayout()) return 0;
     return encodeByLayout(cat.layoutFields(entry), physicalValues, out);
 }
 
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline Result<size_t, DecodeError> decodeByLayout(const BasicCatalog<E, L, S, B, T>& cat,
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline Result<size_t, DecodeError> decodeByLayout(const BasicCatalog<E, L, S, B, T, F>& cat,
                                                   const CatalogEntry& entry,
                                                   std::span<const std::byte> in,
                                                   std::span<float> outPhysical) {
