@@ -160,6 +160,15 @@ public:
         return requested;
     }
 
+    // RFC-059: the schedule_latency_us (cbor key 49) this hub commits to on a
+    // publish grant of `channel_id`, inclusive of every hub-internal hop. 0 =
+    // unspecified (omitted). Must stay constant for the life of the grant; to
+    // change it, the hub sends an unsolicited GRANT.
+    virtual uint32_t scheduleLatencyUs(uint16_t channel_id) {
+        (void)channel_id;
+        return 0;
+    }
+
     // ---- RFC-021: the BLOB STORE BACKEND SEAM -------------------------------
     // The hub owns TRANSPORT (chunk framing, repair, identity, caps, access);
     // the delegate owns STORAGE. That split is the whole reason BLOB_* is one

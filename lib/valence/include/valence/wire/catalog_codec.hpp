@@ -18,17 +18,23 @@
 //     ? 14 => uint,                          ; setting_channel    (RFC-009)
 //     ? 15 => uint,                          ; stream_kind        (RFC-014/023, STREAM only)
 //     ? 16 => uint,                          ; rank               (RFC-048, Phase C2)
+//     ? 17 => uint,                          ; store_id           (RFC-070)
+//     ? 18 => tstr(1..24),                   ; role               (RFC-065)
+//     ? 19 => { + uint => tstr(1..24) },     ; event_kinds        (RFC-065, EVENT only)
+//     ? 20 => [ uint, uint ],                ; mod_target         (RFC-066)
 //   }
 //   layout-field  = { 1=>tstr(1..24), 2=>packed-type, 3=>tstr(0..8), 4=>float32,
 //                     ?5=>float32, ?6=>float32, ?7=>{ + uint => tstr },
 //                     ?8=>uint, ?9=>setting-default, ?10=>[ + tstr ],
 //                     ?11=>tstr, ?12=>tstr, ?13=>tstr, ?14=>float32, ?15=>uint,
-//                     ?18=>uint, ?19=>uint, ?20=>uint, ?21=>uint, ?22=>uint, ?23=>uint }
+//                     ?18=>uint, ?19=>uint, ?20=>uint, ?21=>uint, ?22=>uint, ?23=>uint,
+//                     ?25=>setting-default }
 //   schema-field  = { 1=>tstr(1..24), 2=>cbor-type, 3=>tstr(0..8),
 //                     ?5=>float32, ?6=>float32,
 //                     ?9=>setting-default, ?10=>[ + tstr ], ?11=>tstr, ?12=>tstr,
 //                     ?13=>tstr, ?14=>float32, ?15=>uint, ?16=>access,
-//                     ?17=>[ + access ], ?19=>uint, ?20=>uint, ?21=>uint, ?22=>uint, ?23=>uint }
+//                     ?17=>[ + access ], ?19=>uint, ?20=>uint, ?21=>uint, ?22=>uint, ?23=>uint,
+//                     ?24=>uint, ?25=>setting-default }
 //   store-descriptor = { 1=>uint, 2=>tstr(1..32), 3=>uint, 4=>uint, 5=>uint }
 //
 //   RFC-048 (Phase C2) added: layout-field/schema-field 19=rank, 20=aspect,
@@ -175,6 +181,7 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     if (f.hasScope) ++nKeys;
     if (f.hasProvenance) ++nKeys;
     if (f.hasUnitId) ++nKeys;
+    if (f.safe.has()) ++nKeys;
 
     w.mapHeader(nKeys);
     w.key(1).tstrVal(f.name);
@@ -210,6 +217,10 @@ inline void encodeLayoutField(CborWriter& w, const LayoutField& f,
     if (f.hasScope) w.key(21).uintVal(f.scope);
     if (f.hasProvenance) w.key(22).uintVal(f.provenance);
     if (f.hasUnitId) w.key(23).uintVal(f.unitId);
+    if (f.safe.has()) {  // RFC-076; 24 is schema-only
+        w.key(25);
+        encodeSettingDefault(w, f.safe);
+    }
 }
 
 // Emits one schema-field map (CDDL `schema-field`): keys 1,2,3 always, then
@@ -234,6 +245,8 @@ inline void encodeSchemaField(CborWriter& w, const SchemaField& f,
     if (f.hasScope) ++nKeys;
     if (f.hasProvenance) ++nKeys;
     if (f.hasUnitId) ++nKeys;
+    if (f.destructiveOptions != 0) ++nKeys;
+    if (f.safe.has()) ++nKeys;
 
     w.mapHeader(nKeys);
     w.key(1).tstrVal(f.name);
@@ -265,6 +278,11 @@ inline void encodeSchemaField(CborWriter& w, const SchemaField& f,
     if (f.hasScope) w.key(21).uintVal(f.scope);
     if (f.hasProvenance) w.key(22).uintVal(f.provenance);
     if (f.hasUnitId) w.key(23).uintVal(f.unitId);
+    if (f.destructiveOptions != 0) w.key(24).uintVal(f.destructiveOptions);  // RFC-063
+    if (f.safe.has()) {  // RFC-076
+        w.key(25);
+        encodeSettingDefault(w, f.safe);
+    }
 }
 
 // Emits one store-descriptor map (CDDL `store-descriptor`, RFC-021). All five
@@ -313,6 +331,15 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, c
     if (e.hasSettingChannel) ++nKeys;
     if (e.streamKind != 0) ++nKeys;  // RFC-014/023: omitted when 0 (stream_kinds::samples, the default)
     if (e.hasRank) ++nKeys;  // RFC-048 (Phase C2), key 16
+    const auto kinds = cat.eventKindLabels(e);
+    uint32_t nKinds = 0;
+    for (std::string_view k : kinds) {
+        if (!k.empty()) ++nKinds;
+    }
+    if (e.hasStoreId) ++nKeys;
+    if (!e.role.empty()) ++nKeys;
+    if (nKinds > 0) ++nKeys;
+    if (e.hasModTarget) ++nKeys;
 
     w.mapHeader(nKeys);
     w.key(1).uintVal(e.id);
@@ -364,6 +391,19 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T>& cat, c
     if (e.hasSettingChannel) w.key(14).uintVal(e.settingChannel);
     if (e.streamKind != 0) w.key(15).uintVal(e.streamKind);  // RFC-014/023
     if (e.hasRank) w.key(16).uintVal(e.rank);  // RFC-048 (Phase C2)
+    if (e.hasStoreId) w.key(17).uintVal(e.storeId);  // RFC-070
+    if (!e.role.empty()) w.key(18).tstrVal(e.role);  // RFC-065
+    if (nKinds > 0) {  // RFC-065: sparse map, index-aligned storage
+        w.key(19).mapHeader(nKinds);
+        for (size_t k = 0; k < kinds.size(); ++k) {
+            if (!kinds[k].empty()) w.key(uint64_t(k)).tstrVal(kinds[k]);
+        }
+    }
+    if (e.hasModTarget) {  // RFC-066
+        w.key(20).arrayHeader(2);
+        w.uintVal(e.modTargetChannel);
+        w.uintVal(e.modTargetField);
+    }
 }
 
 }  // namespace detail
@@ -669,6 +709,12 @@ inline Result<LayoutField, DecodeError> decodeLayoutField(CborReader& r, BasicCa
                 f.hasUnitId = true;
                 break;
             }
+            case 25: {  // RFC-076 safe
+                auto v = decodeSettingDefault(r);
+                if (!v) return Ret::err(v.error());
+                f.safe = v.value();
+                break;
+            }
             default: {
                 auto sv = r.skipValue();  // §4.3: unknown key -> ignore
                 if (!sv) return Ret::err(sv.error());
@@ -848,6 +894,18 @@ inline Result<SchemaField, DecodeError> decodeSchemaField(CborReader& r, BasicCa
                 if (v.value() > 0xFF) return Ret::err(DecodeError::Malformed);
                 f.unitId = uint8_t(v.value());
                 f.hasUnitId = true;
+                break;
+            }
+            case 24: {  // RFC-063 destructive_options
+                auto v = r.readUint();
+                if (!v) return Ret::err(v.error());
+                f.destructiveOptions = v.value();
+                break;
+            }
+            case 25: {  // RFC-076 safe
+                auto v = decodeSettingDefault(r);
+                if (!v) return Ret::err(v.error());
+                f.safe = v.value();
                 break;
             }
             default: {
@@ -1102,6 +1160,60 @@ inline Result<CatalogEntry, DecodeError> decodeEntry(CborReader& r, BasicCatalog
                 if (v.value() > 0xFF) return Ret::err(DecodeError::Malformed);
                 e.rank = uint8_t(v.value());
                 e.hasRank = true;
+                break;
+            }
+            case 17: {  // RFC-070 store_id
+                auto v = r.readUint();
+                if (!v) return Ret::err(v.error());
+                if (v.value() > 0xFF) return Ret::err(DecodeError::Malformed);
+                e.storeId = uint8_t(v.value());
+                e.hasStoreId = true;
+                break;
+            }
+            case 18: {  // RFC-065 channel role
+                auto v = r.readTstr();
+                if (!v) return Ret::err(v.error());
+                if (v.value().empty() || v.value().size() > 24) return Ret::err(DecodeError::Malformed);
+                e.role = v.value();
+                break;
+            }
+            case 19: {  // RFC-065 event_kinds: back-filled like bit labels
+                auto kmR = r.readMapHeader();
+                if (!kmR) return Ret::err(kmR.error());
+                if (kmR.value() == 0) return Ret::err(DecodeError::Malformed);
+                const uint16_t mark = cat.labelMark();
+                uint32_t filled = 0;
+                for (uint32_t k = 0; k < kmR.value(); ++k) {
+                    auto kk = r.readKey();
+                    if (!kk) return Ret::err(kk.error());
+                    // Index-aligned storage: a labeled kind must be < 255, and every
+                    // unlabeled kind below it costs one label-pool slot.
+                    if (kk.value() >= LabelRef::kMaxCount) return Ret::err(DecodeError::CapacityExceeded);
+                    auto kv = r.readTstr();
+                    if (!kv) return Ret::err(kv.error());
+                    if (kv.value().empty() || kv.value().size() > 24) return Ret::err(DecodeError::Malformed);
+                    while (filled < kk.value()) {
+                        if (!cat.poolAddLabel({})) return Ret::err(DecodeError::CapacityExceeded);
+                        ++filled;
+                    }
+                    if (!cat.poolAddLabel(kv.value())) return Ret::err(DecodeError::CapacityExceeded);
+                    ++filled;
+                }
+                e.eventKinds = LabelRef{mark, uint8_t(filled)};
+                break;
+            }
+            case 20: {  // RFC-066 mod_target [channel id, field]
+                auto aR = r.readArrayHeader();
+                if (!aR) return Ret::err(aR.error());
+                if (aR.value() != 2) return Ret::err(DecodeError::Malformed);
+                auto ch = r.readUint();
+                if (!ch) return Ret::err(ch.error());
+                auto fld = r.readUint();
+                if (!fld) return Ret::err(fld.error());
+                if (ch.value() > 0xFFFF || fld.value() > 0xFFFF) return Ret::err(DecodeError::Malformed);
+                e.modTargetChannel = uint16_t(ch.value());
+                e.modTargetField = uint16_t(fld.value());
+                e.hasModTarget = true;
                 break;
             }
             default: {

@@ -232,6 +232,10 @@ struct LayoutField {
     bool hasUnitId = false;
     uint8_t unitId = 0;
 
+    // key 25 (RFC-076): the value this field takes in an accessory's safe
+    // state (SPEC §8.10, §13.3.1). Absent = Kind::None.
+    SettingDefault safe{};
+
     // Bytes this field occupies in a packed payload. EXHAUSTIVE by design:
     // no `default:` arm, so adding a PackedFieldType without giving it a
     // width is a -Wswitch compile error rather than a silent wrong answer.
@@ -312,6 +316,12 @@ struct SchemaField {
     uint8_t provenance = 0;
     bool hasUnitId = false;
     uint8_t unitId = 0;
+
+    // key 24 (RFC-063): bit i marks option i destructive (SPEC §8.8). 0 is
+    // absent on the wire. Options past bit 63 cannot be marked.
+    uint64_t destructiveOptions = 0;
+    // key 25 (RFC-076): as LayoutField::safe.
+    SettingDefault safe{};
 };
 
 // A STORE-class entry's descriptor (CDDL `store-descriptor`, RFC-021). The
@@ -404,6 +414,24 @@ struct CatalogEntry {
     // Absent = detail (2).
     bool hasRank = false;
     uint8_t rank = 0;
+
+    // key 17 (RFC-070): on a store's roster STATE and on the INTENT entry
+    // carrying its action.store op select, the store-descriptor store_id of
+    // the STORE entry it belongs to (SPEC §8.7).
+    bool hasStoreId = false;
+    uint8_t storeId = 0;
+    // key 18 (RFC-065): a channel_roles string (<= 24 B) naming the entry's
+    // purpose. Unlike a field role it MAY repeat across entries.
+    std::string_view role{};
+    // key 19 (RFC-065, EVENT only): event_kind labels, INDEX-ALIGNED in the
+    // label pool like bit labels (slot i labels kind i, "" = unlabeled).
+    // Author with setEventKinds(); read with cat.eventKindLabels(entry).
+    LabelRef eventKinds{};
+    // key 20 (RFC-066): [channel id, field] of the field this modulator
+    // rides; field = layout index (STATE/STREAM) or schema key (INTENT).
+    bool hasModTarget = false;
+    uint16_t modTargetChannel = 0;
+    uint16_t modTargetField = 0;
 
     // EXHAUSTIVE by design (no `default:` arm): adding a ChannelClass without
     // giving it a payload form is a -Wswitch compile error, not a silent
@@ -595,6 +623,18 @@ struct BasicCatalog {
         return addSchemaField(f);
     }
 
+    // Attaches event_kind labels (CDDL entry key 19, RFC-065) to the most
+    // recent entry, which must be EVENT class. INDEX-ALIGNED: element i labels
+    // event_kind i, "" leaves it unlabeled. Must stay absent on spec-core
+    // channels, whose kinds are registry tables (SPEC §8.1).
+    bool setEventKinds(std::initializer_list<std::string_view> labels) {
+        if (count == 0 || entries[count - 1].cls != ChannelClass::EVENT) {
+            overflow = true;
+            return false;
+        }
+        return internLabels(labels, LabelRef::kMaxCount, entries[count - 1].eventKinds);
+    }
+
     // Attaches the STORE descriptor to the most recent entry (which must be a
     // STORE-class entry). Exactly one per entry — a second call is an
     // authoring error.
@@ -620,7 +660,9 @@ struct BasicCatalog {
     // whole catalog by value.
     template <size_t E2, size_t L2, size_t S2, size_t B2, size_t T2>
     bool addEntryFrom(const BasicCatalog<E2, L2, S2, B2, T2>& src, const CatalogEntry& e) {
-        if (addEntry(e) == nullptr) return false;
+        CatalogEntry* added = addEntry(e);
+        if (added == nullptr) return false;
+        if (!reintern(src, e.eventKinds, added->eventKinds)) return false;
         switch (e.form()) {
             case FieldForm::Layout:
                 for (const LayoutField& f : src.layoutFields(e)) {
@@ -757,6 +799,8 @@ struct BasicCatalog {
     std::span<const std::string_view> bitLabels(const LayoutField& f) const { return labels(f.bits); }
     std::span<const std::string_view> optionLabels(const LayoutField& f) const { return labels(f.options); }
     std::span<const std::string_view> optionLabels(const SchemaField& f) const { return labels(f.options); }
+    // INDEX-ALIGNED: element i labels event_kind i, "" = unlabeled.
+    std::span<const std::string_view> eventKindLabels(const CatalogEntry& e) const { return labels(e.eventKinds); }
     // Per-option minimum roles, index-aligned with optionLabels(f) — EMPTY
     // unless the field actually declares key 17.
     std::span<const AccessLevel> optionAccess(const SchemaField& f) const {

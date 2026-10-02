@@ -90,17 +90,7 @@ inline size_t encodeGrant(const GrantMsg& m, std::span<std::byte> out) {
         // granted_publishes(36) > grants(35): map order stays ascending.
         w.key(CborKey::granted_publishes).arrayHeader(m.granted_publishes_count);
         for (uint32_t i = 0; i < m.granted_publishes_count; ++i) {
-            const GrantedPublish& gp = m.granted_publishes[i];
-            // Entry keys ascending: granted_rate_hz(14) < channel_id(15) < burst(42)
-            // < curve_family(45) < requested_curve_family(48).
-            w.mapHeader(2 + uint32_t(gp.has_burst) + uint32_t(gp.has_curve_family) +
-                        uint32_t(gp.has_requested_curve_family));
-            w.key(CborKey::granted_rate_hz).f32Val(gp.granted_rate_hz);
-            w.key(CborKey::channel_id).uintVal(gp.channel_id);
-            if (gp.has_burst) w.key(CborKey::burst).f32Val(gp.burst);
-            if (gp.has_curve_family) w.key(CborKey::curve_family).uintVal(gp.curve_family);
-            if (gp.has_requested_curve_family)
-                w.key(CborKey::requested_curve_family).uintVal(gp.requested_curve_family);
+            encodeGrantedPublish(w, m.granted_publishes[i]);
         }
     }
     return w.size();
@@ -178,56 +168,9 @@ inline Result<GrantMsg, DecodeError> decodeGrant(std::span<const std::byte> in) 
                 if (!cR) return Ret::err(cR.error());
                 if (cR.value() > kWelcomeMaxGrantedPublishes) return Ret::err(DecodeError::CapacityExceeded);
                 for (uint32_t j = 0; j < cR.value(); ++j) {
-                    auto pR = r.readMapHeader();
-                    if (!pR) return Ret::err(pR.error());
-                    GrantedPublish gp{};
-                    for (uint32_t f = 0; f < pR.value(); ++f) {
-                        auto fk = r.readKey();
-                        if (!fk) return Ret::err(fk.error());
-                        switch (fk.value()) {
-                            case uint64_t(CborKey::granted_rate_hz): {
-                                auto vv = r.readF32();
-                                if (!vv) return Ret::err(vv.error());
-                                gp.granted_rate_hz = vv.value();
-                                break;
-                            }
-                            case uint64_t(CborKey::channel_id): {
-                                auto vv = r.readUint();
-                                if (!vv) return Ret::err(vv.error());
-                                gp.channel_id = uint16_t(vv.value());
-                                break;
-                            }
-                            case uint64_t(CborKey::burst): {
-                                auto vv = r.readF32();
-                                if (!vv) return Ret::err(vv.error());
-                                gp.burst = vv.value();
-                                gp.has_burst = true;
-                                break;
-                            }
-                            case uint64_t(CborKey::curve_family): {
-                                auto vv = r.readUint();
-                                if (!vv) return Ret::err(vv.error());
-                                if (vv.value() > 0xFF) return Ret::err(DecodeError::Malformed);
-                                gp.curve_family = uint8_t(vv.value());
-                                gp.has_curve_family = true;
-                                break;
-                            }
-                            case uint64_t(CborKey::requested_curve_family): {
-                                auto vv = r.readUint();
-                                if (!vv) return Ret::err(vv.error());
-                                if (vv.value() > 0xFF) return Ret::err(DecodeError::Malformed);
-                                gp.requested_curve_family = uint8_t(vv.value());
-                                gp.has_requested_curve_family = true;
-                                break;
-                            }
-                            default: {
-                                auto sv = r.skipValue();
-                                if (!sv) return Ret::err(sv.error());
-                                break;
-                            }
-                        }
-                    }
-                    m.granted_publishes[j] = gp;
+                    auto gp = decodeGrantedPublish(r);
+                    if (!gp) return Ret::err(gp.error());
+                    m.granted_publishes[j] = gp.value();
                 }
                 m.granted_publishes_count = cR.value();
                 m.has_granted_publishes = true;

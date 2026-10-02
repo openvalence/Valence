@@ -27,8 +27,10 @@
 #include "valence/transport/inprocess_binding.hpp"
 #include "valence/wire/catalog_etag.hpp"
 #include "valence/wire/frame_header.hpp"
+#include "valence/wire/messages/store_item.hpp"
 #include "valence/wire/raw/blob_done.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <optional>
@@ -384,4 +386,71 @@ TEST_CASE("BD-06: congestion holds emission at blob_chunks_in_flight, then resum
     REQUIRE(hubDel.dones.size() == 1);
     CHECK(hubDel.dones[0].status == BlobDoneStatus::VerifiedComplete);
     CHECK(cliDel.nacks.empty());  // recovery inside the window is never an abort
+}
+
+// ---- BD-SI: store items (RFC-073, SPEC §8.7) --------------------------------
+// The digest (blob_keys 11) is SHA-256 over payload alone and picks BLOB_DONE
+// status 0 or 1 on a store transfer.
+TEST_CASE("BD-SI: a store item round-trips with its digest; a corrupted payload reports status 1") {
+    const std::array<std::byte, 5> payload{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}, std::byte{5}};
+    StoreItem item{};
+    item.slot = 7;
+    item.name = "warmup";
+    item.kind = "pattern.frayd";
+    item.payload = payload;
+
+    std::array<std::byte, 128> bare{};
+    const size_t nBare = encodeStoreItem(item, bare);
+    REQUIRE(nBare > 0);
+    auto plain = decodeStoreItem(std::span<const std::byte>(bare.data(), nBare));
+    REQUIRE(plain.isOk());
+    CHECK_FALSE(plain.value().has_digest);
+    CHECK(storeItemDoneStatus(plain.value()) == BlobDoneStatus::VerifiedComplete);
+
+    item.has_digest = true;
+    std::array<std::byte, 128> buf{};
+    const size_t n = encodeStoreItem(item, buf);
+    CHECK(n == nBare + 1 + 2 + 32);  // key 11 + bstr(32) head + digest
+    auto dec = decodeStoreItem(std::span<const std::byte>(buf.data(), n));
+    REQUIRE(dec.isOk());
+    const StoreItem& got = dec.value();
+    CHECK(got.slot == 7);
+    CHECK(got.name == "warmup");
+    CHECK(got.kind == "pattern.frayd");
+    REQUIRE(got.payload.size() == payload.size());
+    CHECK(got.has_digest);
+    CHECK(got.digest == Sha256::hash(payload));
+    CHECK(storeItemDoneStatus(got) == BlobDoneStatus::VerifiedComplete);
+
+    // Flip one payload byte inside the encoded item: still decodes, digest disagrees.
+    auto at = std::search(buf.begin(), buf.begin() + n, payload.begin(), payload.end());
+    REQUIRE(at != buf.begin() + n);
+    *at ^= std::byte{0xFF};
+    auto bad = decodeStoreItem(std::span<const std::byte>(buf.data(), n));
+    REQUIRE(bad.isOk());
+    CHECK(storeItemDoneStatus(bad.value()) == BlobDoneStatus::HashMismatch);
+}
+
+TEST_CASE("BD-SI: a store item missing payload, or with a short digest, is Malformed") {
+    std::array<std::byte, 64> buf{};
+    CborWriter w(buf);
+    w.mapHeader(3);
+    w.key(uint64_t(blob::slot)).uintVal(0);
+    w.key(uint64_t(blob::name)).tstrVal("a");
+    w.key(uint64_t(blob::kind)).tstrVal("pattern.x");
+    auto noPayload = decodeStoreItem(std::span<const std::byte>(buf.data(), w.size()));
+    REQUIRE_FALSE(noPayload.isOk());
+    CHECK(noPayload.error() == DecodeError::Malformed);
+
+    const std::array<std::byte, 4> shortDigest{};
+    CborWriter w2(buf);
+    w2.mapHeader(5);
+    w2.key(uint64_t(blob::slot)).uintVal(0);
+    w2.key(uint64_t(blob::name)).tstrVal("a");
+    w2.key(uint64_t(blob::kind)).tstrVal("pattern.x");
+    w2.key(uint64_t(blob::payload)).bstrVal(std::span<const std::byte>(shortDigest));
+    w2.key(uint64_t(blob::digest)).bstrVal(std::span<const std::byte>(shortDigest));
+    auto bad = decodeStoreItem(std::span<const std::byte>(buf.data(), w2.size()));
+    REQUIRE_FALSE(bad.isOk());
+    CHECK(bad.error() == DecodeError::Malformed);
 }

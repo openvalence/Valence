@@ -885,6 +885,7 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
         gp.burst = pg.granted_burst;
         gp.has_curve_family = pg.curveFamily != 0;
         gp.curve_family = pg.curveFamily;
+        gp.schedule_latency_us = _delegate.scheduleLatencyUs(pg.channel_id);
         w.granted_publishes[w.granted_publishes_count++] = gp;
     }
 
@@ -1315,6 +1316,7 @@ inline std::optional<GrantedPublish> Hub::grantPublishWish(Slot& slot, const Pub
     // compares, not an inference from what it remembers sending.
     gp.has_requested_curve_family = wish.has_curve_family;
     gp.requested_curve_family = wish.curve_family;
+    gp.schedule_latency_us = _delegate.scheduleLatencyUs(wish.channel_id);  // RFC-059
     return gp;
 }
 

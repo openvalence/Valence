@@ -993,6 +993,142 @@ TEST_CASE("catalog codec: stream_kind (key 15) classifies segment-class STREAM c
 // Note the deliberate contrast with BIT labels, which MAY be empty: an
 // unnamed bit is meaningful ("bit 5 has no name"), an unnamed option is not
 // (there is no way to offer a choice with no label).
+// ---- RFC-063/065/066/070/076 ------------------------------------------------
+// Entry keys 17-20, field keys 24-25 and the destructive flag, on a catalog of
+// their own: the frozen mini-catalog never carries them (K-01/K-02 pins).
+namespace {
+void buildRulingKeysCatalog(Catalog32& c) {
+    c.clear();
+    c.addEntry({.id = 0x0090, .name = "presets", .cls = ChannelClass::STORE, .dir = Direction::h2c,
+                .access = AccessLevel::control, .maxRateHz = 0.0f, .defaultPriority = Priority::background});
+    c.addStoreDescriptor({.storeId = 3, .kind = "pattern.frayd", .capacity = 32, .perItemMax = 4096, .nameMax = 24});
+    c.addEntry({.id = 0x0091, .name = "presets-roster", .cls = ChannelClass::STATE, .dir = Direction::h2c,
+                .access = AccessLevel::watch, .maxRateHz = 0.0f, .defaultPriority = Priority::normal,
+                .hasStoreId = true, .storeId = 3});
+    c.addLayoutField({.name = "generation", .type = PackedFieldType::u16, .unit = "", .scale = 1.0f});
+    c.addEntry({.id = 0x0092, .name = "presets-write", .cls = ChannelClass::INTENT, .dir = Direction::c2h,
+                .access = AccessLevel::control, .maxRateHz = 5.0f, .defaultPriority = Priority::normal,
+                .hasStoreId = true, .storeId = 3});
+    // delete (3) marked per option; reset_all via the field flag.
+    c.addSelectSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = "",
+                            .role = "action.store", .destructiveOptions = uint64_t(1) << 3},
+                           {"none", "save", "load", "delete", "rename"});
+    c.addSchemaField({.key = 2, .name = "wipe", .type = CborFieldType::bool_t, .unit = "",
+                      .role = "action.wipe", .flags = setting_flags::destructive});
+    c.addEntry({.id = 0x0093, .name = "anomalies", .cls = ChannelClass::EVENT, .dir = Direction::h2c,
+                .access = AccessLevel::watch, .maxRateHz = 0.0f, .defaultPriority = Priority::normal,
+                .role = channel_roles::events_anomaly});
+    c.addSchemaField({.key = 1, .name = "count", .type = CborFieldType::uint_t, .unit = ""});
+    c.setEventKinds({"", "clamped", "", "fallback"});  // kinds 1 and 3; 0 and 2 unlabeled
+    c.addEntry({.id = 0x0094, .name = "stroke-mod", .cls = ChannelClass::STATE, .dir = Direction::h2c,
+                .access = AccessLevel::watch, .maxRateHz = 0.0f, .defaultPriority = Priority::normal,
+                .hasModTarget = true, .modTargetChannel = 0x0095, .modTargetField = 1});
+    c.addLayoutField({.name = "amount", .type = PackedFieldType::u8, .unit = "%", .scale = 1.0f,
+                      .role = field_roles::mod_amount, .safe = SettingDefault::ofInt(0)});
+    c.addEntry({.id = 0x0095, .name = "drive", .cls = ChannelClass::INTENT, .dir = Direction::c2h,
+                .access = AccessLevel::control, .maxRateHz = 20.0f, .defaultPriority = Priority::normal});
+    c.addSchemaField({.key = 1, .name = "speed", .type = CborFieldType::f32_t, .unit = "mm/s",
+                      .safe = SettingDefault::ofFloat(0.0f)});
+}
+}  // namespace
+
+TEST_CASE("catalog codec: entry keys 17-20, field keys 24-25 and the destructive flag round-trip") {
+    static Catalog32 cat;
+    buildRulingKeysCatalog(cat);
+    REQUIRE(cat.ok());
+
+    static std::array<std::byte, 4096> buf{};
+    const size_t n = encodeCatalog(cat, buf);
+    REQUIRE(n > 0);
+    static Catalog32 back;
+    REQUIRE(decodeCatalog(std::span<const std::byte>(buf).first(n), back).isOk());
+
+    const CatalogEntry* roster = back.find(0x0091);
+    const CatalogEntry* writer = back.find(0x0092);
+    const CatalogEntry* events = back.find(0x0093);
+    const CatalogEntry* mod = back.find(0x0094);
+    const CatalogEntry* drive = back.find(0x0095);
+    REQUIRE((roster && writer && events && mod && drive));
+
+    CHECK(roster->hasStoreId);
+    CHECK(roster->storeId == 3);
+    CHECK(writer->storeId == 3);
+    CHECK_FALSE(back.find(0x0090)->hasStoreId);
+
+    CHECK(events->role == channel_roles::events_anomaly);
+    auto kinds = back.eventKindLabels(*events);
+    REQUIRE(kinds.size() == 4);
+    CHECK(kinds[0].empty());
+    CHECK(kinds[1] == "clamped");
+    CHECK(kinds[2].empty());
+    CHECK(kinds[3] == "fallback");
+    CHECK(back.eventKindLabels(*roster).empty());
+
+    CHECK(mod->hasModTarget);
+    CHECK(mod->modTargetChannel == 0x0095);
+    CHECK(mod->modTargetField == 1);
+    CHECK_FALSE(roster->hasModTarget);
+
+    const SchemaField* op = nullptr;
+    const SchemaField* wipe = nullptr;
+    for (const SchemaField& f : back.schemaFields(*writer)) (f.key == 1 ? op : wipe) = &f;
+    REQUIRE((op && wipe));
+    CHECK(op->destructiveOptions == (uint64_t(1) << 3));
+    CHECK(wipe->destructiveOptions == 0);
+    CHECK((wipe->flags & setting_flags::destructive) != 0);
+
+    CHECK(back.layoutFields(*mod)[0].safe == SettingDefault::ofInt(0));
+    CHECK(back.schemaFields(*drive)[0].safe == SettingDefault::ofFloat(0.0f));
+    CHECK_FALSE(back.layoutFields(*roster)[0].safe.has());
+
+    // Decode -> re-encode reproduces the bytes, label holes included.
+    static std::array<std::byte, 4096> buf2{};
+    REQUIRE(encodeCatalog(back, buf2) == n);
+    CHECK(std::equal(buf.begin(), buf.begin() + n, buf2.begin()));
+
+    // addEntryFrom re-pools event-kind labels into the destination catalog.
+    static Catalog32 copy;
+    copy.clear();
+    REQUIRE(copy.addEntryFrom(back, *events));
+    auto copied = copy.eventKindLabels(copy.entries[0]);
+    REQUIRE(copied.size() == 4);
+    CHECK(copied[3] == "fallback");
+}
+
+TEST_CASE("catalog codec: event kinds attach only to EVENT entries; a kind >= 255 is CapacityExceeded") {
+    Catalog32 c;
+    c.clear();
+    c.addEntry({.id = 0x0090, .name = "s", .cls = ChannelClass::STATE, .dir = Direction::h2c,
+                .access = AccessLevel::watch, .maxRateHz = 0.0f, .defaultPriority = Priority::normal});
+    CHECK_FALSE(c.setEventKinds({"x"}));
+    CHECK_FALSE(c.ok());
+
+    // A hand-built entry {1:0x90, 2:"e", 3:EVENT, 4:0, 5:0, 6:0.0, 7:1, 9:{1:{1:"n",2:0,3:""}}, 19:{255:"x"}}
+    std::array<std::byte, 128> buf{};
+    CborWriter w(buf);
+    w.arrayHeader(1);
+    w.mapHeader(9);
+    w.key(1).uintVal(0x90);
+    w.key(2).tstrVal("e");
+    w.key(3).uintVal(uint64_t(ChannelClass::EVENT));
+    w.key(4).uintVal(0);
+    w.key(5).uintVal(0);
+    w.key(6).f32Val(0.0f);
+    w.key(7).uintVal(1);
+    w.key(9).mapHeader(1);
+    w.key(1).mapHeader(3);
+    w.key(1).tstrVal("n");
+    w.key(2).uintVal(0);
+    w.key(3).tstrVal("");
+    w.key(19).mapHeader(1);
+    w.key(255).tstrVal("x");
+    REQUIRE(w.size() > 0);
+    Catalog32 back{};
+    auto dr = decodeCatalog(std::span<const std::byte>(buf).first(w.size()), back);
+    REQUIRE_FALSE(dr.isOk());
+    CHECK(dr.error() == DecodeError::CapacityExceeded);
+}
+
 TEST_CASE("M4a: an empty OPTION label is rejected at authoring time") {
     SUBCASE("schema-field select") {
         Catalog32 c;

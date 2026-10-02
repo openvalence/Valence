@@ -106,6 +106,8 @@ struct RecordedOwnership {
 class StreamHubDelegate final : public HubDelegate {
 public:
     bool mapSource = true;                 // 0x0080 -> source 0 when true
+    uint32_t latencyUs = 0;                // RFC-059: committed on every publish grant when nonzero
+    uint32_t scheduleLatencyUs(uint16_t) override { return latencyUs; }
     std::vector<RecordedBundle> bundles;
     std::vector<RecordedOwnership> ownership;
     std::vector<uint8_t> deadmanStops;
@@ -354,6 +356,27 @@ TEST_CASE("SI-01: a publish wish clamps to catalog max_rate_hz and echoes in gra
     REQUIRE(w.granted_publishes_count == 1);
     CHECK(w.granted_publishes[0].channel_id == kStreamCh);
     CHECK(w.granted_publishes[0].granted_rate_hz == doctest::Approx(200.0f));
+}
+
+// ---- SI-01b -----------------------------------------------------------------
+// RFC-059: the delegate's declared schedule_latency_us rides the publish grant
+TEST_CASE("SI-01b: schedule_latency_us from the delegate rides granted_publishes (key 49)") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(102);
+    StreamHubDelegate del;
+    del.latencyUs = 4000;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+
+    WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 1, /*token=*/true,
+                                  {PublishWish{kStreamCh, 100.0f}});
+    REQUIRE(w.granted_publishes_count == 1);
+    CHECK(w.granted_publishes[0].schedule_latency_us == 4000);
 }
 
 // ---- SI-02 ------------------------------------------------------------------

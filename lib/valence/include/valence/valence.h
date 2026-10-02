@@ -40,6 +40,7 @@
 #include "valence/wire/messages/subscribe.hpp"
 #include "valence/wire/messages/publish.hpp"
 #include "valence/wire/messages/grant.hpp"
+#include "valence/wire/messages/store_item.hpp"
 #include "valence/wire/messages/intent.hpp"
 #include "valence/wire/messages/echo.hpp"
 #include "valence/wire/messages/event.hpp"

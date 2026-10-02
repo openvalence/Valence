@@ -182,6 +182,30 @@ TEST_CASE("GRANT: full round-trip (2 grants) + determinism") {
     CHECK(dec.value().grants[1].priority == 1);
 }
 
+TEST_CASE("GRANT: granted_publishes schedule_latency_us (key 49) round-trips; 0 is omitted") {
+    GrantMsg m{};
+    m.granted_publishes_count = 1;
+    m.granted_publishes[0].channel_id = 0x0085;
+    m.granted_publishes[0].granted_rate_hz = 25.0f;
+    std::array<std::byte, 64> bare{};
+    const size_t nBare = encodeGrant(m, bare);
+    REQUIRE(nBare > 0);
+
+    m.granted_publishes[0].schedule_latency_us = 12500;
+    std::array<std::byte, 64> buf{};
+    const size_t n = checkDeterministic(encodeGrant, m);
+    REQUIRE(encodeGrant(m, buf) == n);
+    CHECK(n == nBare + 5);  // key 49 (0x18 0x31) + uint 12500 (0x19 0x30 0xD4); the map head stays 1 B
+    auto dec = decodeGrant(std::span<const std::byte>(buf.data(), n));
+    REQUIRE(dec.isOk());
+    REQUIRE(dec.value().granted_publishes_count == 1);
+    CHECK(dec.value().granted_publishes[0].schedule_latency_us == 12500);
+
+    auto decBare = decodeGrant(std::span<const std::byte>(bare.data(), nBare));
+    REQUIRE(decBare.isOk());
+    CHECK(decBare.value().granted_publishes[0].schedule_latency_us == 0);
+}
+
 TEST_CASE("GRANT: minimal (empty grants array) — no top-level optionals to omit") {
     GrantMsg m{};  // grants_count = 0
     std::array<std::byte, 16> buf{};
