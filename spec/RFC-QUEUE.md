@@ -3811,7 +3811,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-058 -- End-velocity `unspecified` semantics and the rest-before-hold rule
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-zj1). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-zj1). LANDED a48c03a
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted with the firmware receipt's
   correction: the dwell rule reports its own anomaly kind 10
   `dwell_zeroed`, not `HandoffBounded` (item 3 below now reads so). Landing
@@ -3911,8 +3912,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-059 -- Hub-advertised scheduling latency
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-r4v). Not landed. Ruled
-  together with
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-r4v). LANDED 876ca7c
+  (2026-10-01). (with RFC-084). Ruled together with
   [RFC-084](#rfc-084----future-anchored-samples-points-an-arrival-time-under-the-same-lead-cap).
 - **Ruling (operator, 2026-10-01).** Accepted as drafted, ruled together
   with RFC-084: for `samples`-kind grants, `schedule_latency_us` states the
@@ -3956,7 +3957,7 @@ say exactly which, future-us will want the receipts.*
   that lip-syncs media to motion is guessing, and a guess that is right for
   one firmware version is wrong for the next.
 - **Proposed change.**
-  1. **`schedule_latency_us` (new CBOR key) on `granted_publishes` entry
+  1. **`schedule_latency_us` (CBOR key 49) on `granted_publishes` entry
      maps**, alongside `burst` (42) and `curve_family` (45): the hub's
      declared fixed delay between a sample's scheduled time (segments:
      `t_base + t_off`; samples: the sample's own stamp) and the start of its
@@ -4175,7 +4176,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-062 -- Live renderer-class selection
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-l8p). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-l8p). LANDED 0342526
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted, with open question 1
   answered: RENDERING §12.1 RECOMMENDS boundary values informatively in CSS
   px (handheld/full near 600 to 960, the client's choice stated), and
@@ -4284,9 +4286,9 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-063 -- A wire carrier for the `destructive` flag
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-c5u). Not landed. Item 6,
-  the RENDERING §5.4 pointer repair (spec contradiction bead rfc-dmf), lands
-  with it.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-c5u). LANDED 778d534
+  (2026-10-01). Item 6, the RENDERING §5.4 pointer repair (spec
+  contradiction bead rfc-dmf), lands with it.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted: `setting_flags`
   gains `destructive`; schema-field key `destructive_options` (64-bit
   mask); `action.reboot`/`action.reset` imply it; `source.background_run`
@@ -4362,7 +4364,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-064 -- Index-0 filler applies to op selects only
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8pk). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8pk). LANDED fe50cc4
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 2
   (the archetype hint) was carried and ruled by
   [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role):
@@ -4420,8 +4423,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-065 -- Event-channel purpose roles and event-kind labels
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-x3n). Not landed. Closes
-  SPEC §18 item 2 on landing.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-x3n). LANDED b46c2d9
+  (2026-10-01). Closes SPEC §18 item 2 on landing.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted, with open
   question 1 answered yes: the STATE twin carries the channel role
   `anomaly.summary`, so log and counters bind together (item 1 below now
@@ -4502,11 +4505,11 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-066 -- Modulators: catalog-declared modifiers attached to the field they ride
 
-- **Status:** ACCEPTED AS AMENDED (operator, 2026-10-01; rfc-0sm). Not
-  landed. Retitled from "Advanced-generator lanes are catalog-declared
-  instances": the term "lane" is retired, the role family is `mod.*`, one
-  modulator per entry, attached to its base field by `mod_target`. Lands
-  together with
+- **Status:** ACCEPTED AS AMENDED (operator, 2026-10-01; rfc-0sm). LANDED
+  b75e482 + affa61a (2026-10-01). Retitled from "Advanced-generator lanes
+  are catalog-declared instances": the term "lane" is retired, the role
+  family is `mod.*`, one modulator per entry, attached to its base field by
+  `mod_target`. Lands together with
   [RFC-081](#rfc-081----advanced-generator-master-roles) (accepted the same
   day), whose `advgen.*` base controls are what modulators target. Resolves
   spec contradiction bead rfc-oy6 (SPEC §8.8 per-catalog role cardinality)
@@ -4637,7 +4640,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-067 -- Store verbs: one registered op select, not split preset tags
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2n5). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2n5). LANDED 1a50ff8
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted as drafted: tag named
   `store` (open question 1), `store_ops` {`save` 1, `load` 2, `delete` 3,
   `rename` 4}, `preset_save` and `preset_recall` retired pre-tag, `delete`
@@ -4671,7 +4675,9 @@ say exactly which, future-us will want the receipts.*
   convention).**
   1. **Register `store_ops`**, an op table numbering SPEC §8.7's verbs from
      1: `save` 1, `load` 2, `delete` 3, `rename` 4. Index 0 is op-select
-     filler (SPEC §8.9).
+     filler (SPEC §8.9). As landed, op 3 is spelled `delete_item` in the
+     registry (wire value 3; the prose verb stays `delete`), because
+     `delete` is a C++ keyword and codegen emits the names.
   2. **Register the action tag `store`.** A schema field with role
      `action.store` is an op select whose `options` are index-aligned with
      `store_ops`. It MUST NOT declare options beyond the registered ops; a
@@ -4712,8 +4718,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-068 -- Substituted-widget conformance: bindings, host-owned regions, one intent path
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8qh). Not landed.
-  Companion to
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-8qh). LANDED 23a8b9d
+  (2026-10-01). Companion to
   [RFC-061](#rfc-061----tcode-passthrough-adapter-conventions-ingest-port-l0-mapping-loopback),
   whose adapter already follows item 4 below.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 1:
@@ -4796,13 +4802,13 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-069 -- Client-pushed WiFi provisioning over BLE
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-qf5). Not landed. Item 4's
-  secret-ECHO encoding (spec contradiction bead rfc-bry) lands with it and
-  binds every `secret` field: §8.8 Secrets reads "ECHO confirms application
-  by carrying the applied key with the CBOR value `true` in place of its
-  value, so §9.3's key-completeness holds; a client decoding `applied`
-  against the schema MUST accept `true` for a `secret`-flagged key whatever
-  the field's type." Its one-time companion
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-qf5). LANDED 4f98e6b
+  (2026-10-01). Item 4's secret-ECHO encoding (spec contradiction bead
+  rfc-bry) lands with it and binds every `secret` field: §8.8 Secrets reads
+  "ECHO confirms application by carrying the applied key with the CBOR value
+  `true` in place of its value, so §9.3's key-completeness holds; a client
+  decoding `applied` against the schema MUST accept `true` for a
+  `secret`-flagged key whatever the field's type." Its one-time companion
   [RFC-054](#rfc-054--wifi-and-esp-now-provisioning-over-ble-the-credentials-handoff)
   is WITHDRAWN.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted (the gate already
@@ -4841,7 +4847,7 @@ say exactly which, future-us will want the receipts.*
      logged) is written for disclosure only.
 - **Proposed change.**
   1. **A core provisioning channel.** A new spec-core INTENT channel,
-     `provisioning` (id allocated by the registry owner), `configure`
+     `provisioning` (`0x000F` as landed, status reserved), `configure`
      access, with an op select (`action.provision`) over a registered op
      table `provisioning_ops`. This RFC registers op `wifi_join` (the draft
      left room for RFC-054's disclosure op; RFC-054 is withdrawn). A core id, not a
@@ -4865,7 +4871,7 @@ say exactly which, future-us will want the receipts.*
      of §8.8's "without echoing the value", which this RFC makes normative for
      every `secret` field), and carries the resulting `ipv4` and `ws_port`
      under their channel-schema keys. Failure: NACK with a new code,
-     `NETWORK_JOIN_FAILED`, whose `detail` MUST NOT contain either
+     `NETWORK_JOIN_FAILED` (`0x0304` as landed), whose `detail` MUST NOT contain either
      credential. ECHO and NACK already go to the sender only (§9.3). A
      duplicate `intent_id` during the attempt joins it; it MUST NOT start a
      second attempt.
@@ -4888,8 +4894,8 @@ say exactly which, future-us will want the receipts.*
 - **Registry impact.** `core_channels` gains `provisioning` (INTENT);
   new `provisioning_ops` (`wifi_join`); `action_tags` gains `provision`;
   `nack_codes` gains `NETWORK_JOIN_FAILED`; `limits` gains
-  `provision_join_timeout_ms`. All numbers and the timeout value are the
-  registry owner's to allocate. The `setting_flags` `secret` note gains the
+  `provision_join_timeout_ms`. Numbers as landed: channel `0x000F`
+  (status reserved), `NETWORK_JOIN_FAILED` `0x0304`. The `setting_flags` `secret` note gains the
   ECHO encoding.
 - **Conformance impact.** Behavioral tests: refused over WS; refused with
   the window closed; success ECHO carries `true` for both credentials;
@@ -4903,7 +4909,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-070 -- Store-to-roster linkage
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ind). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ind). LANDED a7c9295
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted with the CRUD link folded in:
   `store_id` (entry key 17) on the roster STATE entry AND on the
   `action.store` INTENT entry, so one key joins store, roster and writer.
@@ -4995,7 +5002,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-071 -- Motion-input field roles: find the stream target without a name
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-xul). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-xul). LANDED 4ea91d8
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted as drafted. Open question 1:
   the absent value for an untagged field is
   [RFC-058](#rfc-058----end-velocity-unspecified-semantics-and-the-rest-before-hold-rule)'s
@@ -5067,10 +5075,11 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-072 -- Discovery identity: the mDNS service record retires; the scan-response company id is pinned
 
-- **Status:** ACCEPTED AS RESCOPED (operator, 2026-10-01; rfc-uvh). Not
-  landed. Retitled from "Discovery identity: a durable id in mDNS TXT, a
-  pinned scan-response company id": instead of adding an `id` key to the
-  TXT record, the record itself retires.
+- **Status:** ACCEPTED AS RESCOPED (operator, 2026-10-01; rfc-uvh). LANDED
+  d2348d9 (2026-10-01). rfc-uvh stays open for the MFP plugin and clients/js
+  move to the §13.8 UDP probe. Retitled from "Discovery identity: a durable
+  id in mDNS TXT, a pinned scan-response company id": instead of adding an
+  `id` key to the TXT record, the record itself retires.
 - **Ruling (operator, 2026-10-01).** Accepted as rescoped. The
   `_valence._tcp` mDNS service record and its TXT key set are RETIRED: the
   §13.7 service text and the `mdns_service` limit are struck. Native
@@ -5117,14 +5126,16 @@ say exactly which, future-us will want the receipts.*
      (`<name>.local`, `machine.local` in the reference), so a browser can
      reach the served page by name. This is hostname resolution only: no
      service type, no TXT, nothing a client browses or parses.
-  3. **Pin the MSD layout.** `ble_adv_flags` gains `company_id: 0xFFFF` and
-     the record layout `company_id:u16le + flags:u8`. A client reads the
+  3. **Pin the MSD layout.** The company id `0xFFFF` and the record layout
+     `company_id:u16le + flags:u8` are pinned (as landed: `msd_company_id`
+     in a `ble_identity` registry block, not inside `ble_adv_flags`). A client reads the
      flags byte only from that company id's record.
 - **Wire impact.** Subtractive for mDNS (a hub stops advertising a service
   record no conformant client needs); item 3 pins what the reference hub
   already sent.
-- **Registry impact.** `limits.mdns_service` removed; `ble_adv_flags` gains
-  `company_id`. No `mdns_txt` block.
+- **Registry impact.** `limits.mdns_service` removed; a `ble_identity`
+  block carries `msd_company_id` `0xFFFF` (as landed; the draft put it in
+  `ble_adv_flags`). No `mdns_txt` block.
 - **Conformance impact.** A hub carrying `hub_instance_id` advertises the
   same value in WELCOME and the UDP reply (already §13.8); no test reads
   mDNS. A BLE scan finds the flags byte under company id `0xFFFF`.
@@ -5144,7 +5155,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-073 -- Store item encoding: a registered CBOR map, a kind namespace, and an optional per-item digest
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-019). Not landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-019). LANDED 1b4a1af
+  (2026-10-01).
 - **Ruling (operator, 2026-10-01).** Accepted as drafted: `digest` over
   `payload` only (open question 1); `kind` domains open, advisory grouping
   never validated against a list (open question 2).
@@ -5253,8 +5265,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-074 -- STOP semantics for streams: refused while latched, re-armed only by an explicit command
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2ly). Not landed. Accepted
-  under the safety fold ruled the same day,
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2ly). LANDED ef003e3
+  (2026-10-01) for clauses 1, 2 and 4, written against today's STOP level
+  (SPEC §11.1) until RFC-085 folds it into PAUSE; clause 3 (RESUME as the
+  re-arm) lands with RFC-085. Accepted under the safety fold ruled the same day,
   [RFC-085](#rfc-085----three-safety-pairs-one-control-each-pause-and-resume-override-and-return-estop-and-release)
   (DRAFT, its text not yet read by the operator): read STOP below as PAUSE.
   The title keeps the draft's wording as the record.
@@ -5343,8 +5357,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-075 -- ESP-NOW spoke binding: an unencrypted hub-and-spoke profile for accessories
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2lo). Not landed. First of
-  five companion entries:
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-2lo). LANDED 8484552
+  (2026-10-01). First of five companion entries:
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)
   (join and declaration),
   [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions)
@@ -5581,8 +5595,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-076 -- Accessory join and declaration: accessory channels in the user channel space
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-7bq). Not landed. Rides
-  the spoke of
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-7bq). LANDED b18fac1
+  (2026-10-01). Rides the spoke of
   [RFC-075](#rfc-075----esp-now-spoke-binding-an-unencrypted-hub-and-spoke-profile-for-accessories);
   its catalog consequences are
   [RFC-077](#rfc-077----live-catalog-growth-announcing-a-new-etag-to-live-sessions),
@@ -5687,7 +5701,7 @@ say exactly which, future-us will want the receipts.*
      No second grammar exists. One addition, usable in any catalog and
      REQUIRED in a declaration:
      - **`safe`** (new field annotation, layout-field and schema-field map
-       key 24, allocated by the registry owner): the value the field takes in
+       key 25 as landed; RFC-063 took 24): the value the field takes in
        the accessory's safe state (RFC-075 item 5); same type as the field;
        within its `min`/`max`. REQUIRED on every value-bearing field of every
        INTENT schema and every c2h STREAM layout in a declaration. A field
@@ -5720,7 +5734,8 @@ say exactly which, future-us will want the receipts.*
      unchanged accessory set. **A paired accessory that is absent keeps its
      channels in the catalog**: it is offline, not gone; the hub stops
      pushing its STATE (clients show it stale, RENDERING §13 law 8) and
-     answers writes to it with NACK `ACCESSORY_OFFLINE` (new code).
+     answers writes to it with NACK `ACCESSORY_OFFLINE` (new code,
+     `0x0305` as landed).
   7. **Accessory identity.** `accessory_id` is a u64 the accessory generates
      randomly at first boot and persists, unchanged by reboots and firmware
      updates: the accessory twin of `hub_instance_id` (§6.1). The radio
@@ -5750,13 +5765,13 @@ say exactly which, future-us will want the receipts.*
      unauthenticated (H13), so an accessory-originated delete would let a
      forged frame wipe a record.
   10. **Core surfaces for generic clients.** Three spec-core channels (ids
-      from `0x000F` headroom, allocated by the registry owner):
-      - `accessories`, STORE, `kind` `"accessory.record"`, `watch` access,
+      as landed below, each status reserved):
+      - `accessories` (`0x0010`), STORE, `kind` `"accessory.record"`, `watch` access,
         with a **registered item grammar** (`accessory_record_keys`:
         `accessory_id`, `slice`, `name`, `product`, `fw_version`,
         `declaration_etag`). §8.7's carve-out applies for the trust ledger's
         reason: this is protocol content every client must read the same way.
-      - `accessories-roster`, STATE, `watch`: `{generation u16, count u8,
+      - `accessories-roster` (`0x0011`), STATE, `watch`: `{generation u16, count u8,
         capacity u8, online 4 x bitfield8, safe 4 x bitfield8,
         unconfirmed_estop 4 x bitfield8}` = 16 bytes, bit *i* of each mask
         being the accessory held in slot *i* of the `accessories` store.
@@ -5766,7 +5781,7 @@ say exactly which, future-us will want the receipts.*
         19 over ESP-NOW, RFC-075 item 9). One tiny snapshot answers "which
         accessory is online, which is safe, which has not confirmed an
         e-stop" without re-enumerating the store.
-      - `accessory-admin`, INTENT, `configure`, one op select with role
+      - `accessory-admin` (`0x0012`), INTENT, `configure`, one op select with role
         `action.accessory` over `accessory_admin_ops`: `window_open` (the
         in-band twin of the pairing button, open question 3), `forget
         {accessory_id}`, `rename {accessory_id, name}`.
@@ -5774,9 +5789,9 @@ say exactly which, future-us will want the receipts.*
   `0x21`-`0x3F` spec range; a new channel-id range; one field annotation key;
   three core channels; one item grammar; one NACK code. Nothing existing
   moves.
-- **Registry impact.** `frame_types` gains JOIN_REQ and JOIN_REPLY (numbers
-  the owner's) with their raw layouts; `channel_id_ranges` gains
-  `0x8000-0xBFFF` `user`; `catalog.cddl` gains `? 24 => setting-default`
+- **Registry impact.** `frame_types` gains JOIN_REQ `0x21` and JOIN_REPLY
+  `0x22` (as landed) with their raw layouts; `channel_id_ranges` gains
+  `0x8000-0xBFFF` `user`; `catalog.cddl` gains `? 25 => setting-default`
   (`safe`) on `layout-field` and `schema-field`; new `join_results`,
   `accessory_record_keys`, `accessory_admin_ops`; `action_tags` gains
   `accessory`; `core_channels` gains the three entries; `nack_codes` gains
@@ -5806,8 +5821,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-077 -- Live catalog growth: announcing a new etag to live sessions
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-cou). Not landed.
-  Consequence of
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-cou). LANDED 4c0ede7
+  (2026-10-01). Item 8 as landed: the `Catalog32` capacities are build flags
+  `VALENCE_CATALOG_*`, and Nucleus sets them for the Flagship. Consequence
+  of
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space);
   item 7 (capacity) gates every join RFC-076 describes.
 - **Ruling (operator, 2026-10-01).** Accepted. Item 8 ruled: break it now,
@@ -5879,7 +5896,7 @@ say exactly which, future-us will want the receipts.*
   4. **Channels that vanish.** On removal the hub, for every session:
      1. drops every subscription and publication grant on the removed ids and
         discards their retained values;
-     2. sends **one NACK `CHANNEL_WITHDRAWN`** (new code, range `0x02`)
+     2. sends **one NACK `CHANNEL_WITHDRAWN`** (new code, `0x0205` as landed)
         carrying `channel_id` per withdrawn grant. Silence is not an option
         (§4.5, §6.7): a subscription that silently stops presents as a
         rendering bug;
@@ -5917,9 +5934,11 @@ say exactly which, future-us will want the receipts.*
         a JOIN_REPLY with `declaration_needed` set is provisional, and the
         final JOIN_REPLY follows validation and the capacity check. The
         refusal is also emitted on `pairing-events` (`0x000B`) as a new kind,
-        `accessory_refused` `{accessory_id, result}`, so the operator who
+        `accessory_refused` (kind 9 as landed) `{accessory_id, result}`, so
+        the operator who
         opened the window learns why nothing appeared. The `accessory-admin`
-        op `window_open` is answered NACK `ACCESSORY_CAPACITY` (new code) when
+        op `window_open` is answered NACK `ACCESSORY_CAPACITY` (new code,
+        `0x0306` as landed) when
         the hub has no free slice, no free peer entry, or less budget than the
         smallest legal declaration (the status entry plus one channel).
   8. **The reference library's capacities become a build-time parameter.**
@@ -5978,8 +5997,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-078 -- Accessory conformance profile and the hub relationship engine
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-j5f). Not landed. Builds
-  on
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-j5f). LANDED ede1f46
+  (2026-10-01). Builds on
   [RFC-056](#rfc-056--modular-conformance-a-hub-is-a-set-of-duties-not-a-chip)
   (still PROPOSED): if RFC-056 is refused, the duty lists below still stand
   as profile text in §17.1. Companion to RFC-075, RFC-076 and RFC-077, all
@@ -6143,7 +6162,9 @@ say exactly which, future-us will want the receipts.*
      `relationships-roster`: `{generation u16, count u8, capacity u8, armed
      2 x bitfield8, faulted 2 x bitfield8}`, bit *i* for `rel_id` *i*,
      `capacity` at most `relationships_max` (16), joined to the store by
-     RFC-070's `store_id`. **Relationships are authored through [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
+     RFC-070's `store_id`. Ids as landed, each status reserved:
+     `relationships` `0x0013`, `relationships-roster` `0x0014`, and the
+     writer `relationships-write` `0x0015`. **Relationships are authored through [RFC-067](#rfc-067----store-verbs-one-registered-op-select-not-split-preset-tags)
      store verbs** (ruling): a core INTENT carrying an `action.store` op
      select and the same `store_id`, `configure` access. `save` creates or
      replaces an item (enabling or disabling is a `save` with `enabled`
@@ -6188,7 +6209,7 @@ say exactly which, future-us will want the receipts.*
   as above), `relationship_keys` (with `params`); no
   `relationship_admin_ops` and no `relationship` action tag (authoring
   rides `action.store`); `core_channels` gains the three
-  entries (ids from `0x000F` headroom); an `accessory_status` layout entry
+  entries (`0x0013` to `0x0015` as landed, status reserved); an `accessory_status` layout entry
   for relative id `0x01`; `limits` gains `relationships_max` (16).
 - **Conformance impact.** Accessory profile: a harness over the §13.6
   in-process binding drives a declared accessory through join, declaration
@@ -6219,7 +6240,9 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-079 -- Config mode and the setup category
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ewm). Not landed. Gives
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-ewm). LANDED 4d267b0
+  (2026-10-01). The §13.1 BLE sentence carries TODO(rfc-qqq) until RFC-056
+  is ruled. Gives
   [RFC-069](#rfc-069----client-pushed-wifi-provisioning-over-ble)
   (client-pushed WiFi provisioning) the hub state it assumes; places
   [RFC-076](#rfc-076----accessory-join-and-declaration-accessory-channels-in-the-user-channel-space)'s
@@ -6383,10 +6406,9 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-080 -- User-authored surfaces and presentation choice
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-94c). Not landed. Amends
-  RENDERING.md only; no wire change. Phosphor implements it (204480e, built
-  "as though accepted" earlier the same day); the RENDERING text is not
-  landed.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-94c). LANDED efb23fc
+  (2026-10-01). Amends RENDERING.md only; no wire change. Phosphor
+  implements it (204480e, built "as though accepted" earlier the same day).
 - **Ruling (operator, 2026-10-01).** Accepted. The open questions were
   decided as veto-able defaults by the orchestrator (operator: "idk"):
   (1) no hub-side hold-to-run now, its own RFC if an accessory needs it;
@@ -6530,8 +6552,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-081 -- Advanced-generator master roles
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-bf4). Not landed. Lands
-  together with
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-bf4). LANDED 3725a6b
+  (2026-10-01). Lands together with
   [RFC-066](#rfc-066----modulators-catalog-declared-modifiers-attached-to-the-field-they-ride)
   as amended (modulators). No wire numbers.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted, family
@@ -6614,8 +6636,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-082 -- One home for the rendering wiring state
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-6au). Not landed.
-  Editorial: no wire, registry or conformance change.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-6au). LANDED d12403e
+  (2026-10-01). Editorial: no wire, registry or conformance change.
 - **Ruling (operator, 2026-10-01).** Accepted; re-measure the annotation
   counts on Nucleus `ValenceCatalog.h` at landing and stamp Phosphor as the
   client half. Item 2 below now reads so.
@@ -6655,8 +6677,8 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-083 -- The archetype hint is struck; `color` and `datetime` bind by role
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-vdc). Not landed. Option
-  B. Carried
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-vdc). LANDED e22bd8e
+  (2026-10-01). Option B. Carried
   [RFC-064](#rfc-064----index-0-filler-applies-to-op-selects-only) open
   question 2. No wire numbers.
 - **Ruling (operator, 2026-10-01).** Accepted, option B: strike the
@@ -6748,9 +6770,10 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-084 -- Future-anchored `samples` points: an arrival time under the same lead cap
 
-- **Status:** ACCEPTED (operator, 2026-10-01; rfc-csn). Not landed. Ruled
-  together with [RFC-059](#rfc-059----hub-advertised-scheduling-latency). No
-  wire numbers; widens one existing limit's scope.
+- **Status:** ACCEPTED (operator, 2026-10-01; rfc-csn). LANDED 876ca7c
+  (2026-10-01). (with RFC-059). Ruled together with
+  [RFC-059](#rfc-059----hub-advertised-scheduling-latency). No wire numbers;
+  widens one existing limit's scope.
 - **Ruling (operator, 2026-10-01).** Accepted as drafted, ruled together
   with RFC-059 (open question 1): for `samples`-kind grants
   `schedule_latency_us` states the chase-planning budget. Open question 2:
@@ -7122,7 +7145,8 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** ACCEPTED (operator, 2026-10-01). Pre-approved on its bead
   (rfc-263) as described and drafted directly as accepted; registry
-  allocation of the three unit ids rides the same landing pass. Not landed.
+  allocation of the three unit ids rides the same landing pass. LANDED
+  20b2da5 (2026-10-01).
 - **Origin:** operator ruling 2026-10-01 while running the RFC queue, with
   [RFC-083](#rfc-083----the-archetype-hint-is-struck-color-and-datetime-bind-by-role)
   (its `datetime.*` roles carry hub time and need a unit that says so).
@@ -7147,8 +7171,8 @@ say exactly which, future-us will want the receipts.*
   vocabulary addition"), but no tag exists, so additions are legal now and
   this is the moment.
 - **Proposed change.**
-  1. **`unit_ids` gains three entries** (registry owner allocates; proposed
-     23, 24, 25 in this order):
+  1. **`unit_ids` gains three entries** (as landed: `deg` 23, `us` 24,
+     `hub_s` 25):
      - `deg`: angle in degrees. Radians are a math convenience, not a knob
        unit.
      - `us`: time in microseconds, the §7 hub-time resolution.
