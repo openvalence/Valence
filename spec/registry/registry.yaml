@@ -911,8 +911,9 @@ ble_identity:
 # ---------------------------------------------------------------------------
 ble_adv_flags:
   bit0: { name: pairing_window_open, note: "a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag, ESP-NOW's equivalent)" }
+  bit2: { name: config_mode,         note: "RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A client SHOULD mark the hub 'needs setup' and open on ui_categories 15 setup." }
   bit1: { name: ws_available,        note: "the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected client SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME `ws_port`/`ipv4` (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway." }
-  # bits 2-7 reserved, zero
+  # bits 3-7 reserved, zero
 
 # ---------------------------------------------------------------------------
 # UDP discovery (RFC-046 §5) — a minimal broadcast probe/reply pair, the
@@ -943,14 +944,14 @@ udp_discovery:
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# `category` (u8) — WHERE a catalog entry lives (RENDERING.md §3). Ids 1-14
-# are the frozen, complete spec set, in canonical menu order. 0x40-0x7E is the
+# `category` (u8) — WHERE a catalog entry lives (RENDERING.md §3). Ids 1-15
+# are the frozen, complete spec set (15 setup added pre-tag by RFC-079), in canonical menu order. 0x40-0x7E is the
 # vendor/device range (a hub declaring one MUST supply a label, mirroring
 # `setting_categories`' device-defined tail). Graceful-extension rule
 # (normative, RENDERING.md §3): a client MUST render ANY unrecognized category
 # id — including a vendor id it has not been taught — under `other` (14),
 # using the catalog-provided label, never dropped. This is the structural
-# valve that makes freezing the fourteen safe.
+# valve that makes freezing the set safe.
 # ---------------------------------------------------------------------------
 ui_categories:
   1:  { name: control,    note: "driving the machine now: move, pattern run/speed/depth, streams" }
@@ -967,7 +968,8 @@ ui_categories:
   12: { name: session,    note: "clients, roles, ownership, pairing/trust" }
   13: { name: system,     note: "power, thermals, memory, firmware, logs" }
   14: { name: other,      note: "the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule" }
-# 15-0x3F reserved for future spec-registered categories. 0x40-0x7E vendor/
+  15: { name: setup,      note: "RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1)." }
+# 16-0x3F reserved for future spec-registered categories. 0x40-0x7E vendor/
 # device range (MUST carry a label). 0x7F+ reserved.
 
 # ---------------------------------------------------------------------------

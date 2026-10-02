@@ -81,7 +81,7 @@ A **physical-presence proof** opens a short **single-grant** window: the first k
 - A hub with a real button MAY bind it as the pairing control: a UX upgrade, never a requirement. A hub with indicator hardware SHOULD show a pairing state on it; window state is in any case observable in-band by any `watch` session.
 - **Factory reset (wiping the token store) MUST be a deliberately harder gesture** than opening pairing — a longer sequence, or the physically-attached console, which is implicitly `configure` anyway.
 
-**Grant rule: if zero `configure` tokens exist, the window grants `configure` — physical possession is root.** Thereafter it grants the hub's configured default (`control`), and knock-and-approve does the rest.
+**Grant rule: if zero `configure` tokens exist, the window grants `configure` — physical possession is root.** Thereafter it grants the hub's configured default (`control`), and knock-and-approve does the rest. **Config-mode exception (RFC-079, [§13.4](transports.md#s13-4).1):** booting with the pairing control held is a physical-presence proof, so in config mode the window's single grant is `configure` **whether or not `configure` tokens already exist**. No new wire: the client connects at `watch`, sends a bare PAIR_REQ, receives PAIR_GRANT `{token, configure}`, presents it by AUTH ([§12.4](#s12-4)), and keeps a durable token, so its later WebSocket session after migration is `configure` too. Sessions that did not win the grant stay `watch`.
 
 ```mermaid
 flowchart TD

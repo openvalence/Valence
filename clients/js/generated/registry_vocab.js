@@ -661,6 +661,7 @@ export const UI_CATEGORY = {
   session: 12,  // clients, roles, ownership, pairing/trust
   system: 13,  // power, thermals, memory, firmware, logs
   other: 14,  // the defined overflow: every unrecognized category id (including an untaught vendor id) renders h
+  setup: 15,  // RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine n
 };
 export const UI_CATEGORY_NAME = {
   1: 'control',
@@ -677,6 +678,7 @@ export const UI_CATEGORY_NAME = {
   12: 'session',
   13: 'system',
   14: 'other',
+  15: 'setup',
 };
 
 // ---- ui_ranks ------------------------------------------------------
@@ -945,10 +947,12 @@ export const PAIRING_MODE_NAME = {
 export const BLE_ADV_FLAG = {
   pairing_window_open: 1 << 0,  // a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag,
   ws_available: 1 << 1,  // the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-conn
+  config_mode: 1 << 2,  // RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB
 };
 export const BLE_ADV_FLAG_NAME = {
   1: 'pairing_window_open',
   2: 'ws_available',
+  4: 'config_mode',
 };
 
 // ---- field_roles (tstr wire values) -------------------------------

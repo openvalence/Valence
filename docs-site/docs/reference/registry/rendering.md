@@ -38,6 +38,7 @@ These are the numbers behind [RENDERING.md](../../spec/rendering.md), the normat
 | `12` | `session` | clients, roles, ownership, pairing/trust |
 | `13` | `system` | power, thermals, memory, firmware, logs |
 | `14` | `other` | the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule |
+| `15` | `setup` | RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1). |
 
 `0x40` to `0x7E` is the vendor/device range. A hub that declares one MUST supply a label. `15` to `0x3F` is reserved for future spec-registered categories. `0x7F` and above is reserved.
 

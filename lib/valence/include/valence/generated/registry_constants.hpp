@@ -334,6 +334,7 @@ inline constexpr uint8_t network = 11;  // WiFi/BLE state, endpoints, provisioni
 inline constexpr uint8_t session = 12;  // clients, roles, ownership, pairing/trust
 inline constexpr uint8_t system = 13;  // power, thermals, memory, firmware, logs
 inline constexpr uint8_t other = 14;  // the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule
+inline constexpr uint8_t setup = 15;  // RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1).
 }  // namespace ui_categories
 
 namespace ui_ranks {
