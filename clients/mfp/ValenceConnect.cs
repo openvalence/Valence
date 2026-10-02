@@ -2754,7 +2754,7 @@ public class ValenceConnect : PluginBase
     }
 
     // =========================================================================
-    // Discovery — mDNS DNS-SD PTR query for _valence._tcp.local.
+    // Discovery — §13.8 UDP probe (DISCOVER_PROBE / DISCOVER_REPLY).
     // =========================================================================
     public void OnDiscoverClick()
     {
@@ -2765,7 +2765,7 @@ public class ValenceConnect : PluginBase
             Ui(() => { IsDiscovering = true; DiscoveredDevices.Clear(); });
             try
             {
-                var found = await MdnsDiscovery.DiscoverAsync(TimeSpan.FromSeconds(2), Logger, token);
+                var found = await UdpDiscovery.DiscoverAsync(TimeSpan.FromSeconds(2), Logger, token);
                 Ui(() =>
                 {
                     foreach (var d in found)
@@ -3043,7 +3043,7 @@ public sealed class LagMeter
 }
 
 // =============================================================================
-// DiscoveredDevice — one mDNS result (bound in the view list).
+// DiscoveredDevice — one §13.8 DISCOVER_REPLY (bound in the view list).
 // =============================================================================
 public class DiscoveredDevice
 {
@@ -3051,6 +3051,7 @@ public class DiscoveredDevice
     public string Ip { get; set; }
     public int Port { get; set; }
     public string Fw { get; set; }
+    public ulong HubInstanceId { get; set; }   // durable cross-boot identity, the dedupe key
     public string Display => $"{InstanceName}  —  {Ip}:{Port}" + (string.IsNullOrEmpty(Fw) ? "" : $"  (fw {Fw})");
 }
 
@@ -3066,6 +3067,8 @@ public static class ValenceWire
     public const int InstanceIdBytes = 8;                  // limits.instance_id_bytes
     public const int TokenBytes = 16;                      // limits.token_bytes
     public const double ClockResyncIntervalMs = 10_000;    // limits.clock_resync_interval_s
+    public const int DiscoveryPort = 22096;                // udp_discovery.port
+    public static ReadOnlySpan<byte> DiscoveryMagic => "VLNC"u8;  // udp_discovery.magic
 
     // ---- Frame types (registry frame_types) ---------------------------------
     // v1.0 note: 0x09 CATALOG_REQ and 0x0A CATALOG_CHUNK are RETIRED and their
@@ -4610,17 +4613,52 @@ public sealed class HubClient
 }
 
 // =============================================================================
-// MdnsDiscovery — hand-rolled DNS-SD over multicast UDP. Sends a PTR query for
-// _valence._tcp.local on every up IPv4 interface (unicast-response bit set so
-// responders reply to our ephemeral port — avoids fighting for port 5353),
-// listens ~2 s, and stitches PTR→SRV→A/TXT into DiscoveredDevice records.
-// Every socket op is guarded; a refusing interface is skipped, never fatal.
+// UdpDiscovery -- SPEC §13.8 DISCOVER_PROBE / DISCOVER_REPLY, the WS-side
+// discovery path for a LAN client without BLE. Broadcasts the bare probe
+// (magic + proto_ver + nonce, little-endian, no frame header) to
+// udp_discovery.port on every up IPv4 interface once a second for the window
+// (a hub answers each source at most once a second), and keeps one
+// DiscoveredDevice per hub_instance_id. A reply that is not exactly
+// ReplyBytes, has the wrong magic, or echoes another nonce is not ours.
+// Discovery is untrusted input and a convenience: a typed address always works.
 // =============================================================================
-public static class MdnsDiscovery
+public static class UdpDiscovery
 {
-    private const string Service = "_valence._tcp.local";   // limits.mdns_service + .local
-    private static readonly IPAddress MdnsGroup = IPAddress.Parse("224.0.0.251");
-    private const int MdnsPort = 5353;
+    // magic 4 + nonce 4 + hub_name str32 + hub_instance_id u64 + proto_ver 1
+    // + ws_port u16 + fw_version str16 + catalog_etag 8 + flags 1
+    public const int ReplyBytes = 4 + 4 + 32 + 8 + 1 + 2 + 16 + ValenceWire.EtagBytes + 1;
+
+    public static byte[] BuildProbe(uint nonce)
+    {
+        var b = new byte[9];
+        ValenceWire.DiscoveryMagic.CopyTo(b);
+        b[4] = ValenceWire.ProtocolVersion;
+        BinaryPrimitives.WriteUInt32LittleEndian(b.AsSpan(5), nonce);
+        return b;
+    }
+
+    // Null for anything that is not a reply to `nonce`, or names no WS endpoint.
+    public static DiscoveredDevice TryDecodeReply(byte[] buf, uint nonce, string ip)
+    {
+        if (buf == null || buf.Length != ReplyBytes) return null;
+        if (!buf.AsSpan(0, 4).SequenceEqual(ValenceWire.DiscoveryMagic)) return null;
+        if (BinaryPrimitives.ReadUInt32LittleEndian(buf.AsSpan(4)) != nonce) return null;
+        int o = 8;
+        string name = FixedString(buf, o, 32); o += 32;
+        ulong id = BinaryPrimitives.ReadUInt64LittleEndian(buf.AsSpan(o)); o += 8;
+        o += 1; // proto_ver
+        int port = BinaryPrimitives.ReadUInt16LittleEndian(buf.AsSpan(o)); o += 2;
+        string fw = FixedString(buf, o, 16);
+        if (port == 0) return null;
+        return new DiscoveredDevice
+        {
+            InstanceName = string.IsNullOrEmpty(name) ? ip : name,
+            Ip = ip,
+            Port = port,
+            Fw = string.IsNullOrEmpty(fw) ? null : fw,
+            HubInstanceId = id,
+        };
+    }
 
     public static async Task<List<DiscoveredDevice>> DiscoverAsync(TimeSpan window, Logger log, CancellationToken token)
     {
@@ -4629,74 +4667,42 @@ public static class MdnsDiscovery
         {
             try
             {
-                var udp = new UdpClient(AddressFamily.InterNetwork);
-                udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                udp.Client.Bind(new IPEndPoint(local, 0));   // ephemeral port; QU responses come back here
-                try { udp.JoinMulticastGroup(MdnsGroup, local); } catch { /* some ifaces refuse; unicast still works */ }
+                var udp = new UdpClient(new IPEndPoint(local, 0)) { EnableBroadcast = true };
                 sockets.Add(udp);
             }
-            catch (Exception ex) { log.Debug("mDNS: skipping interface {0}: {1}", local, ex.Message); }
+            catch (Exception ex) { log.Debug("discovery: skipping interface {0}: {1}", local, ex.Message); }
         }
         if (sockets.Count == 0)
         {
-            // Last resort: a single default-route socket.
-            try { var u = new UdpClient(AddressFamily.InterNetwork); u.Client.Bind(new IPEndPoint(IPAddress.Any, 0)); sockets.Add(u); }
-            catch (Exception ex) { log.Warn(ex, "mDNS: no usable socket"); return new List<DiscoveredDevice>(); }
+            try { sockets.Add(new UdpClient(new IPEndPoint(IPAddress.Any, 0)) { EnableBroadcast = true }); }
+            catch (Exception ex) { log.Warn(ex, "discovery: no usable socket"); return new List<DiscoveredDevice>(); }
         }
 
-        var query = BuildPtrQuery(Service);
-        var groupEp = new IPEndPoint(MdnsGroup, MdnsPort);
-        foreach (var s in sockets)
-        {
-            try { await s.SendAsync(query, query.Length, groupEp); }
-            catch (Exception ex) { log.Debug("mDNS send failed: {0}", ex.Message); }
-        }
-
-        // Accumulate answers across all packets in the window.
-        var ptrInstances = new HashSet<string>();
-        var srv = new Dictionary<string, (string target, int port)>(StringComparer.OrdinalIgnoreCase);
-        var txt = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-        var aRecords = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        uint nonce = (uint)Random.Shared.Next() ^ ((uint)Environment.TickCount << 1);
+        var probe = BuildProbe(nonce);
+        var dest = new IPEndPoint(IPAddress.Broadcast, ValenceWire.DiscoveryPort);
+        var found = new List<DiscoveredDevice>();
 
         using var winCts = CancellationTokenSource.CreateLinkedTokenSource(token);
         winCts.CancelAfter(window);
-        var recvTasks = sockets.Select(s => ListenAsync(s, ptrInstances, srv, txt, aRecords, log, winCts.Token)).ToArray();
-        try { await Task.WhenAll(recvTasks); } catch { /* window elapsed */ }
-
-        foreach (var s in sockets) { try { s.Dispose(); } catch { } }
-
-        // Stitch: for each PTR instance, resolve SRV → port + target; target → A;
-        // instance → TXT (fw). Fall back gracefully when a record is missing.
-        var results = new List<DiscoveredDevice>();
-        var instances = new HashSet<string>(ptrInstances, StringComparer.OrdinalIgnoreCase);
-        foreach (var s in srv.Keys) instances.Add(s);   // include SRVs even if the PTR packet was missed
-        foreach (var inst in instances)
+        var listeners = sockets.Select(s => ListenAsync(s, nonce, found, log, winCts.Token)).ToArray();
+        while (!winCts.IsCancellationRequested)
         {
-            string ip = null; int port = 82;
-            if (srv.TryGetValue(inst, out var sv))
+            foreach (var s in sockets)
             {
-                port = sv.port;
-                if (sv.target != null && aRecords.TryGetValue(sv.target, out var tip)) ip = tip;
+                // A refusing segment is not a discovery failure: the others still listen.
+                try { await s.SendAsync(probe, probe.Length, dest); }
+                catch (Exception ex) { log.Debug("discovery: probe send failed: {0}", ex.Message); }
             }
-            if (ip == null) aRecords.TryGetValue(inst, out ip);
-            if (ip == null) continue;   // no address → can't offer it
-
-            string fw = null;
-            if (txt.TryGetValue(inst, out var kv))
-            {
-                kv.TryGetValue("fw", out fw);
-                if (fw == null) kv.TryGetValue("version", out fw);
-            }
-            string label = inst.Replace("." + Service, "").Replace(Service, "").TrimEnd('.');
-            if (string.IsNullOrEmpty(label)) label = ip;
-            results.Add(new DiscoveredDevice { InstanceName = label, Ip = ip, Port = port, Fw = fw });
+            try { await Task.Delay(TimeSpan.FromSeconds(1), winCts.Token); } catch (OperationCanceledException) { }
         }
-        return results;
+        try { await Task.WhenAll(listeners); } catch { /* window elapsed */ }
+        foreach (var s in sockets) { try { s.Dispose(); } catch { } }
+        lock (found) return new List<DiscoveredDevice>(found);
     }
 
-    private static async Task ListenAsync(UdpClient udp, HashSet<string> ptr,
-        Dictionary<string, (string, int)> srv, Dictionary<string, Dictionary<string, string>> txt,
-        Dictionary<string, string> a, Logger log, CancellationToken token)
+    private static async Task ListenAsync(UdpClient udp, uint nonce, List<DiscoveredDevice> found, Logger log,
+        CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
@@ -4704,8 +4710,10 @@ public static class MdnsDiscovery
             try { res = await udp.ReceiveAsync(token); }
             catch (OperationCanceledException) { break; }
             catch (Exception) { break; }
-            try { ParseResponse(res.Buffer, ptr, srv, txt, a); }
-            catch (Exception ex) { log.Debug("mDNS parse error: {0}", ex.Message); }
+            var d = TryDecodeReply(res.Buffer, nonce, res.RemoteEndPoint.Address.ToString());
+            if (d == null) continue;
+            // Dedupe on the durable identity (§13.8): first address seen wins.
+            lock (found) { if (!found.Any(e => e.HubInstanceId == d.HubInstanceId)) found.Add(d); }
         }
     }
 
@@ -4721,135 +4729,10 @@ public static class MdnsDiscovery
         }
     }
 
-    // ---- DNS wire ------------------------------------------------------------
-    private static byte[] BuildPtrQuery(string name)
+    // str16/str32: fixed-width, zero-padded UTF-8 (§5.4, RFC-026).
+    private static string FixedString(byte[] b, int off, int len)
     {
-        using var ms = new MemoryStream();
-        Span<byte> hdr = stackalloc byte[12];
-        // id=0, flags=0 (standard query), qd=1, others 0
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(0), 0);
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(2), 0);
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(4), 1);
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(6), 0);
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(8), 0);
-        BinaryPrimitives.WriteUInt16BigEndian(hdr.Slice(10), 0);
-        ms.Write(hdr);
-        WriteName(ms, name);
-        Span<byte> q = stackalloc byte[4];
-        BinaryPrimitives.WriteUInt16BigEndian(q.Slice(0), 12);        // QTYPE PTR
-        BinaryPrimitives.WriteUInt16BigEndian(q.Slice(2), 0x8001);    // QCLASS IN + unicast-response (QU) bit
-        ms.Write(q);
-        return ms.ToArray();
-    }
-
-    private static void WriteName(MemoryStream ms, string name)
-    {
-        foreach (var label in name.Split('.'))
-        {
-            var b = Encoding.ASCII.GetBytes(label);
-            ms.WriteByte((byte)b.Length);
-            ms.Write(b, 0, b.Length);
-        }
-        ms.WriteByte(0);
-    }
-
-    private static void ParseResponse(byte[] buf, HashSet<string> ptr,
-        Dictionary<string, (string, int)> srv, Dictionary<string, Dictionary<string, string>> txt,
-        Dictionary<string, string> a)
-    {
-        if (buf.Length < 12) return;
-        int qd = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(4));
-        int an = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(6));
-        int ns = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(8));
-        int ar = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(10));
-        int pos = 12;
-        for (int i = 0; i < qd; i++)
-        {
-            ReadName(buf, ref pos);
-            pos += 4; // qtype+qclass
-        }
-        int total = an + ns + ar;
-        for (int i = 0; i < total; i++)
-        {
-            string name = ReadName(buf, ref pos);
-            if (pos + 10 > buf.Length) return;
-            int type = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(pos)); pos += 2;
-            pos += 2; // class
-            pos += 4; // ttl
-            int rdlen = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(pos)); pos += 2;
-            int rdStart = pos;
-            if (rdStart + rdlen > buf.Length) return;
-
-            switch (type)
-            {
-                case 12: // PTR → instance name
-                {
-                    int p = rdStart;
-                    string inst = ReadName(buf, ref p);
-                    if (inst.Contains(Service, StringComparison.OrdinalIgnoreCase)) ptr.Add(inst);
-                    break;
-                }
-                case 33: // SRV → priority(2) weight(2) port(2) target
-                {
-                    int p = rdStart;
-                    p += 4; // priority + weight
-                    int port = BinaryPrimitives.ReadUInt16BigEndian(buf.AsSpan(p)); p += 2;
-                    string target = ReadName(buf, ref p);
-                    srv[name] = (target, port);
-                    break;
-                }
-                case 16: // TXT → length-prefixed key=val strings
-                {
-                    var kv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    int p = rdStart;
-                    while (p < rdStart + rdlen)
-                    {
-                        int slen = buf[p++];
-                        if (slen == 0 || p + slen > rdStart + rdlen) break;
-                        string entry = Encoding.UTF8.GetString(buf, p, slen); p += slen;
-                        int eq = entry.IndexOf('=');
-                        if (eq > 0) kv[entry.Substring(0, eq)] = entry.Substring(eq + 1);
-                    }
-                    txt[name] = kv;
-                    break;
-                }
-                case 1: // A → IPv4
-                {
-                    if (rdlen == 4)
-                        a[name] = $"{buf[rdStart]}.{buf[rdStart + 1]}.{buf[rdStart + 2]}.{buf[rdStart + 3]}";
-                    break;
-                }
-            }
-            pos = rdStart + rdlen;
-        }
-    }
-
-    // DNS name reader with 0xC0 compression-pointer support.
-    private static string ReadName(byte[] buf, ref int pos)
-    {
-        var sb = new StringBuilder();
-        int p = pos;
-        bool jumped = false;
-        int guard = 0;
-        while (true)
-        {
-            if (p >= buf.Length || guard++ > 128) break;
-            int len = buf[p];
-            if (len == 0) { p++; break; }
-            if ((len & 0xC0) == 0xC0)
-            {
-                int ptrTo = ((len & 0x3F) << 8) | buf[p + 1];
-                if (!jumped) { pos = p + 2; jumped = true; }
-                p = ptrTo;
-                continue;
-            }
-            p++;
-            if (p + len > buf.Length) break;
-            if (sb.Length > 0) sb.Append('.');
-            sb.Append(Encoding.ASCII.GetString(buf, p, len));
-            p += len;
-        }
-        if (!jumped) pos = p;
-        return sb.ToString();
+        int end = Array.IndexOf(b, (byte)0, off, len);
+        return Encoding.UTF8.GetString(b, off, (end < 0 ? off + len : end) - off);
     }
 }

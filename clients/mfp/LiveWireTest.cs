@@ -1,6 +1,6 @@
 // =============================================================================
 // LiveWireTest — exercises the REAL ValenceConnect.cs protocol classes (HubClient,
-// ValenceWire, CborWriter/Reader, MdnsDiscovery, WelcomeInfo) against a live
+// ValenceWire, CborWriter/Reader, UdpDiscovery, WelcomeInfo) against a live
 // Nucleus device over its actual WebSocket. This is NOT a codec
 // self-test (see WireSelfTest.cs, which deliberately re-implements the codec
 // to golden-byte-check it) — it links and drives the plugin's own classes,
@@ -13,6 +13,8 @@
 //                  MACHINE (force-home + window config-set + 14 s of sine).
 //   --lag-selftest the LagMeter's math against a known shift. No hardware, no
 //                  network, no socket opened at all.
+//   --discovery-selftest  UdpDiscovery's probe and reply decode against a
+//                  synthesized DISCOVER_REPLY. No hub, no socket opened.
 //
 // Run:  dotnet run --project clients/mfp/LiveWireTest.csproj [ip] [port]
 // Exit 0 only if every hard PASS criterion below is met.
@@ -25,6 +27,7 @@
 // single-run pass because deploys rebooted the device between runs).
 // =============================================================================
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
@@ -56,6 +59,8 @@ internal static class LiveWireTest
         // shape assertions nor the unhomed safety gate below, and lives apart.
         if (Array.Exists(args, a => a == "--lag-selftest"))
             return LagSelfTest();
+        if (Array.Exists(args, a => a == "--discovery-selftest"))
+            return DiscoverySelfTest();
         if (Array.Exists(args, a => a == "--lag"))
             return await LagModeAsync(ip, port);
 
@@ -122,14 +127,14 @@ internal static class LiveWireTest
         Console.WriteLine();
 
         // ---- Discovery test ----------------------------------------------------
-        Console.WriteLine("[discovery] running MdnsDiscovery.DiscoverAsync (2s window)...");
+        Console.WriteLine("[discovery] running UdpDiscovery.DiscoverAsync (2s window)...");
         bool discoveryFound = false;
         try
         {
-            var found = await MdnsDiscovery.DiscoverAsync(TimeSpan.FromSeconds(2), Log, CancellationToken.None);
+            var found = await UdpDiscovery.DiscoverAsync(TimeSpan.FromSeconds(2), Log, CancellationToken.None);
             if (found.Count == 0)
             {
-                Console.WriteLine("[discovery] WARN: no devices found (multicast can be flaky on this network/host — not a hard fail).");
+                Console.WriteLine("[discovery] WARN: no devices found (no §13.8 responder reachable, or broadcast filtered — not a hard fail).");
             }
             foreach (var d in found)
             {
@@ -540,6 +545,37 @@ internal static class LiveWireTest
         Console.WriteLine();
         Console.WriteLine(allPass ? "RESULT: ALL HARD CRITERIA PASS" : "RESULT: FAILURES ABOVE");
         return allPass ? 0 : 1;
+    }
+
+    // --discovery-selftest : UdpDiscovery's probe bytes and reply decode against a
+    // synthesized 76-byte DISCOVER_REPLY (§13.8). No hub, no socket opened.
+    private static int DiscoverySelfTest()
+    {
+        int fail = 0;
+        void Check(string name, bool ok) { Console.WriteLine($"  [{(ok ? "PASS" : "FAIL")}] {name}"); if (!ok) fail++; }
+        const uint nonce = 0xA1B2C3D4;
+        Check("probe = VLNC + proto_ver 1 + nonce LE",
+            Convert.ToHexString(UdpDiscovery.BuildProbe(nonce)) == "564C4E4301D4C3B2A1");
+
+        var r = new byte[UdpDiscovery.ReplyBytes];
+        "VLNC"u8.CopyTo(r);
+        BinaryPrimitives.WriteUInt32LittleEndian(r.AsSpan(4), nonce);
+        System.Text.Encoding.UTF8.GetBytes("ossm").CopyTo(r, 8);
+        BinaryPrimitives.WriteUInt64LittleEndian(r.AsSpan(40), 0x0123456789ABCDEFUL);
+        r[48] = 1;
+        BinaryPrimitives.WriteUInt16LittleEndian(r.AsSpan(49), 82);
+        System.Text.Encoding.UTF8.GetBytes("2.4.1").CopyTo(r, 51);
+        r[75] = 0x01;
+        var d = UdpDiscovery.TryDecodeReply(r, nonce, "10.0.0.9");
+        Check("reply is 76 bytes", UdpDiscovery.ReplyBytes == 76);
+        Check("reply decodes field for field", d != null && d.InstanceName == "ossm" && d.Ip == "10.0.0.9" &&
+            d.Port == 82 && d.Fw == "2.4.1" && d.HubInstanceId == 0x0123456789ABCDEFUL);
+        Check("another probe's nonce is not ours", UdpDiscovery.TryDecodeReply(r, nonce + 1, "10.0.0.9") == null);
+        Check("a short reply is not ours", UdpDiscovery.TryDecodeReply(r[..75], nonce, "10.0.0.9") == null);
+        r[0] = 0;
+        Check("bad magic is not ours", UdpDiscovery.TryDecodeReply(r, nonce, "10.0.0.9") == null);
+        Console.WriteLine(fail == 0 ? "[discovery-selftest] all pass" : $"[discovery-selftest] {fail} FAILED");
+        return fail == 0 ? 0 : 1;
     }
 
     // --lag-selftest : the LagMeter's correlation math against a KNOWN shift and

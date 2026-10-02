@@ -41,7 +41,7 @@ live device wire test) and must **not** be copied into the Plugins folder.
 ## Usage
 
 1. In the plugin tab, set **Address** (the machine's IP, default `192.168.1.229`) and
-   **Port** (`82`). Or hit **Discover** to find machines on the LAN via mDNS and pick
+   **Port** (`82`). Or hit **Discover** to find machines on the LAN by the §13.8 UDP probe and pick
    one from the list — it fills Address/Port for you. Manual entry always works;
    discovery is a convenience.
 2. Confirm **Axis** (default `L0`), **Rate** (default `50` Hz), and **Mode**
@@ -347,7 +347,7 @@ against real hardware, see the safety gate note below.
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 82
 ```
 Compiles `ValenceConnect.cs` itself (the plugin's real codec/client/catalog/discovery classes —
-no copies) into a console harness and runs the full session: mDNS discovery,
+no copies) into a console harness and runs the full session: UDP-probe discovery,
 HELLO→WELCOME publish grant, **BLOB_REQ catalog fetch + local SHA-256 verify +
 CATALOG_READY**, **RFC-006(b) role lookup and live role-value decode**, CLOCK sync, a
 role-resolved stroke-window INTENT round trip (**simulator only**), 5 s of STREAM @ 50 Hz,
@@ -364,6 +364,9 @@ on `sim`; the Home intent is never sent by this harness at all.
 **Run it TWICE back-to-back without restarting the target.** That is the
 source-ownership-release regression check, and it exists because a real field bug hid for
 months behind deploys that rebooted between runs (fw ≥ 2.1.44).
+
+Pass `--discovery-selftest` to check the UDP discovery probe bytes and reply decode against
+a synthesized 76-byte DISCOVER_REPLY -- no hub, no socket opened.
 
 Pass `--lag-selftest` to check the `LagMeter`'s correlation math against a known
 40 ms shift and 0.80 gain -- no hardware, no network, no socket opened.

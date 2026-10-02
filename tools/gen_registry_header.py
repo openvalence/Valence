@@ -340,11 +340,7 @@ def gen_js(reg: dict) -> str:
 
     p(f"export const PROTO_VER = {meta['protocol_version']};\n")
     p(f"export const HEADER_BYTES = {meta['header_bytes']};\n")
-    p(f"export const WS_SUBPROTOCOL = {js_str(limits['ws_subprotocol'])};\n")
-    # TODO(rfc-uvh): delete once clients/js frames.js and index.js drop the re-export.
-    p("// RETIRED by RFC-072: no mDNS service record exists (SPEC §13.7). Null only so\n"
-      "// existing re-exports still link.\n")
-    p("export const MDNS_SERVICE = null;\n\n")
+    p(f"export const WS_SUBPROTOCOL = {js_str(limits['ws_subprotocol'])};\n\n")
 
     for export, section, reverse, hexn in JS_CODE_TABLES:
         entries = reg[section]

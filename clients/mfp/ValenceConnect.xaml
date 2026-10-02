@@ -265,7 +265,7 @@
                     </Grid>
 
                     <ComboBox Margin="0,6,0,0"
-                              material:HintAssist.Hint="Discovered devices (mDNS)"
+                              material:HintAssist.Hint="Discovered devices (UDP probe)"
                               Style="{StaticResource MaterialDesignFloatingHintComboBox}"
                               IsEnabled="{Binding IsEditable}"
                               ItemsSource="{Binding DiscoveredDevices}"

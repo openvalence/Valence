@@ -3,7 +3,7 @@
   standalone (same trick as ValenceConnect.csproj — MFP dll refs to resolve
   PluginBase's WPF-derived base types, FileBasedProgram feature to accept the
   file's leading #: directives) plus LiveWireTest.cs, and links against the
-  plugin's REAL HubClient/ValenceWire/CborWriter/CborReader/MdnsDiscovery classes
+  plugin's REAL HubClient/ValenceWire/CborWriter/CborReader/UdpDiscovery classes
   — no codec is duplicated here (contrast WireSelfTest.cs, which deliberately
   re-implements the codec for a golden-byte comparison).
 

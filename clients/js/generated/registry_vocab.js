@@ -11,9 +11,6 @@
 export const PROTO_VER = 1;
 export const HEADER_BYTES = 8;
 export const WS_SUBPROTOCOL = 'valence.v1';
-// RETIRED by RFC-072: no mDNS service record exists (SPEC §13.7). Null only so
-// existing re-exports still link.
-export const MDNS_SERVICE = null;
 
 // ---- frame_types ---------------------------------------------------
 export const FRAME = {
