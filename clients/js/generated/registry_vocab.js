@@ -235,6 +235,7 @@ export const K = {
   ws_port: 46,  // WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding but load-
   ipv4: 47,  // WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1
   requested_curve_family: 48,  // publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WIS
+  schedule_latency_us: 49,  // granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample'
 };
 export const K_NAME = {
   1: 'proto_ver',
@@ -285,6 +286,7 @@ export const K_NAME = {
   46: 'ws_port',
   47: 'ipv4',
   48: 'requested_curve_family',
+  49: 'schedule_latency_us',
 };
 
 // ---- welcome_limits_keys -------------------------------------------
@@ -974,6 +976,7 @@ export const FIELD_ROLE = {
   plan_velocity: 'plan.velocity',  // current planned velocity
   plan_elapsed: 'plan.elapsed',  // elapsed time within the segment in flight
   plan_duration: 'plan.duration',  // total duration of the segment in flight
+  plan_latency: 'plan.latency',  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagno
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
   advgen_master: 'advgen.master',  // RFC-081: overall rate scale of the advanced program, percent of its own range
   advgen_depth_max: 'advgen.depth_max',  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window

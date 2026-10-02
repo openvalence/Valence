@@ -108,7 +108,8 @@ generated: true
 | | | | 46 | `ws_port` | uint |
 | | | | 47 | `ipv4` | uint |
 | | | | 48 | `requested_curve_family` | uint |
-| | | | | *49–63 free* | |
+| | | | 49 | `schedule_latency_us` | uint |
+| | | | | *50–63 free* | |
 
 **Scoped sub-map key spaces ([§5.3](wire-format.md#s5-3)).** Each is local to its own map: key 1 of `blob` and key 1 of `trust` are unrelated, and neither is `proto_ver`.
 

@@ -235,7 +235,8 @@ cbor_keys:
   46: { name: ws_port,        type: uint,  note: "WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding but load-bearing over BLE: it is the in-band endpoint disclosure a BLE-connected client needs to hop to WS (RFC-043's auto-upgrade). Also closes the sim's hub-identity gap for WS-side clients: the same key tells a WS client what the hub believes its own endpoint is. 0 = none (no WS listener right now)." }
   47: { name: ipv4,           type: uint,  note: "WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1.229 = 0xC0A801E5): there is no bstr(4) here because a plain integer makes '0 = none' the same natural sentinel 0.0.0.0 already is. Read alongside `ws_port` for the BLE→WS upgrade hop. 0 = none." }
   48: { name: requested_curve_family, type: uint, note: "publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WISH verbatim, unmodified by `curve_policy`. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a client has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a hub with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049)." }
-# 49–63 free in the core space. 64–127 reserved. 128+ experimental.
+  49: { name: schedule_latency_us, type: uint, note: "granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample's time (segments: t_base + t_off; samples: its arrival stamp, RFC-084) and the start of its execution, inclusive of every hub-internal hop. On a samples-kind grant it is the chase-planning budget. A commitment, constant for the life of the grant; a change is an unsolicited GRANT. Absent or 0 = unspecified. No client wish exists (§9.6)." }
+# 50–63 free in the core space. 64–127 reserved. 128+ experimental.
 
 # ---------------------------------------------------------------------------
 # WELCOME `limits` (key 22) sub-map integer keys — a separate tiny key space
@@ -754,6 +755,7 @@ field_roles:
   "plan.velocity":       { note: "current planned velocity" }
   "plan.elapsed":        { note: "elapsed time within the segment in flight" }
   "plan.duration":       { note: "total duration of the segment in flight" }
+  "plan.latency":        { note: "RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance." }
   "plan.style":          { note: "which planning style produced the segment; options are the device's style names, index-aligned with the wire value" }
   # ---- source.* (RFC-048): promotes RFC-045's `on_disconnect` setting from
   # ordinary settings-metamodel data to a formally registered role, GENERALIZED
@@ -1213,7 +1215,7 @@ limits:
   idle_reap_multiplier: 3           # RFC-024: reap a non-owning session after this multiple of ping_interval_idle_ms of silence. §6.5 said "MAY"; it was never implemented, so a viewer that went dark held a slot forever. Two liveness regimes, deliberately different: source OWNERS get the deadman window + §11.3 loss policy; everyone else gets idle reaping with no motion consequence.
 
   # ---- streaming (RFC-013, RFC-014, RFC-049c) ------------------------------
-  max_future_schedule_ms: 250       # RFC-014: for segment-class STREAM channels, t_base + t_off[i] IS the intended execution start of sample i; the hub clamps scheduling this far ahead. It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended client lookahead <= half of this.
+  max_future_schedule_ms: 250       # RFC-014, widened by RFC-084: for every c2h STREAM channel the hub clamps a sample's timestamp this far ahead of its own time (clamped, never rejected). Segments: t_base + t_off[i] IS the execution start; samples: it is the arrival time (§5.4). It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended client lookahead <= half of this.
   max_burst_multiple: 4             # RFC-013: cap on `burst` relative to granted rate. An unbounded client-declared burst would reintroduce the exact flood the token bucket exists to stop.
   segment_end_vel_unspecified: -32768  # RFC-058: the §5.4 `unspecified` sentinel of a motion-input i16 end-velocity field (a signed field's type minimum; zero is a real slope). Without a scheduled successor a hub MUST resolve it to rest (§9.6). Also the absent value for any motion-input field a sender has no value for (RFC-071). Replaces the hand copies (reference catalog comment, MFP SegmentEndVelSentinel).
   segment_dwell_span: 0.02          # RFC-058: §9.6 dwell rule, normalized units: a segment whose target is within this of the previous accepted target on the same source is a hold; a nonzero end velocity on it SHOULD be bounded to zero and surfaced as its own anomaly kind. Tested against the target, never position.

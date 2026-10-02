@@ -153,6 +153,7 @@ enum class CborKey : uint8_t {
     ws_port = 46,  // uint: WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding but load-bearing over BLE: it is the in-band endpoint disclosure a BLE-connected client needs to hop to WS (RFC-043's auto-upgrade). Also closes the sim's hub-identity gap for WS-side clients: the same key tells a WS client what the hub believes its own endpoint is. 0 = none (no WS listener right now).
     ipv4 = 47,  // uint: WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1.229 = 0xC0A801E5): there is no bstr(4) here because a plain integer makes '0 = none' the same natural sentinel 0.0.0.0 already is. Read alongside `ws_port` for the BLE→WS upgrade hop. 0 = none.
     requested_curve_family = 48,  // uint: publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WISH verbatim, unmodified by `curve_policy`. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a client has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a hub with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049).
+    schedule_latency_us = 49,  // uint: granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample's time (segments: t_base + t_off; samples: its arrival stamp, RFC-084) and the start of its execution, inclusive of every hub-internal hop. On a samples-kind grant it is the chase-planning budget. A commitment, constant for the life of the grant; a change is an unsolicited GRANT. Absent or 0 = unspecified. No client wish exists (§9.6).
 };
 
 namespace welcome_limits {
@@ -449,6 +450,7 @@ inline constexpr std::string_view plan_current = "plan.current";  // normalized 
 inline constexpr std::string_view plan_velocity = "plan.velocity";  // current planned velocity
 inline constexpr std::string_view plan_elapsed = "plan.elapsed";  // elapsed time within the segment in flight
 inline constexpr std::string_view plan_duration = "plan.duration";  // total duration of the segment in flight
+inline constexpr std::string_view plan_latency = "plan.latency";  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance.
 inline constexpr std::string_view plan_style = "plan.style";  // which planning style produced the segment; options are the device's style names, index-aligned with the wire value
 inline constexpr std::string_view advgen_master = "advgen.master";  // RFC-081: overall rate scale of the advanced program, percent of its own range
 inline constexpr std::string_view advgen_depth_max = "advgen.depth_max";  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
