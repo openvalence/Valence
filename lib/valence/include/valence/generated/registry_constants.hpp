@@ -189,6 +189,7 @@ inline constexpr uint8_t payload = 7;  // bstr: the opaque item document (<= pre
 inline constexpr uint8_t chunk_index = 8;  // uint: 0-based index of this chunk
 inline constexpr uint8_t chunk_count = 9;  // uint: total chunks in this transfer
 inline constexpr uint8_t total_bytes = 10;  // uint: total encoded byte length being transferred (lets a receiver size/reject before assembling: RFC-028 no-unbounded-allocation)
+inline constexpr uint8_t digest = 11;  // bstr: RFC-073, OPTIONAL on a store item map: SHA-256 (32 B) over `payload` alone. The receiver's local check for BLOB_DONE status 0 vs 1 on a store transfer (§8.4/§8.7). A store item IS a CBOR map of these keys: slot 3, name 5, kind 6, payload 7 required, digest 11 optional.
 }  // namespace blob
 
 namespace trust {

@@ -118,7 +118,7 @@ generated: true
 | `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame` |
 | `probe_result` (26) | 1 `bytes_received`, 2 `span_ms`, 3 `loss_pct_x100`, 4 `rtt_ms` |
 | `identity` (37) | 1 `product`, 2 `fw_version`, 3 `hub_name`, 4 `info` (device-defined map) |
-| `blob` (38) | 1 `ns`, 2 `store_id`, 3 `slot`, 4 `generation`, 5 `name`, 6 `kind`, 7 `payload`, 8 `chunk_index`, 9 `chunk_count`, 10 `total_bytes` |
+| `blob` (38) | 1 `ns`, 2 `store_id`, 3 `slot`, 4 `generation`, 5 `name`, 6 `kind`, 7 `payload`, 8 `chunk_index`, 9 `chunk_count`, 10 `total_bytes`, 11 `digest` |
 | `trust` (39) | 1 `client_ver`, 2 `client_nonce`, 3 `sig_request`, 4 `hub_pubkey`, 5 `welcome_sig`, 6 `token_proof`, 7 `presentation_mode`, 8 `pairing_modes` |
 | `body` (40) | **the channel's own catalog `schema` keys** — not a registry space ([§9.4](channels.md#s9-4)) |
 | store item payloads | **opaque** — the protocol never decodes them ([§8.7](catalog.md#s8-7)), except the trust ledger's registered `trust_ledger_keys` grammar ([§12.6](security.md#s12-6)) |

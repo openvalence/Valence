@@ -134,6 +134,7 @@ Which blob, and its item fields. Shared by BLOB_REQ, BLOB_CHUNK and store intent
 | `8` | `chunk_index` | uint: 0-based index of this chunk |
 | `9` | `chunk_count` | uint: total chunks in this transfer |
 | `10` | `total_bytes` | uint: total encoded byte length being transferred (lets a receiver size/reject before assembling: RFC-028 no-unbounded-allocation) |
+| `11` | `digest` | bstr: RFC-073, OPTIONAL on a store item map: SHA-256 (32 B) over `payload` alone. The receiver's local check for BLOB_DONE status 0 vs 1 on a store transfer (§8.4/§8.7). A store item IS a CBOR map of these keys: slot 3, name 5, kind 6, payload 7 required, digest 11 optional. |
 
 ### `trust` (key 39)
 

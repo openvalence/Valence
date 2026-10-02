@@ -326,6 +326,7 @@ export const BLOB_K = {
   chunk_index: 8,  // uint: 0-based index of this chunk
   chunk_count: 9,  // uint: total chunks in this transfer
   total_bytes: 10,  // uint: total encoded byte length being transferred (lets a receiver size/reject before assembling
+  digest: 11,  // bstr: RFC-073, OPTIONAL on a store item map: SHA-256 (32 B) over `payload` alone. The receiver's
 };
 
 // ---- trust_keys ----------------------------------------------------

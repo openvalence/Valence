@@ -260,3 +260,18 @@ store-descriptor = {
   4 => uint,               ; per_item_max: max encoded payload bytes (default limits.preset_item_max_bytes)
   5 => uint,               ; name_max: max item-name bytes
 }
+
+; ---------------------------------------------------------------------------
+; A STORE ITEM (RFC-073, SPEC §8.7): the self-contained document a BLOB_CHUNK
+; stream for blob ns = 1 reassembles into, and a full-item `save` import. Keys
+; are the registry `blob_keys` (one key space for one concept). Not a catalog
+; type: it never appears in the catalog. The "trust.ledger" kind keeps its own
+; `trust_ledger_keys` grammar (§12.6).
+; ---------------------------------------------------------------------------
+store-item = {
+  3  => uint,              ; slot
+  5  => tstr,              ; name, <= the store's name_max
+  6  => tstr,              ; kind: "<domain>.<variant>"; domains open, advisory
+  7  => bstr,              ; payload: opaque, <= the store's per_item_max
+  ? 11 => bstr .size 32,   ; digest: SHA-256 over payload alone
+}

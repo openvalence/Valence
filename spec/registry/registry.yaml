@@ -297,6 +297,7 @@ blob_keys:
   8:  { name: chunk_index, note: "uint: 0-based index of this chunk" }
   9:  { name: chunk_count, note: "uint: total chunks in this transfer" }
   10: { name: total_bytes, note: "uint: total encoded byte length being transferred (lets a receiver size/reject before assembling: RFC-028 no-unbounded-allocation)" }
+  11: { name: digest,      note: "bstr: RFC-073, OPTIONAL on a store item map: SHA-256 (32 B) over `payload` alone. The receiver's local check for BLOB_DONE status 0 vs 1 on a store transfer (§8.4/§8.7). A store item IS a CBOR map of these keys: slot 3, name 5, kind 6, payload 7 required, digest 11 optional." }
 
 # ---------------------------------------------------------------------------
 # `trust` (key 39) sub-map integer keys — RFC-029 (+ RFC-027 mode advert).
