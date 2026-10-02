@@ -358,7 +358,7 @@ ROLE_WINDOW_MIN = "window.min"
 ROLE_WINDOW_MAX = "window.max"
 ROLE_POSITION = "telemetry.position"
 ROLE_VELOCITY = "telemetry.velocity"
-LIMIT_ROLES = ["limit.user.speed", "limit.user.accel", "limit.input.speed",
+LIMIT_ROLES = ["limit.jog.speed", "limit.jog.accel", "limit.input.speed",
                "limit.input.accel", "limit.input.jerk"]
 
 CLASS_STATE, CLASS_STREAM, CLASS_INTENT, CLASS_EVENT, CLASS_STORE = 0, 1, 2, 3, 4

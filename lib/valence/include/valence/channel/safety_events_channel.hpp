@@ -46,7 +46,7 @@ inline constexpr uint8_t word = 1;           // the safety word AFTER the edge (
 inline constexpr uint8_t cause = 2;          // a `safety_causes` value
 inline constexpr uint8_t owner_session = 3;  // session that caused it; 0 = the hub itself
 inline constexpr uint8_t estop_seq = 4;      // §5.5 per-INITIATION sequence
-inline constexpr uint8_t level = 5;          // stop_latched/stop_cleared: bitmask of bits that MOVED
+// key 5 (`level`) retired by RFC-085: one pause level leaves nothing to disambiguate.
 }  // namespace safety_body
 
 // Declares the spec-core safety-events channel on `cat`, in the canonical
@@ -77,7 +77,6 @@ inline bool addSafetyEventsChannel(Catalog32& cat) {
                         .type = CborFieldType::uint_t, .unit = ""});
     cat.addSchemaField({.key = safety_body::estop_seq, .name = "estop_seq", .type = CborFieldType::uint_t,
                         .unit = "count"});
-    cat.addSchemaField({.key = safety_body::level, .name = "level", .type = CborFieldType::uint_t, .unit = "flag"});
     return !cat.overflow;
 }
 

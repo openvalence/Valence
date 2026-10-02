@@ -972,9 +972,9 @@ inline std::optional<uint8_t> Client::safetyWord() const {
     return std::nullopt;
 }
 
-inline bool Client::stopLatched() const {
+inline bool Client::pauseLatched() const {
     auto w = safetyWord();
-    return w.has_value() && (*w & safety_bits::STOP) != 0;
+    return w.has_value() && (*w & safety_bits::PAUSE) != 0;
 }
 
 }  // namespace valence

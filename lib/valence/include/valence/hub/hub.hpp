@@ -129,9 +129,16 @@ public:
                                    uint8_t reason) {
         (void)source_id; (void)owner_session; (void)reason;
     }
-    // §11.2: application-side clear precondition (velocity zero, fault gone —
+    // §11.2: application-side release precondition (velocity zero, fault gone —
     // machine domain the library can't see). false -> NACK CLEAR_REFUSED.
     virtual bool canClearEstop() { return true; }
+    // §11.1 (RFC-085): while PAUSE is latched every motion INTENT on a mapped
+    // source is refused INTERLOCK unless this admits it: the home verb, and a
+    // jog while `overrideLatched`. The library cannot tell a jog or a home
+    // from any other motion intent; the application can.
+    virtual bool admitsUnderPause(uint16_t channel_id, const IntentValueMap& value, bool overrideLatched) {
+        (void)channel_id; (void)value; (void)overrideLatched; return false;
+    }
 
     // §9.2/§10.5: a validated inbound STREAM bundle (client→hub motion input)
     // arrived on `channel_id` from `session_id`. Called ONLY after the hub has
@@ -323,6 +330,14 @@ public:
     void setHubInstanceId(uint64_t id) { _hubInstanceId = id; }
     uint64_t hubInstanceId() const { return _hubInstanceId; }
 
+    // ---- RFC-085: the declared stop category, WELCOME identity key 6 --------
+    // REQUIRED of a hardware-profile hub (§11.2): call it once at composition,
+    // same timing contract as setIdentity(). true = ESTOP cuts motor power and
+    // leaves the hub unhomed (home_required set on latch). Never called = the
+    // key is omitted and clients read false.
+    void setEstopCutsPower(bool cuts) { _estopCutsPowerDeclared = true; _estopCutsPower = cuts; }
+    bool estopCutsPower() const { return _estopCutsPower; }
+
     // ---- RFC-046: the hub's own reachable WS endpoint, WELCOME keys 46/47 --
     // 0/0 (the default) keeps WELCOME byte-identical to a pre-RFC-046 hub's —
     // both keys are OMITTED from the wire when zero, not encoded as a literal
@@ -500,25 +515,22 @@ public:
     // answer and is explicitly legal.
     void setWallClockSeconds(uint32_t epochSeconds);
 
-    // ---- M5: safety (§11) --------------------------------------------------
-    // §11.2 clearing: hub-side conditions (latched, no pending escalation) +
-    // delegate.canClearEstop(). Clearing never restarts motion. Returns false
-    // (and the intent path NACKs CLEAR_REFUSED) when refused.
-    bool clearEstop();
-    bool stopLatched() const;
+    // ---- M5: safety (§11, RFC-085) -----------------------------------------
+    // §11.2 release: hub-side condition (latched) + delegate.canClearEstop().
+    // Release lands in PAUSE, never in motion. Returns false (and the intent
+    // path NACKs CLEAR_REFUSED) when refused.
+    bool releaseEstop();
+    bool pauseLatched() const;
     uint8_t safetyWord() const;
 
-    // ---- RFC-025c: the safety channel's APPENDED `modes` byte ---------------
-    // manual_override / bypass_limits as SAFETY-domain state (safety_mode_bits).
-    // Clients WRITE them through safety_ops override_on/off + bypass_on/off on
-    // 0x0005 (control role), which the hub latches on delegate acceptance —
-    // exactly like HOLD/PAUSE. This setter is the OTHER direction: the machine
-    // changing its own mind (a physical control, a legacy UI plane, an e-stop
-    // that drops override as a side effect) pushing ground truth back into the
-    // snapshot. Same posture as the firmware's existing estop reconciliation:
-    // whatever the machine actually is, the retained snapshot says. Publishes +
-    // broadcasts at critical priority only when a bit actually changed.
-    void setSafetyModes(bool manualOverride, bool bypassLimits);
+    // ---- The safety channel's APPENDED `modes` byte (RFC-025c, RFC-085) -----
+    // Clients latch OVERRIDE through safety_ops `override` (the hub sets it, with
+    // PAUSE, on delegate acceptance). These setters are the machine's direction:
+    // setOverride(false) when the `return` move ARRIVES at the paused position
+    // (PAUSE stays latched); setHomeRequired(false) when a home completes after
+    // a power-cutting ESTOP. Publish + broadcast only when a bit changed.
+    void setOverride(bool engaged);
+    void setHomeRequired(bool required);
     uint8_t safetyModes() const;
 
     // ---- M5: congestion input (§10.3) --------------------------------------
@@ -835,10 +847,8 @@ private:
     uint16_t _dispatchSeq = 0;
     bool _dispatchSeqValid = false;
 
-    // ---- Safety word state (§11.1): bit0 ESTOP, bit1 STOP, bit2 HOLD,
-    // bit3 PAUSE — the exact bitfield the `safety` (0x0003) STATE layout
-    // publishes. M4 only ever set bit0; M5 adds STOP (deadman) + the general
-    // cause/owner bookkeeping the table describes.
+    // ---- Safety word state (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE — the
+    // exact bitfield the `safety` (0x0003) STATE layout publishes.
     uint8_t _safetyWord = 0;
     uint8_t _safetyCause = 0;       // a `safety_causes` value (§11.1) — registry-owned, never a local enum
     uint32_t _safetyOwnerSession = 0;
@@ -848,6 +858,9 @@ private:
     // existing field keeps its offset, an old client parsing the first 8 bytes
     // is still correct, and the etag moves, which IS the re-fetch mechanism.
     uint8_t _safetyModes = 0;
+    // RFC-085: the declared stop category (identity key 6).
+    bool _estopCutsPowerDeclared = false;
+    bool _estopCutsPower = false;
 
     // ---- M5: pairing (§12.2) + source ownership (§11.4) ---------------------
     PairingManager _pairing;

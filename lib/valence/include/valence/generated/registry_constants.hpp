@@ -92,9 +92,9 @@ enum class PackedFieldType : uint8_t {
 namespace channels {
 inline constexpr uint16_t catalog = 0x0001;  // STATE: catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING.
 inline constexpr uint16_t session_roster = 0x0002;  // STATE: RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives.
-inline constexpr uint16_t safety = 0x0003;  // STATE: latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_override + bypass_limits to the same snapshot (append-only is legal)
+inline constexpr uint16_t safety = 0x0003;  // STATE: latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by ESTOP on an estop_cuts_power hub, cleared by a completed home); modes bit1 was bypass_limits before RFC-085.
 inline constexpr uint16_t control_owner = 0x0004;  // STATE: active arbiter source + owning session per source (§11.4)
-inline constexpr uint16_t safety_intents = 0x0005;  // INTENT: STOP/HOLD/PAUSE/RESUME/ESTOP_CLEAR/ESTOP/TAKEOVER + override/bypass (§11, safety_intent_ops)
+inline constexpr uint16_t safety_intents = 0x0005;  // INTENT: the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest `control`.
 inline constexpr uint16_t hub_status = 0x0006;  // STATE: boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identity`: one home, no drift.
 inline constexpr uint16_t session_events = 0x0007;  // EVENT: join/leave/takeover/eviction notifications
 inline constexpr uint16_t log = 0x0008;  // EVENT: RFC-017: device log in-band: {level u8, tag, hub-ms, message <=128 B} via the `body` sub-map. Bounded drop-oldest with the §9.4 visible drop counter, `background` priority, `watch` access. Declares a replay depth (log_replay_depth_default) so the hub MAY replay its ring tail on grant, the named exception to §9.4's no-replay rule. Retires /api/log; the serial-silent handoff re-binds from 'first HTTP GET' to 'first log grant'.
@@ -187,6 +187,7 @@ inline constexpr uint8_t fw_version = 2;  // tstr: hub firmware version, e.g. '2
 inline constexpr uint8_t hub_name = 3;  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one.
 inline constexpr uint8_t info = 4;  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap.
 inline constexpr uint8_t hub_instance_id = 5;  // uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once and NVS-persisted, survives every reboot and firmware update (only a factory reset regenerates it), as opposed to `boot_id` (cbor_keys 7, §6.1/§7.2), which is a FRESH random value EVERY boot and exists only to fence stale per-boot state. Distinguishes THIS PHYSICAL HUB from any other, across time. Present in WELCOME `identity` (37) for any hub that persists one; absent = the hub has no durable identity yet (a fresh dev build, a non-persisting simulator) and a client MUST tolerate its absence exactly as it tolerates the rest of `identity` (§6.3). Also the value DISCOVER_REPLY (0x1F, §13.8) now carries as `hub_instance_id`, replacing that frame's original `boot_id`-based disambiguator (see the `frame_types` 0x1F note): a boot-scoped id could not deduplicate 'two hubs sharing a name' across a reboot, which was the field's whole job.
+inline constexpr uint8_t estop_cuts_power = 6;  // bool: RFC-085 (§11.2). Whether this hub's ESTOP cuts motor power (true: category 0, the machine goes limp and the hub is unhomed after release) or is a maximum-deceleration halt with power and home kept (false). REQUIRED of a hardware-profile hub (the declaration, never the mechanism); absent reads as false. Drives the client label: true renders E-Stop, false or absent renders Halt.
 }  // namespace identity
 
 namespace blob {
@@ -268,9 +269,9 @@ inline constexpr uint8_t accessory_refused = 9;  // RFC-077: an accessory join w
 
 namespace safety_events {
 inline constexpr uint8_t estop_latched = 1;  // the ESTOP bit went 0 -> 1 (§5.5). `body` carries word/cause/owner_session/estop_seq. Cause is a `safety_causes` value; `estop_seq` is the §5.5 per-INITIATION sequence, so repeats of one initiation share it.
-inline constexpr uint8_t estop_cleared = 2;  // the ESTOP bit went 1 -> 0 via §11.2's guarded clear (`safety_ops::estop_clear` + the hub's and delegate's preconditions). Clearing never restarts motion; this edge says the latch is gone, never that the machine moved.
-inline constexpr uint8_t stop_latched = 3;  // one or more of STOP / HOLD / PAUSE went 0 -> 1. `body.level` is the bitmask of the bits that NEWLY set (safety word bits 1/2/3), so one edge reports one operator action even when it sets several. Cause distinguishes an operator `stop` (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss). That is the whole reason this edge is worth having: all three look identical in the snapshot.
-inline constexpr uint8_t stop_cleared = 4;  // one or more of STOP / HOLD / PAUSE went 1 -> 0 (`resume`, or a STOP cleared by an accepted new motion intent per §11.1). `body.level` is the bitmask of the bits that NEWLY cleared.
+inline constexpr uint8_t estop_cleared = 2;  // the ESTOP bit went 1 -> 0 via §11.2's guarded `release` (the hub's and delegate's preconditions). Release lands in PAUSE and never restarts motion; this edge says the latch is gone, never that the machine moved.
+inline constexpr uint8_t pause_latched = 3;  // RFC-085 (was stop_latched): the PAUSE bit went 0 -> 1. Cause distinguishes an operator pause (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss); all three look identical in the snapshot. `body.level` is retired: one level leaves nothing to disambiguate.
+inline constexpr uint8_t pause_cleared = 4;  // RFC-085 (was stop_cleared): the PAUSE bit went 1 -> 0, only ever by `resume`.
 }  // namespace safety_events
 
 namespace log_levels {
@@ -283,16 +284,12 @@ inline constexpr uint8_t fatal = 5;  // geiger::Level::Fatal (GLOGF)
 }  // namespace log_levels
 
 namespace safety_ops {
-inline constexpr uint8_t estop_clear = 1;  // clear the ESTOP latch (§11.2 conditions apply; NACK CLEAR_REFUSED otherwise). Requires `control`.
-inline constexpr uint8_t stop = 2;  // controlled decel stop (§11.1). ROLE-EXEMPT.
-inline constexpr uint8_t hold = 3;  // position hold (§11.1). Requires `control`. The HUB latches all four levels in 0x0003: delegate acceptance is what triggers the latch; a hub whose delegate does not implement this NACKs UNSUPPORTED_OP, which is discoverable and honest (RFC-025a).
-inline constexpr uint8_t pause = 4;  // pattern pause (§11.1). Requires `control`.
-inline constexpr uint8_t resume = 5;  // resume from HOLD/PAUSE (§11.1). Requires `control`.
-inline constexpr uint8_t estop = 6;  // ASSERT e-stop (RFC-010). ROLE-EXEMPT. The hub treats it exactly as a valid 0xE5 frame: latch, cause=user, publish 0x0003, EVENT twin. The raw 0xE5 frame stays as the deframed-path/relay guarantee; this op is the trivially-implementable client path: without it the red button silently degrades to a decel-stop, which is why this gated port-81 deletion.
-inline constexpr uint8_t override_on = 7;  // engage manual override (RFC-025c). Requires `control`. Override/bypass are SAFETY-domain state, not rail-UI state: they render near the rail but other surfaces need them, so they live in the 0x0003 snapshot (appended byte) and are written here.
-inline constexpr uint8_t override_off = 8;  // release manual override. Requires `control`.
-inline constexpr uint8_t bypass_on = 9;  // engage limit bypass (RFC-025c). Requires `control`. The per-move `bypass` key on a motion INTENT is unaffected and stays as-is.
-inline constexpr uint8_t bypass_off = 10;  // release limit bypass. Requires `control`.
+inline constexpr uint8_t release = 1;  // RFC-085 (was estop_clear): release the ESTOP latch (§11.2 preconditions; NACK CLEAR_REFUSED otherwise). Lands in PAUSE, never in motion; on an estop_cuts_power hub, unhomed. Requires `control`.
+inline constexpr uint8_t pause = 4;  // RFC-085: latch PAUSE (§11.1): decelerate, hold position, every source suspended, stream bundles dropped and counted. ROLE-EXEMPT. A hub with a motion source MUST implement it.
+inline constexpr uint8_t resume = 5;  // the only clear of PAUSE (§11.1). Refused ESTOP_ACTIVE while ESTOP is latched, INTERLOCK while override is latched, NOT_HOMED while home_required. Requires `control`. A client never sends it on its own initiative.
+inline constexpr uint8_t estop = 6;  // ASSERT e-stop (RFC-010). ROLE-EXEMPT. The hub treats it exactly as a valid 0xE5 frame: latch, cause=user, publish 0x0003, EVENT twin. The raw 0xE5 frame stays as the deframed-path/relay guarantee; this op is the trivially-implementable client path: without it the red button silently degrades to a decel-stop.
+inline constexpr uint8_t override = 7;  // RFC-085 (was override_on; merges the former bypass): latch the override mode, carrying PAUSE: the rail is handed to the operator, travel window and soft limits lifted, jog enabled, the paused position recorded (§11.1). Requires `control`. An essential binding of the axis archetype.
+inline constexpr uint8_t return_op = 8;  // RFC-085, the `return` op (was override_off; registry identifier `return_op` only because `return` is a C++ keyword in the generated header): a smooth move back to the paused position at jog speed and accel; on arrival override clears and the machine is in plain PAUSE. Requires `control`.
 }  // namespace safety_ops
 
 namespace session_admin_ops {
@@ -303,7 +300,7 @@ inline constexpr uint8_t revoke = 4;  // RFC-027(4)/029: delete `instance_id` fr
 }  // namespace session_admin_ops
 
 namespace safety_causes {
-inline constexpr uint8_t user = 0;  // operator-initiated (physical button, UI, safety-intents `estop`/`stop`): §5.5
+inline constexpr uint8_t user = 0;  // operator-initiated (physical button, UI, safety-intents `estop`/`pause`): §5.5
 inline constexpr uint8_t deadman = 1;  // §11.3 deadman window actually elapsed (silence timeout, not some other way the session ended: see session_loss)
 inline constexpr uint8_t fault = 2;  // hub/driver-detected fault
 inline constexpr uint8_t relay = 3;  // relay-originated (segment-local safety event): §5.5
@@ -498,8 +495,8 @@ inline constexpr uint8_t estop_latched = 1u << 3;  // RFC-075: this hub's safety
 }  // namespace beacon_flags
 
 namespace field_roles {
-inline constexpr std::string_view limit_user_speed = "limit.user.speed";  // speed ceiling of the USER (manual) limit set. CEILING, never a target.
-inline constexpr std::string_view limit_user_accel = "limit.user.accel";  // accel ceiling of the user limit set
+inline constexpr std::string_view limit_jog_speed = "limit.jog.speed";  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed.
+inline constexpr std::string_view limit_jog_accel = "limit.jog.accel";  // accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel.
 inline constexpr std::string_view limit_input_speed = "limit.input.speed";  // speed ceiling of the INPUT (machine-driven: patterns, streams, TCode) limit set
 inline constexpr std::string_view limit_input_accel = "limit.input.accel";  // accel ceiling of the input limit set
 inline constexpr std::string_view limit_input_jerk = "limit.input.jerk";  // jerk ceiling of the input limit set
@@ -557,7 +554,7 @@ inline constexpr std::string_view color_blue = "color.blue";  // RFC-083: writab
 inline constexpr std::string_view datetime_moment = "datetime.moment";  // RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current boot_id; a client re-arms after a hub reboot. Triggers the `datetime` archetype.
 inline constexpr std::string_view datetime_start = "datetime.start";  // RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group triggers the `datetime` archetype
 inline constexpr std::string_view datetime_end = "datetime.end";  // RFC-083: interval end, hub time seconds (as datetime.moment)
-inline constexpr std::string_view source_background_run = "source.background_run";  // bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one.
+inline constexpr std::string_view source_background_run = "source.background_run";  // bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt pause/estop ops (§11.1, §11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one.
 }  // namespace field_roles
 
 namespace channel_roles {

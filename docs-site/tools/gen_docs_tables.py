@@ -404,7 +404,7 @@ def page_channels(reg: dict, reg_display: str) -> str:
     p("session needs to subscribe to it, or to send on it.\n\n")
     rows = [[code(c), code(reg["access_levels"][c]["name"])] for c in sorted(reg["access_levels"])]
     table(p, ["Value", "Level"], rows)
-    p("The safety operations `estop` and `stop` are exempt from these levels.\n")
+    p("The safety operations `estop` and `pause` are exempt from these levels.\n")
     p("Any session may stop the machine.\n\n")
 
     p("## Priority classes\n\n")
@@ -614,7 +614,7 @@ def page_safety(reg: dict, reg_display: str) -> str:
     p("## Safety intent operations\n\n")
     p("These are the `value` map key 1 of the [`safety-intents` channel]"
       "(channels.md#spec-core-channels) (`0x0005`).\n\n")
-    p("**`stop` and `estop` are role-exempt. Any session may send them,\n")
+    p("**`pause` and `estop` are role-exempt. Any session may send them,\n")
     p("including a `watch` session.** Safety outranks authorization. The wrong\n")
     p("choice here means the person who is in the room cannot stop the\n")
     p("machine. Every other operation requires `control`.\n\n")

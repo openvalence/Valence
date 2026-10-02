@@ -52,7 +52,7 @@ def ident(name: str) -> str:
     """Sanitize a registry name into a C++ identifier.
 
     Dashes and dots both become underscores: `session-roster` -> session_roster,
-    `limit.user.speed` -> limit_user_speed (field_roles are dotted tstr values).
+    `limit.jog.speed` -> limit_jog_speed (field_roles are dotted tstr values).
     """
     out = name.replace("-", "_").replace(".", "_")
     if out in CPP_KEYWORDS:

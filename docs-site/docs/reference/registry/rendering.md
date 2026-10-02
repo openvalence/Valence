@@ -126,7 +126,7 @@ A conformant client MAY special-case the specific `action.<name>` suffixes below
 | Tag | Meaning |
 |---|---|
 | `move` | the primary positional command: usually already the axis archetype's own binding, rarely a separate trigger |
-| `safety` | a safety-adjacent action outside the law-bound stop archetype itself (e.g. an override/bypass toggle's companion action) |
+| `safety` | a safety-adjacent action outside the law-bound stop archetype and the three safety pairs themselves (RFC-085: pause/resume, override/return, estop/release are bound by op identity, never by this tag) |
 | `home` | a homing-cycle trigger |
 | `calibrate` | a calibration-cycle trigger; commonly the entry point to a `wizard` widget pattern |
 | `reset` | aspect-group reset linkage (value_aspects/RENDERING.md §5.4); co-located with the group it resets, confirm-gated |
@@ -172,11 +172,11 @@ An archetype is the control style and interaction contract a catalog field or ch
 | `4` | `toggle` | boolean | `toggle` |
 | `5` | `select` | enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, RFC-064) | `select` |
 | `6` | `trigger` | payload-less intent (button); destructive invocation (setting_flags.destructive, destructive_options, action.reboot/reset; SPEC §8.8) -> mandatory confirm on every class | `trigger` |
-| `7` | `axis` | 1-D positional hero control (role command.position) with commanded-vs-actual overlay | `axis` |
+| `7` | `axis` | 1-D positional hero control (role command.position) with commanded-vs-actual overlay; carries the override/return pair on its control row (RFC-085) | `axis` |
 | `8` | `chart` | time-series; glance degrades to sparkline/value; missing samples render as gaps | `chart` |
 | `9` | `list` | roster/store items + item actions; pending is a THIRD state distinct from success/failure | `list` |
 | `10` | `text` | constrained string; glance projects a digit/char wheel: the pairing-PIN path | `text` |
-| `11` | `stop` | the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden | `stop` |
+| `11` | `stop` | the safety stop affordances (RFC-085: the estop/release and pause/resume controls, one control per pair): bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden | `stop` |
 | `12` | `pad2d` | two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT entry (RFC-083) | `slider` + `slider` |
 | `13` | `color` | chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in one group (RFC-083) | `slider` + `slider` + `slider` |
 | `14` | `datetime` | moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datetime.start + datetime.end in one group (RFC-083) | `text` |

@@ -6,10 +6,10 @@
 // ownership + takeover) and WHEN silence kills it (§11.3 deadman, policy per
 // source type); the application owns WHAT stopping means (delegate hooks).
 //
-// Stop taxonomy (§11.1) on the wire: the safety channel's (0x0003-shaped)
-// word bitfield — bit0 ESTOP, bit1 STOP, bit2 HOLD, bit3 PAUSE. The hub
-// latches ESTOP (§11.2) and STOP-on-deadman itself; HOLD/PAUSE are
-// application-published via the normal publishState path.
+// Stop taxonomy (§11.1, RFC-085) on the wire: the safety channel's
+// (0x0003-shaped) word bitfield — bit0 ESTOP, bit3 PAUSE. Bits 1 and 2 (the
+// retired STOP and HOLD) MUST be zero on send. The hub latches ESTOP (§11.2)
+// itself and PAUSE on delegate acceptance of `pause`/`override`.
 #pragma once
 
 #include <array>
@@ -28,25 +28,17 @@ enum class SourceLossPolicy : uint8_t {
 // Safety word bits (mirrors the safety channel layout's `word` bitfield).
 namespace safety_bits {
 inline constexpr uint8_t ESTOP = 1u << 0;
-inline constexpr uint8_t STOP  = 1u << 1;
-inline constexpr uint8_t HOLD  = 1u << 2;
-inline constexpr uint8_t PAUSE = 1u << 3;
+inline constexpr uint8_t PAUSE = 1u << 3;  // bits 1/2 retired by RFC-085: never set them
 }  // namespace safety_bits
 
-// RFC-025c: the safety channel's APPENDED `modes` bitfield8 — manual override
-// and limit bypass. These are SAFETY-DOMAIN state, not rail-UI state: they
-// render near the rail in a UI, but they change what the machine will do with
-// a motion command, so every surface (phone, remote, streaming plugin) needs
-// to see them, and only the safety snapshot is retained + pushed at critical
-// priority to every subscriber. Written via safety_ops override_on/off (7/8)
-// and bypass_on/off (9/10), `control` role.
-//
-// Do NOT confuse `BYPASS` here with the per-move `bypass` key on a motion
-// INTENT: that one is a one-shot property of a single commanded move and is
-// unchanged by this. This bit is the machine's STANDING bypass mode.
+// The safety channel's APPENDED `modes` bitfield8 (RFC-025c, RFC-085).
+// OVERRIDE: the rail is the operator's (written by safety_ops override /
+// return_op, `control`); it never exists without PAUSE. HOME_REQUIRED: set by
+// an ESTOP on a hub declaring estop_cuts_power, cleared by a completed home;
+// `resume` is refused NOT_HOMED while it is set.
 namespace safety_mode_bits {
-inline constexpr uint8_t OVERRIDE = 1u << 0;  // manual override engaged
-inline constexpr uint8_t BYPASS   = 1u << 1;  // stroke-window limit bypass engaged
+inline constexpr uint8_t OVERRIDE      = 1u << 0;
+inline constexpr uint8_t HOME_REQUIRED = 1u << 1;
 }  // namespace safety_mode_bits
 
 // §11.4: exclusive per-source ownership with role-gated takeover. Pure state

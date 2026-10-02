@@ -525,7 +525,7 @@ TEST_CASE("STALE-04: two full stale-then-reattach cycles on one identity, back t
         for (uint32_t t = 0; t <= kIdleMs + 1000; t += 250) tickAndDrain(hub, clock, link.endpointB(), 250000);
         REQUIRE(del.ownership.back().first == 0);
         CHECK(del.ownership.back().second == 0);  // released
-        CHECK_FALSE(hub.stopLatched());            // RFC-045: never latches
+        CHECK_FALSE(hub.pauseLatched());            // RFC-045: never latches
 
         InProcessLink link2(clock, rng);
         REQUIRE(hub.attachTransport(link2.endpointA()));
@@ -738,7 +738,7 @@ TEST_CASE("STALE-07: attachTransport() evicts a STALE slot via findEvictableStal
 // or safety-mode change while some other client sat parked.
 //
 // The two triggers below are the two the bench actually hit: latchEstop()
-// (§11.2) and setSafetyModes() (RFC-025c override/bypass — the probe's own
+// (§11.2) and setOverride() (RFC-085 override — the probe's own
 // Step 5.9). Both must reach the LIVE subscriber and leave the parked one
 // intact and reattachable.
 namespace {
@@ -796,7 +796,7 @@ TEST_CASE("STALE-08: a safety broadcast skips a PARKED slot instead of dereferen
     CHECK((uint8_t((*snap)[0]) & safety_bits::ESTOP) != 0);
 
     // Trigger 2 — RFC-025c modes, the probe's Step 5.9 override_on.
-    hub.setSafetyModes(/*manualOverride=*/true, /*bypassLimits=*/false);
+    hub.setOverride(true);
     replies = tickAndDrain(hub, clock, liveLink.endpointB());
     snap = findSafetyState(replies);
     REQUIRE(snap.has_value());

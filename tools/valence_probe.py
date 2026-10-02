@@ -338,7 +338,7 @@ K = {
 
 # WELCOME's `identity` (37) sub-map has its own key space (registry
 # `identity_keys`) -- NOT the global cbor_keys space above.
-IDENTITY_K = {"hub_instance_id": 5}
+IDENTITY_K = {"hub_instance_id": 5, "estop_cuts_power": 6}
 
 # WELCOME's `limits` (22) sub-map has its own tiny key space (registry
 # `welcome_limits_keys`) — NOT the global cbor_keys space above.
@@ -685,7 +685,7 @@ PAIRING_EVENT_KINDS = {
     1: "knocked", 2: "granted", 3: "denied", 4: "expired",
     5: "window_opened", 6: "window_closed", 7: "revoked", 8: "recognized_pending",
 }
-SAFETY_EVENT_KINDS = {1: "estop_latched", 2: "estop_cleared", 3: "stop_latched", 4: "stop_cleared"}
+SAFETY_EVENT_KINDS = {1: "estop_latched", 2: "estop_cleared", 3: "pause_latched", 4: "pause_cleared"}
 PAIRING_MODES = {1: "knock_approve", 2: "pin_proof", 4: "push_to_pair"}
 TRUST_K = {
     "client_ver": 1, "client_nonce": 2, "sig_request": 3, "hub_pubkey": 4,
@@ -700,23 +700,21 @@ LEDGER_K = {
 }
 ROLE_NAME = {0: "watch", 1: "control", 2: "configure"}
 
-# registry `safety_intent_ops` (spec/registry/registry.yaml). estop and
-# stop are ROLE-EXEMPT (any session, including `watch`, may stop the machine);
-# everything else needs `control`. The catalog carries this per-op split as
-# index-aligned `option_access`, so a generic client grays correctly instead of
-# discovering it by NACK.
+# registry `safety_intent_ops` (spec/registry/registry.yaml), RFC-085's three
+# pairs. estop and pause are ROLE-EXEMPT (any session, including `watch`, may
+# stop the machine); everything else needs `control`. Ops 2, 3, 9, 10 retired.
 SAFETY_OP = {
-    "estop_clear": 1, "stop": 2, "hold": 3, "pause": 4, "resume": 5, "estop": 6,
-    "override_on": 7, "override_off": 8, "bypass_on": 9, "bypass_off": 10,
+    "release": 1, "pause": 4, "resume": 5, "estop": 6, "override": 7, "return": 8,
 }
-# 0x0003 packed snapshot, 9 bytes as of RFC-025c: word bitfield8, cause u8,
-# owner_session u32, estop_seq u16, modes bitfield8 (bit0 override, bit1 bypass).
+# 0x0003 packed snapshot, 9 bytes: word bitfield8 (bit0 estop, bit3 pause),
+# cause u8, owner_session u32, estop_seq u16, modes bitfield8 (bit0 override,
+# bit1 home_required).
 # The `modes` byte is APPENDED — bytes 0..7 mean exactly what they always did.
 SAFETY_STRUCT = struct.Struct("<BBIHB")
 SAFETY_PAYLOAD_BYTES = SAFETY_STRUCT.size   # 9
-SAFETY_WORD_BITS = ["estop", "stop", "hold", "pause"]
+SAFETY_WORD_BITS = ["estop", "retired1", "retired2", "pause"]
 SAFETY_MODE_OVERRIDE = 1 << 0
-SAFETY_MODE_BYPASS = 1 << 1
+SAFETY_MODE_HOME_REQUIRED = 1 << 1
 
 
 def decode_safety_state(payload):
@@ -732,7 +730,7 @@ def decode_safety_state(payload):
     if len(payload) >= 9:
         out["modes"] = payload[8]
         out["override"] = bool(payload[8] & SAFETY_MODE_OVERRIDE)
-        out["bypass"] = bool(payload[8] & SAFETY_MODE_BYPASS)
+        out["home_required"] = bool(payload[8] & SAFETY_MODE_HOME_REQUIRED)
     return out
 
 STREAM_WISH_RATE_HZ = 100.0  # HELLO publishes-wish rate_hz for CH_MOTION_INPUT
@@ -986,6 +984,26 @@ def check_anomaly_vocab(catalog_bytes):
         bad("anomaly_vocab", "probe ANOMALY_KINDS %r disagrees with the hub's 0x4100 `kind` "
             "labels %r -- kinetic-diag(0x1111) decodes are misaligned until it is updated"
             % (ours, list(labels)))
+
+
+def check_estop_cuts_power(welcome, hardware):
+    """RFC-085 (§11.2): a hardware-profile hub MUST declare identity key 6.
+    Clients read an absent key as false, so for any other hub absence is a
+    SKIP; a present non-bool is always a FAIL."""
+    ident = welcome.get(K["identity"]) or {}
+    v = ident.get(IDENTITY_K["estop_cuts_power"]) if isinstance(ident, dict) else None
+    if v is None:
+        if hardware:
+            bad("estop_cuts_power", "hardware-profile hub omits WELCOME identity estop_cuts_power "
+                "(key 6): the declaration is REQUIRED (SPEC §11.2, RFC-085)")
+        else:
+            skip("estop_cuts_power", "no estop_cuts_power declared; clients read false (Halt). "
+                 "Pass --hardware to require it.")
+    elif not isinstance(v, bool):
+        bad("estop_cuts_power", "estop_cuts_power is present but not a bool: %r" % (v,))
+    else:
+        ok("estop_cuts_power", "estop_cuts_power=%s: clients label the control %s"
+           % (v, "E-Stop" if v else "Halt"))
 
 
 def check_welcome_identity(welcome):
@@ -1711,6 +1729,7 @@ def _run_session(ws, args):
             ok("welcome_endpoint", "WELCOME ws_port=%d ipv4=0x%08X (%s)" % (ws_port, ipv4, ip_str))
 
         check_welcome_identity(w)
+        check_estop_cuts_power(w, args.hardware)
 
         if want_stream or want_segments:
             gp_list = w.get(K["granted_publishes"], [])
@@ -2481,41 +2500,49 @@ def _run_session(ws, args):
                       d["sync_enqueued"], d["sync_dropped"], n_sent,
                       "" if fresh else " (STALE: no fresh 1 Hz push arrived in time)"))
 
-    # ---- Step 5.9: safety ops -- override/bypass round-trip (RFC-025c) ------
-    # Non-destructive by construction: override/bypass are MODE bits, not
-    # motion. This is the end-to-end proof that a safety-domain write lands in
-    # the machine AND comes back on the retained 0x0003 snapshot, which is
-    # what moved these two off their legacy HTTP endpoint in the first place.
-    scene("Step 5.9: safety ops -- override/bypass on 0x0005 (RFC-025c)")
+    # ---- Step 5.9: safety ops -- override/return round-trip (RFC-085) -------
+    # override carries PAUSE and hands the rail to the operator; return moves
+    # back to the paused position (no jog happened, so no motion) and clears
+    # override on arrival; resume then leaves the machine as it was found.
+    scene("Step 5.9: safety ops -- override/return/resume on 0x0005 (RFC-085)")
     if skip_intent:
         skip("safety_modes", "safety-op round-trip skipped (--no-motion/--listen-only)")
     else:
-        reply, snap = _safety_op_roundtrip(ws, args, "override_on", 900)
+        reply, snap = _safety_op_roundtrip(ws, args, "override", 900)
         if reply is None:
-            bad("safety_modes", "no ECHO/NACK for override_on within %.1fs" % args.timeout)
+            bad("safety_modes", "no ECHO/NACK for override within %.1fs" % args.timeout)
         elif reply[0] == "NACK" and reply[1].get(K["code"]) == NACK_CODES_BY_NAME["UNSUPPORTED_OP"]:
-            # SPEC §11.1: a hub that does not implement a level MUST NACK
-            # UNSUPPORTED_OP and latch nothing; that NACK IS the discovery.
-            ok("safety_modes", "override_on NACKed UNSUPPORTED_OP -- this hub does not "
-               "implement override/bypass, and says so (SPEC §11.1)")
+            ok("safety_modes", "override NACKed UNSUPPORTED_OP -- no rail control here, and the "
+               "hub says so (SPEC §11.1)")
         elif reply[0] == "NACK":
-            bad("safety_modes", "override_on NACKed: %s" % nack_name(reply[1].get(K["code"])))
+            bad("safety_modes", "override NACKed: %s" % nack_name(reply[1].get(K["code"])))
         elif snap is None or "override" not in snap:
-            bad("safety_modes", "override_on ECHOed but no 9-byte safety snapshot followed "
-                "-- the latch was not published (RFC-025a: subscribers, not just the sender)")
-        elif not snap["override"]:
-            bad("safety_modes", "override_on ECHOed but the snapshot still reports override=false "
-                "-- GROUND TRUTH VIOLATION on the safety channel: %s" % snap)
+            bad("safety_modes", "override ECHOed but no 9-byte safety snapshot followed")
+        elif not snap["override"] or "pause" not in snap["flags"]:
+            bad("safety_modes", "override ECHOed but the snapshot does not show override + PAUSE "
+                "(override carries pause, SPEC §11.1): %s" % snap)
         else:
-            ok("safety_modes", "override_on: ECHO + snapshot modes=0x%02X (override=True)" % snap["modes"])
-
-            reply, snap = _safety_op_roundtrip(ws, args, "override_off", 901)
+            ok("safety_modes", "override: snapshot modes=0x%02X, PAUSE latched" % snap["modes"])
+            reply, snap = _safety_op_roundtrip(ws, args, "return", 901)
+            deadline = time.time() + args.timeout
+            while snap and snap.get("override") and time.time() < deadline:
+                got = recv_frame(ws, deadline)
+                if got is None:
+                    break
+                if got[0]["type"] == FRAME["STATE"]:
+                    record_state(*got)
+                    raw = _last_state.get(CH_SAFETY)
+                    snap = decode_safety_state(raw) if raw else snap
             if reply and reply[0] == "ECHO" and snap and not snap.get("override", True):
-                ok("safety_modes_clear", "override_off: snapshot modes=0x%02X (override=False)"
-                   % snap["modes"])
+                ok("safety_modes_clear", "return: override cleared on arrival, plain PAUSE")
             else:
-                bad("safety_modes_clear", "override_off did not clear the bit: reply=%s snap=%s"
+                bad("safety_modes_clear", "return did not clear override: reply=%s snap=%s"
                     % (reply, snap))
+            reply, snap = _safety_op_roundtrip(ws, args, "resume", 902)
+            if reply and reply[0] == "ECHO" and snap and "pause" not in snap.get("flags", ["pause"]):
+                ok("safety_resume", "resume cleared PAUSE (the only clear, SPEC §11.1)")
+            else:
+                bad("safety_resume", "resume did not clear PAUSE: reply=%s snap=%s" % (reply, snap))
 
     # ---- Step 5.95: CLIENT-ASSERTED E-STOP (RFC-010), opt-in ----------------
     # THE headline of the M4a safety pass: `safety_ops::estop` makes the single
@@ -2548,14 +2575,14 @@ def _run_session(ws, args):
         # CLEAR_REFUSED is normal and the retry is part of the contract.
         cleared = False
         for attempt in range(5):
-            reply, snap = _safety_op_roundtrip(ws, args, "estop_clear", 920 + attempt)
+            reply, snap = _safety_op_roundtrip(ws, args, "release", 920 + attempt)
             if reply and reply[0] == "ECHO":
                 cleared = True
                 break
             time.sleep(0.2)
         if cleared and snap and "estop" not in snap.get("flags", ["estop"]):
-            ok("estop_clear", "latch cleared (estop_clear accepted; clearing never restarts motion, "
-               "and the machine stays UNHOMED until an explicit home)")
+            ok("estop_clear", "latch released into PAUSE (release never restarts motion; on a "
+               "power-cutting hub resume is refused NOT_HOMED until a home completes)")
         else:
             bad("estop_clear", "could not clear the latch after 5 attempts: reply=%s snap=%s"
                 % (reply, snap))
@@ -3400,6 +3427,9 @@ def main():
                               "bundle/second for this many seconds (alternating target 0.7/0.3, "
                               "duration_ms 900, sentinel end_vel), PING-keepalived against the "
                               "600ms deadman (0 = skip; default: %(default)s)")
+    parser.add_argument("--hardware", action="store_true",
+                        help="the hub claims the hardware profile: FAIL if WELCOME omits "
+                             "estop_cuts_power (RFC-085)")
     parser.add_argument("--estop", action="store_true",
                          help="exercise step 5.95: ASSERT a client-side e-stop over 0x0005 "
                               "(safety_ops::estop, RFC-010) and then clear it. This really "

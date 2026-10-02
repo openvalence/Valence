@@ -53,7 +53,7 @@ session needs to subscribe to it, or to send on it.
 | `1` | `control` |
 | `2` | `configure` |
 
-The safety operations `estop` and `stop` are exempt from these levels.
+The safety operations `estop` and `pause` are exempt from these levels.
 Any session may stop the machine.
 
 ## Priority classes
@@ -87,9 +87,9 @@ does not exist on that hub.
 |---|---|---|---|
 | `0x0001` | `catalog` | `STATE` | catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING. |
 | `0x0002` | `session-roster` | `STATE` | RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives. |
-| `0x0003` | `safety` | `STATE` | latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_override + bypass_limits to the same snapshot (append-only is legal) |
+| `0x0003` | `safety` | `STATE` | latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by ESTOP on an estop_cuts_power hub, cleared by a completed home); modes bit1 was bypass_limits before RFC-085. |
 | `0x0004` | `control-owner` | `STATE` | active arbiter source + owning session per source (§11.4) |
-| `0x0005` | `safety-intents` | `INTENT` | STOP/HOLD/PAUSE/RESUME/ESTOP_CLEAR/ESTOP/TAKEOVER + override/bypass (§11, safety_intent_ops) |
+| `0x0005` | `safety-intents` | `INTENT` | the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest `control`. |
 | `0x0006` | `hub-status` | `STATE` | boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identity`: one home, no drift. |
 | `0x0007` | `session-events` | `EVENT` | join/leave/takeover/eviction notifications |
 | `0x0008` | `log` | `EVENT` | RFC-017: device log in-band: {level u8, tag, hub-ms, message <=128 B} via the `body` sub-map. Bounded drop-oldest with the §9.4 visible drop counter, `background` priority, `watch` access. Declares a replay depth (log_replay_depth_default) so the hub MAY replay its ring tail on grant, the named exception to §9.4's no-replay rule. Retires /api/log; the serial-silent handoff re-binds from 'first HTTP GET' to 'first log grant'. |

@@ -204,12 +204,12 @@ private:
                     .access = AccessLevel::watch, .maxRateHz = 0.0f,
                     .defaultPriority = Priority::critical});
         c.addBitfieldField({.name = "word", .type = PackedFieldType::bitfield8, .unit = "flag", .scale = 1.0f},
-                           {"estop", "stop", "hold", "pause"});
+                           {"estop", "retired", "retired", "pause"});
         c.addLayoutField({.name = "cause", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
         c.addLayoutField({.name = "owner_session", .type = PackedFieldType::u32, .unit = "", .scale = 1.0f});
         c.addLayoutField({.name = "estop_seq", .type = PackedFieldType::u16, .unit = "count", .scale = 1.0f});
         c.addBitfieldField({.name = "modes", .type = PackedFieldType::bitfield8, .unit = "flag", .scale = 1.0f},
-                           {"override", "bypass"});
+                           {"override", "home_required"});
 
         c.addEntry({.id = valence::channels::control_owner, .name = "control-owner",
                     .cls = ChannelClass::STATE, .dir = Direction::h2c,
@@ -229,10 +229,10 @@ private:
                     .access = AccessLevel::watch, .maxRateHz = 20.0f,
                     .defaultPriority = Priority::critical});
         c.addSelectSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = ""},
-                               {"reserved", "estop_clear", "stop", "hold", "pause", "resume",
-                                "estop", "override_on", "override_off", "bypass_on", "bypass_off"},
-                               {AccessLevel::control, AccessLevel::control, AccessLevel::watch,
-                                AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                               {"reserved", "release", "retired", "retired", "pause", "resume",
+                                "estop", "override", "return", "retired", "retired"},
+                               {AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                                AccessLevel::control, AccessLevel::watch, AccessLevel::control,
                                 AccessLevel::watch, AccessLevel::control, AccessLevel::control,
                                 AccessLevel::control, AccessLevel::control});
 

@@ -53,8 +53,8 @@ role is never an error.
 
 | Role | Meaning |
 |---|---|
-| `limit.user.speed` | speed ceiling of the USER (manual) limit set. CEILING, never a target. |
-| `limit.user.accel` | accel ceiling of the user limit set |
+| `limit.jog.speed` | speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed. |
+| `limit.jog.accel` | accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel. |
 | `limit.input.speed` | speed ceiling of the INPUT (machine-driven: patterns, streams, TCode) limit set |
 | `limit.input.accel` | accel ceiling of the input limit set |
 | `limit.input.jerk` | jerk ceiling of the input limit set |
@@ -112,7 +112,7 @@ role is never an error.
 | `datetime.moment` | RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current boot_id; a client re-arms after a hub reboot. Triggers the `datetime` archetype. |
 | `datetime.start` | RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group triggers the `datetime` archetype |
 | `datetime.end` | RFC-083: interval end, hub time seconds (as datetime.moment) |
-| `source.background_run` | bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one. |
+| `source.background_run` | bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt pause/estop ops (§11.1, §11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one. |
 
 Two conventions extend the list without registering entries:
 

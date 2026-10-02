@@ -221,7 +221,7 @@ Temperature stays `°C` only: kelvin and Fahrenheit are display conversions, not
 | Tag | Typical rendering |
 |---|---|
 | `move` | The primary positional command (usually already the `axis` archetype's own binding, not a separate trigger) |
-| `safety` | A safety-adjacent action outside the law-bound `stop` archetype itself (e.g. an override/bypass toggle's companion action) |
+| `safety` | A safety-adjacent action outside the law-bound `stop` archetype and the three safety pairs, which bind by op identity (RFC-085) |
 | `home` | A homing-cycle trigger; SHOULD render with a distinct homing glyph |
 | `calibrate` | A calibration-cycle trigger; commonly the entry point to a `wizard` pattern (§10) |
 | `reset` | Aspect-group reset linkage (§5.4); co-located with the group it clears |
@@ -257,7 +257,7 @@ Evaluated top-to-bottom; the first matching row wins.
 | # | Trigger | → Archetype |
 |---|---|---|
 | 1 | *(struck by RFC-083: no archetype hint exists; the row number is kept)* | — |
-| 2 | Safety-intents `stop`/`estop` op identity | `stop` — **bound by identity, never derived from any other row** |
+| 2 | Safety-intents `pause`/`estop` op identity (RFC-085) | `stop` — **bound by identity, never derived from any other row** |
 | 3 | Schema field, role `command.position` | `axis` |
 | 4 | Two `command.position` fields on one INTENT entry | `pad2d` |
 | 5 | STORE-class entry whose `store_id` (store-descriptor key 1) is named by a STATE entry's entry-level `store_id` (SPEC §8.1, §8.7; RFC-070) | `list`, sited in the store's card beside the `action.store` op select naming the same `store_id`; a roster-shaped STATE without a resolving `store_id` renders as a plain, unlinked list |
@@ -297,11 +297,11 @@ The input columns below follow the client's **primary pointer**, not its class (
 | 4 | `toggle` | Boolean | *(primitive)* | |
 | 5 | `select` | Enum + options | *(primitive)* | Index-aligned. On an op select (SPEC §8.9) index 0 is filler and MUST NOT render as actionable; on every other select index 0 is a real value (RFC-064). |
 | 6 | `trigger` | Payload-less intent (button) | *(primitive)* | A destructive invocation (SPEC §8.8: the `destructive` flag, the invoked option's `destructive_options` bit, role `action.reboot`/`action.reset`, or op `delete` of `action.store`) ⇒ mandatory confirm, every class, no exception: the §8.3 primitive (long-press on `glance`, modal confirm otherwise) in the `overlay` region (§9), naming the op by its catalog label. Destructiveness is never inferred from labels, names or `desc`. |
-| 7 | `axis` | 1-D positional hero control | *(primitive)* | Commanded-vs-actual overlay is MANDATORY (`command.position` + `telemetry.target`/`telemetry.position`, never one alone); domain is the *reported* window. |
+| 7 | `axis` | 1-D positional hero control | *(primitive)* | Commanded-vs-actual overlay is MANDATORY (`command.position` + `telemetry.target`/`telemetry.position`, never one alone); domain is the *reported* window. Its control row carries the override/return pair (SPEC §11.1, RFC-085) as one control: press is `override`, a second press is `return`, no gate; a client with no rail control declines the pair (law 7). |
 | 8 | `chart` | Time-series | *(primitive)* | Glance degrades to sparkline/value; missing samples render as GAPS, never zeros. |
 | 9 | `list` | Roster/store items + item actions | *(primitive)* | Pending is a THIRD state, distinct from success/failure; locked-by-role is honestly distinct from empty. |
 | 10 | `text` | Constrained string | *(primitive)* | Glance projects a digit/char wheel — the pairing-PIN path. |
-| 11 | `stop` | The safety stop affordance | *(primitive, by law)* | Reachable at every rank on every class; never role-gated; visually distinct; never hidden, even mid-confirm-flow of another control. |
+| 11 | `stop` | The safety stop affordances: the e-stop and pause controls (RFC-085) | *(primitive, by law)* | Reachable at every rank on every class; never role-gated; visually distinct; never hidden, even mid-confirm-flow of another control. Each is ONE control with two states (law 14). **E-stop:** press latches; the latched state reads **Halted**; release is the same control held, press-and-hold, RECOMMENDED 3 s on every class and on a physical remote button (the duration is client vocabulary), so two panic taps can never latch-then-release; the hub's SPEC §11.2 preconditions still decide. The label follows the declaration (law 15). **Pause:** press latches PAUSE; a second press is `resume`, no gate, never sent unprompted. |
 | 12 | `pad2d` | Two-axis control | `slider` + `slider` | The multi-axis runway; each axis keeps its own commanded-vs-actual overlay. |
 | 13 | `color` | Chromatic actuator setpoint | `slider` + `slider` + `slider` | Lighting/glow accessories; a client with no color-picker affordance renders the three-slider fallback and is fully conformant. |
 | 14 | `datetime` | Moment/interval input | `text` | Automation schedules; a client with no date-picker renders the ISO-8601 text fallback and is fully conformant. |
@@ -333,7 +333,7 @@ Four abstract placement zones plus one modal layer, **frozen at five, v1.0**. Ge
 | # | Region | Contents |
 |---|---|---|
 | 0 | `primary` | Hero-rank patterns (`axis-hero` and peers, §10). The machine's face — exactly one per axis/capability instance. |
-| 1 | `persistent` | The `safety-strip` (§10): latch state, ownership, the `stop` archetype. |
+| 1 | `persistent` | The `safety-strip` (§10): latch state, ownership, the `stop` archetype (the e-stop and pause controls, the strip's mandatory pair). |
 | 2 | `content` | The category tree's territory: cards/panes/menu screens, canonical category order; diagnostic-rank material last or collapsed by default. |
 | 3 | `utility` | Connection/session status, identity, theme — chrome about the *client*, kept out of the machine's way. |
 | 4 | `overlay` | The modal layer: confirms, pairing knocks, alerts. Only ceremony/confirmation content may use it; nothing persistent lives here. |
@@ -356,7 +356,7 @@ Proven compositions extracted from the reference client. Each recipe names its a
 | `axis-hero` | **MUST** (handheld/full; glance: reachable via category tree) | rail + window band + command tape + live position/velocity numerals + nested `plan-view` | `primary` | commanded-vs-actual overlay always live | Command-tape domain is the *reported* window — commanding outside it is geometrically impossible. Physical-extent derivation prefers measured travel > configured max > catalog window bound. |
 | `plan-view` | no | in-flight plan lane (`plan.*` roles) | nested inside `axis-hero` | visibility gated by data freshness | Collapses to zero height when idle. |
 | `link-strip` | no | connection phase, rx liveness, catalog state | `utility` | safety-relevant chips pinned | Rest of the strip may scroll. |
-| `safety-strip` | no (its contents are, via `stop`) | ops sorted role-EXEMPT-first; the `stop` archetype | `persistent` | sticky-visible within any overflow | |
+| `safety-strip` | no (its contents are, via `stop`) | the e-stop and pause controls (role-exempt, one control per pair, law 14); no separate clear, release or resume button; override/return lives on the rail, not here | `persistent` | sticky-visible within any overflow | |
 | `settings-card` | no | a subgroup's fields via the archetype table (§8.2) | `content` | every disabled control shows WHICH gate disabled it | feature-mask / no-link / unauthorized are not interchangeable. |
 | `scope` | no | multi-lane strip chart | `content` | missing samples = gaps, never zeros | Series colors stable by declaration order across reconnects; catalog bounds else honest autoscale. |
 | `event-stream` | no | bounded rings of events | `content` | unknown body fields render generically as `key=value`, never dropped | Auto-scroll with user-scroll override. |
@@ -461,7 +461,7 @@ Class is selected, and re-selected while the client runs, by §12.1. There is no
 
 Each earned by a documented field regression in the reference client. A client claiming conformance to this document MUST:
 
-1. Keep the `stop` archetype reachable at every rank on every class.
+1. Keep the e-stop and pause controls (the `stop` archetype) reachable at every rank on every class.
 2. Bind safety-op discovery to spec-core channel identity — **never** to optional annotations. A hub missing a role tag MUST NOT lose its e-stop button.
 3. Follow SPEC §8.9's degraded-graying rule.
 4. Adopt ground truth on connect (SPEC §1.2) — never render optimistic state.
@@ -474,6 +474,8 @@ Each earned by a documented field regression in the reference client. A client c
 11. Never scroll pinned chrome (safety facts) out of view.
 12. Meet a minimum touch-target size (40 CSS px, the figure §12.1's floor derives from) and support reduced motion, as conformance floors, not nice-to-haves.
 13. Never make a safety color themeable.
+14. Render each safety pair as ONE control with two states (RFC-085): pause/resume, override/return, estop/release. There is no separate clear, release or resume button anywhere. Release is a press-and-hold of the e-stop control (SHOULD, 3 s recommended); resume and return take no gate.
+15. Label the e-stop control from the hub's declaration (RFC-085, SPEC §11.2): `estop_cuts_power` true renders **E-Stop**; false or absent renders **Halt**. A client MUST NOT render "E-Stop" on a hub that declared false or declared nothing (H1 made testable).
 
 A host that loads substituted widgets keeps these laws only under §10.2's containment rules.
 

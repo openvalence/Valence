@@ -213,7 +213,7 @@ public:
     // §9.1/§11.1 shadow reads of the safety channel (0x0003), extended
     // beyond M4's estop-only observation to the full bitfield word.
     std::optional<uint8_t> safetyWord() const;
-    bool stopLatched() const;
+    bool pauseLatched() const;
 
     // ---- M4c additions (RFC-029) -------------------------------------------
     // Every one of these is OPT-IN with an inert default. A client that calls

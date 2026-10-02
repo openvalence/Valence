@@ -76,7 +76,7 @@ Findings from the pre-specification adversarial design review and from implement
 | S2 ESTOP over lossy links | [§11.2](safety.md#s11-2) repeat-until-latch; [§14.2](transports.md#s14-2) fast path |
 | S3 preemption honesty | [§11.2](safety.md#s11-2) H2 + [§13.1](transports.md#s13-1) delay column |
 | S4 deadman scope | [§11.3](safety.md#s11-3) source-bound; [§6.6](session.md#s6-6) the second regime |
-| S5 hold-vs-stop taxonomy | [§11.1](safety.md#s11-1) four levels, hub-latched |
+| S5 hold-vs-stop taxonomy | [§11.1](safety.md#s11-1) two levels (ESTOP, PAUSE; RFC-085), hub-latched |
 | S6 same-source contention | [§11.4](safety.md#s11-4) exclusive ownership + TAKEOVER |
 | S7 grants vs open LAN | [§12.3](security.md#s12-3) pairing baseline |
 | S8 legacy edges bypass deadman | [§15.1](legacy.md#s15-1) synthetic sessions |
@@ -111,9 +111,9 @@ Findings from the pre-specification adversarial design review and from implement
 | **F13** segment scheduling by folklore | [§5.4](wire-format.md#s5-4) `max_future_schedule_ms` |
 | **F14** shedding divergence between conforming hubs | [§10.4](qos.md#s10-4) normative table |
 | **F15** idle sessions holding slots forever | [§6.6](session.md#s6-6) idle reaping |
-| **F16** HOLD/PAUSE latched by nobody in particular | [§11.1](safety.md#s11-1) hub latches all four |
-| **F17** unclear whether a watcher may stop the machine | [§11.2](safety.md#s11-2) role-exempt `stop`/`estop` |
-| **F18** override/bypass with no in-band home | [§11.1](safety.md#s11-1) safety-domain modes |
+| **F16** HOLD/PAUSE latched by nobody in particular | [§11.1](safety.md#s11-1) hub latches both levels (HOLD retired by RFC-085) |
+| **F17** unclear whether a watcher may stop the machine | [§11.1](safety.md#s11-1)/[§11.2](safety.md#s11-2) role-exempt `pause`/`estop` |
+| **F18** override/bypass with no in-band home | [§11.1](safety.md#s11-1) safety-domain override mode (RFC-085 merged bypass into it) |
 | **F19** no way to see the machine's name | [§5.4](wire-format.md#s5-4) `str<N>` + [§6.3](session.md#s6-3) `identity` |
 | **F20** pairing assumed a keyboard and a trusted display | [§12.3](security.md#s12-3) three association modes |
 | **F21** decoder crashes reachable from unknown-key skip paths | [§5.8](wire-format.md#s5-8), [§17.4](conformance.md#s17-4) |
@@ -133,7 +133,7 @@ For implementers of the draft. This is a summary; the reasoning lives in `RFC-QU
 - **EVENT kind-specific fields moved into `body` (40)**, keyed by the channel's own catalog schema.
 - New channel class **STORE (4)**; new packed field types **`str16`/`str32`/`str64`** (8/9/10); new catalog entry keys `category`, `category_label`, `replay_depth`, `setting_channel`, `stream_kind`, `store`; the whole [§8.8](catalog.md#s8-8) annotation block on layout and schema fields, including schema-field `access` and `option_access`.
 - Spec-core channels added: `log`, `session-admin`, `pending-pairing`, `pairing-events`, `paired-devices`, `paired-devices-roster`, `safety-events`. `session-roster` remains allocated and specified only — no reference catalog builder declares it ([§18](limitations.md#s18) item 17).
-- New NACK/GOODBYE codes `DEADMAN_TIMEOUT`, `REBOOTING`, `READY_TIMEOUT`, `NOT_READY`; new safety cause `session_loss`; new safety ops `estop`, `override_on/off`, `bypass_on/off`.
+- New NACK/GOODBYE codes `DEADMAN_TIMEOUT`, `REBOOTING`, `READY_TIMEOUT`, `NOT_READY`; new safety cause `session_loss`; new safety ops `estop` and the override pair (RFC-085 later folded the safety surface into three pairs: pause/resume, override/return, estop/release; `stop`, `hold` and the bypass ops are retired gaps).
 - Per-binding `max_frame` defaults registered (the registry previously had none, so every binding invented one).
 
 **Renames with unchanged wire values:** access tiers `viewer/controller/admin` → **`watch`/`control`/`configure`** (0/1/2).
@@ -146,7 +146,7 @@ For implementers of the draft. This is a summary; the reasoning lives in `RFC-QU
 - **Blob transfer is paced and backpressure-respecting** ([§8.4](catalog.md#s8-4)): a refused write is retried at the same index rather than dropped, and a hub bounds how many chunks one transfer emits per service tick. Found in the field — the device catalog delivered 47 of 57 chunks against a 32-deep TX queue because the transfer discarded transport refusals.
 - Idle reaping promoted from MAY to SHOULD with a registered multiplier ([§6.6](session.md#s6-6)).
 - The [§10.4](qos.md#s10-4) shedding table is normative, with the **segment exception**.
-- Safety: the hub latches all four levels; `stop`/`estop` are role-exempt; override/bypass join the safety snapshot.
+- Safety: the hub latches every level it offers (two since RFC-085: ESTOP and PAUSE); `pause`/`estop` are role-exempt; the override mode joins the safety snapshot.
 - **[§12.2](security.md#s12-2)'s "admin only via the hub's own UI" is struck** — `configure` is obtainable by ceremony, which makes the administration surface pairing-reachable by design.
 - Segment scheduling semantics for `t_base` ([§5.4](wire-format.md#s5-4)) and `max_future_schedule_ms`.
 - Parser totality ([§5.8](wire-format.md#s5-8)) and the fuzz gate ([§17.4](conformance.md#s17-4)) became conformance obligations for **both** roles.

@@ -589,7 +589,7 @@ TEST_CASE("SI-08 (RFC-042/RFC-045): first accepted bundle acquires the source; q
     CHECK(del.ownership[1].source_id == 0);
     CHECK(del.ownership[1].owner_session == 0);
     CHECK(del.ownership[1].reason == 3);  // deadman-release, still reported
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     // RFC-042: the session goes STALE, the slot is RETAINED (not freed).
     CHECK(hub.sessionCount() == sessionsBefore);
     REQUIRE(hub.sessionBySlot(0) != nullptr);
@@ -908,13 +908,13 @@ TEST_CASE("SI-15: a deadman fire never latches STOP, so a resumed stream finds n
     tickAndDrain(hub, clock, link.endpointB());
     REQUIRE(del.bundles.size() == 1);
     REQUIRE(del.ownership.size() == 1);
-    CHECK_FALSE(hub.stopLatched());   // no latch yet
+    CHECK_FALSE(hub.pauseLatched());   // no latch yet
 
     // 2) Go silent past the 600 ms deadman -> ownership releases (RFC-042: the
     // session goes STALE, slot retained) but RFC-045 means NOTHING latches.
     for (int i = 0; i < 20; ++i) { clock.advanceUs(50'000); hub.update(clock.nowUs()); }
     CHECK(del.deadmanStops.empty());          // never called any more
-    CHECK_FALSE(hub.stopLatched());           // safety STATE was never touched
+    CHECK_FALSE(hub.pauseLatched());           // safety STATE was never touched
     REQUIRE(hub.sessionBySlot(0) != nullptr);
     CHECK(hub.sessionBySlot(0)->state == HubSessionState::STALE);
 
@@ -925,12 +925,12 @@ TEST_CASE("SI-15: a deadman fire never latches STOP, so a resumed stream finds n
     // reattach). The first ACCEPTED bundle acquires the freed source; the
     // safety plane was clean the entire time.
     connectSession(hub, clock, link.endpointB(), 15, true, {PublishWish{kSegCh, 50.0f}});
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     writeSegmentBundle(link.endpointB(), {SegSample{7000, 900, kSegNoEndVel}}, /*tBase=*/900000);
     tickAndDrain(hub, clock, link.endpointB());
     REQUIRE(del.bundles.size() == 2);           // resumed bundle delivered
-    CHECK_FALSE(hub.stopLatched());
-    CHECK_FALSE((hub.safetyWord() & valence::safety_bits::STOP));
+    CHECK_FALSE(hub.pauseLatched());
+    CHECK_FALSE((hub.safetyWord() & valence::safety_bits::PAUSE));
 }
 
 // ---- SI-16 ------------------------------------------------------------------

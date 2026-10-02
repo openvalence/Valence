@@ -190,8 +190,12 @@ struct IdentityInfo {
     // "the hub has no durable identity yet" is a real, distinct state.
     bool has_hub_instance_id = false;
     uint64_t hub_instance_id = 0;
+    // RFC-085 (identity_keys 6): the declared stop category. Absent reads as false.
+    bool has_estop_cuts_power = false;
+    bool estop_cuts_power = false;
     bool any() const {
-        return !product.empty() || !fw_version.empty() || !hub_name.empty() || has_hub_instance_id;
+        return !product.empty() || !fw_version.empty() || !hub_name.empty() || has_hub_instance_id ||
+               has_estop_cuts_power;
     }
 };
 
@@ -321,6 +325,7 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
         if (!m.identity.fw_version.empty()) ++idKeys;
         if (!m.identity.hub_name.empty()) ++idKeys;
         if (m.identity.has_hub_instance_id) ++idKeys;
+        if (m.identity.has_estop_cuts_power) ++idKeys;
         w.key(CborKey::identity).mapHeader(idKeys);
         if (!m.identity.product.empty())
             w.key(uint64_t(identity_subkeys::product)).tstrVal(m.identity.product);
@@ -331,6 +336,8 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
         // hub_instance_id(5) sorts after info(4, unimplemented) — ascending order intact.
         if (m.identity.has_hub_instance_id)
             w.key(uint64_t(identity_subkeys::hub_instance_id)).uintVal(m.identity.hub_instance_id);
+        if (m.identity.has_estop_cuts_power)
+            w.key(uint64_t(identity_subkeys::estop_cuts_power)).boolVal(m.identity.estop_cuts_power);
     }
     if (hasTrust) encodeTrustMap(w, m.trust_map);  // key 39
     // ws_port(46) / ipv4(47) sort after trust(39): §5.3 ascending order intact.
@@ -570,6 +577,13 @@ inline Result<WelcomeMsg, DecodeError> decodeWelcome(std::span<const std::byte> 
                             if (!vv) return Ret::err(vv.error());
                             m.identity.hub_instance_id = vv.value();
                             m.identity.has_hub_instance_id = true;
+                            break;
+                        }
+                        case identity_subkeys::estop_cuts_power: {
+                            auto vv = r.readBool();
+                            if (!vv) return Ret::err(vv.error());
+                            m.identity.estop_cuts_power = vv.value();
+                            m.identity.has_estop_cuts_power = true;
                             break;
                         }
                         default: {

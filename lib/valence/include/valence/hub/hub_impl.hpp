@@ -703,6 +703,11 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
         w.identity.has_hub_instance_id = true;
         w.identity.hub_instance_id = _hubInstanceId;
     }
+    if (_estopCutsPowerDeclared) {
+        w.has_identity = true;
+        w.identity.has_estop_cuts_power = true;
+        w.identity.estop_cuts_power = _estopCutsPower;
+    }
     // RFC-046: the hub's own WS endpoint, 0/0 = absent (omitted on the wire).
     w.ws_port = _wsPort;
     w.ipv4 = _ipv4;
@@ -930,6 +935,11 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
         w.has_identity = true;
         w.identity.has_hub_instance_id = true;
         w.identity.hub_instance_id = _hubInstanceId;
+    }
+    if (_estopCutsPowerDeclared) {
+        w.has_identity = true;
+        w.identity.has_estop_cuts_power = true;
+        w.identity.estop_cuts_power = _estopCutsPower;
     }
     w.ws_port = _wsPort;
     w.ipv4 = _ipv4;
@@ -1557,7 +1567,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         }
     }
 
-    if (hasSafetyOp && safetyOp == safety_ops::estop_clear) {
+    if (hasSafetyOp && safetyOp == safety_ops::release) {
         // Belt-and-braces role gate (§11.2: "requires control+ role")
         // independent of whatever access level a given catalog declares for
         // this channel or this op — step 4 already gates it, this is a second
@@ -1572,7 +1582,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
             sendNackTracked(slot, n, nowMs);
             return;
         }
-        if (!clearEstop()) {
+        if (!releaseEstop()) {
             NackMsg n;
             n.code = NackCode::CLEAR_REFUSED;
             n.has_intent_id = true;
@@ -1662,10 +1672,43 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         return;
     }
 
+    // 5d) RFC-085 §11.1: `resume` is the only clear of PAUSE and is refused
+    // while something the operator must resolve first still holds.
+    if (hasSafetyOp && safetyOp == safety_ops::resume) {
+        NackCode refuse{};
+        bool refused = true;
+        if (_safetyWord & safety_bits::ESTOP) refuse = NackCode::ESTOP_ACTIVE;
+        else if (_safetyModes & safety_mode_bits::OVERRIDE) refuse = NackCode::INTERLOCK;
+        else if (_safetyModes & safety_mode_bits::HOME_REQUIRED) refuse = NackCode::NOT_HOMED;
+        else refused = false;
+        if (refused) {
+            NackMsg n;
+            n.code = refuse;
+            n.has_intent_id = true;
+            n.intent_id = m.intent_id;
+            sendNackTracked(slot, n, nowMs);
+            return;
+        }
+    }
+
     // 6) Source ownership (§11.4): a channel the delegate maps to an arbiter
     // source acquires exclusive ownership BEFORE applyIntent — Conflict/
     // TakenOver are decided here, never inside the delegate.
     std::optional<uint8_t> mappedSource = _delegate.sourceForChannel(m.channel_id);
+    // §11.1 (RFC-085): PAUSE suspends every source. A motion intent is refused
+    // INTERLOCK before it can acquire anything, unless the application admits
+    // it (the home verb; a jog under override).
+    if (mappedSource && (_safetyWord & safety_bits::PAUSE)) {
+        IntentValueMap probe{m.value_count, m.value};
+        if (!_delegate.admitsUnderPause(m.channel_id, probe, (_safetyModes & safety_mode_bits::OVERRIDE) != 0)) {
+            NackMsg n;
+            n.code = NackCode::INTERLOCK;
+            n.has_intent_id = true;
+            n.intent_id = m.intent_id;
+            sendNackTracked(slot, n, nowMs);
+            return;
+        }
+    }
     if (mappedSource) {
         uint8_t source = *mappedSource;
         bool takeoverFlag = m.has_takeover && m.takeover;
@@ -1709,30 +1752,16 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
 
     if (cfgChanged) ++_cfgGen;
 
-    // RFC-025a: THE HUB LATCHES ALL FOUR LEVELS (and the two RFC-025c mode
-    // bits), triggered by DELEGATE ACCEPTANCE. Reaching this line IS the
-    // acceptance: a delegate that does not implement HOLD returned
-    // UNSUPPORTED_OP above and nothing was latched, which is the discoverable,
-    // honest answer the pre-v1.0 "codes exist, nobody latches" state could not
-    // give. Ordering matters — the latch happens BEFORE the ECHO, so a client
+    // RFC-025a/RFC-085: the hub latches PAUSE and the override mode, triggered
+    // by DELEGATE ACCEPTANCE. Reaching this line IS the acceptance: a delegate
+    // that refused (UNSUPPORTED_OP for an op it does not implement) latched
+    // nothing. Ordering matters — the latch happens BEFORE the ECHO, so a client
     // that reacts to its own echo cannot observe the machine mid-update.
     const uint8_t safetyWordBeforeLatch = _safetyWord;
     if (hasSafetyOp && applySafetyOpLatch(uint8_t(safetyOp), slot.session.session_id)) {
         publishSafetySnapshot();
         broadcastSafetyNow(nowMs);
         emitSafetyEdgeEvents(safetyWordBeforeLatch, nowMs);
-    }
-
-    // §11.1: a source-mapped intent succeeding clears a STOP latch (deadman)
-    // regardless of which authorized session owns/sent it — "clears by any
-    // new motion intent".
-    if (mappedSource && (_safetyWord & safety_bits::STOP)) {
-        const uint8_t before = _safetyWord;
-        _safetyWord &= ~safety_bits::STOP;
-        _safetyOwnerSession = 0;
-        publishSafetySnapshot();
-        broadcastSafetyNow(nowMs);
-        emitSafetyEdgeEvents(before, nowMs);
     }
 
     EchoMsg echo;
@@ -1910,6 +1939,13 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
     // owned is dropped: data-plane bundles carry no takeover flag (§11.4), so
     // takeover=false is the only option and Conflict is the only refusal.
     std::optional<uint8_t> mappedSource = _delegate.sourceForChannel(channel_id);
+    // §11.1 (RFC-074 clauses 1, 2, 4 under RFC-085): while PAUSE is latched a
+    // source-mapped bundle is dropped whole and counted, never NACKed; the
+    // latched snapshot is the signal, and no bundle ever clears PAUSE.
+    if (mappedSource && (_safetyWord & safety_bits::PAUSE)) {
+        ++slot.session.streamBundlesDropped;
+        return;
+    }
     if (mappedSource) {
         uint8_t source = *mappedSource;
         auto acq = _ownership.acquire(source, slot.session.session_id, slot.session.role, /*takeover=*/false);
@@ -1938,16 +1974,6 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
     // caller doctrine §3.1) — the hub has done all gating.
     ++slot.session.streamBundlesAccepted;
 
-    // RFC-045 REMOVED the STOP-clearing block that used to live here: an
-    // accepted STREAM bundle silently clearing a latched STOP was a workaround
-    // for the deadman's OWN forced-STOP latch (SI-15) — un-wedging a reconnect
-    // after a deadman fire that, post-RFC-045, no longer latches anything in
-    // the first place. It is moot, not merely obsolete: there is no longer a
-    // deadman-born STOP for a resumed stream to clear. An EXPLICIT stop/estop
-    // (0x0005) is still a command and still requires an explicit resume/clear
-    // to lift (§11.1's INTENT-side clear in handleIntent is separate and
-    // unaffected — a genuine operator move-intent still clears STOP the way it
-    // always has; a raw STREAM sample no longer does).
     _delegate.onStreamBundle(channel_id, slot.session.session_id, bundle);
 }
 
@@ -2536,6 +2562,9 @@ inline void Hub::handleEstopFrame(const EstopFrame& f, uint32_t nowMs) {
         _safetyWord |= safety_bits::ESTOP;
         _safetyCause = f.cause;
         _estopSeq = f.seq;
+        // RFC-085: ESTOP drops override; a power-cutting ESTOP loses home.
+        _safetyModes &= uint8_t(~safety_mode_bits::OVERRIDE);
+        if (_estopCutsPower) _safetyModes |= safety_mode_bits::HOME_REQUIRED;
         publishSafetySnapshot();
     }
     // Always re-broadcast NOW, bypassing normal pacing (§10.1 critical
@@ -2570,16 +2599,25 @@ inline void Hub::latchEstop(uint8_t cause, uint8_t origin, uint16_t estop_seq) {
 
 inline bool Hub::estopLatched() const { return (_safetyWord & safety_bits::ESTOP) != 0; }
 
-inline bool Hub::stopLatched() const { return (_safetyWord & safety_bits::STOP) != 0; }
+inline bool Hub::pauseLatched() const { return (_safetyWord & safety_bits::PAUSE) != 0; }
 
 inline uint8_t Hub::safetyWord() const { return _safetyWord; }
 
 inline uint8_t Hub::safetyModes() const { return _safetyModes; }
 
-inline void Hub::setSafetyModes(bool manualOverride, bool bypassLimits) {
-    const uint8_t next = uint8_t((manualOverride ? safety_mode_bits::OVERRIDE : 0) |
-                                 (bypassLimits ? safety_mode_bits::BYPASS : 0));
+inline void Hub::setOverride(bool engaged) {
+    const uint8_t next = engaged ? uint8_t(_safetyModes | safety_mode_bits::OVERRIDE)
+                                 : uint8_t(_safetyModes & ~safety_mode_bits::OVERRIDE);
     if (next == _safetyModes) return;  // ground truth unchanged: no publish, no wake-up
+    _safetyModes = next;
+    publishSafetySnapshot();
+    broadcastSafetyNow(_clock.nowMs());
+}
+
+inline void Hub::setHomeRequired(bool required) {
+    const uint8_t next = required ? uint8_t(_safetyModes | safety_mode_bits::HOME_REQUIRED)
+                                  : uint8_t(_safetyModes & ~safety_mode_bits::HOME_REQUIRED);
+    if (next == _safetyModes) return;
     _safetyModes = next;
     publishSafetySnapshot();
     broadcastSafetyNow(_clock.nowMs());
@@ -2604,50 +2642,46 @@ inline bool Hub::applySafetyOpLatch(uint8_t op, uint32_t sessionId) {
     const uint32_t beforeOwner = _safetyOwnerSession;
 
     switch (op) {
-        case safety_ops::stop:
-            _safetyWord |= safety_bits::STOP;
-            _safetyCause = safety_causes::user;
-            _safetyOwnerSession = sessionId;
-            break;
-        case safety_ops::hold:
-            _safetyWord |= safety_bits::HOLD;
-            _safetyCause = safety_causes::user;
-            _safetyOwnerSession = sessionId;
-            break;
         case safety_ops::pause:
-            _safetyWord |= safety_bits::PAUSE;
-            _safetyCause = safety_causes::user;
-            _safetyOwnerSession = sessionId;
+            if (!(_safetyWord & safety_bits::PAUSE)) {
+                _safetyWord |= safety_bits::PAUSE;
+                _safetyCause = safety_causes::user;
+                _safetyOwnerSession = sessionId;
+            }
             break;
         case safety_ops::resume:
-            // §11.1: resume lifts HOLD and PAUSE. It deliberately does NOT lift
-            // STOP (which clears on new motion intent, see handleIntent) and
-            // certainly not ESTOP (which needs estop_clear + its preconditions).
-            _safetyWord &= uint8_t(~(safety_bits::HOLD | safety_bits::PAUSE));
+            // §11.1: the only clear of PAUSE. Its refusals (ESTOP, override,
+            // home_required) ran in handleIntent before the delegate saw it.
+            _safetyWord &= uint8_t(~safety_bits::PAUSE);
             break;
-        case safety_ops::override_on:  _safetyModes |= safety_mode_bits::OVERRIDE; break;
-        case safety_ops::override_off: _safetyModes &= uint8_t(~safety_mode_bits::OVERRIDE); break;
-        case safety_ops::bypass_on:    _safetyModes |= safety_mode_bits::BYPASS; break;
-        case safety_ops::bypass_off:   _safetyModes &= uint8_t(~safety_mode_bits::BYPASS); break;
+        case safety_ops::override:
+            // Override carries PAUSE (§11.1): latch it too if not already.
+            if (!(_safetyWord & safety_bits::PAUSE)) {
+                _safetyWord |= safety_bits::PAUSE;
+                _safetyCause = safety_causes::user;
+                _safetyOwnerSession = sessionId;
+            }
+            _safetyModes |= safety_mode_bits::OVERRIDE;
+            break;
         default:
-            return false;  // an op with no latched representation (or an unknown one)
+            // `return_op` latches nothing here: override clears when the return
+            // move ARRIVES (setOverride(false)). Unknown and retired ops too.
+            return false;
     }
     return _safetyWord != beforeWord || _safetyModes != beforeModes ||
            _safetyCause != beforeCause || _safetyOwnerSession != beforeOwner;
 }
 
-inline bool Hub::clearEstop() {
-    // §11.2: "the hub MUST refuse (CLEAR_REFUSED) unless (a) the latched
-    // cause is resolved ... (b) motion is at zero velocity, and (c) no other
-    // stop level is pending escalation." (a)/(b)/(c) are machine-domain
-    // conditions this library cannot see — delegate.canClearEstop() is the
-    // hook; this method only enforces "must be latched" and "clearing never
-    // restarts motion" (it never calls into any motion path).
+inline bool Hub::releaseEstop() {
+    // §11.2 (RFC-085): refuse unless (a) the latched cause is resolved and
+    // (b) motion is at zero velocity: machine-domain conditions behind
+    // delegate.canClearEstop(). Release lands in PAUSE and never calls into a
+    // motion path; home_required (if set) survives until a home completes.
     if (!(_safetyWord & safety_bits::ESTOP)) return false;
     if (!_delegate.canClearEstop()) return false;
 
     const uint8_t before = _safetyWord;
-    _safetyWord &= ~safety_bits::ESTOP;
+    _safetyWord = uint8_t((_safetyWord & ~safety_bits::ESTOP) | safety_bits::PAUSE);
     publishSafetySnapshot();
     const uint32_t nowMs = _clock.nowMs();
     broadcastSafetyNow(nowMs);
@@ -2759,11 +2793,10 @@ inline void Hub::emitSafetyEdgeEvents(uint8_t beforeWord, uint32_t nowMs) {
     const uint8_t after = _safetyWord;
     if (after == beforeWord) return;
 
-    constexpr uint8_t kStopBits = uint8_t(safety_bits::STOP | safety_bits::HOLD | safety_bits::PAUSE);
     const uint8_t newlySet = uint8_t(after & uint8_t(~beforeWord));
     const uint8_t newlyClear = uint8_t(beforeWord & uint8_t(~after));
 
-    auto emit = [&](uint8_t kind, uint8_t level) {
+    auto emit = [&](uint8_t kind) {
         EventMsg ev{};
         ev.channel_id = channels::safety_events;
         ev.timestamp = nowMs;
@@ -2781,19 +2814,15 @@ inline void Hub::emitSafetyEdgeEvents(uint8_t beforeWord, uint32_t nowMs) {
         ev.body[ev.body_count++] = {safety_body::cause, IntentValue::ofU64(_safetyCause)};
         ev.body[ev.body_count++] = {safety_body::owner_session, IntentValue::ofU64(_safetyOwnerSession)};
         ev.body[ev.body_count++] = {safety_body::estop_seq, IntentValue::ofU64(_estopSeq)};
-        if (level != 0) ev.body[ev.body_count++] = {safety_body::level, IntentValue::ofU64(level)};
         std::array<std::byte, 96> buf{};
         size_t n = encodeEvent(ev, std::span<std::byte>(buf));
         if (n > 0) publishEvent(channels::safety_events, std::span<const std::byte>(buf.data(), n));
     };
 
-    if (newlySet & safety_bits::ESTOP) emit(safety_events::estop_latched, 0);
-    if (newlyClear & safety_bits::ESTOP) emit(safety_events::estop_cleared, 0);
-    // ONE edge per direction even when an action moved several bits: `level`
-    // carries the mask, so "resume lifted HOLD and PAUSE" is one operator
-    // action reported once, not two a UI has to re-correlate.
-    if (const uint8_t s = uint8_t(newlySet & kStopBits)) emit(safety_events::stop_latched, s);
-    if (const uint8_t c = uint8_t(newlyClear & kStopBits)) emit(safety_events::stop_cleared, c);
+    if (newlySet & safety_bits::ESTOP) emit(safety_events::estop_latched);
+    if (newlyClear & safety_bits::ESTOP) emit(safety_events::estop_cleared);
+    if (newlySet & safety_bits::PAUSE) emit(safety_events::pause_latched);
+    if (newlyClear & safety_bits::PAUSE) emit(safety_events::pause_cleared);
 }
 
 // ---- M4b: pairing + trust (RFC-027 modes (a)/(b)/(c), RFC-029 items 2 & 4) --

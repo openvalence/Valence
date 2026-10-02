@@ -115,8 +115,8 @@ stream_kinds:
 #   controller (1)            ->  control        (includes STREAM publishing —
 #                                                 a motion producer is a controller)
 #   admin      (2)            ->  configure
-# Standing composition rules: safety `estop`/`stop` are role-EXEMPT
-# (RFC-025/010); OTA rights are NEVER derivable from any tier; serial /
+# Standing composition rules: safety `estop`/`pause` are role-EXEMPT
+# (RFC-025/010, RFC-085); OTA rights are NEVER derivable from any tier; serial /
 # in-process transports are implicitly `configure` (physical possession, §12.3).
 # ---------------------------------------------------------------------------
 access_levels:
@@ -146,9 +146,9 @@ channel_id_ranges:
 core_channels:
   0x0001: { name: catalog,        class: STATE, status: active,   note: "catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING." }
   0x0002: { name: session-roster, class: STATE, status: reserved, note: "RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives." }
-  0x0003: { name: safety,         class: STATE, status: active,   note: "latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_override + bypass_limits to the same snapshot (append-only is legal)" }
+  0x0003: { name: safety,         class: STATE, status: active,   note: "latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by ESTOP on an estop_cuts_power hub, cleared by a completed home); modes bit1 was bypass_limits before RFC-085." }
   0x0004: { name: control-owner,  class: STATE, status: active,   note: "active arbiter source + owning session per source (§11.4)" }
-  0x0005: { name: safety-intents, class: INTENT, status: active,  note: "STOP/HOLD/PAUSE/RESUME/ESTOP_CLEAR/ESTOP/TAKEOVER + override/bypass (§11, safety_intent_ops)" }
+  0x0005: { name: safety-intents, class: INTENT, status: active,  note: "the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest `control`." }
   0x0006: { name: hub-status,     class: STATE, status: active,   note: "boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identity`: one home, no drift." }
   0x0007: { name: session-events, class: EVENT, status: active,   note: "join/leave/takeover/eviction notifications" }
   0x0008: { name: log,            class: EVENT, status: active,   note: "RFC-017: device log in-band: {level u8, tag, hub-ms, message <=128 B} via the `body` sub-map. Bounded drop-oldest with the §9.4 visible drop counter, `background` priority, `watch` access. Declares a replay depth (log_replay_depth_default) so the hub MAY replay its ring tail on grant, the named exception to §9.4's no-replay rule. Retires /api/log; the serial-silent handoff re-binds from 'first HTTP GET' to 'first log grant'." }
@@ -285,6 +285,7 @@ identity_keys:
   3: { name: hub_name,   note: "tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one." }
   4: { name: info,       note: "map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap." }
   5: { name: hub_instance_id, note: "uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once and NVS-persisted, survives every reboot and firmware update (only a factory reset regenerates it), as opposed to `boot_id` (cbor_keys 7, §6.1/§7.2), which is a FRESH random value EVERY boot and exists only to fence stale per-boot state. Distinguishes THIS PHYSICAL HUB from any other, across time. Present in WELCOME `identity` (37) for any hub that persists one; absent = the hub has no durable identity yet (a fresh dev build, a non-persisting simulator) and a client MUST tolerate its absence exactly as it tolerates the rest of `identity` (§6.3). Also the value DISCOVER_REPLY (0x1F, §13.8) now carries as `hub_instance_id`, replacing that frame's original `boot_id`-based disambiguator (see the `frame_types` 0x1F note): a boot-scoped id could not deduplicate 'two hubs sharing a name' across a reboot, which was the field's whole job." }
+  6: { name: estop_cuts_power, note: "bool: RFC-085 (§11.2). Whether this hub's ESTOP cuts motor power (true: category 0, the machine goes limp and the hub is unhomed after release) or is a maximum-deceleration halt with power and home kept (false). REQUIRED of a hardware-profile hub (the declaration, never the mechanism); absent reads as false. Drives the client label: true renders E-Stop, false or absent renders Halt." }
 
 # ---------------------------------------------------------------------------
 # `blob` (key 38) sub-map integer keys — RFC-021. One vocabulary shared by:
@@ -449,8 +450,8 @@ pairing_event_kinds:
 # the STATE — that is §11.2's only loss-recovery mechanism and it must keep
 # working — but they do NOT re-emit the edge.
 #
-# Deliberately NOT here: a kind for the RFC-025c `modes` byte (manual override /
-# limit bypass). Those are latched MODES, not stop edges; they live in the same
+# Deliberately NOT here: a kind for the `modes` byte (override, home_required).
+# Those are latched MODES, not stop edges; they live in the same
 # snapshot for rendering reasons, and giving them an edge kind would imply an
 # operator action a hub-side reconciliation (an e-stop dropping override as a
 # side effect) did not have. If a mode edge is ever genuinely wanted it is an
@@ -458,9 +459,9 @@ pairing_event_kinds:
 # ---------------------------------------------------------------------------
 safety_event_kinds:
   1: { name: estop_latched, note: "the ESTOP bit went 0 -> 1 (§5.5). `body` carries word/cause/owner_session/estop_seq. Cause is a `safety_causes` value; `estop_seq` is the §5.5 per-INITIATION sequence, so repeats of one initiation share it." }
-  2: { name: estop_cleared, note: "the ESTOP bit went 1 -> 0 via §11.2's guarded clear (`safety_ops::estop_clear` + the hub's and delegate's preconditions). Clearing never restarts motion; this edge says the latch is gone, never that the machine moved." }
-  3: { name: stop_latched,  note: "one or more of STOP / HOLD / PAUSE went 0 -> 1. `body.level` is the bitmask of the bits that NEWLY set (safety word bits 1/2/3), so one edge reports one operator action even when it sets several. Cause distinguishes an operator `stop` (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss). That is the whole reason this edge is worth having: all three look identical in the snapshot." }
-  4: { name: stop_cleared,  note: "one or more of STOP / HOLD / PAUSE went 1 -> 0 (`resume`, or a STOP cleared by an accepted new motion intent per §11.1). `body.level` is the bitmask of the bits that NEWLY cleared." }
+  2: { name: estop_cleared, note: "the ESTOP bit went 1 -> 0 via §11.2's guarded `release` (the hub's and delegate's preconditions). Release lands in PAUSE and never restarts motion; this edge says the latch is gone, never that the machine moved." }
+  3: { name: pause_latched, note: "RFC-085 (was stop_latched): the PAUSE bit went 0 -> 1. Cause distinguishes an operator pause (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss); all three look identical in the snapshot. `body.level` is retired: one level leaves nothing to disambiguate." }
+  4: { name: pause_cleared, note: "RFC-085 (was stop_cleared): the PAUSE bit went 1 -> 0, only ever by `resume`." }
 
 # ---------------------------------------------------------------------------
 # Trust-ledger entry states (u8) — the `state` field of a paired-devices item
@@ -494,30 +495,28 @@ log_levels:
 # ---------------------------------------------------------------------------
 # safety-intents channel (0x0005) op codes — `value` map key 1 (§11).
 #
-# ROLE EXEMPTION (RFC-025b, normative): `estop` (6) and `stop` (2) are
-# role-EXEMPT — ANY session may send them, including `watch`. This is §11.2's
-# "safety outranks authorization" generalized: the wrong guess here means the
-# person standing in the room cannot stop the machine. Every other op requires
-# `control`. Exempt ops are still §9.3 rate-limited; watch-tier stop spam is a
+# THREE PAIRS (RFC-085, pre-tag restructuring): pause/resume, override/return,
+# estop/release. Each pair is ONE control with two states in a client
+# (RENDERING.md law 14); the wire keeps both ops.
+#
+# ROLE EXEMPTION (normative): `estop` (6) and `pause` (4) are role-EXEMPT —
+# ANY session may send them, including `watch`. This is §11.2's "safety
+# outranks authorization" generalized: the wrong guess here means the person
+# standing in the room cannot stop the machine. Every other op requires
+# `control`. Exempt ops are still §9.3 rate-limited; watch-tier pause spam is a
 # named, bounded, ACCEPTED risk in §12.1.
 #
-# Per-op access is expressible in the catalog as of v1.0 (schema-field gains
-# optional `access`) — without it, role-exempt ops would force the whole
-# channel to `watch` access and a generic RFC-009 renderer would offer
-# hold/pause/takeover to every viewer, discovering otherwise only by NACK.
-# That violates gray-never-hide.
+# RETIRED PRE-TAG (RFC-085), numbers burned, never reissued: 2 `stop`, 3
+# `hold`, 9 `bypass_on`, 10 `bypass_off`. A hub answers them UNSUPPORTED_OP
+# until the tag; after it they are simply unknown ops.
 # ---------------------------------------------------------------------------
 safety_intent_ops:
-  1:  { name: estop_clear,  note: "clear the ESTOP latch (§11.2 conditions apply; NACK CLEAR_REFUSED otherwise). Requires `control`." }
-  2:  { name: stop,         note: "controlled decel stop (§11.1). ROLE-EXEMPT." }
-  3:  { name: hold,         note: "position hold (§11.1). Requires `control`. The HUB latches all four levels in 0x0003: delegate acceptance is what triggers the latch; a hub whose delegate does not implement this NACKs UNSUPPORTED_OP, which is discoverable and honest (RFC-025a)." }
-  4:  { name: pause,        note: "pattern pause (§11.1). Requires `control`." }
-  5:  { name: resume,       note: "resume from HOLD/PAUSE (§11.1). Requires `control`." }
-  6:  { name: estop,        note: "ASSERT e-stop (RFC-010). ROLE-EXEMPT. The hub treats it exactly as a valid 0xE5 frame: latch, cause=user, publish 0x0003, EVENT twin. The raw 0xE5 frame stays as the deframed-path/relay guarantee; this op is the trivially-implementable client path: without it the red button silently degrades to a decel-stop, which is why this gated port-81 deletion." }
-  7:  { name: override_on,  note: "engage manual override (RFC-025c). Requires `control`. Override/bypass are SAFETY-domain state, not rail-UI state: they render near the rail but other surfaces need them, so they live in the 0x0003 snapshot (appended byte) and are written here." }
-  8:  { name: override_off, note: "release manual override. Requires `control`." }
-  9:  { name: bypass_on,    note: "engage limit bypass (RFC-025c). Requires `control`. The per-move `bypass` key on a motion INTENT is unaffected and stays as-is." }
-  10: { name: bypass_off,   note: "release limit bypass. Requires `control`." }
+  1:  { name: release,      note: "RFC-085 (was estop_clear): release the ESTOP latch (§11.2 preconditions; NACK CLEAR_REFUSED otherwise). Lands in PAUSE, never in motion; on an estop_cuts_power hub, unhomed. Requires `control`." }
+  4:  { name: pause,        note: "RFC-085: latch PAUSE (§11.1): decelerate, hold position, every source suspended, stream bundles dropped and counted. ROLE-EXEMPT. A hub with a motion source MUST implement it." }
+  5:  { name: resume,       note: "the only clear of PAUSE (§11.1). Refused ESTOP_ACTIVE while ESTOP is latched, INTERLOCK while override is latched, NOT_HOMED while home_required. Requires `control`. A client never sends it on its own initiative." }
+  6:  { name: estop,        note: "ASSERT e-stop (RFC-010). ROLE-EXEMPT. The hub treats it exactly as a valid 0xE5 frame: latch, cause=user, publish 0x0003, EVENT twin. The raw 0xE5 frame stays as the deframed-path/relay guarantee; this op is the trivially-implementable client path: without it the red button silently degrades to a decel-stop." }
+  7:  { name: override,     note: "RFC-085 (was override_on; merges the former bypass): latch the override mode, carrying PAUSE: the rail is handed to the operator, travel window and soft limits lifted, jog enabled, the paused position recorded (§11.1). Requires `control`. An essential binding of the axis archetype." }
+  8:  { name: return_op,    note: "RFC-085, the `return` op (was override_off; registry identifier `return_op` only because `return` is a C++ keyword in the generated header): a smooth move back to the paused position at jog speed and accel; on arrival override clears and the machine is in plain PAUSE. Requires `control`." }
 
 # ---------------------------------------------------------------------------
 # session-admin channel (0x0009) `value` map key 1 — the ADMIN VERB SPACE
@@ -559,7 +558,7 @@ session_admin_ops:
 # Safety cause codes (u8) — ONE taxonomy, two wire homes: the ESTOP frame's
 # `cause` byte (§5.5, frame type 0xE5) and the 0x0003 safety STATE snapshot's
 # latched `cause` field (§11.1: "cause (user / deadman / fault / relay)").
-# An ESTOP's initiating cause and the cause a STOP/ESTOP is CURRENTLY latched
+# An ESTOP's initiating cause and the cause a PAUSE/ESTOP is CURRENTLY latched
 # for are the same four-then-five-value enum.
 #
 # RFC-022.3: value 4 `session_loss` is NEW. Before it, `hub_impl.hpp` had no
@@ -572,7 +571,7 @@ session_admin_ops:
 # `session_loss` (4) instead.
 # ---------------------------------------------------------------------------
 safety_causes:
-  0: { name: user,         note: "operator-initiated (physical button, UI, safety-intents `estop`/`stop`): §5.5" }
+  0: { name: user,         note: "operator-initiated (physical button, UI, safety-intents `estop`/`pause`): §5.5" }
   1: { name: deadman,      note: "§11.3 deadman window actually elapsed (silence timeout, not some other way the session ended: see session_loss)" }
   2: { name: fault,        note: "hub/driver-detected fault" }
   3: { name: relay,        note: "relay-originated (segment-local safety event): §5.5" }
@@ -722,8 +721,8 @@ setting_flags:
 #     action that only clears COUNTERS bumps reset_gen alone.
 # ---------------------------------------------------------------------------
 field_roles:
-  "limit.user.speed":    { note: "speed ceiling of the USER (manual) limit set. CEILING, never a target." }
-  "limit.user.accel":    { note: "accel ceiling of the user limit set" }
+  "limit.jog.speed":     { note: "speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed." }
+  "limit.jog.accel":     { note: "accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel." }
   "limit.input.speed":   { note: "speed ceiling of the INPUT (machine-driven: patterns, streams, TCode) limit set" }
   "limit.input.accel":   { note: "accel ceiling of the input limit set" }
   "limit.input.jerk":    { note: "jerk ceiling of the input limit set" }
@@ -825,7 +824,7 @@ field_roles:
   "datetime.moment":     { note: "RFC-083: a scheduled moment in HUB TIME: whole seconds in the hub's §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current boot_id; a client re-arms after a hub reboot. Triggers the `datetime` archetype." }
   "datetime.start":      { note: "RFC-083: interval start, hub time seconds (as datetime.moment); with datetime.end in one group triggers the `datetime` archetype" }
   "datetime.end":        { note: "RFC-083: interval end, hub time seconds (as datetime.moment)" }
-  "source.background_run": { note: "bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one." }
+  "source.background_run": { note: "bool, `setting_key`-annotated: whether THIS autonomous source keeps running when its owning session ends. false (DEFAULT) = the source stops when its controlling session ends. true = the source deliberately continues in the background, reachable only by the role-exempt pause/estop ops (§11.1, §11.2) from any session. Applies to any hub-autonomous source, never to a command-driven one." }
 
 # ---------------------------------------------------------------------------
 # Channel roles (tstr) — catalog ENTRY-level `role` (channel-entry key 18,
@@ -936,7 +935,7 @@ ble_adv_flags:
 
 # ---------------------------------------------------------------------------
 # BEACON flags (u8) — the `flags` byte of the pinned BEACON (0x17) payload
-# (RFC-075, §13.3.1). No STOP/PAUSE bit by ruling: those reach accessories
+# (RFC-075, §13.3.1). No PAUSE bit by ruling: pause reaches accessories
 # as commanded safe values through the relationship interlock. Bits not
 # listed MUST be zero.
 # ---------------------------------------------------------------------------
@@ -1092,7 +1091,7 @@ unit_ids:
 # ---------------------------------------------------------------------------
 action_tags:
   move:          { note: "the primary positional command: usually already the axis archetype's own binding, rarely a separate trigger" }
-  safety:        { note: "a safety-adjacent action outside the law-bound stop archetype itself (e.g. an override/bypass toggle's companion action)" }
+  safety:        { note: "a safety-adjacent action outside the law-bound stop archetype and the three safety pairs themselves (RFC-085: pause/resume, override/return, estop/release are bound by op identity, never by this tag)" }
   home:          { note: "a homing-cycle trigger" }
   calibrate:     { note: "a calibration-cycle trigger; commonly the entry point to a `wizard` widget pattern" }
   reset:         { note: "aspect-group reset linkage (value_aspects/RENDERING.md §5.4); co-located with the group it resets, confirm-gated" }
@@ -1230,11 +1229,11 @@ ui_archetypes:
   4:  { name: toggle,    note: "boolean",                                                                     fallback: [toggle] }
   5:  { name: select,    note: "enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, RFC-064)", fallback: [select] }
   6:  { name: trigger,   note: "payload-less intent (button); destructive invocation (setting_flags.destructive, destructive_options, action.reboot/reset; SPEC §8.8) -> mandatory confirm on every class", fallback: [trigger] }
-  7:  { name: axis,      note: "1-D positional hero control (role command.position) with commanded-vs-actual overlay", fallback: [axis] }
+  7:  { name: axis,      note: "1-D positional hero control (role command.position) with commanded-vs-actual overlay; carries the override/return pair on its control row (RFC-085)", fallback: [axis] }
   8:  { name: chart,     note: "time-series; glance degrades to sparkline/value; missing samples render as gaps",     fallback: [chart] }
   9:  { name: list,      note: "roster/store items + item actions; pending is a THIRD state distinct from success/failure", fallback: [list] }
   10: { name: text,      note: "constrained string; glance projects a digit/char wheel: the pairing-PIN path",       fallback: [text] }
-  11: { name: stop,      note: "the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden", fallback: [stop] }
+  11: { name: stop,      note: "the safety stop affordances (RFC-085: the estop/release and pause/resume controls, one control per pair): bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden", fallback: [stop] }
   12: { name: pad2d,     note: "two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT entry (RFC-083)", fallback: [slider, slider] }
   13: { name: color,     note: "chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in one group (RFC-083)", fallback: [slider, slider, slider] }
   14: { name: datetime,  note: "moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datetime.start + datetime.end in one group (RFC-083)", fallback: [text] }

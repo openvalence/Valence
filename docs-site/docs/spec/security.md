@@ -50,7 +50,7 @@ Three tiers, wire values `0/1/2`:
 
 Composition rules that hold across the whole document:
 
-- **Safety `stop` and `estop` are role-EXEMPT** ([§11.2](safety.md#s11-2)): any session including `watch` may send them. Watch-tier stop spam is a **named, bounded, accepted** risk — exempt ops are still [§9.3](channels.md#s9-3) rate-limited, and the person standing in the room being able to stop the machine outranks the nuisance.
+- **Safety `pause` and `estop` are role-EXEMPT** ([§11.1](safety.md#s11-1), [§11.2](safety.md#s11-2)): any session including `watch` may send them. Watch-tier pause spam is a **named, bounded, accepted** risk — exempt ops are still [§9.3](channels.md#s9-3) rate-limited, and the person standing in the room being able to stop the machine outranks the nuisance.
 - **OTA rights are NEVER derivable from any tier.** Firmware update lives on its own credential plane; a `configure`-tier compromise cannot flash firmware.
 - **Serial and in-process transports are implicitly `configure`** — possession of the cable or the process is the credential ([§12.9](#s12-9)).
 - Hubs MAY offer a lock-down setting in which even `watch` requires a token, for shared-space deployments.

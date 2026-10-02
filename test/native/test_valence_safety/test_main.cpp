@@ -79,7 +79,7 @@ void safetyCatalog(Catalog32& c) {
     // -- 0x0005 "safety-intents" — INTENT. RFC-025b: the channel ACCESS FLOOR
     // is `watch`, and the per-op minimum role rides `option_access` (catalog
     // key 17), index-aligned with the option labels so that element i
-    // describes WIRE VALUE i. `estop` (6) and `stop` (2) are role-EXEMPT;
+    // describes WIRE VALUE i. `estop` (6) and `pause` (4) are role-EXEMPT (RFC-085);
     // everything else needs `control`. Index 0 is a "reserved" placeholder
     // (safety_ops starts at 1) gated at `control` — an option label may never
     // be empty, and the strict side is the safe side for a non-op.
@@ -93,10 +93,10 @@ void safetyCatalog(Catalog32& c) {
                 .access = AccessLevel::watch, .maxRateHz = 10.0f,
                 .defaultPriority = Priority::critical});
     c.addSelectSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = ""},
-                           {"reserved", "estop_clear", "stop", "hold", "pause", "resume",
-                            "estop", "override_on", "override_off", "bypass_on", "bypass_off"},
-                           {AccessLevel::control, AccessLevel::control, AccessLevel::watch,
-                            AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                           {"reserved", "release", "retired", "retired", "pause", "resume",
+                            "estop", "override", "return", "retired", "retired"},
+                           {AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                            AccessLevel::control, AccessLevel::watch, AccessLevel::control,
                             AccessLevel::watch, AccessLevel::control, AccessLevel::control,
                             AccessLevel::control, AccessLevel::control});
 
@@ -449,7 +449,7 @@ TEST_CASE("S-05: deadman on a Stop-policy source releases ownership, marks STALE
     CHECK(hubDelegate.ownershipEvents[0].reason == 0);  // acquire
 
     size_t sessionsBefore = hub.sessionCount();
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
 
     // A goes silent (stop pumping it entirely); advance well past deadman_ms
     // in one jump — B keeps being pumped so it can observe the result.
@@ -461,7 +461,7 @@ TEST_CASE("S-05: deadman on a Stop-policy source releases ownership, marks STALE
     CHECK(hubDelegate.ownershipEvents[1].owner == 0);
     CHECK(hubDelegate.ownershipEvents[1].reason == 3);  // deadman-release, still reported
 
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     // RFC-042: the slot is RETAINED (marked STALE), not freed.
     CHECK(hub.sessionCount() == sessionsBefore);
     REQUIRE(hub.sessionBySlot(0) != nullptr);
@@ -469,10 +469,10 @@ TEST_CASE("S-05: deadman on a Stop-policy source releases ownership, marks STALE
 
     // B observes NO STOP latch via its own safety shadow — a deadman never
     // was a safety edge after RFC-045.
-    CHECK_FALSE(clientB.stopLatched());
+    CHECK_FALSE(clientB.pauseLatched());
     auto w = clientB.safetyWord();
     REQUIRE(w.has_value());
-    CHECK((*w & safety_bits::STOP) == 0);
+    CHECK((*w & safety_bits::PAUSE) == 0);
 }
 
 // ---- S-06 -------------------------------------------------------------------
@@ -520,7 +520,7 @@ TEST_CASE("S-06: deadman on a Continue-policy source releases ownership, marks S
     CHECK(hubDelegate.ownershipEvents[1].source == 2);
     CHECK(hubDelegate.ownershipEvents[1].owner == 0);
     CHECK(hubDelegate.ownershipEvents[1].reason == 3);
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     // RFC-042: the session goes STALE, not gone — slot count is unchanged.
     CHECK(hub.sessionCount() == sessionsBefore);
 
@@ -1166,7 +1166,7 @@ TEST_CASE("M4a/RFC-010: safety_ops::estop latches exactly like a 0xE5 frame") {
     CHECK(rig.hubDelegate.acceptedOps.empty());
 }
 
-TEST_CASE("M4a/RFC-025b: a WATCH session may estop and stop, but nothing else") {
+TEST_CASE("M4a/RFC-025b/RFC-085: a WATCH session may estop and pause, but nothing else") {
     SafetyRig rig(/*withToken=*/false);   // no token -> AccessLevel::watch
 
     SUBCASE("estop is role-EXEMPT — the person in the room can stop the machine") {
@@ -1176,17 +1176,16 @@ TEST_CASE("M4a/RFC-025b: a WATCH session may estop and stop, but nothing else") 
         CHECK(rig.del.nacks.empty());
     }
 
-    SUBCASE("stop is role-EXEMPT too") {
-        REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::stop)).has_value());
+    SUBCASE("pause is role-EXEMPT too (RFC-085)") {
+        REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::pause)).has_value());
         rig.step();
         CHECK(rig.del.nacks.empty());
-        CHECK((rig.hub->safetyWord() & safety_bits::STOP) != 0);
+        CHECK(rig.hub->pauseLatched());
     }
 
-    SUBCASE("hold / pause / resume / estop_clear / override / bypass need control") {
-        const uint8_t gated[] = {safety_ops::estop_clear, safety_ops::hold,        safety_ops::pause,
-                                 safety_ops::resume,      safety_ops::override_on, safety_ops::override_off,
-                                 safety_ops::bypass_on,   safety_ops::bypass_off};
+    SUBCASE("release / resume / override / return need control") {
+        const uint8_t gated[] = {safety_ops::release, safety_ops::resume, safety_ops::override,
+                                 safety_ops::return_op};
         for (uint8_t op : gated) {
             CAPTURE(int(op));
             rig.del.nacks.clear();
@@ -1195,16 +1194,12 @@ TEST_CASE("M4a/RFC-025b: a WATCH session may estop and stop, but nothing else") 
             REQUIRE(rig.del.nacks.size() == 1);
             CHECK(rig.del.nacks[0].code == NackCode::NOT_CONTROLLER);
         }
-        // Nothing latched, nothing applied, machine untouched.
         CHECK(rig.hub->safetyWord() == 0);
         CHECK(rig.hub->safetyModes() == 0);
         CHECK(rig.hubDelegate.acceptedOps.empty());
     }
 
     SUBCASE("an UNKNOWN op is at least as gated as the strictest known one") {
-        // Option index past the end of the option_access vector: it must NOT
-        // fall back to the channel floor, or an unregistered verb would be the
-        // cheapest thing on a safety channel to reach.
         REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(200)).has_value());
         rig.step();
         REQUIRE(rig.del.nacks.size() == 1);
@@ -1214,12 +1209,9 @@ TEST_CASE("M4a/RFC-025b: a WATCH session may estop and stop, but nothing else") 
 
 TEST_CASE("M4a/RFC-025b: role-exempt ops are STILL rate-limited") {
     SafetyRig rig(/*withToken=*/false);   // watch
-    // The 9.3 limiter is per SESSION, and it is what bounds a viewer
-    // loop-stopping the machine. Fire a burst far past any plausible bucket
-    // depth WITHOUT advancing the clock.
     int accepted = 0;
     for (int i = 0; i < 80; ++i) {
-        if (rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::stop)).has_value()) ++accepted;
+        if (rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::pause)).has_value()) ++accepted;
         rig.hub->update(rig.clock.nowUs());
         rig.client->update(rig.clock.nowUs());
     }
@@ -1231,92 +1223,113 @@ TEST_CASE("M4a/RFC-025b: role-exempt ops are STILL rate-limited") {
     CHECK(rateLimited > 0);   // exemption is from ROLE, never from the limiter
 }
 
-// ---- RFC-025a ---------------------------------------------------------------
-// the hub latches all four levels, on delegate ACCEPTANCE.
-TEST_CASE("M4a/RFC-025a: the HUB latches STOP/HOLD/PAUSE and RESUME lifts the right two") {
+// ---- RFC-085 ----------------------------------------------------------------
+TEST_CASE("RFC-085: the hub latches PAUSE on acceptance and only resume clears it") {
     SafetyRig rig(/*withToken=*/true);
-
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::hold)).has_value());
-    rig.step();
-    CHECK((rig.hub->safetyWord() & safety_bits::HOLD) != 0);
-    CHECK((rig.lastWord() & safety_bits::HOLD) != 0);   // subscribers see it, not just the sender
 
     REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::pause)).has_value());
     rig.step();
-    CHECK((rig.hub->safetyWord() & safety_bits::PAUSE) != 0);
-
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::stop)).has_value());
-    rig.step();
-    CHECK((rig.hub->safetyWord() & safety_bits::STOP) != 0);
-    CHECK(rig.hub->safetyWord() == (safety_bits::STOP | safety_bits::HOLD | safety_bits::PAUSE));
+    CHECK(rig.hub->safetyWord() == safety_bits::PAUSE);
+    CHECK((rig.lastWord() & safety_bits::PAUSE) != 0);   // subscribers see it, not just the sender
 
     REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
     rig.step();
-    // RESUME lifts HOLD and PAUSE only. STOP is cleared by NEW MOTION (11.1),
-    // never by resume, and ESTOP needs estop_clear + its preconditions.
-    CHECK((rig.hub->safetyWord() & safety_bits::HOLD) == 0);
-    CHECK((rig.hub->safetyWord() & safety_bits::PAUSE) == 0);
-    CHECK((rig.hub->safetyWord() & safety_bits::STOP) != 0);
+    CHECK(rig.hub->safetyWord() == 0);
     CHECK(rig.del.nacks.empty());
 }
 
-TEST_CASE("M4a/RFC-025a: a delegate that does not implement a level NACKs and latches NOTHING") {
+TEST_CASE("RFC-085: a delegate that refuses an op NACKs and latches NOTHING") {
     SafetyRig rig(/*withToken=*/true);
-    rig.hubDelegate.refuseOps.push_back(safety_ops::hold);
+    rig.hubDelegate.refuseOps.push_back(safety_ops::override);
 
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::hold)).has_value());
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
     rig.step();
 
     REQUIRE(rig.del.nacks.size() == 1);
-    CHECK(rig.del.nacks[0].code == NackCode::UNSUPPORTED_OP);   // discoverable and honest
-    CHECK(rig.hub->safetyWord() == 0);                          // and NOT silently latched
+    CHECK(rig.del.nacks[0].code == NackCode::UNSUPPORTED_OP);
+    CHECK(rig.hub->safetyWord() == 0);
+    CHECK(rig.hub->safetyModes() == 0);
 }
 
-// ---- RFC-025c ---------------------------------------------------------------
-// override/bypass write through 0x0005 and read back on 0x0003.
-TEST_CASE("M4a/RFC-025c: override/bypass ops drive the appended modes byte") {
+TEST_CASE("RFC-085: override carries PAUSE; resume is refused until return arrives") {
     SafetyRig rig(/*withToken=*/true);
-    CHECK(rig.hub->safetyModes() == 0);
 
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override_on)).has_value());
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
     rig.step();
     CHECK(rig.hub->safetyModes() == safety_mode_bits::OVERRIDE);
+    CHECK(rig.hub->pauseLatched());
     CHECK(rig.lastModes() == safety_mode_bits::OVERRIDE);
 
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::bypass_on)).has_value());
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
     rig.step();
-    CHECK(rig.hub->safetyModes() == (safety_mode_bits::OVERRIDE | safety_mode_bits::BYPASS));
-    CHECK(rig.lastModes() == (safety_mode_bits::OVERRIDE | safety_mode_bits::BYPASS));
+    REQUIRE(rig.del.nacks.size() == 1);
+    CHECK(rig.del.nacks[0].code == NackCode::INTERLOCK);
+    CHECK(rig.hub->pauseLatched());
 
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override_off)).has_value());
+    // `return` latches nothing by itself: the override clears when the move arrives.
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::return_op)).has_value());
     rig.step();
-    CHECK(rig.hub->safetyModes() == safety_mode_bits::BYPASS);
-
-    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::bypass_off)).has_value());
+    CHECK(rig.hub->safetyModes() == safety_mode_bits::OVERRIDE);
+    rig.hub->setOverride(false);   // the application reports arrival at the paused position
     rig.step();
     CHECK(rig.hub->safetyModes() == 0);
-    CHECK(rig.lastModes() == 0);
-    CHECK(rig.del.nacks.empty());
+    CHECK(rig.hub->pauseLatched());   // plain PAUSE awaiting resume
 
-    // The four ops DID reach the delegate (unlike estop/estop_clear): the
-    // machine is what actually engages an override, the hub only latches the
-    // fact afterwards.
-    CHECK(rig.hubDelegate.acceptedOps.size() == 4);
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    CHECK(rig.del.nacks.empty());
+    CHECK_FALSE(rig.hub->pauseLatched());
 }
 
-TEST_CASE("M4a/RFC-025c: setSafetyModes is the machine-side direction, publishing on change only") {
+TEST_CASE("RFC-085: a power-cutting ESTOP drops override, releases into PAUSE unhomed, resume NOT_HOMED until home") {
+    SafetyRig rig(/*withToken=*/true);
+    rig.hub->setEstopCutsPower(true);
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::estop)).has_value());
+    rig.step();
+    CHECK(rig.hub->estopLatched());
+    CHECK(rig.hub->safetyModes() == safety_mode_bits::HOME_REQUIRED);   // override dropped
+
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 1);
+    CHECK(rig.del.nacks[0].code == NackCode::ESTOP_ACTIVE);
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    CHECK_FALSE(rig.hub->estopLatched());
+    CHECK(rig.hub->pauseLatched());   // release lands in PAUSE
+
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 1);
+    CHECK(rig.del.nacks[0].code == NackCode::NOT_HOMED);
+
+    rig.hub->setHomeRequired(false);   // a home completed
+    rig.step();
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    CHECK(rig.del.nacks.empty());
+    CHECK(rig.hub->safetyWord() == 0);
+}
+
+TEST_CASE("RFC-085: setOverride is the machine-side direction, publishing on change only") {
     SafetyRig rig(/*withToken=*/true);
     const int before = rig.del.stateCountByChannel[0x0003];
 
-    rig.hub->setSafetyModes(true, false);   // e.g. the legacy UI plane flipped it
+    rig.hub->setOverride(true);
     rig.step();
     CHECK(rig.lastModes() == safety_mode_bits::OVERRIDE);
     const int afterChange = rig.del.stateCountByChannel[0x0003];
     CHECK(afterChange > before);
 
-    // Value-identical re-assert: ground truth did not move, so neither does
-    // the wire (the same discipline RFC-002 imposed on cfg_gen).
-    rig.hub->setSafetyModes(true, false);
+    rig.hub->setOverride(true);   // value-identical: no publish
     rig.step();
     CHECK(rig.del.stateCountByChannel[0x0003] == afterChange);
 }
@@ -1362,13 +1375,13 @@ TEST_CASE("M4a/RFC-045: a GOODBYE releases ownership but latches nothing") {
     a.disconnect();
     pump(hub, clock, {&a, &b}, 10);
 
-    CHECK((hub.safetyWord() & safety_bits::STOP) == 0);
-    CHECK_FALSE(hub.stopLatched());
+    CHECK((hub.safetyWord() & safety_bits::PAUSE) == 0);
+    CHECK_FALSE(hub.pauseLatched());
     // The retained snapshot is UNCHANGED (still all-clear) — release-only
     // teardown never republishes it at all now that nothing latches.
     auto& snap = delB.lastStateByChannel[0x0003];
     REQUIRE(snap.size() == 9);
-    CHECK((uint8_t(snap[0]) & safety_bits::STOP) == 0);
+    CHECK((uint8_t(snap[0]) & safety_bits::PAUSE) == 0);
 }
 
 TEST_CASE("M4a/RFC-045: an actual silence timeout ALSO latches nothing — the deadman is not a safety mechanism") {
@@ -1404,8 +1417,8 @@ TEST_CASE("M4a/RFC-045: an actual silence timeout ALSO latches nothing — the d
     // session went STALE (RFC-042) and its source was released, and that is
     // the whole story.
     CHECK(hubDelegate.deadmanStopped.empty());
-    CHECK((hub.safetyWord() & safety_bits::STOP) == 0);
-    CHECK_FALSE(hub.stopLatched());
+    CHECK((hub.safetyWord() & safety_bits::PAUSE) == 0);
+    CHECK_FALSE(hub.pauseLatched());
     REQUIRE(hub.sessionBySlot(0) != nullptr);
     CHECK(hub.sessionBySlot(0)->state == HubSessionState::STALE);
 
@@ -1418,5 +1431,5 @@ TEST_CASE("M4a/RFC-045: an actual silence timeout ALSO latches nothing — the d
     }
     auto& snap = delA.lastStateByChannel[0x0003];
     REQUIRE(snap.size() == 9);
-    CHECK((uint8_t(snap[0]) & safety_bits::STOP) == 0);
+    CHECK((uint8_t(snap[0]) & safety_bits::PAUSE) == 0);
 }

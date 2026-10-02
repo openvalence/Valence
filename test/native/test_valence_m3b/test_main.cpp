@@ -941,7 +941,7 @@ TEST_CASE("MB-11 (RFC-042): idle reaping marks STALE, never runs a loss policy, 
     REQUIRE(hub.sessionBySlot(0) != nullptr);
     CHECK(hub.sessionBySlot(0)->state == HubSessionState::STALE);
     // No source was owned, so nothing latched: the machine is untouched.
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     CHECK_FALSE(hub.estopLatched());
 }
 

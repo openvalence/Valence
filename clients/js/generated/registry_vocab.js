@@ -158,9 +158,9 @@ export const PACKED_NAME = {
 export const CORE_CHANNEL = {
   catalog: 0x0001,  // catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces u
   session_roster: 0x0002,  // RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder dec
-  safety: 0x0003,  // latched safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_overr
+  safety: 0x0003,  // latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero
   control_owner: 0x0004,  // active arbiter source + owning session per source (§11.4)
-  safety_intents: 0x0005,  // STOP/HOLD/PAUSE/RESUME/ESTOP_CLEAR/ESTOP/TAKEOVER + override/bypass (§11, safety_intent_ops)
+  safety_intents: 0x0005,  // the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/r
   hub_status: 0x0006,  // boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identit
   session_events: 0x0007,  // join/leave/takeover/eviction notifications
   log: 0x0008,  // RFC-017: device log in-band: {level u8, tag, hub-ms, message <=128 B} via the `body` sub-map. Bo
@@ -331,6 +331,7 @@ export const IDENTITY_K = {
   hub_name: 3,  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where
   info: 4,  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr;
   hub_instance_id: 5,  // uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once 
+  estop_cuts_power: 6,  // bool: RFC-085 (§11.2). Whether this hub's ESTOP cuts motor power (true: category 0, the machine 
 };
 
 // ---- blob_keys -----------------------------------------------------
@@ -455,15 +456,15 @@ export const PAIRING_EVENT_KIND_NAME = {
 // ---- safety_event_kinds --------------------------------------------
 export const SAFETY_EVENT_KIND = {
   estop_latched: 1,  // the ESTOP bit went 0 -> 1 (§5.5). `body` carries word/cause/owner_session/estop_seq. Cause is a 
-  estop_cleared: 2,  // the ESTOP bit went 1 -> 0 via §11.2's guarded clear (`safety_ops::estop_clear` + the hub's and d
-  stop_latched: 3,  // one or more of STOP / HOLD / PAUSE went 0 -> 1. `body.level` is the bitmask of the bits that NEW
-  stop_cleared: 4,  // one or more of STOP / HOLD / PAUSE went 1 -> 0 (`resume`, or a STOP cleared by an accepted new m
+  estop_cleared: 2,  // the ESTOP bit went 1 -> 0 via §11.2's guarded `release` (the hub's and delegate's preconditions)
+  pause_latched: 3,  // RFC-085 (was stop_latched): the PAUSE bit went 0 -> 1. Cause distinguishes an operator pause (us
+  pause_cleared: 4,  // RFC-085 (was stop_cleared): the PAUSE bit went 1 -> 0, only ever by `resume`.
 };
 export const SAFETY_EVENT_KIND_NAME = {
   1: 'estop_latched',
   2: 'estop_cleared',
-  3: 'stop_latched',
-  4: 'stop_cleared',
+  3: 'pause_latched',
+  4: 'pause_cleared',
 };
 
 // ---- log_levels ----------------------------------------------------
@@ -486,28 +487,20 @@ export const LOG_LEVEL_NAME = {
 
 // ---- safety_intent_ops ---------------------------------------------
 export const SAFETY_OP = {
-  estop_clear: 1,  // clear the ESTOP latch (§11.2 conditions apply; NACK CLEAR_REFUSED otherwise). Requires `control`
-  stop: 2,  // controlled decel stop (§11.1). ROLE-EXEMPT.
-  hold: 3,  // position hold (§11.1). Requires `control`. The HUB latches all four levels in 0x0003: delegate a
-  pause: 4,  // pattern pause (§11.1). Requires `control`.
-  resume: 5,  // resume from HOLD/PAUSE (§11.1). Requires `control`.
+  release: 1,  // RFC-085 (was estop_clear): release the ESTOP latch (§11.2 preconditions; NACK CLEAR_REFUSED othe
+  pause: 4,  // RFC-085: latch PAUSE (§11.1): decelerate, hold position, every source suspended, stream bundles 
+  resume: 5,  // the only clear of PAUSE (§11.1). Refused ESTOP_ACTIVE while ESTOP is latched, INTERLOCK while ov
   estop: 6,  // ASSERT e-stop (RFC-010). ROLE-EXEMPT. The hub treats it exactly as a valid 0xE5 frame: latch, ca
-  override_on: 7,  // engage manual override (RFC-025c). Requires `control`. Override/bypass are SAFETY-domain state, 
-  override_off: 8,  // release manual override. Requires `control`.
-  bypass_on: 9,  // engage limit bypass (RFC-025c). Requires `control`. The per-move `bypass` key on a motion INTENT
-  bypass_off: 10,  // release limit bypass. Requires `control`.
+  override: 7,  // RFC-085 (was override_on; merges the former bypass): latch the override mode, carrying PAUSE: th
+  return_op: 8,  // RFC-085, the `return` op (was override_off; registry identifier `return_op` only because `return
 };
 export const SAFETY_OP_NAME = {
-  1: 'estop_clear',
-  2: 'stop',
-  3: 'hold',
+  1: 'release',
   4: 'pause',
   5: 'resume',
   6: 'estop',
-  7: 'override_on',
-  8: 'override_off',
-  9: 'bypass_on',
-  10: 'bypass_off',
+  7: 'override',
+  8: 'return_op',
 };
 
 // ---- session_admin_ops ---------------------------------------------
@@ -526,7 +519,7 @@ export const SESSION_ADMIN_OP_NAME = {
 
 // ---- safety_causes -------------------------------------------------
 export const SAFETY_CAUSE = {
-  user: 0,  // operator-initiated (physical button, UI, safety-intents `estop`/`stop`): §5.5
+  user: 0,  // operator-initiated (physical button, UI, safety-intents `estop`/`pause`): §5.5
   deadman: 1,  // §11.3 deadman window actually elapsed (silence timeout, not some other way the session ended: se
   fault: 2,  // hub/driver-detected fault
   relay: 3,  // relay-originated (segment-local safety event): §5.5
@@ -954,11 +947,11 @@ export const UI_ARCHETYPE = {
   toggle: 4,  // boolean
   select: 5,  // enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, 
   trigger: 6,  // payload-less intent (button); destructive invocation (setting_flags.destructive, destructive_opt
-  axis: 7,  // 1-D positional hero control (role command.position) with commanded-vs-actual overlay
+  axis: 7,  // 1-D positional hero control (role command.position) with commanded-vs-actual overlay; carries th
   chart: 8,  // time-series; glance degrades to sparkline/value; missing samples render as gaps
   list: 9,  // roster/store items + item actions; pending is a THIRD state distinct from success/failure
   text: 10,  // constrained string; glance projects a digit/char wheel: the pairing-PIN path
-  stop: 11,  // the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; r
+  stop: 11,  // the safety stop affordances (RFC-085: the estop/release and pause/resume controls, one control p
   pad2d: 12,  // two-axis control: the multi-axis runway; triggered by two command.position fields on one INTENT 
   color: 13,  // chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in on
   datetime: 14,  // moment/interval input (automation schedules) in hub time; triggered by datetime.moment, or datet
@@ -1095,8 +1088,8 @@ export const BEACON_FLAG_NAME = {
 
 // ---- field_roles (tstr wire values) -------------------------------
 export const FIELD_ROLE = {
-  limit_user_speed: 'limit.user.speed',  // speed ceiling of the USER (manual) limit set. CEILING, never a target.
-  limit_user_accel: 'limit.user.accel',  // accel ceiling of the user limit set
+  limit_jog_speed: 'limit.jog.speed',  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEIL
+  limit_jog_accel: 'limit.jog.accel',  // accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel.
   limit_input_speed: 'limit.input.speed',  // speed ceiling of the INPUT (machine-driven: patterns, streams, TCode) limit set
   limit_input_accel: 'limit.input.accel',  // accel ceiling of the input limit set
   limit_input_jerk: 'limit.input.jerk',  // jerk ceiling of the input limit set
@@ -1166,7 +1159,7 @@ export const CHANNEL_ROLE = {
 // ---- action_tags (tstr wire values) -------------------------------
 export const ACTION_TAG = {
   move: 'move',  // the primary positional command: usually already the axis archetype's own binding, rarely a separ
-  safety: 'safety',  // a safety-adjacent action outside the law-bound stop archetype itself (e.g. an override/bypass to
+  safety: 'safety',  // a safety-adjacent action outside the law-bound stop archetype and the three safety pairs themsel
   home: 'home',  // a homing-cycle trigger
   calibrate: 'calibrate',  // a calibration-cycle trigger; commonly the entry point to a `wizard` widget pattern
   reset: 'reset',  // aspect-group reset linkage (value_aspects/RENDERING.md §5.4); co-located with the group it reset

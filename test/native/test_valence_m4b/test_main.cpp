@@ -81,10 +81,10 @@ void makeM4bCatalog(Catalog32& c, bool withSafetyEvents = true, bool withTrust =
                 .access = AccessLevel::watch, .maxRateHz = 20.0f,
                 .defaultPriority = Priority::critical});
     c.addSelectSchemaField({.key = 1, .name = "op", .type = CborFieldType::uint_t, .unit = ""},
-                           {"reserved", "estop_clear", "stop", "hold", "pause", "resume", "estop",
-                            "override_on", "override_off", "bypass_on", "bypass_off"},
-                           {AccessLevel::control, AccessLevel::control, AccessLevel::watch,
-                            AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                           {"reserved", "release", "retired", "retired", "pause", "resume",
+                            "estop", "override", "return", "retired", "retired"},
+                           {AccessLevel::control, AccessLevel::control, AccessLevel::control,
+                            AccessLevel::control, AccessLevel::watch, AccessLevel::control,
                             AccessLevel::watch, AccessLevel::control, AccessLevel::control,
                             AccessLevel::control, AccessLevel::control});
 
@@ -408,7 +408,7 @@ TEST_CASE("M4B-02: a REPEATED estop re-broadcasts the STATE but emits NO second 
     CHECK(del.estops == 1);  // and the delegate was stopped exactly once
 }
 
-TEST_CASE("M4B-03: estop_clear emits the estop_cleared edge") {
+TEST_CASE("M4B-03 (RFC-085): release emits the estop_cleared edge and lands in PAUSE") {
     Catalog32 cat;
     makeM4bCatalog(cat);
     ManualClock clock;
@@ -418,21 +418,23 @@ TEST_CASE("M4B-03: estop_clear emits the estop_cleared edge") {
     InProcessLink link(clock, rng);
     REQUIRE(hub.attachTransport(link.endpointA()));
     REQUIRE(link.endpointB().open());
-    connectSession(hub, clock, link.endpointB(), 1, 0xC1, allSubs());  // control: may clear
+    connectSession(hub, clock, link.endpointB(), 1, 0xC1, allSubs());  // control: may release
 
     hub.latchEstop(safety_causes::user, 0, 1);
     tickAndDrain(hub, clock, link.endpointB());
 
-    writeSafetyOp(link.endpointB(), 1, safety_ops::estop_clear);
+    writeSafetyOp(link.endpointB(), 1, safety_ops::release);
     auto replies = tickAndDrain(hub, clock, link.endpointB());
     auto evs = collectEvents(replies, channels::safety_events);
-    REQUIRE(evs.size() == 1);
+    REQUIRE(evs.size() == 2);
     CHECK(evs[0].event_kind == safety_events::estop_cleared);
-    CHECK(bodyU64(evs[0], safety_body::word).value_or(0xFF) == 0);
+    CHECK(evs[1].event_kind == safety_events::pause_latched);
+    CHECK(bodyU64(evs[0], safety_body::word).value_or(0xFF) == safety_bits::PAUSE);
     CHECK_FALSE(hub.estopLatched());
+    CHECK(hub.pauseLatched());  // release never lands in motion
 }
 
-TEST_CASE("M4B-04: stop/hold latch and resume clear emit edges whose `level` names the bits that moved") {
+TEST_CASE("M4B-04 (RFC-085): pause latches and resume clears, one edge each, no `level`") {
     Catalog32 cat;
     makeM4bCatalog(cat);
     ManualClock clock;
@@ -444,26 +446,20 @@ TEST_CASE("M4B-04: stop/hold latch and resume clear emit edges whose `level` nam
     REQUIRE(link.endpointB().open());
     connectSession(hub, clock, link.endpointB(), 1, 0xC1, allSubs());
 
-    writeSafetyOp(link.endpointB(), 1, safety_ops::hold);
+    writeSafetyOp(link.endpointB(), 1, safety_ops::pause);
     auto r1 = tickAndDrain(hub, clock, link.endpointB());
     auto e1 = collectEvents(r1, channels::safety_events);
     REQUIRE(e1.size() == 1);
-    CHECK(e1[0].event_kind == safety_events::stop_latched);
-    CHECK(bodyU64(e1[0], safety_body::level).value_or(0) == safety_bits::HOLD);
+    CHECK(e1[0].event_kind == safety_events::pause_latched);
+    CHECK_FALSE(bodyU64(e1[0], 5).has_value());  // retired body key 5 (`level`)
     CHECK(bodyU64(e1[0], safety_body::cause).value_or(99) == safety_causes::user);
 
-    writeSafetyOp(link.endpointB(), 2, safety_ops::pause);
-    tickAndDrain(hub, clock, link.endpointB());
-
-    // resume lifts HOLD *and* PAUSE: ONE edge whose level carries both, because
-    // that was one operator action.
     writeSafetyOp(link.endpointB(), 3, safety_ops::resume);
     auto r3 = tickAndDrain(hub, clock, link.endpointB());
     auto e3 = collectEvents(r3, channels::safety_events);
     REQUIRE(e3.size() == 1);
-    CHECK(e3[0].event_kind == safety_events::stop_cleared);
-    CHECK(bodyU64(e3[0], safety_body::level).value_or(0) ==
-          uint8_t(safety_bits::HOLD | safety_bits::PAUSE));
+    CHECK(e3[0].event_kind == safety_events::pause_cleared);
+    CHECK_FALSE(hub.pauseLatched());
 }
 
 TEST_CASE("M4B-05 (RFC-042/RFC-045): a rude transport detach releases ownership, goes STALE, and latches nothing") {
@@ -509,7 +505,7 @@ TEST_CASE("M4B-05 (RFC-042/RFC-045): a rude transport detach releases ownership,
 
     // Nothing latches — no safety edge of any kind.
     CHECK(collectEvents(replies, channels::safety_events).empty());
-    CHECK_FALSE(hub.stopLatched());
+    CHECK_FALSE(hub.pauseLatched());
     CHECK_FALSE(hub.estopLatched());
 
     // The slot is RETAINED, marked STALE (not freed).

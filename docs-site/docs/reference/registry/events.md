@@ -67,9 +67,9 @@ The EVENT twin of the [safety STATE channel](channels.md#spec-core-channels). It
 | Kind | Name | Meaning |
 |---|---|---|
 | `1` | `estop_latched` | the ESTOP bit went 0 -> 1 (§5.5). `body` carries word/cause/owner_session/estop_seq. Cause is a `safety_causes` value; `estop_seq` is the §5.5 per-INITIATION sequence, so repeats of one initiation share it. |
-| `2` | `estop_cleared` | the ESTOP bit went 1 -> 0 via §11.2's guarded clear (`safety_ops::estop_clear` + the hub's and delegate's preconditions). Clearing never restarts motion; this edge says the latch is gone, never that the machine moved. |
-| `3` | `stop_latched` | one or more of STOP / HOLD / PAUSE went 0 -> 1. `body.level` is the bitmask of the bits that NEWLY set (safety word bits 1/2/3), so one edge reports one operator action even when it sets several. Cause distinguishes an operator `stop` (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss). That is the whole reason this edge is worth having: all three look identical in the snapshot. |
-| `4` | `stop_cleared` | one or more of STOP / HOLD / PAUSE went 1 -> 0 (`resume`, or a STOP cleared by an accepted new motion intent per §11.1). `body.level` is the bitmask of the bits that NEWLY cleared. |
+| `2` | `estop_cleared` | the ESTOP bit went 1 -> 0 via §11.2's guarded `release` (the hub's and delegate's preconditions). Release lands in PAUSE and never restarts motion; this edge says the latch is gone, never that the machine moved. |
+| `3` | `pause_latched` | RFC-085 (was stop_latched): the PAUSE bit went 0 -> 1. Cause distinguishes an operator pause (user) from a §11.3 deadman (deadman) from a teardown loss policy (session_loss); all three look identical in the snapshot. `body.level` is retired: one level leaves nothing to disambiguate. |
+| `4` | `pause_cleared` | RFC-085 (was stop_cleared): the PAUSE bit went 1 -> 0, only ever by `resume`. |
 
 ## Log severity levels
 

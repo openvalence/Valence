@@ -531,7 +531,7 @@ void buildAnnotatedCatalog(Catalog32& c) {
                       .dflt = SettingDefault::ofFloat(250.0f),
                       .group = "User limits",
                       .desc = "Speed ceiling for manual moves. Never a target.",
-                      .role = field_roles::limit_user_speed,
+                      .role = field_roles::limit_jog_speed,
                       .step = 5.0f,
                       .settingKey = 3, .flags = setting_flags::advanced,
                       .hasSettingKey = true, .hasStep = true});
@@ -564,7 +564,7 @@ void buildAnnotatedCatalog(Catalog32& c) {
                       .hasMin = true, .hasMax = true, .min = 0.0f, .max = 600.0f,
                       .dflt = SettingDefault::ofFloat(250.0f),
                       .group = "User limits", .desc = "Applied post-clamp.",
-                      .role = field_roles::limit_user_speed, .step = 5.0f,
+                      .role = field_roles::limit_jog_speed, .step = 5.0f,
                       .flags = setting_flags::restart_required,
                       .access = AccessLevel::configure, .hasAccess = true, .hasStep = true});
     // The op-style intent RFC-019/RFC-027 care about: ONE enum-valued field
