@@ -1746,7 +1746,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
 | [098](#rfc-098----rail-ownership-is-released-when-its-source-goes-quiet-control-owner-names-each-slots-source-kind) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
-| [100](#rfc-100----plan-feasibility-flags-one-byte-on-the-plan-telemetry-says-how-the-planner-bent-the-segment) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Accepted 2026-10-03 (rfc-6qf) |
+| [100](#rfc-100----plan-feasibility-flags-one-byte-on-the-plan-telemetry-says-how-the-planner-bent-the-segment) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Landed 2026-10-03 (accepted 2026-10-03, rfc-6qf) |
 
 ---
 
@@ -8160,6 +8160,9 @@ say exactly which, future-us will want the receipts.*
 ## RFC-100 -- Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment
 
 - **Status:** ACCEPTED (operator, 2026-10-03: "yes add the bit"; rfc-6qf).
+  LANDED in the commit beside this line: SPEC §8.8, RENDERING.md
+  `plan-view`, registry `plan.flags` and `plan_flags`, codegen, valence-js
+  `planFlagNames`.
 - **Origin.** Phosphor's rail draws the planned segment while a source owns
   the rail (ph-ryi7, Phosphor c07a60f), and the operator wants its moving
   marker amber when the plan is infeasible. The plan telemetry carries no

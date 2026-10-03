@@ -364,7 +364,7 @@ Proven compositions extracted from the reference client. Each recipe names its a
 | Pattern | Required? | Composition | Region | Extra states | Projection |
 |---|---|---|---|---|---|
 | `axis-hero` | **MUST** (handheld/full; glance: reachable via category tree) | rail + window band + command tape + live position/velocity numerals + nested `plan-view` | `primary` | commanded-vs-actual overlay always live | Command-tape domain is the *reported* window — commanding outside it is geometrically impossible. Physical-extent derivation prefers measured travel > configured max > catalog window bound. |
-| `plan-view` | no | in-flight plan lane (`plan.*` roles) | nested inside `axis-hero` | visibility gated by data freshness | Collapses to zero height when idle. |
+| `plan-view` | no | in-flight plan lane (`plan.*` roles) | nested inside `axis-hero` | visibility gated by data freshness | Collapses to zero height when idle. The segment marker takes the warn tone when any of `plan.flags` bits 0-3 is set (RFC-100), else when the plan is stale or past `plan.duration`; the readback names the set bits in words. |
 | `link-strip` | no | connection phase, rx liveness, catalog state | `utility` | safety-relevant chips pinned | Rest of the strip may scroll. |
 | `safety-strip` | no (its contents are, via `stop`) | the e-stop and pause controls (role-exempt, one control per pair, law 14); no separate clear, release or resume button; override/return lives on the rail, not here | `persistent` | sticky-visible within any overflow | |
 | `settings-card` | no | a subgroup's fields via the archetype table (§8.2) | `content` | every disabled control shows WHICH gate disabled it | feature-mask / no-link / unauthorized are not interchangeable. |

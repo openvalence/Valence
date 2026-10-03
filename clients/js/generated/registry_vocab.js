@@ -1164,6 +1164,20 @@ export const DISCOVER_REPLY_FLAG_NAME = {
   2: 'datagram_estop',
 };
 
+// ---- plan_flags (bit flags) ----------------------------------------
+export const PLAN_FLAG = {
+  shaped: 1 << 0,  // the planner shortened the commanded stroke, or flattened its shape, to hold the deadline
+  stretched: 1 << 1,  // the segment runs past the commanded deadline
+  fallback: 1 << 2,  // the planner substituted its fallback method for the segment
+  clamped: 1 << 3,  // a ceiling or the travel window changed the command
+};
+export const PLAN_FLAG_NAME = {
+  1: 'shaped',
+  2: 'stretched',
+  4: 'fallback',
+  8: 'clamped',
+};
+
 // ---- field_roles (tstr wire values) -------------------------------
 export const FIELD_ROLE = {
   limit_jog_speed: 'limit.jog.speed',  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEIL
@@ -1206,6 +1220,7 @@ export const FIELD_ROLE = {
   plan_duration: 'plan.duration',  // total duration of the segment in flight
   plan_latency: 'plan.latency',  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagno
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
+  plan_flags: 'plan.flags',  // RFC-100 (§8.8): bitfield8, bits per plan_flags, describing the segment in flight: set by the pla
   advgen_running: 'advgen.running',  // RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). 
   advgen_master: 'advgen.master',  // RFC-081: overall rate scale of the advanced program, percent of its own range
   advgen_depth_max: 'advgen.depth_max',  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window

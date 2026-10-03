@@ -31,7 +31,7 @@ import {
   UI_CATEGORY, UI_CATEGORY_NAME, UI_RANK, UI_RANK_NAME,
   VALUE_ASPECT, VALUE_ASPECT_NAME, VALUE_SCOPE, VALUE_SCOPE_NAME,
   VALUE_PROVENANCE, VALUE_PROVENANCE_NAME, UNIT_ID_NAME,
-  SETTING_FLAG,
+  SETTING_FLAG, PLAN_FLAG_NAME,
   K, BLOB_K, BLOB_NS, LIMITS,
 } from './frames.js';
 import { catalogEtag, bytesEqual } from './sha256.js';
@@ -715,6 +715,19 @@ export function decodeControlOwner(payload) {
     });
   }
   return slots;
+}
+
+/**
+ * The registry names of the `plan_flags` bits set in a `plan.flags` byte
+ * (RFC-100), in bit order. Reserved bits are ignored; an empty list is a clean
+ * plan, and any name at all means the plan is infeasible.
+ * @param {number} raw
+ * @returns {string[]}
+ */
+export function planFlagNames(raw) {
+  const names = [];
+  for (const [bit, name] of Object.entries(PLAN_FLAG_NAME)) if (raw & Number(bit)) names.push(name);
+  return names;
 }
 
 const PACKED_RANGE = {

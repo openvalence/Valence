@@ -24,14 +24,14 @@ import {
   K, PRIORITY, FRAME, ACCESS, PACKED, PACKED_SIZE, GOODBYE_CODE, NACK,
   SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_EVENT_KIND, BLOB_NS, CH_SAFETY, LIMITS,
   UI_CATEGORY, UI_RANK, VALUE_ASPECT, VALUE_SCOPE, VALUE_PROVENANCE, UNIT_ID,
-  UI_NAV_TIER, UI_CATEGORY_TIER, UI_NAV_TIER_CATEGORIES, SOURCE_KIND, SOURCE_KIND_NAME,
+  UI_NAV_TIER, UI_CATEGORY_TIER, UI_NAV_TIER_CATEGORIES, SOURCE_KIND, SOURCE_KIND_NAME, PLAN_FLAG,
   encodeFrame, encodeEstopFrame, crc32, ESTOP_FRAME_BYTES,
 } from '../frames.js';
 import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair,
   parseBlobChunk, BlobReassembler, BLOB_CHUNK_HEADER_BYTES,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody,
-  schemaByKey, optionAccessFor, canUseOption, storeItemDigestOk, decodeControlOwner,
+  schemaByKey, optionAccessFor, canUseOption, storeItemDigestOk, decodeControlOwner, planFlagNames,
 } from '../catalog.js';
 import { sha256, catalogEtag, toHex, bytesEqual } from '../sha256.js';
 
@@ -381,6 +381,33 @@ assert('safety decode: 8-byte prefix still decodes, modes simply absent',
   const old = decodeControlOwner(p.subarray(0, 20));
   assert('control-owner: a pre-RFC-098 20 B payload keeps its pairs, kind null',
     old.length === 4 && old[1].owner === 0x01020304 && old[1].kind === null && old[1].clientName === '');
+}
+
+// ---- plan.flags (RFC-100): an appended bitfield8 on a plan layout ----------
+// The reference hub's 18 B plan strip plus the byte: an old layout reads the
+// prefix, the new one names the set bits; reserved bits never name a flag.
+{
+  const planLayout = [
+    { name: 'flags', type: PACKED.bitfield8 }, { name: 'style', type: PACKED.u8 },
+    { name: 'start_norm', type: PACKED.u16, scale: 10000 }, { name: 'end_norm', type: PACKED.u16, scale: 10000 },
+    { name: 'cur_norm', type: PACKED.u16, scale: 10000 }, { name: 'cur_vel', type: PACKED.i16, scale: 1000 },
+    { name: 'duration_us', type: PACKED.u32 }, { name: 'elapsed_us', type: PACKED.u32 },
+  ];
+  const withFlags = [...planLayout, { name: 'feasibility', type: PACKED.bitfield8,
+    bits: ['shaped', 'stretched', 'fallback', 'clamped'] }];
+  const p = new Uint8Array(19);
+  p[0] = 1; p[1] = 1;
+  new DataView(p.buffer).setUint16(4, 7500, true);
+  p[18] = PLAN_FLAG.shaped | PLAN_FLAG.clamped | 0x80;
+  const d = decodePacked(p, withFlags);
+  assert('plan.flags: appended byte decodes after the 18 B layout', d.end_norm === 0.75 && d.feasibility === 0x89);
+  assert('plan.flags: set bits named in bit order, reserved ignored', planFlagNames(d.feasibility).join() === 'shaped,clamped');
+  assert('plan.flags: registry bits 0-3',
+    PLAN_FLAG.shaped === 1 && PLAN_FLAG.stretched === 2 && PLAN_FLAG.fallback === 4 && PLAN_FLAG.clamped === 8);
+  assert('plan.flags: a clean plan names nothing', planFlagNames(0).length === 0 && planFlagNames(0xf0).length === 0);
+  const old = decodePacked(p.subarray(0, 18), withFlags);
+  assert('plan.flags: a pre-RFC-100 18 B payload reads no flags', old.feasibility === undefined && old.end_norm === 0.75);
+  assert('plan.flags: a client without the field ignores the byte', decodePacked(p, planLayout).elapsed_us === 0);
 }
 
 // ---- catalog decode: RFC-009 annotations + option_access -------------------

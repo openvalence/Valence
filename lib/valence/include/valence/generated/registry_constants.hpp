@@ -568,6 +568,13 @@ inline constexpr uint8_t pairing_window_open = 1u << 0;  // a §12.3 association
 inline constexpr uint8_t datagram_estop = 1u << 1;  // RFC-053 item 2b: this hub honors an ESTOP frame on this UDP port right now (the setting's live value), so a sessionless sender learns at setup whether its ESTOP will be heard; the BEACON bit1 mirror
 }  // namespace discover_reply_flags
 
+namespace plan_flags {
+inline constexpr uint8_t shaped = 1u << 0;  // the planner shortened the commanded stroke, or flattened its shape, to hold the deadline
+inline constexpr uint8_t stretched = 1u << 1;  // the segment runs past the commanded deadline
+inline constexpr uint8_t fallback = 1u << 2;  // the planner substituted its fallback method for the segment
+inline constexpr uint8_t clamped = 1u << 3;  // a ceiling or the travel window changed the command
+}  // namespace plan_flags
+
 namespace field_roles {
 inline constexpr std::string_view limit_jog_speed = "limit.jog.speed";  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed.
 inline constexpr std::string_view limit_jog_accel = "limit.jog.accel";  // accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel.
@@ -609,6 +616,7 @@ inline constexpr std::string_view plan_elapsed = "plan.elapsed";  // elapsed tim
 inline constexpr std::string_view plan_duration = "plan.duration";  // total duration of the segment in flight
 inline constexpr std::string_view plan_latency = "plan.latency";  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance.
 inline constexpr std::string_view plan_style = "plan.style";  // which planning style produced the segment; options are the device's style names, index-aligned with the wire value
+inline constexpr std::string_view plan_flags = "plan.flags";  // RFC-100 (§8.8): bitfield8, bits per plan_flags, describing the segment in flight: set by the plan that produced it, cleared when the next segment plans clean, zero while no plan is in flight. A client reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth).
 inline constexpr std::string_view advgen_running = "advgen.running";  // RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff.
 inline constexpr std::string_view advgen_master = "advgen.master";  // RFC-081: overall rate scale of the advanced program, percent of its own range
 inline constexpr std::string_view advgen_depth_max = "advgen.depth_max";  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
