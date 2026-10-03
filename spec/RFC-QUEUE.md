@@ -1745,6 +1745,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [096](#rfc-096----a----separator-in-a-group-string-names-a-section) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
 | [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
 | [098](#rfc-098----rail-ownership-is-released-when-its-source-goes-quiet-control-owner-names-each-slots-source-kind) | Quiet release of rail ownership; source kind on control-owner | Draft 2026-10-03 |
+| [099](#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted) | Trial writes: apply live without persisting, commit or revert | Accepted 2026-10-03 (rfc-2s0) |
 
 ---
 
@@ -8055,3 +8056,100 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.** (1) 500 ms quiet window, or tie it to the grant's
   horizon only. (2) Does a quiet release of a stream also clear a PAUSE it
   never latched (no: command-driven sources latch nothing, §11.4).
+
+## RFC-099 -- Trial writes: a setting applied live without persisting, then committed or reverted
+
+- **Status:** ACCEPTED (operator, 2026-10-03: "neither mode saves to NVS
+  until you apply your settings as defaults; if this needs an RFC build
+  like we'd accept it"; rfc-2s0).
+- **Origin:** the Phosphor funscript player's analyzer (ph-smvd), which
+  tunes the machine's writable settings (the travel and input limits, the
+  kinetic limits, chase and waveform cards, blend) either LIVE or in a
+  PREVIEW that the operator abandons. On the reference hub every accepted
+  write marks the config blob dirty and lands in NVS after the debounce, so
+  an abandoned preview rewrites flash and a preview that crashes or loses
+  its link leaves the machine on values nobody chose to keep.
+- **Problem.** The spec has one kind of write. A value is either set or not,
+  and whether it survives a reboot is the hub's private policy. A client
+  cannot ask for "apply now, keep only if I say so", cannot undo a run of
+  writes without remembering every prior value itself (and a client that
+  dies cannot undo anything), and a second client cannot tell that the
+  values it sees are on trial.
+- **Change.**
+  1. **The `trial` key (cbor key 51, bool) on INTENT** beside `precondition`
+     (30) and `takeover` (32). `true` makes the write a **trial write**:
+     applied, clamped, echoed and published exactly as any write (§9.3), but
+     never persisted. Absent or `false` is a **durable write**, today's
+     behavior. A trial write changes an effective value, so it bumps
+     `cfg_gen` under §4.2 rule 2 like any change, and the STATE shows the
+     trial value: the shadow is the machine's effective state, never a
+     preview of it.
+  2. **Capability by catalog.** A hub supports trial writes iff its catalog
+     declares `settings-trial` (core channel 0x0016). A client MUST NOT send
+     `trial` to a hub that does not: under §4.3 such a hub ignores the key
+     and persists the write.
+  3. **Per-session trial set.** The hub records, per session, each
+     (channel, key) it trial-wrote and the key's **pre-trial value** (its
+     value before that session's first trial write of it; later trial writes
+     keep the first baseline). Only keys the ECHO applied join the set.
+     A durable write by the same session to a key in its set applies,
+     persists, and ends that key's trial.
+  4. **Exclusive keys.** While a key is in one session's trial set, any write
+     to it from another session, trial or durable, is refused with the new
+     NACK `TRIAL_CONFLICT` (0x0307, intent range: an unaware client falls
+     back to the generic intent refusal under §4.3). The whole intent is
+     refused, no key applied. SOURCE_CONFLICT (0x0403) is not reused: it is
+     a safety-range code and names a motion source.
+  5. **Commit and revert ops** on the new core INTENT channel
+     `settings-trial` (0x0016), `control` floor, one schema field `op` (key 1,
+     role `action.trial`, options index-aligned with the new `trial_ops`:
+     1 `commit`, 2 `revert`). Each acts only on the sender's own set.
+     `commit` persists every trialed value of the session and clears the
+     set; no effective value changes, so `cfg_gen` does not move. `revert`
+     restores every pre-trial value and clears the set; a restored value
+     that differs bumps `cfg_gen` and republishes. Both ECHO `{1: op}`; on an
+     empty set both are accepted no-ops. A new channel rather than a
+     `session_admin_ops` member: session-admin is `configure` and governs who
+     may do what, while a trial is opened by any session allowed to write the
+     setting (`control` on the reference hub).
+  6. **Lifecycle.** A session's trials revert when it ends by any §6.9 door
+     and when it is parked STALE (RFC-042): a trial never outlives the
+     session that can commit it. A reboot loses them by construction, since
+     nothing was persisted. ESTOP and PAUSE revert nothing: the values are
+     live settings, and the latch is separate.
+  7. **What a hub refuses.** A trial write on a channel or key the hub
+     cannot restore unconditionally (a verb, a motion command, a key whose
+     write the hub gates on live machine state) is refused `UNSUPPORTED_OP`
+     with a detail. Revert never refuses: where a constraint between values
+     no longer admits a pre-trial value, the hub restores the nearest legal
+     one and publishes it.
+  8. **`meta.trial_pending`** (field role): a `bitfield8` on a settings STATE
+     layout whose bit *i* marks the *i*-th setting-annotated field as holding
+     a trial value, any session's, exactly the indexing of
+     `meta.enabled_mask` (§8.8). On-change, retained. Every client sees that
+     trials are open and on which fields; nothing about it is client-local.
+  9. **Persistence.** A hub that persists settings MUST NOT persist a trial
+     value before its commit: through every other persist, a trialed key's
+     stored value stays its pre-trial value.
+- **Pros.** Live tuning and preview become one mechanism with an undo the
+  hub owns, so a crashed or disconnected preview cleans up after itself. The
+  operator's "apply as defaults" is one op. Flash is written once per
+  commit instead of once per abandoned experiment. Other clients are told,
+  per field.
+- **Cons.** One key, one core channel, one op table, one NACK code and one
+  role. The hub holds a baseline per trialed key (bounded by the trialable
+  keys it declares, because keys are exclusive across sessions). A
+  durable write from a second client to a trialed key is refused until the
+  trial ends.
+- **Cost.** SPEC §4.2, §6.9, §8.8, §9.3, §16.1 text; registry; codegen;
+  library trial bookkeeping in the hub with delegate hooks (baseline,
+  restore, commit); clients/js key, channel and ops. Nucleus: the delegate's
+  baseline and restore per key, persist from stored values with trials
+  substituted, the `settings-trial` entry and a `trial_mask` on each
+  settings card. Phosphor: `api.writeTrial`, `api.commitTrial`,
+  `api.revertTrial`, `api.trialPending`.
+- **Wire impact.** Additive: a key, a core channel, an op table, a NACK
+  code, a role. An adopting hub's etag moves.
+- **Open questions.** None blocking. Whether a durable write by the owning
+  session should instead be refused while its own trial is open stays the
+  draft's call (it ends the trial, which is what "set this for good" means).
