@@ -440,7 +440,6 @@ CAT_E = {"id": 1, "name": 2, "cls": 3, "dir": 4, "access": 5, "rate": 6, "priori
 CAT_F = {"name": 1, "type": 2, "unit": 3, "scale": 4, "min": 5, "max": 6, "bits": 7,
          "setting_key": 8, "default": 9, "options": 10, "group": 11, "desc": 12,
          "role": 13, "step": 14, "flags": 15, "access": 16, "option_access": 17}
-SETTING_CATEGORIES = {0: "device", 1: "user", 2: "limits", 3: "tuning", 4: "diagnostics"}
 # registry `packed_field_types` 8/9/10 = str16/str32/str64 (RFC-026). A string
 # setting is renderable BY ITS TYPE (RFC-036): the packed width IS the length
 # bound, so demanding numeric min/max of it would fail a perfectly renderable
@@ -472,6 +471,27 @@ def _registry_field_roles():
 
 
 FIELD_ROLES = _registry_field_roles()
+
+
+# registry `ui_categories` and `ui_nav_tiers` (RENDERING.md §3, RFC-094), read
+# like the roles above: {id: (name, tier, retired)} and {tier: name}.
+def _registry_rows(section):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "spec",
+                        "registry", "registry.yaml")
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    rows = {}
+    for line in text.split("\n%s:\n" % section, 1)[1].splitlines():
+        if line and not line[0].isspace() and not line.startswith("#"):
+            break
+        m = re.match(r"\s+(\d+):\s*\{\s*name:\s*([\w-]+)(?:,\s*tier:\s*(\d+))?(,\s*status:\s*retired)?", line)
+        if m:
+            rows[int(m.group(1))] = (m.group(2), int(m.group(3) or 0), bool(m.group(4)))
+    return rows
+
+
+UI_CATEGORIES = _registry_rows("ui_categories")
+UI_NAV_TIERS = {k: v[0] for k, v in _registry_rows("ui_nav_tiers").items()}
 
 
 def _catalog_entries(catalog_bytes):
@@ -600,28 +620,35 @@ def check_catalog_annotations(catalog_bytes):
     else:
         ok("cat_desc_cap", "every desc is within the %d-byte cap" % DESC_MAX_BYTES)
 
-    # RFC-009 item 4 -- dynamic enabled state. Bit i gates the i-th
-    # setting-annotated field of the SAME layout, so the check is that the mask
-    # can address every setting on its channel. A mask with fewer labeled bits
-    # than the channel has settings cannot gray the tail of the card.
+    # RFC-009 item 4, SPEC §8.8 -- dynamic enabled state. A channel MAY carry
+    # several `meta.enabled_mask` fields; bit i of the masks taken together in
+    # layout order gates the i-th setting-annotated field, so setting s is
+    # addressed by mask s>>3, bit s&7. Every setting needs a labeled bit, or
+    # the client cannot gray the tail of the card.
     if not masks:
         bad("cat_enabled_mask", "no channel declares a meta.enabled_mask -- nothing tells a client "
             "which controls are settable RIGHT NOW (RFC-009 item 4)")
     else:
+        by_channel = {}
+        for eid, f in masks:  # layout order within a channel
+            by_channel.setdefault(eid, []).append(f.get(CAT_F["bits"]) or {})
         problems = []
-        for eid, f in masks:
-            e = entries[eid]
-            n_settings = sum(1 for x in e.get(CAT_E["layout"], []) if CAT_F["setting_key"] in x)
-            bits = f.get(CAT_F["bits"]) or {}
-            if len(bits) < n_settings:
-                problems.append("0x%04X: %d labeled bits for %d settings"
-                                % (eid, len(bits), n_settings))
+        for eid, bit_maps in by_channel.items():
+            n_settings = sum(1 for x in entries[eid].get(CAT_E["layout"], [])
+                             if CAT_F["setting_key"] in x)
+            unaddressed = [s for s in range(n_settings)
+                           if s >> 3 >= len(bit_maps) or (s & 7) not in bit_maps[s >> 3]]
+            if unaddressed:
+                problems.append("0x%04X: %d mask(s), %d labeled bits for %d settings, "
+                                "setting(s) %s unaddressed"
+                                % (eid, len(bit_maps), sum(len(b) for b in bit_maps), n_settings,
+                                   ",".join(str(s) for s in unaddressed)))
         if problems:
             bad("cat_enabled_mask", "enabled_mask cannot address every setting: %s"
                 % ", ".join(problems))
         else:
-            ok("cat_enabled_mask", "%d enabled_mask field(s), each addressing every setting on its "
-               "channel (disabled means gray, never hide)" % len(masks))
+            ok("cat_enabled_mask", "%d enabled_mask field(s) on %d channel(s) address every setting "
+               "(disabled means gray, never hide)" % (len(masks), len(by_channel)))
 
     # RFC-009 gap 3 -- a u8-backed single-select must NAME its choices, or the
     # client can only show a number and the user needs the firmware source.
@@ -656,13 +683,28 @@ def check_catalog_annotations(catalog_bytes):
                 info("WARN cat_store_link: roster-shaped STATE 0x%04X carries no store_id "
                      "(entry key 17, RFC-070): a client renders it unlinked" % e[CAT_E["id"]])
 
-    # Category coverage -- the tab strip a client would draw.
+    # Category coverage -- the navigation a client would draw (RENDERING §3):
+    # tiers in registry order, categories in registry order within a tier.
     cats = sorted({e[CAT_E["category"]] for e in entries.values() if CAT_E["category"] in e})
-    if cats:
-        ok("cat_categories", "categories present: %s"
-           % ", ".join("%d=%s" % (c, SETTING_CATEGORIES.get(c, "device-defined")) for c in cats))
-    else:
+    if not cats:
         bad("cat_categories", "no channel declares a category -- a client has no tab strip")
+        return
+    retired = [c for c in cats if UI_CATEGORIES.get(c, ("", 0, False))[2]]
+    if retired:
+        bad("cat_categories", "retired category id(s) %s (RFC-094): every client renders them "
+            "under `other`" % ", ".join("%d=%s" % (c, UI_CATEGORIES[c][0]) for c in retired))
+    tiers = {}
+    for c in cats:
+        name, tier, gone = UI_CATEGORIES.get(c, ("", 0, False))
+        if not name or gone:
+            name, tier = ("vendor" if 0x40 <= c <= 0x7E else "unregistered"), 1
+        tiers.setdefault(tier, []).append("%d=%s" % (c, name))
+    line = "categories present by tier: %s" % "; ".join(
+        "%s: %s" % (UI_NAV_TIERS.get(t, t), ", ".join(v)) for t, v in sorted(tiers.items()))
+    if retired:
+        info(line)
+    else:
+        ok("cat_categories", line)
 # A channel id in NO device catalog: the pre-READY gate probe (Step 2.5)
 # sends an INTENT here, so a hub that ISN'T gating answers UNKNOWN_CHANNEL
 # instead of NOT_READY and the machine can never be commanded either way.

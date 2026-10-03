@@ -24,6 +24,7 @@ import {
   K, PRIORITY, FRAME, ACCESS, PACKED, PACKED_SIZE, GOODBYE_CODE, NACK,
   SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_EVENT_KIND, BLOB_NS, CH_SAFETY, LIMITS,
   UI_CATEGORY, UI_RANK, VALUE_ASPECT, VALUE_SCOPE, VALUE_PROVENANCE, UNIT_ID,
+  UI_NAV_TIER, UI_CATEGORY_TIER, UI_NAV_TIER_CATEGORIES,
   encodeFrame, encodeEstopFrame, crc32, ESTOP_FRAME_BYTES,
 } from '../frames.js';
 import {
@@ -428,6 +429,17 @@ assert('absent unit_id stays null so the tstr unit renders verbatim',
   bare.layout[0].unit === 'mm');
 assert('unknown category id -> `other` name, raw id PRESERVED (never dropped)',
   bare.category === 200 && bare.categoryName === 'other' && bare.categoryKnown === false);
+
+// RFC-094: retired ids 5 and 9 are not vocabulary, so they take the overflow
+// path; tiers are a per-category attribute and an iterable table that agree.
+assert('retired categories 5 and 9 are absent from the vocabulary',
+  !('library' in UI_CATEGORY) && !('tuning' in UI_CATEGORY) && UI_CATEGORY.generator === 1);
+assert('tier attribute and tier table agree, in registry order',
+  Object.entries(UI_NAV_TIER_CATEGORIES).every(([t, ids]) =>
+    ids.every((id) => UI_CATEGORY_TIER[id] === Number(t))) &&
+  UI_CATEGORY_TIER[UI_CATEGORY.session] === UI_NAV_TIER.link &&
+  UI_NAV_TIER_CATEGORIES[UI_NAV_TIER.link].join() === '11,12' &&
+  UI_NAV_TIER_CATEGORIES[UI_NAV_TIER.client].length === 0);
 
 const wildCatalog = cbArray([
   cbMap([

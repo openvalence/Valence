@@ -990,25 +990,42 @@ udp_discovery:
 # id — including a vendor id it has not been taught — under `other` (14),
 # using the catalog-provided label, never dropped. This is the structural
 # valve that makes freezing the set safe.
+#
+# RFC-094: every row carries `tier`, a `ui_nav_tiers` id (below); a vendor or
+# unrecognized id is tier 1, because it renders under `other`. Ids 5 and 9
+# are retired pre-tag: `status: retired` rows are never emitted by a hub and
+# never reissued; codegen omits them, so a peer that sends one gets the
+# graceful-extension rule.
 # ---------------------------------------------------------------------------
 ui_categories:
-  1:  { name: control,    note: "driving the machine now: move, pattern run/speed/depth, streams" }
-  2:  { name: motion,     note: "live physical telemetry" }
-  3:  { name: safety,     note: "faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here" }
-  4:  { name: limits,     note: "window + ceilings" }
-  5:  { name: library,    note: "stored content: presets, patterns, scripts, positions, profiles" }
-  6:  { name: playback,   note: "hub-local content transport: play/pause/seek/queue" }
-  7:  { name: auxiliary,  note: "secondary actuators: heat, lube, suction, inflation" }
-  8:  { name: automation, note: "routines, schedules, scenes" }
-  9:  { name: tuning,     note: "engine internals, calibration" }
-  10: { name: hardware,   note: "geometry, drive config, sensors, homing" }
-  11: { name: network,    note: "WiFi/BLE state, endpoints, provisioning" }
-  12: { name: session,    note: "clients, roles, ownership, pairing/trust" }
-  13: { name: system,     note: "power, thermals, memory, firmware, logs" }
-  14: { name: other,      note: "the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule" }
-  15: { name: setup,      note: "RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1)." }
+  1:  { name: generator,  tier: 1, note: "RFC-094 (was `control`): driving the machine now: the generators and patterns, move, streams" }
+  2:  { name: motion,     tier: 1, note: "live physical telemetry; since RFC-094 also the engine internals and calibration that were `tuning` (9), under subgroup Tuning" }
+  3:  { name: safety,     tier: 1, note: "faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here" }
+  4:  { name: limits,     tier: 1, note: "window + ceilings" }
+  5:  { name: library,    tier: 1, status: retired, note: "RETIRED pre-tag by RFC-094: folded into `system` (13) under subgroup Library. Never reissued." }
+  6:  { name: playback,   tier: 1, note: "hub-local content transport: play/pause/seek/queue" }
+  7:  { name: auxiliary,  tier: 1, note: "secondary actuators: heat, lube, suction, inflation" }
+  8:  { name: automation, tier: 1, note: "routines, schedules, scenes" }
+  9:  { name: tuning,     tier: 1, status: retired, note: "RETIRED pre-tag by RFC-094: folded into `motion` (2) under subgroup Tuning. Never reissued." }
+  10: { name: hardware,   tier: 1, note: "geometry, drive config, sensors, homing" }
+  11: { name: network,    tier: 2, note: "WiFi/BLE state, endpoints, provisioning" }
+  12: { name: session,    tier: 2, note: "clients, roles, ownership, pairing/trust" }
+  13: { name: system,     tier: 1, note: "diagnostics and configuration: power, thermals, memory, firmware, logs; since RFC-094 also the stored content that was `library` (5) (presets, patterns, scripts, positions, profiles), under subgroup Library" }
+  14: { name: other,      tier: 1, note: "the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule" }
+  15: { name: setup,      tier: 1, note: "RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1)." }
 # 16-0x3F reserved for future spec-registered categories. 0x40-0x7E vendor/
 # device range (MUST carry a label). 0x7F+ reserved.
+
+# ---------------------------------------------------------------------------
+# `ui_nav_tiers` (RFC-094, RENDERING.md §3) -- the level above categories.
+# Not a wire value: no catalog key carries a tier; a category's tier is its
+# `ui_categories` row. A renderer draws the three in id order, always all
+# three, and labels them itself (localizable).
+# ---------------------------------------------------------------------------
+ui_nav_tiers:
+  1: { name: machine, note: "things on the machine: every tier-1 category, every vendor id and every unrecognized id" }
+  2: { name: link,    note: "things on or between the machine and its clients: `network` (11), `session` (12), and the renderer-provided views of the protocol itself (pairing, the session view, the 0x0008 log)" }
+  3: { name: client,  note: "renderer-local settings (display, plugins, saved hubs, an embedded server). No category and no catalog entry ever lands here; the id is reserved so every renderer draws the same three, in the same order" }
 
 # ---------------------------------------------------------------------------
 # `rank` (u8) — HOW MUCH a catalog entry/field matters by default

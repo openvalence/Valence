@@ -129,6 +129,7 @@ SECTION_HOMES: dict[str, str] = {
     "beacon_flags": "discovery.md",
     "udp_discovery": "discovery.md",
     "ui_categories": "rendering.md",
+    "ui_nav_tiers": "rendering.md",
     "ui_ranks": "rendering.md",
     "value_aspects": "rendering.md",
     "value_scopes": "rendering.md",
@@ -791,16 +792,29 @@ def page_rendering(reg: dict, reg_display: str) -> str:
       "(../../spec/limitations.md).\n\n")
 
     p("## Categories\n\n")
-    p("`category` answers WHERE a catalog entry lives. Ids 1 to 14 are the "
-      "frozen, complete spec set, in canonical menu order. An unrecognized "
-      "id, including an untaught vendor id, MUST render under `other`. It "
-      "keeps the catalog-provided label. It is never dropped.\n\n")
-    rows = [[code(k), code(reg["ui_categories"][k]["name"]), cell(reg["ui_categories"][k].get("note", ""))]
-            for k in sorted(reg["ui_categories"])]
-    table(p, ["Id", "Category", "Notes"], rows)
+    p("`category` answers WHERE a catalog entry lives. Ids 1 to 15 are the "
+      "frozen, complete spec set, in canonical menu order; 5 and 9 are "
+      "retired and never emitted. An unrecognized id, including a retired "
+      "or untaught vendor id, MUST render under `other`. It keeps the "
+      "catalog-provided label. It is never dropped.\n\n")
+    cats, tiers = reg["ui_categories"], reg["ui_nav_tiers"]
+    rows = [[code(k), code(cats[k]["name"]),
+             "retired" if cats[k].get("status") == "retired" else code(tiers[cats[k]["tier"]]["name"]),
+             cell(cats[k].get("note", ""))]
+            for k in sorted(cats)]
+    table(p, ["Id", "Category", "Tier", "Notes"], rows)
     p("`0x40` to `0x7E` is the vendor/device range. A hub that declares one "
-      "MUST supply a label. `15` to `0x3F` is reserved for future "
+      "MUST supply a label. `16` to `0x3F` is reserved for future "
       "spec-registered categories. `0x7F` and above is reserved.\n\n")
+
+    p("## Navigation tiers\n\n")
+    p("Above the categories sit three tiers. A renderer draws tiers in id "
+      "order, then categories in registry order within a tier. The tier is "
+      "not on the wire: it is the category's row above. Vendor and "
+      "unrecognized ids are tier 1.\n\n")
+    rows = [[code(k), code(tiers[k]["name"]), cell(tiers[k].get("note", ""))]
+            for k in sorted(tiers)]
+    table(p, ["Id", "Tier", "Notes"], rows)
 
     p("## Ranks\n\n")
     p("`rank` answers HOW MUCH a catalog entry or field matters by default. "

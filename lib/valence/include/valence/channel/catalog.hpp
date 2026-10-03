@@ -394,10 +394,8 @@ struct CatalogEntry {
 
     // ---- RFC-009 entry-level annotations (all optional) ---------------------
     bool hasCategory = false;
-    // key 10: registry ui_categories (RFC-047/048, Phase C2) — 1..14 registered,
-    // 0x40..0x7E vendor/device-defined. Was setting_categories (0..4) pre-Phase-
-    // C2: same wire key, new vocabulary, a pre-tag restructuring the registry
-    // header permits before v1.0.
+    // key 10: registry ui_categories (RENDERING.md §3) — 1..15 registered, 5 and
+    // 9 retired (RFC-094) and never emitted; 0x40..0x7E vendor/device-defined.
     uint8_t category = 0;
     std::string_view categoryLabel{};   // key 11: REQUIRED iff category is in the vendor range (0x40..0x7E)
     // key 13 (RFC-017): how many PAST events this channel replays to a newly

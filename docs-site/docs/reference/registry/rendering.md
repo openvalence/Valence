@@ -20,27 +20,37 @@ These are the numbers behind [RENDERING.md](../../spec/rendering.md), the normat
 
 ## Categories
 
-`category` answers WHERE a catalog entry lives. Ids 1 to 14 are the frozen, complete spec set, in canonical menu order. An unrecognized id, including an untaught vendor id, MUST render under `other`. It keeps the catalog-provided label. It is never dropped.
+`category` answers WHERE a catalog entry lives. Ids 1 to 15 are the frozen, complete spec set, in canonical menu order; 5 and 9 are retired and never emitted. An unrecognized id, including a retired or untaught vendor id, MUST render under `other`. It keeps the catalog-provided label. It is never dropped.
 
-| Id | Category | Notes |
+| Id | Category | Tier | Notes |
+|---|---|---|---|
+| `1` | `generator` | `machine` | RFC-094 (was `control`): driving the machine now: the generators and patterns, move, streams |
+| `2` | `motion` | `machine` | live physical telemetry; since RFC-094 also the engine internals and calibration that were `tuning` (9), under subgroup Tuning |
+| `3` | `safety` | `machine` | faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here |
+| `4` | `limits` | `machine` | window + ceilings |
+| `5` | `library` | retired | RETIRED pre-tag by RFC-094: folded into `system` (13) under subgroup Library. Never reissued. |
+| `6` | `playback` | `machine` | hub-local content transport: play/pause/seek/queue |
+| `7` | `auxiliary` | `machine` | secondary actuators: heat, lube, suction, inflation |
+| `8` | `automation` | `machine` | routines, schedules, scenes |
+| `9` | `tuning` | retired | RETIRED pre-tag by RFC-094: folded into `motion` (2) under subgroup Tuning. Never reissued. |
+| `10` | `hardware` | `machine` | geometry, drive config, sensors, homing |
+| `11` | `network` | `link` | WiFi/BLE state, endpoints, provisioning |
+| `12` | `session` | `link` | clients, roles, ownership, pairing/trust |
+| `13` | `system` | `machine` | diagnostics and configuration: power, thermals, memory, firmware, logs; since RFC-094 also the stored content that was `library` (5) (presets, patterns, scripts, positions, profiles), under subgroup Library |
+| `14` | `other` | `machine` | the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule |
+| `15` | `setup` | `machine` | RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1). |
+
+`0x40` to `0x7E` is the vendor/device range. A hub that declares one MUST supply a label. `16` to `0x3F` is reserved for future spec-registered categories. `0x7F` and above is reserved.
+
+## Navigation tiers
+
+Above the categories sit three tiers. A renderer draws tiers in id order, then categories in registry order within a tier. The tier is not on the wire: it is the category's row above. Vendor and unrecognized ids are tier 1.
+
+| Id | Tier | Notes |
 |---|---|---|
-| `1` | `control` | driving the machine now: move, pattern run/speed/depth, streams |
-| `2` | `motion` | live physical telemetry |
-| `3` | `safety` | faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here |
-| `4` | `limits` | window + ceilings |
-| `5` | `library` | stored content: presets, patterns, scripts, positions, profiles |
-| `6` | `playback` | hub-local content transport: play/pause/seek/queue |
-| `7` | `auxiliary` | secondary actuators: heat, lube, suction, inflation |
-| `8` | `automation` | routines, schedules, scenes |
-| `9` | `tuning` | engine internals, calibration |
-| `10` | `hardware` | geometry, drive config, sensors, homing |
-| `11` | `network` | WiFi/BLE state, endpoints, provisioning |
-| `12` | `session` | clients, roles, ownership, pairing/trust |
-| `13` | `system` | power, thermals, memory, firmware, logs |
-| `14` | `other` | the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule |
-| `15` | `setup` | RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1). |
-
-`0x40` to `0x7E` is the vendor/device range. A hub that declares one MUST supply a label. `15` to `0x3F` is reserved for future spec-registered categories. `0x7F` and above is reserved.
+| `1` | `machine` | things on the machine: every tier-1 category, every vendor id and every unrecognized id |
+| `2` | `link` | things on or between the machine and its clients: `network` (11), `session` (12), and the renderer-provided views of the protocol itself (pairing, the session view, the 0x0008 log) |
+| `3` | `client` | renderer-local settings (display, plugins, saved hubs, an embedded server). No category and no catalog entry ever lands here; the id is reserved so every renderer draws the same three, in the same order |
 
 ## Ranks
 

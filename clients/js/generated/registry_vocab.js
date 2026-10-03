@@ -671,38 +671,70 @@ export const NACK_NAME = {
 
 // ---- ui_categories -------------------------------------------------
 export const UI_CATEGORY = {
-  control: 1,  // driving the machine now: move, pattern run/speed/depth, streams
-  motion: 2,  // live physical telemetry
+  generator: 1,  // RFC-094 (was `control`): driving the machine now: the generators and patterns, move, streams
+  motion: 2,  // live physical telemetry; since RFC-094 also the engine internals and calibration that were `tuni
   safety: 3,  // faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a me
   limits: 4,  // window + ceilings
-  library: 5,  // stored content: presets, patterns, scripts, positions, profiles
+  // 5 library: RETIRED pre-tag by RFC-094: folded into `system` (13) under subgroup Library. Never reissued.
   playback: 6,  // hub-local content transport: play/pause/seek/queue
   auxiliary: 7,  // secondary actuators: heat, lube, suction, inflation
   automation: 8,  // routines, schedules, scenes
-  tuning: 9,  // engine internals, calibration
+  // 9 tuning: RETIRED pre-tag by RFC-094: folded into `motion` (2) under subgroup Tuning. Never reissued.
   hardware: 10,  // geometry, drive config, sensors, homing
   network: 11,  // WiFi/BLE state, endpoints, provisioning
   session: 12,  // clients, roles, ownership, pairing/trust
-  system: 13,  // power, thermals, memory, firmware, logs
+  system: 13,  // diagnostics and configuration: power, thermals, memory, firmware, logs; since RFC-094 also the s
   other: 14,  // the defined overflow: every unrecognized category id (including an untaught vendor id) renders h
   setup: 15,  // RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine n
 };
 export const UI_CATEGORY_NAME = {
-  1: 'control',
+  1: 'generator',
   2: 'motion',
   3: 'safety',
   4: 'limits',
-  5: 'library',
   6: 'playback',
   7: 'auxiliary',
   8: 'automation',
-  9: 'tuning',
   10: 'hardware',
   11: 'network',
   12: 'session',
   13: 'system',
   14: 'other',
   15: 'setup',
+};
+
+// ---- ui_categories tier (RFC-094, RENDERING.md §3) ----------------------
+export const UI_CATEGORY_TIER = {
+  1: 1,  // generator
+  2: 1,  // motion
+  3: 1,  // safety
+  4: 1,  // limits
+  6: 1,  // playback
+  7: 1,  // auxiliary
+  8: 1,  // automation
+  10: 1,  // hardware
+  11: 2,  // network
+  12: 2,  // session
+  13: 1,  // system
+  14: 1,  // other
+  15: 1,  // setup
+};
+export const UI_NAV_TIER_CATEGORIES = {
+  1: [1, 2, 3, 4, 6, 7, 8, 10, 13, 14, 15],
+  2: [11, 12],
+  3: [],
+};
+
+// ---- ui_nav_tiers --------------------------------------------------
+export const UI_NAV_TIER = {
+  machine: 1,  // things on the machine: every tier-1 category, every vendor id and every unrecognized id
+  link: 2,  // things on or between the machine and its clients: `network` (11), `session` (12), and the render
+  client: 3,  // renderer-local settings (display, plugins, saved hubs, an embedded server). No category and no c
+};
+export const UI_NAV_TIER_NAME = {
+  1: 'machine',
+  2: 'link',
+  3: 'client',
 };
 
 // ---- ui_ranks ------------------------------------------------------

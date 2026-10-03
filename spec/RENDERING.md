@@ -83,31 +83,41 @@ A hub SHOULD expose the well-known channel for any capability it has, carrying a
 
 ## 3. Categories — the WHERE axis *(normative)*
 
-`category` (registry `ui_categories`) answers **where a catalog entry lives** in the navigation tree. It is a stable numeric id, never a display string — labels are the renderer's business and are localizable. The set is designed complete and is **frozen at the v1.0 tag**: adding a category later was ruled out ("adding categories later makes things awful") in favor of a wide-open overflow bucket (`other`) and a vendor range.
+`category` (registry `ui_categories`) answers **where a catalog entry lives** in the navigation tree. It is a stable numeric id, never a display string — labels are the renderer's business and are localizable. The set is designed complete and is **frozen at the v1.0 tag**: adding a category later was ruled out ("adding categories later makes things awful") in favor of a wide-open overflow bucket (`other`) and a vendor range. RFC-094, landed before the tag, is the last change to the set before it: it renamed 1 and retired 5 and 9.
 
-| Id | Category | Contains |
-|---|---|---|
-| 1 | `control` | Driving the machine now: move, pattern run/speed/depth, streams |
-| 2 | `motion` | Live physical telemetry |
-| 3 | `safety` | Faults, interlocks, e-stop state (the **stop affordance itself is rank-pinned**, §4 — not a menu item here) |
-| 4 | `limits` | Window + ceilings |
-| 5 | `library` | Stored content: presets, patterns, scripts, positions, profiles |
-| 6 | `playback` | Hub-local content transport: play/pause/seek/queue |
-| 7 | `auxiliary` | Secondary actuators: heat, lube, suction, inflation |
-| 8 | `automation` | Routines, schedules, scenes |
-| 9 | `tuning` | Engine internals, calibration |
-| 10 | `hardware` | Geometry, drive config, sensors, homing |
-| 11 | `network` | WiFi/BLE state, endpoints, provisioning |
-| 12 | `session` | Clients, roles, ownership, pairing/trust |
-| 13 | `system` | Power, thermals, memory, firmware, logs |
-| 14 | `other` | The defined overflow |
-| 15 | `setup` | The machine's **commissioning** surface (RFC-079): every writable configuration a person needs to make the machine usable. Network credentials (the SPEC §13.9 `provisioning` channel), machine name (the settings channel carrying `identity.name`, split out if it shares a channel with unrelated settings, since `category` is entry-level), accessory pairing (the accessory-admin channel), and the machine's own geometry and ceilings (rail length, travel window, speed/accel/jerk ceilings, degree-to-mm ratio and the like). Pinout and board-level facts stay out of the catalog. How motor motion becomes machine motion is the owner's configuration, entered here, never firmware knowledge. A client that has not been taught id 15 renders it under `other` |
+| Id | Category | Tier | Contains |
+|---|---|---|---|
+| 1 | `generator` | 1 `machine` | Driving the machine now: the generators and patterns, move, streams (RFC-094; was `control`) |
+| 2 | `motion` | 1 `machine` | Live physical telemetry; engine internals and calibration under subgroup Tuning (RFC-094) |
+| 3 | `safety` | 1 `machine` | Faults, interlocks, e-stop state (the **stop affordance itself is rank-pinned**, §4 — not a menu item here) |
+| 4 | `limits` | 1 `machine` | Window + ceilings |
+| 5 | *retired* | | `library`, retired pre-tag by RFC-094: folded into `system` (13), subgroup Library. Never reissued |
+| 6 | `playback` | 1 `machine` | Hub-local content transport: play/pause/seek/queue |
+| 7 | `auxiliary` | 1 `machine` | Secondary actuators: heat, lube, suction, inflation |
+| 8 | `automation` | 1 `machine` | Routines, schedules, scenes |
+| 9 | *retired* | | `tuning`, retired pre-tag by RFC-094: folded into `motion` (2), subgroup Tuning. Never reissued |
+| 10 | `hardware` | 1 `machine` | Geometry, drive config, sensors, homing |
+| 11 | `network` | 2 `link` | WiFi/BLE state, endpoints, provisioning |
+| 12 | `session` | 2 `link` | Clients, roles, ownership, pairing/trust |
+| 13 | `system` | 1 `machine` | Diagnostics and configuration: power, thermals, memory, firmware, logs; stored content (presets, patterns, scripts, positions, profiles) under subgroup Library (RFC-094) |
+| 14 | `other` | 1 `machine` | The defined overflow |
+| 15 | `setup` | 1 `machine` | The machine's **commissioning** surface (RFC-079): every writable configuration a person needs to make the machine usable. Network credentials (the SPEC §13.9 `provisioning` channel), machine name (the settings channel carrying `identity.name`, split out if it shares a channel with unrelated settings, since `category` is entry-level), accessory pairing (the accessory-admin channel), and the machine's own geometry and ceilings (rail length, travel window, speed/accel/jerk ceilings, degree-to-mm ratio and the like). Pinout and board-level facts stay out of the catalog. How motor motion becomes machine motion is the owner's configuration, entered here, never firmware knowledge. A client that has not been taught id 15 renders it under `other` |
 
 **Vendor range:** `0x40`–`0x7E` is reserved for vendor/device-defined categories, mirroring the retired `setting_categories`' device-defined tail — a hub declaring one MUST supply a label.
 
-**Graceful-extension rule (MUST):** a client MUST render any category id it does not recognize — including a gap between `14` and the vendor range, and any vendor id it has not been taught — under `other`, using the catalog-provided label. **Never dropped.** This structural valve is what makes freezing the set safe (fifteen since RFC-079 added `setup` before the tag): every future category, foreseen or not, is navigable on every client ever shipped.
+**Graceful-extension rule (MUST):** a client MUST render any category id it does not recognize — including a retired id (5, 9), a gap between `15` and the vendor range, and any vendor id it has not been taught — under `other`, using the catalog-provided label. **Never dropped.** This structural valve is what makes freezing the set safe (fifteen ids since RFC-079 added `setup`, thirteen live since RFC-094 retired 5 and 9, both before the tag): every future category, foreseen or not, is navigable on every client ever shipped.
 
 A category MAY carry a free-text `subgroup` beneath it (today's `.group` strings become subgroups, SPEC §8.8). The category tree, in registry order, IS the navigation skeleton every renderer shares.
+
+**Navigation tiers (RFC-094, MUST).** Above the categories sit three tiers, registry `ui_nav_tiers`, and every `ui_categories` row names its tier:
+
+| Id | Tier | Holds |
+|---|---|---|
+| 1 | `machine` | Things on the machine: every tier-1 category above, every vendor id, and every unrecognized id (it renders under `other`) |
+| 2 | `link` | Things on or between the machine and its clients: `network` (11), `session` (12), and the renderer-provided views of the protocol itself (pairing, the session view, the `0x0008` log channel) |
+| 3 | `client` | Renderer-local settings: display, plugins, saved hubs, an embedded server. No category and no catalog entry ever lands here |
+
+A renderer orders its navigation as tiers in registry order, then categories in registry order within a tier, then subgroups within a category. The tier is not on the wire: it is the category's registry row, so a hub cannot move a category between tiers. The tier-2 views that are not catalog entries are placed by membership only; the spec names them and does not emit them. Tier labels, like category labels, are the renderer's and are localizable.
 
 **Relationship to `setting_categories` (informative; corrected 2026-07-29):** retired. Phase C2 wired `ui_categories` onto catalog entries: entry key 10 now carries a `ui_categories` id — same wire key, new value vocabulary, a pre-tag restructuring the registry header permits. The five-value `setting_categories` is tombstoned in the registry (see the tombstone in [`registry/registry.yaml`](registry/registry.yaml)) and no consumer reads it; the shipped reference catalog emits `ui_categories` uniformly, and SPEC §18 item 23 records the wiring. An earlier revision of this paragraph deferred that wiring to "a later catalog-evolution RFC" — stale from the moment Phase C2 landed. [C-3 correction per operator ruling, 2026-07-29: ledger + shipped catalog win]
 
@@ -442,7 +452,7 @@ All classes render **one** category tree; they differ in *projection* and *defau
 | `handheld` | Phone | Hero + control surfaced | Categories as sections/tabs; `detail` one tap away. |
 | `full` | Desktop | Everything visible | Categories as panes. |
 
-**Ordering (all classes):** canonical category order from the registry (§3); within a category, catalog declaration order.
+**Ordering (all classes):** canonical tier, then category, order from the registry (§3); within a category, catalog declaration order.
 
 Class is selected, and re-selected while the client runs, by §12.1. There is no fourth class.
 

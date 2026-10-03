@@ -80,6 +80,42 @@ def emit_bits(p, section: dict, ns: str) -> None:
     p(f"}}  // namespace {ns}\n\n")
 
 
+def retired(entry: dict) -> bool:
+    """A `status: retired` row is burned: listed in the registry, never emitted
+    as a usable identifier, so no generated code can send it."""
+    return entry.get("status") == "retired"
+
+
+def live_categories(reg: dict) -> list:
+    """(id, row) for every live `ui_categories` row, in registry order."""
+    cats = reg["ui_categories"]
+    return [(k, cats[k]) for k in sorted(cats) if not retired(cats[k])]
+
+
+def emit_category_tiers(p, reg: dict) -> None:
+    """RFC-094: tier membership as a per-category attribute and as an
+    iterable table (RENDERING.md §3)."""
+    cats = live_categories(reg)
+    tiers = reg["ui_nav_tiers"]
+    p("namespace ui_category_tiers {\n")
+    for k, e in cats:
+        p(f"inline constexpr uint8_t {ident(e['name'])} = {e['tier']};  // {tiers[e['tier']]['name']}\n")
+    p("}  // namespace ui_category_tiers\n\n")
+    p("struct UiCategoryTier {\n    uint8_t category;\n    uint8_t tier;\n};\n\n")
+    p("// Registry order: tiers draw in id order, categories in this order within a tier.\n")
+    p("inline constexpr UiCategoryTier kUiCategoryTiers[] = {\n")
+    for k, e in cats:
+        p(f"    {{{k}, {e['tier']}}},  // {e['name']}\n")
+    p("};\n\n")
+    p("// Vendor, retired and unrecognized ids are tier 1: they render under `other`.\n")
+    p("constexpr uint8_t uiCategoryTier(uint8_t category) {\n")
+    p("    for (const UiCategoryTier& e : kUiCategoryTiers) {\n")
+    p("        if (e.category == category) return e.tier;\n")
+    p("    }\n")
+    p("    return ui_nav_tiers::machine;\n")
+    p("}\n\n")
+
+
 def gen(reg: dict) -> str:
     w = io.StringIO()
     p = w.write
@@ -157,6 +193,7 @@ def gen(reg: dict) -> str:
                         # setting_categories is RETIRED (tombstoned in registry.yaml);
                         # ui_categories is its wire-key-10 successor vocabulary.
                         ("ui_categories", "ui_categories"),
+                        ("ui_nav_tiers", "ui_nav_tiers"),
                         ("ui_ranks", "ui_ranks"),
                         ("value_aspects", "value_aspects"),
                         ("value_scopes", "value_scopes"),
@@ -173,8 +210,13 @@ def gen(reg: dict) -> str:
         p(f"namespace {ns} {{\n")
         for k in sorted(reg[section]):
             e = reg[section][k]
+            if retired(e):
+                p(f"// {k} {e['name']}: {e['note']}\n")
+                continue
             p(f"inline constexpr uint8_t {ident(e['name'])} = {k};  // {e['note']}\n")
         p(f"}}  // namespace {ns}\n\n")
+
+    emit_category_tiers(p, reg)
 
     # ---- Bit-flag spaces ----------------------------------------------------
     emit_bits(p, reg["setting_flags"], "setting_flags")
@@ -260,6 +302,7 @@ JS_CODE_TABLES = (
     ("NACK",               "nack_codes",          True,  4),
     # ---- RFC-047/048 rendering metamodel: the vocabularies a renderer needs --
     ("UI_CATEGORY",        "ui_categories",       True,  0),
+    ("UI_NAV_TIER",        "ui_nav_tiers",        True,  0),
     ("UI_RANK",            "ui_ranks",            True,  0),
     ("VALUE_ASPECT",       "value_aspects",       True,  0),
     ("VALUE_SCOPE",        "value_scopes",        True,  0),
@@ -322,6 +365,23 @@ def js_note(entry: dict) -> str:
     return f"  // {note[:96]}" if note else ""
 
 
+def emit_category_tiers_js(p, reg: dict) -> None:
+    """RFC-094: UI_CATEGORY_TIER is the per-category attribute (category id ->
+    tier id); UI_NAV_TIER_CATEGORIES is the iterable table (tier id -> category
+    ids in registry order). Vendor, retired and unrecognized ids are tier 1."""
+    cats = live_categories(reg)
+    p("// ---- ui_categories tier (RFC-094, RENDERING.md §3) " + "-" * 22 + "\n")
+    p("export const UI_CATEGORY_TIER = {\n")
+    for k, e in cats:
+        p(f"  {k}: {e['tier']},  // {e['name']}\n")
+    p("};\n")
+    p("export const UI_NAV_TIER_CATEGORIES = {\n")
+    for t in sorted(reg["ui_nav_tiers"]):
+        ids = ", ".join(str(k) for k, e in cats if e["tier"] == t)
+        p(f"  {t}: [{ids}],\n")
+    p("};\n\n")
+
+
 def gen_js(reg: dict) -> str:
     w = io.StringIO()
     p = w.write
@@ -345,17 +405,23 @@ def gen_js(reg: dict) -> str:
     for export, section, reverse, hexn in JS_CODE_TABLES:
         entries = reg[section]
         p(f"// ---- {section} " + "-" * max(1, 62 - len(section)) + "\n")
+        live = [code for code in sorted(entries) if not retired(entries[code])]
         p(f"export const {export} = {{\n")
         for code in sorted(entries):
             e = entries[code]
+            if retired(e):
+                p(f"  // {js_num(code, hexn)} {e['name']}: {js_note(e)[5:]}\n")
+                continue
             p(f"  {js_ident(e['name'])}: {js_num(code, hexn)},{js_note(e)}\n")
         p("};\n")
         if reverse:
             p(f"export const {export}_NAME = {{\n")
-            for code in sorted(entries):
+            for code in live:
                 p(f"  {js_num(code, hexn)}: {js_str(entries[code]['name'])},\n")
             p("};\n")
         p("\n")
+        if section == "ui_categories":
+            emit_category_tiers_js(p, reg)
 
     for export, section in JS_BIT_TABLES:
         entries = reg[section]

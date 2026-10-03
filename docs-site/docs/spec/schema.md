@@ -80,7 +80,7 @@ channel-entry = {
   ? 9  => { + int => schema-field }, ; CBOR classes (INTENT, EVENT): key -> field
   ? 12 => store-descriptor,    ; STORE class only (RFC-021)
   ; ---- RFC-009 settings metamodel (entry level) ----
-  ? 10 => uint,            ; category: registry ui_categories (RFC-047/048, Phase C2). 1..15 registered
+  ? 10 => uint,            ; category: registry ui_categories (RFC-047/048, Phase C2). 1..15 registered (5 and 9 retired, RFC-094)
                            ;   (+ vendor 0x40..0x7E device-defined); 0 and 16..0x3F reserved. Was
                            ;   setting_categories (0..4) pre-Phase-C2 — same wire key, new vocabulary,
                            ;   a pre-tag restructuring (registry header permits it before v1.0).

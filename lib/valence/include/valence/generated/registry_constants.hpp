@@ -329,22 +329,28 @@ inline constexpr uint8_t step = 3;  // held value with instantaneous transitions
 }  // namespace curve_families
 
 namespace ui_categories {
-inline constexpr uint8_t control = 1;  // driving the machine now: move, pattern run/speed/depth, streams
-inline constexpr uint8_t motion = 2;  // live physical telemetry
+inline constexpr uint8_t generator = 1;  // RFC-094 (was `control`): driving the machine now: the generators and patterns, move, streams
+inline constexpr uint8_t motion = 2;  // live physical telemetry; since RFC-094 also the engine internals and calibration that were `tuning` (9), under subgroup Tuning
 inline constexpr uint8_t safety = 3;  // faults, interlocks, e-stop state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here
 inline constexpr uint8_t limits = 4;  // window + ceilings
-inline constexpr uint8_t library = 5;  // stored content: presets, patterns, scripts, positions, profiles
+// 5 library: RETIRED pre-tag by RFC-094: folded into `system` (13) under subgroup Library. Never reissued.
 inline constexpr uint8_t playback = 6;  // hub-local content transport: play/pause/seek/queue
 inline constexpr uint8_t auxiliary = 7;  // secondary actuators: heat, lube, suction, inflation
 inline constexpr uint8_t automation = 8;  // routines, schedules, scenes
-inline constexpr uint8_t tuning = 9;  // engine internals, calibration
+// 9 tuning: RETIRED pre-tag by RFC-094: folded into `motion` (2) under subgroup Tuning. Never reissued.
 inline constexpr uint8_t hardware = 10;  // geometry, drive config, sensors, homing
 inline constexpr uint8_t network = 11;  // WiFi/BLE state, endpoints, provisioning
 inline constexpr uint8_t session = 12;  // clients, roles, ownership, pairing/trust
-inline constexpr uint8_t system = 13;  // power, thermals, memory, firmware, logs
+inline constexpr uint8_t system = 13;  // diagnostics and configuration: power, thermals, memory, firmware, logs; since RFC-094 also the stored content that was `library` (5) (presets, patterns, scripts, positions, profiles), under subgroup Library
 inline constexpr uint8_t other = 14;  // the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule
 inline constexpr uint8_t setup = 15;  // RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory pairing, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode client opens here with the wizard pattern (§13.4.1).
 }  // namespace ui_categories
+
+namespace ui_nav_tiers {
+inline constexpr uint8_t machine = 1;  // things on the machine: every tier-1 category, every vendor id and every unrecognized id
+inline constexpr uint8_t link = 2;  // things on or between the machine and its clients: `network` (11), `session` (12), and the renderer-provided views of the protocol itself (pairing, the session view, the 0x0008 log)
+inline constexpr uint8_t client = 3;  // renderer-local settings (display, plugins, saved hubs, an embedded server). No category and no catalog entry ever lands here; the id is reserved so every renderer draws the same three, in the same order
+}  // namespace ui_nav_tiers
 
 namespace ui_ranks {
 inline constexpr uint8_t hero = 0;  // the machine's face; surfaced by default on every renderer class
@@ -474,6 +480,52 @@ inline constexpr uint8_t out_max = 11;  // float: target physical units
 inline constexpr uint8_t params = 12;  // array of up to 16 floats, in the order the map lists them
 inline constexpr uint8_t enabled = 13;  // bool: persisted. `armed` is volatile, never stored, false at boot (§11.6)
 }  // namespace relationship
+
+namespace ui_category_tiers {
+inline constexpr uint8_t generator = 1;  // machine
+inline constexpr uint8_t motion = 1;  // machine
+inline constexpr uint8_t safety = 1;  // machine
+inline constexpr uint8_t limits = 1;  // machine
+inline constexpr uint8_t playback = 1;  // machine
+inline constexpr uint8_t auxiliary = 1;  // machine
+inline constexpr uint8_t automation = 1;  // machine
+inline constexpr uint8_t hardware = 1;  // machine
+inline constexpr uint8_t network = 2;  // link
+inline constexpr uint8_t session = 2;  // link
+inline constexpr uint8_t system = 1;  // machine
+inline constexpr uint8_t other = 1;  // machine
+inline constexpr uint8_t setup = 1;  // machine
+}  // namespace ui_category_tiers
+
+struct UiCategoryTier {
+    uint8_t category;
+    uint8_t tier;
+};
+
+// Registry order: tiers draw in id order, categories in this order within a tier.
+inline constexpr UiCategoryTier kUiCategoryTiers[] = {
+    {1, 1},  // generator
+    {2, 1},  // motion
+    {3, 1},  // safety
+    {4, 1},  // limits
+    {6, 1},  // playback
+    {7, 1},  // auxiliary
+    {8, 1},  // automation
+    {10, 1},  // hardware
+    {11, 2},  // network
+    {12, 2},  // session
+    {13, 1},  // system
+    {14, 1},  // other
+    {15, 1},  // setup
+};
+
+// Vendor, retired and unrecognized ids are tier 1: they render under `other`.
+constexpr uint8_t uiCategoryTier(uint8_t category) {
+    for (const UiCategoryTier& e : kUiCategoryTiers) {
+        if (e.category == category) return e.tier;
+    }
+    return ui_nav_tiers::machine;
+}
 
 namespace setting_flags {
 inline constexpr uint8_t advanced = 1u << 0;  // hide behind an 'advanced' affordance by default; NEVER remove from the surface

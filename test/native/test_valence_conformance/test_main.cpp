@@ -170,7 +170,7 @@ TEST_CASE("M2b: RFC-009 annotation coherence") {
         c.entries[0].categoryLabel = "ValenceDrive";
         CHECK(checkCatalog(c).ok());
     }
-    SUBCASE("a registered ui_categories id (1..14) needs no label") {
+    SUBCASE("a registered ui_categories id (1..15) needs no label") {
         Catalog32 c;
         c.addEntry({.id = 0x0080, .name = "motion",
                     .cls = ChannelClass::STATE, .dir = Direction::h2c,
@@ -234,4 +234,22 @@ TEST_CASE("M2b: EntryTooLarge needs the scratch overload and fires at the cap") 
     static Catalog32 mini;
     buildMiniCatalog(mini);
     CHECK(checkCatalog(mini, scratch).ok());
+}
+
+TEST_CASE("RFC-094: navigation tiers, attribute and table agree") {
+    static_assert(uiCategoryTier(ui_categories::generator) == ui_nav_tiers::machine);
+    static_assert(uiCategoryTier(ui_categories::session) == ui_nav_tiers::link);
+    static_assert(uiCategoryTier(ui_categories::network) == ui_category_tiers::network);
+    // Retired (5, 9), gap and vendor ids render under `other`, so they are tier 1.
+    static_assert(uiCategoryTier(5) == ui_nav_tiers::machine);
+    static_assert(uiCategoryTier(9) == ui_nav_tiers::machine);
+    static_assert(uiCategoryTier(0x64) == ui_nav_tiers::machine);
+    int prev = 0;
+    for (const UiCategoryTier& e : kUiCategoryTiers) {
+        CHECK(e.category > prev);
+        CHECK(e.category != 5);
+        CHECK(e.category != 9);
+        CHECK(e.tier != ui_nav_tiers::client);
+        prev = e.category;
+    }
 }
