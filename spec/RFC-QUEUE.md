@@ -1744,6 +1744,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
 | [096](#rfc-096----a----separator-in-a-group-string-names-a-section) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
 | [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
+| [098](#rfc-098----rail-ownership-is-released-when-its-source-goes-quiet-control-owner-names-each-slots-source-kind) | Quiet release of rail ownership; source kind on control-owner | Draft 2026-10-03 |
 
 ---
 
@@ -7993,3 +7994,56 @@ say exactly which, future-us will want the receipts.*
 - **Wire impact.** None today (no hub declares 0x0001); the first hub that
   does emits this shape.
 - **Open questions.** None.
+
+## RFC-098 -- Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind
+
+- **Status:** DRAFT (operator ruling 2026-10-03: "jogging within the window
+  while it is idle is fine, not during streaming or gen"; measured gap
+  2026-10-03 on valencesim and the P4).
+- **Origin.** Phosphor hid the jog tape at idle because `control-owner`
+  showed a slot still owned. Measured: a session that streams and then
+  stops is refused SOURCE_CONFLICT on its own jog at idle (the hub counts
+  `_owner[Stream]` until the session leaves); once session A has jogged,
+  session B's idle jog is refused TAKEOVER_REQUIRED (the jog slot is held
+  for A's life). Both follow §11.4 as written. Neither is what the operator
+  means by "idle".
+- **Problem.** §11.4 ties ownership to the session, not to the source
+  being live. A slot stays owned after the stream's last bundle has played
+  out, after a jog has settled, after a generator stopped (the reference
+  releases the generator slot on stop, but the spec does not say it must).
+  "Idle" therefore has no wire meaning, and a client cannot draw the jog
+  tape honestly. Separately, `control-owner` carries owner session ids
+  per slot but no vocabulary for which slot is which source, so a client
+  guesses from field order (the plugin's known shortcut).
+- **Proposed change.**
+  1. **Quiet release (hub MUST).** A source's ownership ends when the
+     source is quiet: a generator on stop; a jog when the move settles
+     (plan at rest); a stream when its last admitted bundle has played out
+     and no bundle has arrived for `stream_quiet_release_ms` (registry
+     limit, 500 ms default, never below one schedule horizon). Ownership is
+     re-acquired by the next intent or bundle under the normal §11.4
+     rules. The session keeps its grants and tier; only the rail slot is
+     released. `control-owner` publishes the release.
+  2. **Idle jog.** With every slot free and no PAUSE, a jog inside the
+     travel window is admitted from any `control` session without
+     override; override remains the only way outside the window (§11.1).
+  3. **Source kind on `control-owner`.** Each slot carries a
+     `source_kinds` value (registry: jog, stream, classic, advanced,
+     remote, reserved) beside its owner id, and the control-owner entry's
+     option labels stop being the only naming. Clients draw the plan strip
+     for stream, classic and advanced owners and the jog tape otherwise.
+- **Pros.** "Idle" becomes a wire fact; the tape and the plan strip stop
+  guessing; a client's earlier stream never locks its own jog; the
+  plugin's field-order shortcut retires.
+- **Cons.** A stream that pauses longer than the quiet window loses the
+  slot and re-acquires it on the next bundle (one `control-owner` push
+  each way); a jog pinned by a slow settle holds the slot a little longer.
+- **Cost.** SPEC §11.4 two paragraphs, registry one limit and one small
+  vocabulary, codegen; library arbiter release on quiet; Nucleus
+  `railOwned()` and the arbiter's owner bookkeeping, sim, fixture;
+  Phosphor `railOwned()` reads the kind instead of the running flags.
+- **Wire impact.** One field per slot on `control-owner` (etag moves on
+  adopting hubs); one new limit.
+- **Open questions.** (1) 500 ms quiet window, or tie it to the grant's
+  horizon only. (2) Does a quiet release of a stream also clear a PAUSE it
+  never latched (no: command-driven sources latch nothing, §11.4).
