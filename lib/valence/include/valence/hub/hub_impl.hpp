@@ -467,25 +467,40 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     const HelloMsg& h = helloR.value();
 
     // §6.3 duplicate identity: a LIVE session evicts as before. A STALE one
-    // REATTACHES (RFC-042 §6.3 migration path) — this is a resumption, not a
-    // competing claimant, so it skips eviction, BUSY pressure, and grant
-    // renegotiation entirely; handleReattach() answers with its own WELCOME.
+    // whose token still proves the same role REATTACHES (RFC-042 §6.3
+    // migration path) — this is a resumption, not a competing claimant, so it
+    // skips eviction, BUSY pressure, and grant renegotiation entirely;
+    // handleReattach() answers with its own WELCOME.
     std::span<const std::byte> instanceSpan(h.instance_id);
+    // Derived at most ONCE per HELLO: a delegate credential may be single-use
+    // (validateToken() can consume it), so the fresh path below reuses this.
+    std::optional<AccessLevel> derived;
     if (Slot* dup = findSlotByInstance(instanceSpan, &slot)) {
         if (dup->session.state == HubSessionState::STALE) {
-            handleReattach(slot, *dup, h, nowMs);
-            return;
+            derived = tokenRole(instanceSpan, h);
+            // A resumption keeps the grants its role negotiated, so it is only
+            // a resumption at the SAME role. A token that now proves another one
+            // (granted while parked, revoked, re-approved) would keep the old
+            // role's grants: an upgraded admin never sees its configure
+            // channels, a revoked device keeps receiving them. End the parked
+            // session and run this HELLO fresh.
+            if (*derived == dup->session.role) {
+                handleReattach(slot, *dup, h, *derived, nowMs);
+                return;
+            }
+            teardownSession(*dup, nowMs);
+        } else {
+            GoodbyeMsg gb;
+            gb.code = NackCode::DUPLICATE_INSTANCE;
+            std::array<std::byte, 64> gbuf{};
+            size_t glen = encodeGoodbye(gb, std::span<std::byte>(gbuf));
+            if (glen > 0 && dup->transport != nullptr) {
+                sendFrameTo(*dup->transport, FrameType::GOODBYE, 0, std::span<const std::byte>(gbuf.data(), glen));
+            }
+            // §6.3 + §6.8: the evicted duplicate's session ends here — release its
+            // source ownership too (GOODBYE frame already sent above).
+            teardownSession(*dup, nowMs);
         }
-        GoodbyeMsg gb;
-        gb.code = NackCode::DUPLICATE_INSTANCE;
-        std::array<std::byte, 64> gbuf{};
-        size_t glen = encodeGoodbye(gb, std::span<std::byte>(gbuf));
-        if (glen > 0 && dup->transport != nullptr) {
-            sendFrameTo(*dup->transport, FrameType::GOODBYE, 0, std::span<const std::byte>(gbuf.data(), glen));
-        }
-        // §6.3 + §6.8: the evicted duplicate's session ends here — release its
-        // source ownership too (GOODBYE frame already sent above).
-        teardownSession(*dup, nowMs);
     }
 
     // §6.3 admission (RFC-055): HUB_AT_CAPACITY once kHubMaxSessions SESSIONS (not physical slots)
@@ -532,18 +547,8 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
         slot.session.session_id = _rng.nextU32();
     } while (slot.session.session_id == 0);
     std::memcpy(slot.session.instance_id.data(), h.instance_id.data(), slot.session.instance_id.size());
-    // §12.2: the hub's own pairing store is consulted FIRST (instance_id +
-    // token -> role); a delegate is still free to grant a role for tokens it
-    // recognizes by its own mechanism (e.g. a pre-provisioned/legacy token)
-    // when the pairing store doesn't know this pair — "override-if-still-
-    // watch", never the reverse (the pairing store's grant is never
-    // downgraded by falling through to the delegate).
-    AccessLevel role = h.has_token
-                            ? _pairing.validate(instanceSpan, std::span<const std::byte>(h.token), _crypto)
-                            : AccessLevel::watch;
-    if (role == AccessLevel::watch) {
-        role = _delegate.validateToken(instanceSpan, std::span<const std::byte>(h.token), h.has_token);
-    }
+    // §12.2: the role the token proves (tokenRole(): the pairing store first).
+    AccessLevel role = derived ? *derived : tokenRole(instanceSpan, h);
 
     // ---- M4b: remember WHO this is, in hub-owned bytes ----------------------
     // HELLO's strings are views into the frame buffer and die with this
@@ -772,17 +777,33 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     _delegate.onSessionJoined(slot.session.session_id);
 }
 
+// §12.2: the hub's own pairing store is consulted FIRST (instance_id + token ->
+// role); a delegate is still free to grant a role for tokens it recognizes by
+// its own mechanism (e.g. a pre-provisioned/legacy token) when the pairing store
+// doesn't know this pair — "override-if-still-watch", never the reverse (the
+// pairing store's grant is never downgraded by falling through to the
+// delegate). Call at most once per HELLO: validateToken() may consume a
+// single-use credential.
+inline AccessLevel Hub::tokenRole(std::span<const std::byte> instanceSpan, const HelloMsg& h) {
+    const AccessLevel role = h.has_token
+                                 ? _pairing.validate(instanceSpan, std::span<const std::byte>(h.token), _crypto)
+                                 : AccessLevel::watch;
+    if (role != AccessLevel::watch) return role;
+    return _delegate.validateToken(instanceSpan, std::span<const std::byte>(h.token), h.has_token);
+}
+
 // ---- RFC-042 path B — reattach ----------------------------------------------
 // A fresh HELLO names a STALE session's instance_id on a NEW transport. This is
 // §6.3's migration path applied to a resumption rather than a live-duplicate
 // hop: SAME session_id, SAME grants (subs and publishGrants are carried over
 // verbatim, not renegotiated from this HELLO's wishes — RFC-042's own design
-// table), role RE-DERIVED from the presented token exactly as any HELLO does.
+// table). handleHello() reattaches only when the presented token proves the
+// role the session already had (`role`); a changed role runs a fresh HELLO.
 // No BUSY pressure is spent (not new capacity) and no teardown/loss-policy runs
 // on `stale` (a migration is not a session loss, §6.3) — its slot is simply
 // vacated once its state has moved to `slot`.
 
-inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint32_t nowMs) {
+inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, AccessLevel role, uint32_t nowMs) {
     // `slot` may itself already hold an unrelated session (a re-HELLO on a
     // transport that was previously talking to a DIFFERENT identity) —
     // release that first, exactly like a fresh HELLO does.
@@ -839,16 +860,8 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
     if (slot.hasClientNonce) slot.clientNonce = h.trust_map.client_nonce;
     slot.sigRequested = h.has_trust && h.trust_map.has_sig_request && h.trust_map.sig_request;
 
-    // ---- Role RE-DERIVED from the presented token, exactly as any HELLO -----
-    // (§6.3's migration text): a revoked credential downgrades correctly; an
-    // unrevoked one cheaply reproduces the identical role it already had.
-    std::span<const std::byte> instanceSpan(h.instance_id);
-    AccessLevel role = h.has_token
-                            ? _pairing.validate(instanceSpan, std::span<const std::byte>(h.token), _crypto)
-                            : AccessLevel::watch;
-    if (role == AccessLevel::watch) {
-        role = _delegate.validateToken(instanceSpan, std::span<const std::byte>(h.token), h.has_token);
-    }
+    // ---- Role: re-derived from the presented token by handleHello(), which
+    // only reattaches when it equals the retained one (§6.3's migration text).
     if (h.has_token) {
         slot.session.role = role;  // applyTrustObservation reads the pre-observation role
         role = applyTrustObservation(slot, nowMs);
@@ -1783,11 +1796,17 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     }
 
     if (hasSafetyOp && safetyOp == safety_ops::release) {
+        const bool latched = (_safetyWord & safety_bits::ESTOP) != 0;
         if (!releaseEstop()) {
             NackMsg n;
             n.code = NackCode::CLEAR_REFUSED;
             n.has_intent_id = true;
             n.intent_id = m.intent_id;
+            // §16.1: with a latch held the refusal was canClearEstop()'s and its
+            // reason is the delegate's; without one there was nothing to release.
+            n.detail = latched ? _delegate.intentNackDetail(m.channel_id, n.code)
+                               : std::string_view("no e-stop latched");
+            n.has_detail = !n.detail.empty();
             sendNackTracked(slot, n, nowMs);
             return;
         }
@@ -1880,6 +1899,12 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
             n.code = refuse;
             n.has_intent_id = true;
             n.intent_id = m.intent_id;
+            // §16.1: two of the three are the same INTERLOCK family a client
+            // cannot otherwise tell apart from the delegate's own.
+            n.detail = refuse == NackCode::ESTOP_ACTIVE ? std::string_view("e-stop latched")
+                       : refuse == NackCode::INTERLOCK  ? std::string_view("override latched: return first")
+                                                        : std::string_view("home required");
+            n.has_detail = true;
             sendNackTracked(slot, n, nowMs);
             return;
         }
@@ -1899,6 +1924,10 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
             n.code = NackCode::INTERLOCK;
             n.has_intent_id = true;
             n.intent_id = m.intent_id;
+            // §16.1: the delegate's own reason for this refusal, else the gate's.
+            n.detail = _delegate.intentNackDetail(m.channel_id, n.code);
+            if (n.detail.empty()) n.detail = "paused";
+            n.has_detail = true;
             sendNackTracked(slot, n, nowMs);
             return;
         }
@@ -2598,6 +2627,12 @@ inline void Hub::pumpStatePacing(Slot& slot, uint32_t nowMs) {
 }
 
 // ---- Publication API --------------------------------------------------------
+
+inline void Hub::goodbyeAll(NackCode code) {
+    for (auto& slot : _slots) {
+        if (slot.session.occupied()) evictSlot(slot, code, _lastUpdateMs);
+    }
+}
 
 inline bool Hub::publishState(uint16_t channel_id, std::span<const std::byte> payload) {
     return _retained.publish(channel_id, payload).has_value();
@@ -3543,12 +3578,11 @@ inline void Hub::trackCriticalSend(Slot& slot, bool sendOk, uint32_t nowMs) {
     }
 }
 
-// Reserved for admin evict (session_admin_ops::evict) and duplicate-LIVE-
-// instance eviction — never for slow-consumer stalls (see trackCriticalSend(),
-// which called this function until RFC-051 and now calls parkAndDetach()
-// instead). Both admin evict and duplicate-instance handling currently inline
-// this same GOODBYE+teardownSession shape rather than calling it; it stays
-// under this name and doc so a future unification has one obvious target.
+// Reserved for genuine ends: admin evict (session_admin_ops::evict),
+// duplicate-LIVE-instance eviction and goodbyeAll() — never for slow-consumer
+// stalls (trackCriticalSend() parks instead, RFC-051). Admin evict and
+// duplicate-instance handling inline this same GOODBYE+teardownSession shape
+// rather than calling it; goodbyeAll() is its one caller.
 inline void Hub::evictSlot(Slot& slot, NackCode code, uint32_t nowMs) {
     if (slot.session.occupied()) {
         GoodbyeMsg gb;

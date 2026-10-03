@@ -1288,6 +1288,77 @@ TEST_CASE("§16.1: a delegate refusal carries its detail on the NACK; none when 
     CHECK(rig.del.nacks[2].detail.size() == limits::nack_detail_max_bytes);
 }
 
+// rfc-xhg: the refusals the HUB makes carry a §16.1 detail too. A release the
+// application will not grant and a motion intent it will not admit under
+// PAUSE say why in its own words (intentNackDetail); the resume gates, and a
+// release with nothing latched, name themselves.
+TEST_CASE("§16.1: hub-made refusals carry a detail (release, resume, the PAUSE gate)") {
+    SafetyRig rig(/*withToken=*/true);
+    rig.hubDelegate.channelToSource[0x0084] = 1;
+    auto lastNack = [&]() -> const RecordedNack& {
+        REQUIRE_FALSE(rig.del.nacks.empty());
+        return rig.del.nacks.back();
+    };
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::CLEAR_REFUSED);
+    CHECK(lastNack().detail == "no e-stop latched");
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::estop)).has_value());
+    rig.step();
+    rig.hubDelegate.allowClearEstop = false;
+    rig.hubDelegate.refuseDetail = "motion not at rest";
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::CLEAR_REFUSED);
+    CHECK(lastNack().detail == "motion not at rest");
+
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::ESTOP_ACTIVE);
+    CHECK(lastNack().detail == "e-stop latched");
+
+    rig.hubDelegate.allowClearEstop = true;
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    REQUIRE(rig.hub->pauseLatched());
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.hub->safetyModes() == safety_mode_bits::OVERRIDE);
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::INTERLOCK);
+    CHECK(lastNack().detail == "override latched: return first");
+
+    rig.hubDelegate.refuseDetail = "jog only";
+    REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::INTERLOCK);
+    CHECK(lastNack().detail == "jog only");
+    rig.hubDelegate.refuseDetail = {};
+    REQUIRE(rig.client->sendIntent(0x0084, makeSpeedIntent(100.0f)).has_value());
+    rig.step();
+    CHECK(lastNack().code == NackCode::INTERLOCK);
+    CHECK(lastNack().detail == "paused");
+}
+
+TEST_CASE("§16.1: resume refused NOT_HOMED says home required") {
+    SafetyRig rig(/*withToken=*/true);
+    rig.hub->setEstopCutsPower(true);
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::estop)).has_value());
+    rig.step();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::release)).has_value());
+    rig.step();
+    REQUIRE(rig.hub->pauseLatched());
+    rig.del.nacks.clear();
+    REQUIRE(rig.client->sendIntent(0x0005, makeSafetyOp(safety_ops::resume)).has_value());
+    rig.step();
+    REQUIRE(rig.del.nacks.size() == 1);
+    CHECK(rig.del.nacks[0].code == NackCode::NOT_HOMED);
+    CHECK(rig.del.nacks[0].detail == "home required");
+}
+
 TEST_CASE("RFC-085: override carries PAUSE; resume is refused until return arrives") {
     SafetyRig rig(/*withToken=*/true);
 

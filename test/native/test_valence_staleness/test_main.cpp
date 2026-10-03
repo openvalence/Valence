@@ -830,3 +830,177 @@ TEST_CASE("STALE-08: a safety broadcast skips a PARKED slot instead of dereferen
     CHECK((uint8_t((*snap)[0]) & safety_bits::ESTOP) != 0);
     CHECK((uint8_t((*snap)[8]) & safety_mode_bits::OVERRIDE) != 0);
 }
+
+// ---- STALE-09 ---------------------------------------------------------------
+// rfc-7au: a reattach keeps the grants its role negotiated, so it happens only
+// at the SAME role. A parked session whose instance comes back proving another
+// role (a token granted while it was parked, or revoked) ends, and the HELLO
+// runs fresh: new session_id, grants judged against the new role.
+namespace {
+constexpr uint16_t kControlOnlyCh = 0x0090;
+
+void makeTieredCatalog(Catalog32& c) {
+    makeStaleCatalog(c);
+    c.addEntry({.id = kControlOnlyCh, .name = "control-only",
+                .cls = ChannelClass::STATE, .dir = Direction::h2c,
+                .access = AccessLevel::control, .maxRateHz = 0.0f,
+                .defaultPriority = Priority::normal});
+    c.addLayoutField({.name = "level", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+    REQUIRE(c.ok());
+}
+
+bool grants(const WelcomeMsg& w, uint16_t channel_id) {
+    for (uint32_t i = 0; i < w.grants_count; ++i) {
+        if (w.grants[i].channel_id == channel_id) return true;
+    }
+    return false;
+}
+
+std::vector<DecodedReply> drainAll(ITransport& ep) {
+    std::vector<DecodedReply> out;
+    while (auto fb = ep.read()) {
+        auto h = fb->header();
+        if (!h) continue;
+        auto pl = fb->payload();
+        out.push_back(DecodedReply{FrameType(h->type), h->channel, std::vector<std::byte>(pl.begin(), pl.end())});
+    }
+    return out;
+}
+}  // namespace
+
+TEST_CASE("STALE-09: a parked session whose token now proves another role runs a fresh HELLO") {
+    Catalog32 cat;
+    makeTieredCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(9010);
+    StaleDelegate del;
+    Hub hub(cat, clock, rng, del);
+    const std::array<std::byte, 1> level{std::byte{5}};
+    REQUIRE(hub.publishState(kControlOnlyCh, std::span<const std::byte>(level)));
+    const std::vector<SubWish> wishes = {{kTelemetryCh, 5.0f, 1}, {kControlOnlyCh, 0.0f, 1}};
+
+    SUBCASE("upgrade: a watch session parks, its instance returns with a control token") {
+        InProcessLink first(clock, rng);
+        REQUIRE(hub.attachTransport(first.endpointA()));
+        REQUIRE(first.endpointB().open());
+        const WelcomeMsg w1 = connectSession(hub, clock, first.endpointB(), 31, /*control=*/false, wishes);
+        CHECK_FALSE(grants(w1, kControlOnlyCh));
+        hub.detachTransport(first.endpointA());
+        REQUIRE(hub.sessionBySlot(0)->state == HubSessionState::STALE);
+
+        InProcessLink second(clock, rng);
+        REQUIRE(hub.attachTransport(second.endpointA()));
+        REQUIRE(second.endpointB().open());
+        writeHello(second.endpointB(), 31, /*control=*/true, wishes, w1.catalog_etag);
+        const auto replies = tickAndDrain(hub, clock, second.endpointB());
+        const auto w2 = findWelcome(replies);
+        REQUIRE(w2.has_value());
+        CHECK(w2->session_id != w1.session_id);
+        CHECK(w2->roles == uint8_t(AccessLevel::control));
+        CHECK(grants(*w2, kControlOnlyCh));
+        CHECK(hub.sessionCount() == 1);  // the parked session ended, nothing leaked
+
+        bool pushed = false;
+        for (const auto& r : replies) pushed = pushed || (r.type == FrameType::STATE && r.channel == kControlOnlyCh);
+        CHECK(pushed);
+    }
+
+    SUBCASE("downgrade: a control session parks, its instance returns without the token") {
+        InProcessLink first(clock, rng);
+        REQUIRE(hub.attachTransport(first.endpointA()));
+        REQUIRE(first.endpointB().open());
+        const WelcomeMsg w1 = connectSession(hub, clock, first.endpointB(), 32, /*control=*/true, wishes);
+        REQUIRE(grants(w1, kControlOnlyCh));
+        hub.detachTransport(first.endpointA());
+        REQUIRE(hub.sessionBySlot(0)->state == HubSessionState::STALE);
+
+        InProcessLink second(clock, rng);
+        REQUIRE(hub.attachTransport(second.endpointA()));
+        REQUIRE(second.endpointB().open());
+        writeHello(second.endpointB(), 32, /*control=*/false, wishes, w1.catalog_etag);
+        const auto w2 = findWelcome(tickAndDrain(hub, clock, second.endpointB()));
+        REQUIRE(w2.has_value());
+        CHECK(w2->session_id != w1.session_id);
+        CHECK(w2->roles == uint8_t(AccessLevel::watch));
+        CHECK_FALSE(grants(*w2, kControlOnlyCh));
+        CHECK(hub.sessionCount() == 1);
+
+        // The control-only channel no longer reaches it.
+        REQUIRE(hub.publishState(kControlOnlyCh, std::span<const std::byte>(level)));
+        for (int i = 0; i < 3; ++i) {
+            for (const auto& r : tickAndDrain(hub, clock, second.endpointB())) {
+                CHECK_FALSE((r.type == FrameType::STATE && r.channel == kControlOnlyCh));
+            }
+        }
+    }
+}
+
+// ---- STALE-10 ---------------------------------------------------------------
+// rfc-ia3, the library half: a GOODBYE the hub reads before the transport
+// detaches ends the session; a detach that lands first parks it. So a port
+// that sees a close with frames still queued lets the hub read them first.
+TEST_CASE("STALE-10: GOODBYE read before the detach ends the session; a detach first parks it") {
+    Catalog32 cat;
+    makeStaleCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(9011);
+    StaleDelegate del;
+    Hub hub(cat, clock, rng, del);
+
+    std::array<std::byte, 32> gb{};
+    const size_t gbLen = encodeGoodbye(GoodbyeMsg{.code = NackCode::NORMAL_CLOSURE}, std::span<std::byte>(gb));
+    REQUIRE(gbLen > 0);
+
+    InProcessLink read(clock, rng);
+    REQUIRE(hub.attachTransport(read.endpointA()));
+    REQUIRE(read.endpointB().open());
+    connectSession(hub, clock, read.endpointB(), 41, /*control=*/false, {{kTelemetryCh, 5.0f, 1}});
+    writeFrame(read.endpointB(), FrameType::GOODBYE, 0, std::span<const std::byte>(gb.data(), gbLen));
+    tickAndDrain(hub, clock, read.endpointB());
+    hub.detachTransport(read.endpointA());
+    CHECK(hub.sessionCount() == 0);
+
+    InProcessLink unread(clock, rng);
+    REQUIRE(hub.attachTransport(unread.endpointA()));
+    REQUIRE(unread.endpointB().open());
+    connectSession(hub, clock, unread.endpointB(), 42, /*control=*/false, {{kTelemetryCh, 5.0f, 1}});
+    writeFrame(unread.endpointB(), FrameType::GOODBYE, 0, std::span<const std::byte>(gb.data(), gbLen));
+    hub.detachTransport(unread.endpointA());
+    tickAndDrain(hub, clock, unread.endpointB());
+    REQUIRE(hub.sessionCount() == 1);
+    CHECK(hub.sessionBySlot(0)->state == HubSessionState::STALE);
+}
+
+// ---- STALE-11 ---------------------------------------------------------------
+// rfc-k75: goodbyeAll() before a planned reboot (§9.3 reboot-commit). Every
+// session with a transport hears GOODBYE with the code, and every session
+// ends, a parked one included.
+TEST_CASE("STALE-11: goodbyeAll(REBOOTING) GOODBYEs every session and ends each") {
+    Catalog32 cat;
+    makeStaleCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(9012);
+    StaleDelegate del;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink a(clock, rng);
+    InProcessLink b(clock, rng);
+    InProcessLink parked(clock, rng);
+    for (InProcessLink* l : {&a, &b, &parked}) {
+        REQUIRE(hub.attachTransport(l->endpointA()));
+        REQUIRE(l->endpointB().open());
+    }
+    connectSession(hub, clock, a.endpointB(), 51, /*control=*/true, {{kTelemetryCh, 5.0f, 1}});
+    connectSession(hub, clock, b.endpointB(), 52, /*control=*/false, {{kTelemetryCh, 5.0f, 1}});
+    connectSession(hub, clock, parked.endpointB(), 53, /*control=*/false, {{kTelemetryCh, 5.0f, 1}});
+    hub.detachTransport(parked.endpointA());
+    REQUIRE(hub.sessionCount() == 3);
+
+    hub.goodbyeAll(NackCode::REBOOTING);
+    CHECK(hub.sessionCount() == 0);
+    for (InProcessLink* l : {&a, &b}) {
+        const auto g = findGoodbye(drainAll(l->endpointB()));
+        REQUIRE(g.has_value());
+        CHECK(g->code == NackCode::REBOOTING);
+    }
+}

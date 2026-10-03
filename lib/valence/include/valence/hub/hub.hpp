@@ -83,11 +83,14 @@ public:
                                                          AccessLevel role,
                                                          bool& cfgChanged) = 0;
 
-    // §16.1: the optional NACK `detail` for the refusal applyIntent() just
-    // returned on `channel_id`. Asked only after a refusal, before the NACK is
-    // encoded; the view must stay valid until then (a string literal is the
-    // usual answer). Diagnostic only: a client never branches on it. The hub
-    // truncates past nack_detail_max_bytes (48). Never a credential (§13.9).
+    // §16.1: the optional NACK `detail` for the refusal the delegate just made
+    // on `channel_id`: applyIntent() returning an error, admitsUnderPause()
+    // returning false (code INTERLOCK), or canClearEstop() returning false
+    // (code CLEAR_REFUSED, channel safety_intents). Asked only right after one
+    // of those, before the NACK is encoded; the view must stay valid until then
+    // (a string literal is the usual answer). Diagnostic only: a client never
+    // branches on it. The hub truncates past nack_detail_max_bytes (48). Never
+    // a credential (§13.9).
     virtual std::string_view intentNackDetail(uint16_t channel_id, NackCode code) {
         (void)channel_id; (void)code;
         return {};
@@ -301,6 +304,13 @@ public:
     bool publishLog(uint8_t level, std::string_view tag, std::string_view message);
     // §9.4's visible, never-silent drop counter for the log ring.
     uint32_t logDropped() const;
+
+    // ---- §9.3 reboot-commit, and any planned shutdown ----------------------
+    // GOODBYEs every occupied session with `code` (REBOOTING before a reboot),
+    // best-effort on whatever transport is attached, and ends each through the
+    // one teardown path (§6.9: sources released, knocks dropped,
+    // onSessionLeft). The application reboots or closes its transports after.
+    void goodbyeAll(NackCode code);
 
     // ---- Safety (M4 minimal: the latch that E-04 observes) -----------------
     // Latches the ESTOP bit into the safety STATE channel (0x0003), calls
@@ -995,9 +1005,13 @@ private:
     // STALE session (a different physical slot) sharing its instance_id.
     // Migrates identity + grants onto `slot`, vacates `stale` without running
     // teardown's loss policy (a migration is not a session loss), and answers
-    // with its own WELCOME. See hub_impl.hpp's file-level comment on this
-    // function for the full contract.
-    void handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint32_t nowMs);
+    // with its own WELCOME. `role` is the token's role, which handleHello()
+    // has already matched against the parked session's. See hub_impl.hpp's
+    // comment on this function for the full contract.
+    void handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, AccessLevel role, uint32_t nowMs);
+    // §12.2: the role a HELLO's token proves, the pairing store first, then the
+    // delegate. At most once per HELLO: validateToken() may consume a credential.
+    AccessLevel tokenRole(std::span<const std::byte> instanceSpan, const HelloMsg& h);
     // M4c (RFC-029 item 1) / RFC-042: arms or performs the optional WELCOME
     // hub-authenticity signature, shared verbatim by handleHello() and
     // handleReattach(). Returns true iff the caller must arm slot.signPending
