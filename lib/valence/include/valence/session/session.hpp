@@ -86,6 +86,11 @@ struct HubSession {
     // append-only layouts make its prefix-parse safe — but recorded so a hub
     // can log/expose the session as degraded.
     bool readyEtagMismatch = false;
+    // The etag this session last acknowledged (§6.4, RFC-077): the HELLO's
+    // when it matched, else its latest CATALOG_READY. A user-space catalog
+    // change leaves it behind, and readyEtagMismatch says so, until the client
+    // declares the new one.
+    std::array<std::byte, limits::etag_bytes> readyEtag{};
     // §6.3 grant instant, in hub-ms: the start of the catalog_ready_timeout_ms
     // window. A client that PINGs forever but never READYs is invisible to
     // liveness reaping (it IS alive), so without this it would hold a session

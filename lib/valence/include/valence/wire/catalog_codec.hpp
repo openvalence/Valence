@@ -419,8 +419,12 @@ inline void encodeEntry(CborWriter& w, const BasicCatalog<E, L, S, B, T, F>& cat
 // pools, an entry exceeding limits::catalog_max_entry_bytes, or entries not
 // strictly ascending by id (§8.3). Encoders otherwise can't fail
 // (core/result.hpp's convention).
-template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
-size_t encodeCatalog(const BasicCatalog<E, L, S, B, T, F>& cat, std::span<std::byte> out) {
+//
+// `onEntry(entry, bytes)` sees each entry's own document as it is written.
+// It fires before the whole encode is known to succeed: a caller keeps
+// nothing it saw unless the return is nonzero.
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F, typename OnEntry>
+size_t encodeCatalog(const BasicCatalog<E, L, S, B, T, F>& cat, std::span<std::byte> out, OnEntry&& onEntry) {
     for (uint16_t i = 1; i < cat.count; ++i) {
         if (cat.entries[i].id <= cat.entries[i - 1].id) return 0;
     }
@@ -469,9 +473,15 @@ size_t encodeCatalog(const BasicCatalog<E, L, S, B, T, F>& cat, std::span<std::b
         // §8.1 / RFC-028: an entry must be an independently-decodable document
         // of bounded size. Refuse to emit one no conforming peer may buffer.
         if (n > limits::catalog_max_entry_bytes) return 0;
+        onEntry(e, std::span<const std::byte>(out.data() + pos, n));
         pos += n;
     }
     return pos;
+}
+
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+size_t encodeCatalog(const BasicCatalog<E, L, S, B, T, F>& cat, std::span<std::byte> out) {
+    return encodeCatalog(cat, out, [](const CatalogEntry&, std::span<const std::byte>) {});
 }
 
 // ---- Decode -----------------------------------------------------------------

@@ -91,6 +91,19 @@ public:
         return RetainedView{e->seq, std::span<const std::byte>(e->payload.data(), e->size)};
     }
 
+    // Discards `channel_id`'s retained value (RFC-077, §8.6: a channel that
+    // vanished from the catalog takes its value with it). A later publish()
+    // starts the channel afresh. Returns whether a value was held.
+    bool remove(uint16_t channel_id) {
+        for (size_t i = 0; i < _count; ++i) {
+            if (_entries[i].channel_id != channel_id) continue;
+            for (size_t j = i + 1; j < _count; ++j) _entries[j - 1] = _entries[j];
+            --_count;
+            return true;
+        }
+        return false;
+    }
+
     size_t size() const { return _count; }
 
 private:

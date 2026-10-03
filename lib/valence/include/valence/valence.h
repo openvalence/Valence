@@ -21,6 +21,7 @@
 #include "valence/wire/messages/hello.hpp"
 #include "valence/wire/messages/welcome.hpp"
 #include "valence/channel/catalog.hpp"
+#include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/state_apply.hpp"
 #include "valence/channel/safety_events_channel.hpp"
 #include "valence/channel/trust_channels.hpp"

@@ -78,10 +78,16 @@ inline bool Client::connect() {
     _requiredRetained = 0;
     _adoptedCount = 0;
     _catalogReady = true;
-    _chunkReassembler = ChunkReassembler<64>{};
+    _chunkReassembler.reset();
     _catalogChunkCount = 0;
     _readyPending = false;
     _readyAttempts = 0;
+    _refetching = false;
+    _transferRefused = false;
+    _hasRefusedEtag = false;
+    _resyncing = false;
+    _catalogRestarts = 0;
+    _hasCatalogMetaSeq = false;
     _estopActive = false;
     _estopSendFailed = false;
     _holdingSource = false;  // §6.8: a new session never inherits ownership
@@ -106,10 +112,21 @@ inline bool Client::connect() {
     h.has_catalog_etag = !detail::isAllZero(std::span<const std::byte>(_cachedEtag));
     h.catalog_etag = _cachedEtag;
     h.subscriptions_count = uint32_t(_wishCount);
+    bool wishesCatalog = false;
     for (size_t i = 0; i < _wishCount; ++i) {
         h.subscriptions[i].channel_id = _wishes[i].channel_id;
         h.subscriptions[i].rate_hz = _wishes[i].rate_hz;
         h.subscriptions[i].priority = uint8_t(_wishes[i].priority);
+        wishesCatalog = wishesCatalog || _wishes[i].channel_id == channels::catalog;
+    }
+    // RFC-077 (§8.6): every client MUST subscribe to `catalog`. A hub that does
+    // not declare it omits the wish without a NACK (§6.2). Skipped only when
+    // the application's own wishes fill the HELLO.
+    if (!wishesCatalog && h.subscriptions_count < h.subscriptions.size()) {
+        SubscriptionWish& w = h.subscriptions[h.subscriptions_count++];
+        w.channel_id = channels::catalog;
+        w.rate_hz = 0.0f;
+        w.priority = uint8_t(Priority::normal);
     }
 
     // ---- M4c: the OPTIONAL `trust` sub-map ----------------------------------
@@ -318,11 +335,10 @@ inline void Client::handleWelcome(std::span<const std::byte> payload, uint32_t n
     bool matches = std::equal(_cachedEtag.begin(), _cachedEtag.end(), w.catalog_etag.begin());
     if (matches) {
         _catalogReady = true;
+        _readyEtag = w.catalog_etag;  // the match is the declaration (§6.4)
     } else {
         _catalogReady = false;
-        _chunkReassembler = ChunkReassembler<64>{};
-        _catalogChunkCount = 0;
-        sendBlobReq();
+        startCatalogTransfer();
     }
 
     // ---- M4c (RFC-029 item 1): the INLINE delivery point --------------------
@@ -345,6 +361,9 @@ inline void Client::handleWelcome(std::span<const std::byte> payload, uint32_t n
 }
 
 inline void Client::checkLiveTransition() {
+    // A re-sync returns to LIVE on the first STATE after the hub reopens
+    // (handleState), not on counts left over from the first adoption.
+    if (_resyncing) return;
     if (_state == ClientSessionState::SYNCING && _catalogReady && _adoptedCount >= _requiredRetained) {
         setState(ClientSessionState::LIVE);
     }
@@ -369,14 +388,25 @@ inline Client::ShadowEntry* Client::findOrCreateShadow(uint16_t channel_id) {
 
 inline void Client::handleState(uint16_t channel, uint16_t seq, std::span<const std::byte> payload, uint32_t nowMs) {
     (void)nowMs;
-    ShadowEntry* e = findOrCreateShadow(channel);
-    if (!e) return;
-
     // §8.4/RFC-015: STATE arriving is proof the hub opened this client's data
     // plane, so the CATALOG_READY re-declaration loop stops here (even for a
-    // frame this client then discards as stale — the gate is what it was
-    // waiting on).
+    // frame this client then discards as stale, or has no shadow slot for —
+    // the gate is what it was waiting on).
     _readyPending = false;
+    if (_resyncing && !_refetching && _state == ClientSessionState::SYNCING) {
+        _resyncing = false;
+        setState(ClientSessionState::LIVE);
+    }
+    // RFC-077: the announcement is tracked apart from the shadow table, which
+    // can be full; newest-wins all the same (§7.3).
+    if (channel == channels::catalog && (!_hasCatalogMetaSeq || seqIsNewer(seq, _catalogMetaSeq))) {
+        _hasCatalogMetaSeq = true;
+        _catalogMetaSeq = seq;
+        noteCatalogAnnouncement(payload);
+    }
+
+    ShadowEntry* e = findOrCreateShadow(channel);
+    if (!e) return;
 
     bool wasValid = e->slot.valid;
     bool accepted = applyStateFrame(seq, payload, e->slot);
@@ -448,6 +478,29 @@ inline void Client::handleNack(std::span<const std::byte> payload) {
         }
     }
 
+    // RFC-077 (§8.6): a grant on a channel that left the catalog. The grant
+    // and its shadow go; the application hears it through onNack below.
+    if (m.code == NackCode::CHANNEL_WITHDRAWN && m.has_channel_id) {
+        for (auto& g : _grants) {
+            if (g.valid && g.channel_id == m.channel_id) g = GrantEntry{};
+        }
+        for (auto& s : _shadows) {
+            if (s.used && s.channel_id == m.channel_id) s = ShadowEntry{};
+        }
+    }
+    // §8.4/§8.6: this client requests only the catalog, so a CHUNK_UNAVAILABLE
+    // ends its transfer; the etag moved under it, and it starts over.
+    if (m.code == NackCode::CHUNK_UNAVAILABLE && (!_catalogReady || _refetching)) restartCatalogTransfer();
+    // §4.2 rule 3, §6.4: the hub revoked readiness over a change outside the
+    // user space. SYNCING until the first STATE after it reopens; a refetch
+    // in flight declares on completion, otherwise the held etag is declared
+    // again (stale is §8.5(a) degraded, never silent).
+    if (m.code == NackCode::NOT_READY && _state == ClientSessionState::LIVE) {
+        _resyncing = true;
+        setState(ClientSessionState::SYNCING);
+        if (!_refetching) sendCatalogReady(std::span<const std::byte>(_readyEtag));
+    }
+
     _delegate.onNack(m);
 }
 
@@ -509,6 +562,67 @@ inline void Client::sendBlobReq() {
     }
 }
 
+// ---- RFC-077: live catalog growth (§8.6) ------------------------------------
+
+inline void Client::startCatalogTransfer() {
+    _chunkReassembler.reset();
+    _catalogChunkCount = 0;
+    _transferRefused = false;
+    sendBlobReq();
+}
+
+inline void Client::restartCatalogTransfer() {
+    if (_catalogRestarts >= kMaxCatalogRestarts) return;
+    ++_catalogRestarts;
+    startCatalogTransfer();
+}
+
+inline void Client::noteCatalogAnnouncement(std::span<const std::byte> payload) {
+    std::array<std::byte, limits::etag_bytes> announced{};
+    if (!catalogMetaEtag(payload, announced)) return;
+    _hubEtag = announced;
+    if (announced == _readyEtag) {
+        // The hub serves what this client declared: verified by the hub's own
+        // word, even when the transfer could only be checked against an etag
+        // that had already moved.
+        _cachedEtag = announced;
+        return;
+    }
+    // Only a client holding a catalog refetches. A first transfer in flight
+    // is restarted by the hub's abort NACK instead, and a refetch in flight
+    // the same way when the etag moves again.
+    if (!_catalogReady || _refetching) return;
+    if (_hasRefusedEtag && announced == _refusedEtag) return;
+    _refetching = true;
+    _catalogRestarts = 0;
+    startCatalogTransfer();
+}
+
+inline void Client::refuseCatalogTransfer() {
+    _transferRefused = true;
+    if (_refetching) {
+        // §8.6: a LIVE client MAY stay on its old etag (§8.5(a) degraded): the
+        // byte-identical rule keeps everything it already knew exact. The
+        // refusal is still said (§4.5), and this etag is not asked for again.
+        _refetching = false;
+        _hasRefusedEtag = true;
+        _refusedEtag = _hubEtag;
+        sendBlobDone(BlobDoneStatus::Aborted);
+        if (_resyncing) sendCatalogReady(std::span<const std::byte>(_readyEtag));
+        return;
+    }
+    // §4.5: a client still SYNCING has no catalog to fall back on. GOODBYE
+    // BLOB_REFUSED rather than idle toward READY_TIMEOUT.
+    GoodbyeMsg gb{};
+    gb.code = NackCode::BLOB_REFUSED;
+    std::array<std::byte, 64> buf{};
+    const size_t n = encodeGoodbye(gb, std::span<std::byte>(buf));
+    if (n > 0) sendFrame(FrameType::GOODBYE, 0, std::span<const std::byte>(buf.data(), n));
+    flushPending();
+    _t.close();
+    setState(ClientSessionState::CLOSED);
+}
+
 inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t nowMs) {
     BlobChunkHeader h{};
     if (!getBlobChunkHeader(payload, h)) return;
@@ -518,6 +632,7 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
     // from corrupting each other.
     if (!h.id.isCatalog()) return;
     if (h.chunk_count == 0 || h.chunk_index >= h.chunk_count) return;
+    if (_transferRefused) return;  // the rest of a transfer this client already refused
 
     if (!_chunkReassembler.active() || _catalogChunkCount != h.chunk_count) {
         // total_bytes rides the header now (RFC-021/028: know the size before
@@ -525,6 +640,10 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
         // length and reconstruct the real total" hack — the sender simply says.
         _chunkReassembler.begin(h, nowMs);
         _catalogChunkCount = h.chunk_count;
+        if (!_chunkReassembler.active()) {
+            refuseCatalogTransfer();  // declared size over the reassembly budget
+            return;
+        }
     }
     _chunkReassembler.insert(payload, nowMs);
 
@@ -539,12 +658,24 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
                 break;
             }
         }
+        // RFC-077: a background refetch checks against an etag the hub
+        // announced, so a miss there is a torn transfer, not a choice to run
+        // degraded; it starts over while the restart budget lasts.
+        if (!match && _refetching && _catalogRestarts < kMaxCatalogRestarts) {
+            sendBlobDone(BlobDoneStatus::HashMismatch);
+            restartCatalogTransfer();
+            return;
+        }
         // §8.5-adjacent M4 minimal policy: proceed either way (a hub that
         // refuses degraded operation is a policy this milestone doesn't
         // model) but only adopt the etag into the reconnect cache if the
         // reassembled bytes actually verified.
-        if (match) _cachedEtag = _hubEtag;
+        if (match) {
+            _cachedEtag = _hubEtag;
+            _catalogRestarts = 0;
+        }
         _catalogReady = true;
+        _refetching = false;
 
         // §8.4/RFC-015: the hash IS the acknowledgment — declare which
         // catalog this client now operates against so the hub opens its data
@@ -594,7 +725,11 @@ inline void Client::pumpBlobAbandon(uint32_t nowMs) {
     if (!_chunkReassembler.active() || _chunkReassembler.complete()) return;
     if (!_chunkReassembler.timedOut(nowMs)) return;
     sendBlobDone(BlobDoneStatus::Aborted);
-    _chunkReassembler = ChunkReassembler<64>{};
+    // A background refetch given up stays on the old etag (§8.5(a) degraded)
+    // until the hub announces again; mid re-sync, that etag is declared.
+    if (_refetching && _resyncing) sendCatalogReady(std::span<const std::byte>(_readyEtag));
+    _refetching = false;
+    _chunkReassembler.reset();
     _catalogChunkCount = 0;
 }
 
@@ -742,6 +877,7 @@ inline ClientSessionState Client::state() const { return _state; }
 inline uint32_t Client::sessionId() const { return _sessionId; }
 inline uint16_t Client::lastCfgGen() const { return _cfgGen; }
 inline std::span<const std::byte> Client::hubEtag() const { return std::span<const std::byte>(_hubEtag); }
+inline std::span<const std::byte> Client::readyEtag() const { return std::span<const std::byte>(_readyEtag); }
 inline AccessLevel Client::roles() const { return _roles; }
 inline uint32_t Client::bootId() const { return _bootId; }
 

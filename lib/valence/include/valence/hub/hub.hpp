@@ -19,6 +19,7 @@
 #include <string_view>
 
 #include "valence/channel/catalog.hpp"
+#include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/log_channel.hpp"
 #include "valence/channel/safety_events_channel.hpp"
 #include "valence/channel/trust_channels.hpp"
@@ -206,7 +207,7 @@ public:
     //
     // Called ONLY for namespaces the hub does not serve itself. Namespace 0
     // (blob_ns::catalog) NEVER reaches the delegate — the hub already holds the
-    // deterministic catalog encoding it computed at construction, and routing it
+    // deterministic catalog encoding its etag was computed over, and routing it
     // through a delegate would let an application make the catalog and its etag
     // disagree.
     //
@@ -315,24 +316,49 @@ public:
     bool estopLatched() const;
 
     // ---- Catalog encoding health (M5a, additive) ---------------------------
-    // Bytes the constructor's encodeCatalog() actually produced, and the
-    // compile-time buffer it had to fit in. ZERO IS A FAILURE, and it is the
-    // one failure this class cannot report any other way: the constructor has
-    // no return value, the library has no exceptions, and a hub whose catalog
-    // did not fit still starts, still answers HELLO, and still serves an etag
-    // — one computed over zero bytes, with an empty catalog behind it. Every
-    // host SHOULD check this once at startup and shout; the firmware and the
-    // sim both do. Purely observational, no behavior attached.
+    // Bytes the latest catalog encoding produced (the constructor's, or the
+    // last catalogChanged()'s), and the compile-time buffer it had to fit in.
+    // ZERO IS A FAILURE, and it is the one failure the constructor cannot
+    // report any other way: it has no return value, the library has no
+    // exceptions, and a hub whose catalog did not fit still starts, still
+    // answers HELLO, and still serves an etag — one computed over zero bytes,
+    // with an empty catalog behind it. Every host SHOULD check this once at
+    // startup and shout; the firmware and the sim both do.
     size_t catalogEncodedBytes() const { return _catalogEncodedLen; }
     static constexpr size_t catalogScratchCapacity() { return kCatalogScratchBytes; }
 
     // ---- RFC-046: read-only catalog etag view (§8.3) -----------------------
     // Additive: something OUTSIDE the session/wire path (the UDP discovery
     // responder, §13.8) needs the same etag WELCOME already serves, without
-    // going through a session at all. Computed once at construction and
-    // never mutated afterward (see the comment above), so a caller may hold
-    // this view for the hub's whole lifetime.
+    // going through a session at all. The view stays valid for the hub's
+    // whole lifetime; its bytes move only inside catalogChanged().
     std::span<const std::byte> catalogEtag() const { return _etag; }
+
+    // ---- RFC-077: live catalog change (§8.6) -------------------------------
+    enum class CatalogChange : uint8_t {
+        Unchanged,     // the encoding is byte-identical: nothing moved
+        UserSpace,     // only entries after the catalog's user-space mark moved
+        Resync,        // a fixed (core or device) entry moved (§4.2 rule 3)
+        EncodeFailed,  // the catalog no longer encodes; the etag did not move
+    };
+    // The application changed the catalog this hub was built on: an accessory
+    // join, a declaration replacement or a forget, rebuilt behind the
+    // catalog's user-space mark (catalog.hpp). Call once per change, right
+    // after the mutation: before the next update() and before publishing on a
+    // new or replaced channel, whose retained value this discards.
+    //
+    // The hub re-encodes and moves the etag; for every session it withdraws
+    // each grant on an id that vanished or whose entry changed, one NACK
+    // CHANNEL_WITHDRAWN per grant (§8.6), and discards those channels' retained
+    // values; it aborts every catalog transfer in flight with one NACK
+    // CHUNK_UNAVAILABLE (§8.4); and it announces the new etag on `catalog`
+    // (0x0001) when the catalog declares it. UserSpace keeps every session
+    // ready (§6.4). Resync announces, then revokes every session's readiness
+    // until it declares the new catalog. EncodeFailed leaves every session and
+    // the etag as they were but refuses catalog transfers until the
+    // application restores an encodable catalog and calls again; an
+    // overflowed catalog (ok() false) is refused before anything is touched.
+    CatalogChange catalogChanged();
 
     // ---- RFC-016(a): hub identity for WELCOME key 37 -----------------------
     // The views must point at storage that OUTLIVES the hub — static/rodata
@@ -740,8 +766,8 @@ private:
     static constexpr size_t kSlotCapacity = kHubMaxSessions + 1;
 
     // Scratch capacity for the whole catalog's deterministic CBOR encoding
-    // (computed once at construction and cached — §8.3's etag AND §8.4's
-    // BLOB_CHUNK transfer both read from it). Sized generously for a
+    // (computed at construction and again by each catalogChanged(), and cached
+    // — §8.3's etag AND §8.4's BLOB_CHUNK transfer both read from it). Sized generously for a
     // Catalog32; a hub with a denser catalog sizes its own instantiation
     // accordingly (this is this library's default, same posture as
     // RetainedStore<>'s/SubscriptionTable<>'s own default-capacity comments).
@@ -850,6 +876,26 @@ private:
     std::array<std::byte, limits::etag_bytes> _etag{};
     std::array<std::byte, kCatalogScratchBytes> _catalogEncoded{};
     size_t _catalogEncodedLen = 0;
+
+    // ---- RFC-077: what a live change is compared against --------------------
+    // One digest per encoded entry, in catalog (id) order: the first 8 bytes of
+    // SHA-256 over that entry's own document. Two sides, because a join can
+    // insert entries between existing ones and the comparison needs the old
+    // list whole while the new one is written.
+    struct EntryDigest {
+        uint16_t id = 0;
+        std::array<std::byte, limits::etag_bytes> digest{};
+    };
+    using EntryDigests = std::array<EntryDigest, Catalog32::kEntryCapacity>;
+    std::array<EntryDigests, 2> _entryDigests{};
+    uint8_t _digestSide = 0;   // _entryDigests[_digestSide] describes _catalogEncoded
+    uint16_t _digestCount = 0;
+    uint16_t _fixedCount = 0;  // entries before the user-space mark at the last encode
+    std::array<uint16_t, Catalog32::kEntryCapacity> _withdrawnScratch{};
+    // hub-ms of the latest update(): the timebase every session deadline is
+    // kept in, for work done outside update() (MonotonicMs, not _clock.nowMs(),
+    // which wraps at 2^32 us).
+    uint32_t _lastUpdateMs = 0;
     // RFC-016(a) identity views — caller-owned storage, see setIdentity().
     std::string_view _idProduct{};
     std::string_view _idFwVersion{};
@@ -894,7 +940,8 @@ private:
     SourceOwnershipTable _ownership;
 
     // ---- M4b: the trust ledger's BLOB-store identity ------------------------
-    // Discovered from the catalog at construction, never legislated: if the
+    // Discovered from the catalog (at construction, and again after a
+    // re-sync), never legislated: if the
     // catalog declares a STORE entry at channels::paired_devices, its
     // descriptor's storeId is the number BLOB_REQ addresses it by. The catalog
     // is self-describing, so the id is agreed by being PUBLISHED. A hub with no
@@ -966,6 +1013,20 @@ private:
     std::optional<GrantedPublish> grantPublishWish(Slot& slot, const PublishWish& wish, uint32_t nowMs);
     // §8.4/RFC-015: flip this session's readiness bit (idempotent).
     void handleCatalogReady(Slot& slot, std::span<const std::byte> payload);
+    // ---- RFC-077 (§8.6): the live-change helpers ----------------------------
+    // Encodes _catalog into _catalogEncoded, recording each entry's digest in
+    // _entryDigests[side]. Returns the encoded length, 0 on failure.
+    size_t encodeCatalogInto(uint8_t side, uint16_t& digestCount);
+    // Drops one subscription and its pacing record (UNSUBSCRIBE and withdrawal).
+    bool dropSubscription(Slot& slot, uint16_t channel_id);
+    // Withdraws each grant `slot` holds on `ids`: one NACK CHANNEL_WITHDRAWN per grant.
+    void withdrawGrants(Slot& slot, std::span<const uint16_t> ids, uint32_t nowMs);
+    // §8.4: ends every catalog transfer in flight with its one NACK CHUNK_UNAVAILABLE.
+    void abortCatalogTransfers();
+    // §4.2 rule 3: republishes 0x0001 from the current etag iff the catalog declares it.
+    void publishCatalogStateIfPresent();
+    // A re-sync may withdraw a hub-encoded core channel; its snapshot comes back here.
+    void reseedCoreSnapshots(uint32_t nowMs);
     // RFC-015: GOODBYE READY_TIMEOUT a session that never finished adopting
     // the catalog. Returns true when the slot was torn down.
     bool pumpReadyTimeout(Slot& slot, uint32_t nowMs);

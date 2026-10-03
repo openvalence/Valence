@@ -170,6 +170,16 @@ public:
         begin(h.id, h.chunk_count, h.total_bytes, nowMs);
     }
 
+    // Abandons whatever was in flight, so the next chunk begins a new transfer.
+    // In place: assigning a fresh ChunkReassembler puts its whole buffer on
+    // the caller's stack.
+    void reset() {
+        _active = false;
+        _chunkCount = 0;
+        _totalBytes = 0;
+        _receivedCount = 0;
+    }
+
     bool active() const { return _active; }
     const BlobId& target() const { return _id; }
 

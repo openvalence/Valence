@@ -14,6 +14,7 @@
 #include <optional>
 #include <span>
 
+#include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/state_apply.hpp"
 #include "valence/core/clock.hpp"
 #include "valence/core/crypto.hpp"
@@ -161,7 +162,14 @@ public:
     ClientSessionState state() const;
     uint32_t sessionId() const;
     uint16_t lastCfgGen() const;
+    // The hub's current catalog etag: WELCOME's, then each one `catalog`
+    // (0x0001) announces (RFC-077).
     std::span<const std::byte> hubEtag() const;
+    // The etag this client operates against: the cached one its HELLO matched,
+    // or the one its latest CATALOG_READY declared. Behind hubEtag() while a
+    // background refetch runs, and left behind (§8.5(a) degraded) when the
+    // grown catalog exceeds this client's reassembly budget.
+    std::span<const std::byte> readyEtag() const;
 
     // ---- M4 test/observability additions (not part of the frozen sketch,
     // added because the behavioral suite needs a way to read them) ----------
@@ -330,6 +338,19 @@ private:
     uint32_t _lastReadySendMs = 0;
     uint32_t _readyAttempts = 0;
 
+    // ---- RFC-077 (§8.6): live catalog growth --------------------------------
+    // A LIVE client refetches in the background and stays LIVE; the hub keeps
+    // serving it on its old etag meanwhile (§6.4).
+    static constexpr uint8_t kMaxCatalogRestarts = 3;  // per verified catalog; bounds a NACK/request loop
+    bool _refetching = false;        // a background catalog transfer is in flight
+    bool _transferRefused = false;   // the current transfer is over budget: its chunks are dropped
+    bool _hasRefusedEtag = false;    // a catalog this client cannot take is never requested again
+    std::array<std::byte, limits::etag_bytes> _refusedEtag{};
+    bool _resyncing = false;         // NOT_READY while LIVE: the hub revoked readiness (§4.2 rule 3)
+    uint8_t _catalogRestarts = 0;
+    bool _hasCatalogMetaSeq = false; // newest-wins (§7.3) for `catalog` 0x0001, outside the shadow table
+    uint16_t _catalogMetaSeq = 0;
+
     // Pending INTENT ids awaiting ECHO/NACK (§9.3, §6.7).
     std::array<uint16_t, kMaxPendingIntents> _pending{};
     size_t _pendingCount = 0;
@@ -405,6 +426,16 @@ private:
     void handleProbeFrame(std::span<const std::byte> payload);
     void pumpProbe(uint32_t nowMs);
     void sendBlobReq();
+    // ---- RFC-077 (§8.6) -----------------------------------------------------
+    // Abandons any partial transfer and asks for the whole catalog again.
+    void startCatalogTransfer();
+    // A transfer the hub aborted (CHUNK_UNAVAILABLE) or that failed its hash
+    // against an announced etag starts over, kMaxCatalogRestarts at most.
+    void restartCatalogTransfer();
+    // A `catalog` (0x0001) snapshot: adopts its etag, refetches when it moved.
+    void noteCatalogAnnouncement(std::span<const std::byte> payload);
+    // Declared size over the reassembler's budget (§4.5, §8.6).
+    void refuseCatalogTransfer();
     // §8.4/RFC-050: this client is the RECEIVER of the catalog blob, so it owes
     // the hub one BLOB_DONE per concluded reassembly. Reports an outcome only;
     // it never asks for a resend (that would be a fresh BLOB_REQ).

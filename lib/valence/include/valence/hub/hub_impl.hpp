@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 
 #include "valence/util/byte_io.hpp"
 #include "valence/util/serial_arithmetic.hpp"
@@ -45,9 +46,12 @@ inline constexpr uint32_t kHubBusyRetryAfterMs = limits::busy_retry_after_defaul
 
 inline Hub::Hub(const Catalog32& catalog, IClock& clock, IRandom& rng, HubDelegate& delegate, ICrypto& crypto)
     : _catalog(catalog), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto) {
-    _catalogEncodedLen = encodeCatalog(_catalog, std::span<std::byte>(_catalogEncoded));
+    _catalogEncodedLen = encodeCatalogInto(_digestSide, _digestCount);
+    if (_catalogEncodedLen == 0) _digestCount = 0;
+    _fixedCount = std::min<uint16_t>(_catalog.userSpaceStart(), _digestCount);
     auto digest = Sha256::hash(std::span<const std::byte>(_catalogEncoded.data(), _catalogEncodedLen));
     for (size_t i = 0; i < _etag.size(); ++i) _etag[i] = digest[i];
+    publishCatalogStateIfPresent();
 
     // boot_id: random non-zero (§6.1).
     do {
@@ -203,6 +207,7 @@ inline void Hub::update(uint32_t nowUs) {
     // mod-2^32 counter, and every ms deadline below relies on timeReached()'s
     // wrap window (see MonotonicMs in util/serial_arithmetic.hpp).
     uint32_t nowMs = _monoMs.advance(nowUs);
+    _lastUpdateMs = nowMs;
     // M4b: knock windows and the push-to-pair window are hub-wide, not
     // per-slot, so they are pumped ONCE here rather than inside the slot walk.
     // Before the walk, so an expiry that frees a pending slot is visible to a
@@ -593,6 +598,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     // latency retained push. Absent or mismatched -> gated until CATALOG_READY.
     slot.session.ready = slot.session.clientEtagMatched;
     slot.session.readyEtagMismatch = false;
+    if (slot.session.ready) slot.session.readyEtag = _etag;
     slot.session.grantedAtMs = nowMs;
     slot.session.lastRxMs = nowMs;
     slot.session.lastTxMs = nowMs;
@@ -860,6 +866,9 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, uint
         slot.session.ready = false;
         slot.session.readyEtagMismatch = h.has_catalog_etag;
         slot.session.grantedAtMs = nowMs;  // re-arm RFC-015 READY_TIMEOUT fresh
+    } else if (slot.session.ready) {
+        slot.session.readyEtag = _etag;
+        slot.session.readyEtagMismatch = false;
     }
     slot.session.staleSinceMs = 0;
     slot.session.lastRxMs = nowMs;
@@ -1261,8 +1270,19 @@ inline void Hub::handleUnsubscribe(Slot& slot, std::span<const std::byte> payloa
     if (!res) return;
     const UnsubscribeMsg& m = res.value();
     for (uint32_t i = 0; i < m.channel_count; ++i) {
-        slot.session.subs.remove(m.channel_ids[i]);
+        dropSubscription(slot, m.channel_ids[i]);
     }
+}
+
+// The pacing record goes with the grant: records are keyed by channel and
+// capped at max_subscriptions_per_session, and a live catalog brings ids no
+// earlier session ever held (RFC-077), so a leaked one is a slot lost for good.
+inline bool Hub::dropSubscription(Slot& slot, uint16_t channel_id) {
+    if (!slot.session.subs.remove(channel_id)) return false;
+    for (auto& pr : slot.pushRecords) {
+        if (pr.valid && pr.channel_id == channel_id) pr = PushRecord{};
+    }
+    return true;
 }
 
 // ---- PUBLISH (§6.6 / RFC-013) -----------------------------------------------
@@ -1411,10 +1431,176 @@ inline void Hub::handleCatalogReady(Slot& slot, std::span<const std::byte> paylo
     // becomes ready — it has told us what it operates against, and append-only
     // layouts make its prefix-parse safe — but the divergence is recorded so a
     // hub can surface the session as degraded.
+    slot.session.readyEtag = *etag;
     slot.session.readyEtagMismatch = !std::equal(etag->begin(), etag->end(), _etag.begin());
     // Retained pushes flow from the pacing walk later in this same update()
     // call — every grant's everPushed==false is still pending, so nothing had
     // to be queued while the gate was shut.
+}
+
+// ---- RFC-077: live catalog change (§8.6) ------------------------------------
+// Only the user space changes at runtime; every fixed entry a session decoded
+// under the old etag is byte-identical under the new one. The hub checks that
+// rather than trusting it: per-entry digests are compared, and a change to any
+// fixed entry is a re-sync (§4.2 rule 3), never a silent UserSpace.
+
+inline size_t Hub::encodeCatalogInto(uint8_t side, uint16_t& digestCount) {
+    EntryDigests& out = _entryDigests[side];
+    digestCount = 0;
+    return encodeCatalog(_catalog, std::span<std::byte>(_catalogEncoded),
+                         [&](const CatalogEntry& e, std::span<const std::byte> bytes) {
+                             if (digestCount >= out.size()) return;
+                             const auto d = Sha256::hash(bytes);
+                             EntryDigest& rec = out[digestCount++];
+                             rec.id = e.id;
+                             std::copy_n(d.begin(), rec.digest.size(), rec.digest.begin());
+                         });
+}
+
+inline Hub::CatalogChange Hub::catalogChanged() {
+    // An overflowed catalog lost entries or fields on the way in: refused
+    // before the served bytes, the etag or any session is touched.
+    if (!_catalog.ok()) return CatalogChange::EncodeFailed;
+
+    // Every NACK below is unsolicited. A delegate may call in from inside a
+    // dispatch (a forget op), and that frame's seq must not be stamped on them.
+    struct SeqMute {
+        bool& flag;
+        bool saved;
+        ~SeqMute() { flag = saved; }
+    } seqMute{_dispatchSeqValid, _dispatchSeqValid};
+    _dispatchSeqValid = false;
+
+    const uint32_t nowMs = _lastUpdateMs;
+    const uint8_t prevSide = _digestSide;
+    const uint16_t prevCount = _digestCount;
+    const uint16_t prevFixed = _fixedCount;
+    const uint8_t side = uint8_t(prevSide ^ 1u);
+    uint16_t count = 0;
+    _catalogEncodedLen = encodeCatalogInto(side, count);
+    // The etag and digests stay the last good ones; a catalog request is
+    // refused (CHUNK_UNAVAILABLE) until a later call encodes again.
+    if (_catalogEncodedLen == 0) return CatalogChange::EncodeFailed;
+
+    std::array<std::byte, limits::etag_bytes> etag{};
+    const auto whole = Sha256::hash(std::span<const std::byte>(_catalogEncoded.data(), _catalogEncodedLen));
+    std::copy_n(whole.begin(), etag.size(), etag.begin());
+    _digestSide = side;
+    _digestCount = count;
+    _fixedCount = std::min<uint16_t>(_catalog.userSpaceStart(), count);
+    if (etag == _etag) return CatalogChange::Unchanged;
+    _etag = etag;
+
+    const EntryDigests& before = _entryDigests[prevSide];
+    const EntryDigests& after = _entryDigests[side];
+    bool fixedSame = prevFixed == _fixedCount;
+    for (uint16_t i = 0; fixedSame && i < _fixedCount; ++i) {
+        fixedSame = before[i].id == after[i].id && before[i].digest == after[i].digest;
+    }
+
+    // Ids that vanished or whose entry changed. Both lists ascend by id. A
+    // changed entry is withdrawn too: a session that stays ready (§6.4) would
+    // decode the hub's next push with the layout it no longer has.
+    size_t withdrawn = 0;
+    for (uint16_t i = 0, j = 0; i < prevCount;) {
+        if (j < count && after[j].id < before[i].id) {
+            ++j;
+            continue;
+        }
+        const bool kept = j < count && after[j].id == before[i].id;
+        if (!kept || after[j].digest != before[i].digest) _withdrawnScratch[withdrawn++] = before[i].id;
+        ++i;
+        if (kept) ++j;
+    }
+    const std::span<const uint16_t> ids(_withdrawnScratch.data(), withdrawn);
+
+    abortCatalogTransfers();
+    for (uint16_t id : ids) _retained.remove(id);
+    for (auto& slot : _slots) {
+        if (slot.session.occupied()) withdrawGrants(slot, ids, nowMs);
+    }
+
+    const CatalogChange kind = fixedSame ? CatalogChange::UserSpace : CatalogChange::Resync;
+    if (kind == CatalogChange::Resync) reseedCoreSnapshots(nowMs);
+    publishCatalogStateIfPresent();
+
+    for (auto& slot : _slots) {
+        HubSession& s = slot.session;
+        if (!s.occupied()) continue;
+        if (kind == CatalogChange::UserSpace) {
+            // §6.4: still ready, degraded until it declares the new etag.
+            s.readyEtagMismatch = s.ready && s.readyEtag != _etag;
+            continue;
+        }
+        // §4.2 rule 3: the announcement goes first, while the session can still
+        // receive it; pacing never reaches a session that is not ready.
+        auto meta = _retained.get(channels::catalog);
+        if (s.ready && meta && s.subs.find(channels::catalog) != nullptr) {
+            sendFrameToTracked(slot, FrameType::STATE, channels::catalog, meta->payload, nowMs, meta->seq);
+        }
+        s.ready = false;
+        s.readyEtagMismatch = false;
+        s.grantedAtMs = nowMs;
+        // §6.8 snapshot adoption: every grant re-pushes once it is ready again.
+        for (auto& e : s.subs) e.everPushed = false;
+    }
+    return kind;
+}
+
+inline void Hub::withdrawGrants(Slot& slot, std::span<const uint16_t> ids, uint32_t nowMs) {
+    for (uint16_t id : ids) {
+        bool held = dropSubscription(slot, id);
+        if (slot.session.publishGrantFor(id) != nullptr) {
+            slot.session.removePublishGrant(id);
+            held = true;
+        }
+        if (!held) continue;
+        // §4.5: a subscription that silently stops presents as a rendering bug.
+        // A parked session hears nothing now; its next WELCOME lists only what
+        // it still holds.
+        NackMsg n;
+        n.code = NackCode::CHANNEL_WITHDRAWN;
+        n.has_channel_id = true;
+        n.channel_id = id;
+        sendNackTracked(slot, n, nowMs);
+    }
+}
+
+inline void Hub::abortCatalogTransfers() {
+    for (auto& slot : _slots) {
+        Slot::PendingBlob& pb = slot.blob;
+        if (!pb.active || !pb.id.isCatalog()) continue;
+        pb.active = false;
+        if (slot.transport == nullptr) continue;
+        NackMsg n;
+        n.code = NackCode::CHUNK_UNAVAILABLE;
+        n.has_intent_seq = pb.hasReqSeq;  // RFC-001: the BLOB_REQ this answers
+        n.intent_seq = pb.reqSeq;
+        sendNack(*slot.transport, n);
+    }
+}
+
+inline void Hub::publishCatalogStateIfPresent() {
+    if (_catalog.find(channels::catalog) == nullptr) return;
+    static_assert(chunkCount(kCatalogScratchBytes) <= std::numeric_limits<uint16_t>::max(),
+                  "a catalog's chunk_count must fit the u16 BLOB_CHUNK carries");
+    std::array<std::byte, kCatalogMetaBytes> meta{};
+    if (encodeCatalogMeta(_etag, uint16_t(chunkCount(_catalogEncodedLen)), _catalog.count, meta) == 0) return;
+    _retained.publish(channels::catalog, meta);
+}
+
+inline void Hub::reseedCoreSnapshots(uint32_t nowMs) {
+    if (_catalog.find(channels::safety) != nullptr && !_retained.get(channels::safety)) publishSafetySnapshot();
+    if (!_retained.get(channels::control_owner)) publishControlOwnerStateIfPresent();
+    if (!_retained.get(channels::pending_pairing)) publishPendingPairingState(nowMs);
+    if (!_retained.get(channels::paired_devices_roster)) publishPairedRosterState();
+    _hasPairedStore = false;
+    if (const CatalogEntry* pd = _catalog.find(channels::paired_devices)) {
+        if (const StoreDescriptor* sd = _catalog.storeDescriptor(*pd)) {
+            _pairedStoreId = sd->storeId;
+            _hasPairedStore = true;
+        }
+    }
 }
 
 // ---- INTENT / ECHO / NACK (§9.3, exact order) -------------------------------
@@ -2066,8 +2252,8 @@ inline bool Hub::resolveBlobBytes(Slot& slot, BlobId& id, std::span<const std::b
 
     if (id.isCatalog()) {
         // Served by the hub itself, never by the delegate: the encoding here
-        // is the same buffer the etag was computed over at construction, so
-        // catalog and etag cannot drift. The transfer is byte-for-byte the
+        // is the same buffer the etag was last computed over, so catalog and
+        // etag cannot drift. The transfer is byte-for-byte the
         // pre-RFC-021 catalog transfer apart from the generalized chunk header.
         encoded = std::span<const std::byte>(_catalogEncoded.data(), _catalogEncodedLen);
         id.generation = 0;
@@ -2448,6 +2634,10 @@ inline void Hub::pumpEventDrain(Slot& slot) {
     // that is still transferring the catalog.
     if (!slot.session.ready || slot.transport == nullptr) return;
     while (auto ev = slot.session.events.pop()) {
+        // A grant dropped while its events waited (UNSUBSCRIBE, RFC-077
+        // withdrawal) takes them with it: they were queued under a schema the
+        // session may no longer hold.
+        if (slot.session.subs.find(ev->channel_id) == nullptr) continue;
         sendFrameTo(*slot.transport, FrameType::EVENT, ev->channel_id, ev->bytes);
     }
 }
@@ -3505,6 +3695,10 @@ inline void Hub::reviveIfStale(Slot& slot, uint32_t nowMs) {
     if (slot.session.state != HubSessionState::STALE) return;
     slot.session.state = HubSessionState::LIVE;
     slot.session.staleSinceMs = 0;
+    // The READY_TIMEOUT window does not run while stale, so it restarts here: a
+    // re-sync that revoked readiness while the session was away (RFC-077) must
+    // not end it on the first frame back.
+    if (!slot.session.ready) slot.session.grantedAtMs = nowMs;
     emitSessionEvent(session_events::session_resumed, slot.session.session_id, nowMs);
 }
 

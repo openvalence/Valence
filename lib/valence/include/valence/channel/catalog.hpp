@@ -504,6 +504,22 @@ struct BasicCatalog {
     // without recording it — check ok() after building.
     bool overflow = false;
 
+    // RFC-077 (§8.6, §8.10): where the runtime user space begins. Entries
+    // authored before markUserSpace() are fixed per boot (the hub's own core
+    // and device channels); entries after it are accessory declarations.
+    // Unmarked, every entry is fixed and any live change is a re-sync.
+    struct Mark {
+        uint16_t count = 0;
+        uint16_t layoutUsed = 0;
+        uint16_t schemaUsed = 0;
+        uint16_t labelUsed = 0;
+        uint16_t storeUsed = 0;
+        uint16_t safeUsed = 0;
+        bool overflow = false;
+    };
+    Mark userSpaceMark{};
+    bool userSpaceMarked = false;
+
     std::array<CatalogEntry, Entries> entries{};
     std::array<LayoutField, LayoutFields> layoutPool{};
     std::array<SchemaField, SchemaFields> schemaPool{};
@@ -525,7 +541,33 @@ struct BasicCatalog {
         storeUsed = 0;
         safeUsed = 0;
         overflow = false;
+        userSpaceMarked = false;
     }
+
+    // ---- RFC-077: the runtime user space ------------------------------------
+    // Call once, after the hub's own entries and before any accessory's. Ids
+    // ascend, so the user space (0x8000 and up, §8.10) is always the tail.
+    void markUserSpace() {
+        userSpaceMark = Mark{count, layoutUsed, schemaUsed, labelUsed, storeUsed, safeUsed, overflow};
+        userSpaceMarked = true;
+    }
+
+    // Drops every user-space entry and its pool slots; the fixed entries keep
+    // their bytes. A host rebuilding its user space calls this, re-appends each
+    // accessory declaration in id order, then calls Hub::catalogChanged().
+    void clearUserSpace() {
+        if (!userSpaceMarked) return;
+        count = userSpaceMark.count;
+        layoutUsed = userSpaceMark.layoutUsed;
+        schemaUsed = userSpaceMark.schemaUsed;
+        labelUsed = userSpaceMark.labelUsed;
+        storeUsed = userSpaceMark.storeUsed;
+        safeUsed = userSpaceMark.safeUsed;
+        overflow = userSpaceMark.overflow;
+    }
+
+    // Index of the first user-space entry; `count` when unmarked.
+    uint16_t userSpaceStart() const { return userSpaceMarked ? userSpaceMark.count : count; }
 
     // ---- Authoring (the human-facing builder) -------------------------------
     // Usage, and the ONLY supported authoring shape:
