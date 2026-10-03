@@ -1,5 +1,5 @@
 #:name Valence Connect
-#:version 0.6.0
+#:version 0.6.1
 #:author ValenceDrive
 #:description Streams a MultiFunPlayer axis to a Nucleus machine over the native Valence protocol (device-shadow + capability negotiation, WebSocket + CBOR).
 #:url https://github.com/AtlanticTM
@@ -86,7 +86,7 @@ public class ValenceConnect : PluginBase
     // it cost two misread test runs before this existed. Keep in sync with the
     // #:version directive at the top of the file; MFP parses that one for its
     // UI and cannot see this one.
-    public const string PluginVersion = "0.6.0";
+    public const string PluginVersion = "0.6.1";
 
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
@@ -1405,7 +1405,7 @@ public class ValenceConnect : PluginBase
         // thread from this same STATE path, so the worst case is one frame of
         // staleness on a meter that averages over three seconds.
         var client = _client;
-        if (pos.HasValue && client != null)
+        if (pos.HasValue && client != null && client.HasClock)
         {
             double lo = _windowMinMm, hi = _windowMaxMm;
             if (!double.IsNaN(lo) && !double.IsNaN(hi) && hi - lo > 1e-6)
@@ -4181,6 +4181,7 @@ public sealed class HubClient
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     private volatile int _clockOffset;   // hub_us - client_us (windowed), stored as int32
+    private volatile bool _hasClock;     // set after _clockOffset: a reader that sees it sees the offset
     private ushort _streamSeq;
     private ushort _segmentSeq;          // per-channel seq for 0x2101 (§7.3)
 
@@ -4233,7 +4234,11 @@ public sealed class HubClient
     public static uint ClientNowUs() =>
         (uint)((Stopwatch.GetTimestamp() * 1_000_000L / Stopwatch.Frequency) & 0xFFFFFFFF);
 
-    public void SetClockOffset(long offset) => _clockOffset = (int)offset;
+    public void SetClockOffset(long offset) { _clockOffset = (int)offset; _hasClock = true; }
+
+    /// <summary>True once a CLOCK exchange set the offset. Before that HubNowUs()
+    /// is client time, so nothing stamped then may share a series with later stamps.</summary>
+    public bool HasClock => _hasClock;
     public uint HubNowUs() => (uint)((ClientNowUs() + (uint)_clockOffset) & 0xFFFFFFFF);
     // Convert a CLIENT stamp to hub time with the offset CURRENT AT CALL TIME.
     // Anything that caches a schedule must cache it in client time and convert

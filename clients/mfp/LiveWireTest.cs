@@ -813,7 +813,7 @@ internal static class LiveWireTest
             if (rPos.ChannelId != channel) return;
             double p = ValenceCatalog.ReadField(payload, rPos.Field);
             // Same mapping ValenceConnect.cs's AdoptRoleReadback feeds the meter.
-            if (!double.IsNaN(p) && !double.IsNaN(winMin) && !double.IsNaN(winMax) && winMax - winMin > 1e-6)
+            if (!double.IsNaN(p) && client.HasClock && !double.IsNaN(winMin) && !double.IsNaN(winMax) && winMax - winMin > 1e-6)
                 meter.NoteRendered(client.HubNowUs(), (p - winMin) / (winMax - winMin));
         }
 
