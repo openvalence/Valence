@@ -16,6 +16,7 @@ void ValenceBenchWsTransport::onOpen(ix::WebSocket* ws, const std::string& peer)
     _inUse = true;
     _openEvt = true;
     _closeEvt = false;
+    _closeHeld = false;
     _muted = false;
     _rxHead = _rxTail = _rxCount = 0;
     _rxDrops = 0;
@@ -85,7 +86,16 @@ bool ValenceBenchWsTransport::consumeOpenEvent() {
 bool ValenceBenchWsTransport::consumeCloseEvent() {
     std::lock_guard<std::mutex> lk(_m);
     if (!_closeEvt) return false;
+    // Frames that arrived before the close (a GOODBYE, typically) get one hub
+    // update to be read: detaching over them parks a session its client
+    // ended. Held once only, so a ring the hub no longer reads (it parked the
+    // session itself) cannot keep the slot from being reaped.
+    if (_rxCount != 0 && !_closeHeld) {
+        _closeHeld = true;
+        return false;
+    }
     _closeEvt = false;
+    _closeHeld = false;
     return true;
 }
 

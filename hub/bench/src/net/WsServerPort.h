@@ -82,6 +82,7 @@ private:
     bool _inUse = false;
     bool _openEvt = false;
     bool _closeEvt = false;
+    bool _closeHeld = false;  // the close waited one hub update for pending frames
 
     valence::FrameBuffer _rx[kRxRingDepth]{};
     uint8_t _rxHead = 0, _rxTail = 0, _rxCount = 0;
