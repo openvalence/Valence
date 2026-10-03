@@ -146,6 +146,10 @@ export {
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_HOME, CH_MODES_SET,
 } from './frames.js';
 
+// RFC-053 connectionless ESTOP: the §5.5 frame as a datagram, sent through a
+// shell's native socket, since a page cannot send UDP (estop-datagram.js header).
+export { encodeEstopDatagram, broadcastEstop, nextEstopSeq } from './estop-datagram.js';
+
 // blob transfer + catalog decode + packed-STATE decode
 export {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
