@@ -189,5 +189,22 @@ console.log('valence-js blob test (golden bytes from lib/valence via gen_blob_go
   assert('socket close rejects a queued fetch ABORTED', rd.e && rd.e.code === BLOB_ERROR.ABORTED);
 }
 
+// ---- RFC-077: a catalog transfer the hub aborts starts over, a bounded number of times
+{
+  const { s, ws } = liveSession();
+  const reqs = () => ws.framesOf(FRAME.BLOB_REQ).length;
+  const abort = () => ws.recv(FRAME.NACK, cbMap([[K.code, cbUint(NACK.CHUNK_UNAVAILABLE)], [K.intent_seq, cbUint(0)]]));
+  s.requestCatalog();
+  assert('catalog BLOB_REQ on the wire', reqs() === 1);
+  abort();
+  assert('the etag moved under the transfer: it is requested again', reqs() === 2);
+  abort();
+  abort();
+  assert('each abort restarts it while the budget lasts', reqs() === 4);
+  abort();
+  assert('a fourth abort is not chased', reqs() === 4);
+  s.close();
+}
+
 console.log(failures ? failures + ' FAILED' : 'all passed');
 process.exit(failures ? 1 : 0);

@@ -363,6 +363,11 @@ export function createSession(opts = {}) {
   let catalogBytes = null;
   const blob = new BlobReassembler();
   let catalogInFlight = false; // BLOB_REQ ns 0 sent, not yet reassembled: the hub's one cursor is the catalog's
+  // RFC-077 (§8.6): catalog transfers restarted after the hub aborted one
+  // (the etag moved under it). Bounded, so a hub that cannot serve its catalog
+  // gets a few requests, not a loop. Mirrors Client::kMaxCatalogRestarts.
+  let catalogRestarts = 0;
+  const CATALOG_RESTARTS_MAX = 3;
 
   // RFC-015 readiness bookkeeping (mirrors Client::pumpCatalogReady)
   let readyPending = false;
@@ -783,6 +788,7 @@ export function createSession(opts = {}) {
     const bytes = blob.assembled().slice();
     blob.reset();
     catalogInFlight = false;
+    catalogRestarts = 0;
 
     const digest = catalogEtag(bytes, LIMITS.etag_bytes);
     const verified = !!state.catalogEtag && bytesEqual(digest, state.catalogEtag);
@@ -1299,6 +1305,7 @@ export function createSession(opts = {}) {
     // ---- RFC-015 readiness gate -------------------------------------------
     readyPending = false;
     readyAttempts = 0;
+    catalogRestarts = 0;
     blob.reset();
     const matched = !!(cachedCatalog && state.catalogEtag &&
       bytesEqual(cachedCatalog.etag, state.catalogEtag));
@@ -1438,6 +1445,14 @@ export function createSession(opts = {}) {
     emit('nack', info);
     if (isAdmissionRefusal(code)) { admissionRefused(code, info.retryAfterMs); return; }
     if (nackStoreFetch(info)) return;
+    // RFC-077 (§8.4, §8.6): a catalog transfer in flight when the etag moved
+    // ends in one CHUNK_UNAVAILABLE. Start over against the new etag; repairing
+    // across the move would splice two encodings into one.
+    if (code === NACK.CHUNK_UNAVAILABLE && catalogInFlight) {
+      if (catalogRestarts < CATALOG_RESTARTS_MAX) { catalogRestarts++; requestCatalog(); }
+      else { blob.reset(); catalogInFlight = false; }
+      return;
+    }
 
     // ---- correlation, best evidence first ---------------------------------
     // 1) intent_id (18): the hub sets it whenever a decodable INTENT provoked
