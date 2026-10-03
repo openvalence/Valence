@@ -795,7 +795,7 @@ field_roles:
   "plan.duration":       { note: "total duration of the segment in flight" }
   "plan.latency":        { note: "RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance." }
   "plan.style":          { note: "which planning style produced the segment; options are the device's style names, index-aligned with the wire value" }
-  "plan.flags":          { note: "RFC-100 (§8.8): bitfield8, bits per plan_flags, describing the segment in flight: set by the plan that produced it, cleared when the next segment plans clean, zero while no plan is in flight. A client reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth)." }
+  "plan.flags":          { note: "RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a segment plans, from that plan, cleared when the next segment plans clean, zero while no plan is in flight. A segment planned ahead of its start sets it then, up to one schedule horizon early. A client reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth)." }
   # ---- source.* (RFC-048): promotes RFC-045's `on_disconnect` setting from
   # ordinary settings-metamodel data to a formally registered role, GENERALIZED
   # to any autonomous source (a pattern generator today; future on-hub script

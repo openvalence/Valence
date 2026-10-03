@@ -8189,11 +8189,14 @@ say exactly which, future-us will want the receipts.*
      its fallback method for the segment), bit3 `clamped` (a ceiling or the
      travel window changed the command). Bits 4-7 are reserved, zero on send
      and ignored on receipt.
-  2. **Semantics per sample.** The byte describes the segment in flight: set
-     by the plan that produced it, cleared when the next segment plans clean,
-     zero while no plan is in flight. A hub publishes it on the same sample
-     as the rest of `plan.*`, so a client never pairs flags with another
-     segment's span.
+  2. **Semantics per sample.** The byte is set when a segment plans, from
+     that plan, cleared when the next segment plans clean, and zero while no
+     plan is in flight. A hub that plans a segment ahead of its start (§5.4,
+     a stream's scheduled segments) sets it when it plans, so the byte may
+     lead the segment it describes by up to one schedule horizon; a
+     generator or a jog plans at its start and the byte is exact. Following
+     each scheduled plan to its promotion would need the planner to carry the
+     flags per queued plan, which the reference planner does not yet do.
   3. **No `plan.feasible`.** The flags are the signal: one field. A derived
      bool beside them would be a second source of truth for one byte, the
      reason §8.8 gives for not registering lag. "Infeasible" is any of bits

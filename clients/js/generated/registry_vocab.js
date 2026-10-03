@@ -1220,7 +1220,7 @@ export const FIELD_ROLE = {
   plan_duration: 'plan.duration',  // total duration of the segment in flight
   plan_latency: 'plan.latency',  // RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagno
   plan_style: 'plan.style',  // which planning style produced the segment; options are the device's style names, index-aligned w
-  plan_flags: 'plan.flags',  // RFC-100 (§8.8): bitfield8, bits per plan_flags, describing the segment in flight: set by the pla
+  plan_flags: 'plan.flags',  // RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a segment plans, from that plan, cleare
   advgen_running: 'advgen.running',  // RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). 
   advgen_master: 'advgen.master',  // RFC-081: overall rate scale of the advanced program, percent of its own range
   advgen_depth_max: 'advgen.depth_max',  // RFC-081: the deep stroke bound the program swings to, percent of the stroke window
