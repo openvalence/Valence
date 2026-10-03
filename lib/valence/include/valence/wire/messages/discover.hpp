@@ -49,8 +49,8 @@ static_assert(udp_discovery::magic.size() == kDiscoverMagicBytes);
 static_assert(kDiscoverProbeBytes == 9, "SPEC §13.8: magic + proto_ver:u8 + nonce:u32");
 static_assert(kDiscoverReplyBytes == 76, "registry frame_types 0x1F: 76 B since the RFC-048 correction");
 
-// DISCOVER_REPLY flags. Bits 1-7 are unassigned and MUST be zero.
-inline constexpr uint8_t kDiscoverFlagPairingWindowOpen = 0x01;  // bit0: a §12.3 window is open now
+// DISCOVER_REPLY flags: registry discover_reply_flags. Unassigned bits MUST be zero.
+inline constexpr uint8_t kDiscoverFlagPairingWindowOpen = discover_reply_flags::pairing_window_open;
 
 struct DiscoverProbe {
     uint8_t proto_ver = kProtocolVersion;

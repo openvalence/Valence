@@ -5,13 +5,13 @@
  * changes.
  *
  * In order: a DISCOVER_PROBE on the port is still answered (one listener per
- * port); a bad CRC latches nothing; broadcastEstop() latches with its seq as
+ * port) with the reply's bit1 datagram_estop set; a bad CRC latches nothing; broadcastEstop() latches with its seq as
  * estop_seq and draws no answer; after a release the same initiation's bytes
  * do not re-latch and a fresh seq does; started with --no-estop-udp, a valid
- * datagram latches nothing.
+ * datagram latches nothing and the reply clears bit1.
  *
  * Needs a valencesim whose §13.8 listener offers each datagram to the hub's
- * ValenceEstopDatagram first (Nucleus bd val-1aw). Override the path with
+ * ValenceEstopDatagram first (Nucleus bd val-yvt). Override the path with
  * VALENCESIM. Picks free ports; state lives in a temp dir.
  *
  * Run:  node clients/js/test/valence-estop-datagram-sim.test.mjs   (exits 1 on any failure)
@@ -27,6 +27,7 @@ import { createSession } from '../session.js';
 import { acquireToken } from '../credentials.js';
 import { CH_SAFETY, PRIORITY, SAFETY_OP, SAFETY_CAUSE, ACCESS } from '../frames.js';
 import { broadcastEstop, encodeEstopDatagram, nextEstopSeq } from '../estop-datagram.js';
+import { DISCOVER_REPLY_FLAG } from '../generated/registry_vocab.js';
 
 const SIM = process.env.VALENCESIM ||
   new URL('../../../../Nucleus/sim/valencesim/build/valencesim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
@@ -96,8 +97,8 @@ async function connect(sim, withToken) {
   return { s, state };
 }
 
-// A §13.8 probe on its own socket: the reply proves the port's one listener is up.
-async function probeAnswered(port) {
+// A §13.8 probe on its own socket: the reply's flags byte, or null when unanswered.
+async function probeFlags(port) {
   const sock = dgram.createSocket('udp4');
   await new Promise((res) => sock.bind(0, '127.0.0.1', res));
   const nonce = 0x5eed1234;
@@ -112,7 +113,7 @@ async function probeAnswered(port) {
     await until(() => reply !== null, 1100);
   }
   sock.close();
-  return !!reply && reply.readUInt32LE(4) === nonce;
+  return reply && reply.readUInt32LE(4) === nonce ? reply[75] : null;
 }
 
 const sender = dgram.createSocket('udp4');
@@ -129,7 +130,10 @@ try {
   session = await connect(sim, true);
   const latched = () => !!(session.state.safety && session.state.safety.estopLatched);
   assert('the session is live and the hub starts unlatched', !latched());
-  assert('a DISCOVER_PROBE on the port is answered', await probeAnswered(sim.udp));
+  const flags = await probeFlags(sim.udp);
+  assert('a DISCOVER_PROBE on the port is answered', flags !== null);
+  assert('the reply sets bit1 datagram_estop', flags !== null && (flags & DISCOVER_REPLY_FLAG.datagram_estop) !== 0,
+    'flags ' + flags);
 
   const bad = encodeEstopDatagram({ seq: nextEstopSeq() });
   bad[11] ^= 0xff;
@@ -171,7 +175,10 @@ try {
   await sendTo(sim.udp)(encodeEstopDatagram({ seq: nextEstopSeq() }));
   await delay(500);
   assert('--no-estop-udp: a valid datagram latches nothing', !(session.state.safety && session.state.safety.estopLatched));
-  assert('--no-estop-udp: the probe is still answered', await probeAnswered(sim.udp));
+  const off = await probeFlags(sim.udp);
+  assert('--no-estop-udp: the probe is still answered', off !== null);
+  assert('--no-estop-udp: the reply clears bit1', off !== null && (off & DISCOVER_REPLY_FLAG.datagram_estop) === 0,
+    'flags ' + off);
 } catch (e) {
   assert('no exception', false, e && e.message);
 } finally {
