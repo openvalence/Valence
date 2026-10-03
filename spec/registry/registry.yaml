@@ -147,7 +147,7 @@ core_channels:
   0x0001: { name: catalog,        class: STATE, status: active,   note: "catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING." }
   0x0002: { name: session-roster, class: STATE, status: reserved, note: "RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives." }
   0x0003: { name: safety,         class: STATE, status: active,   note: "latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by ESTOP on an estop_cuts_power hub, cleared by a completed home); modes bit1 was bypass_limits before RFC-085." }
-  0x0004: { name: control-owner,  class: STATE, status: active,   note: "active arbiter source + owning session per source (§11.4)" }
+  0x0004: { name: control-owner,  class: STATE, status: active,   note: "owning session per arbiter source (§11.4). 4 slots {src<i> u8, owner<i> u32 (0 = unowned)} = 20 B, then appended per slot (RFC-098) {kind<i> u8 (source_kinds), client_kind<i> str16, client_name<i> str32}, the owner's HELLO kind and name, zero-filled when unowned: 216 B. Names are display strings, never a key." }
   0x0005: { name: safety-intents, class: INTENT, status: active,  note: "the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest `control`." }
   0x0006: { name: hub-status,     class: STATE, status: active,   note: "boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identity`: one home, no drift." }
   0x0007: { name: session-events, class: EVENT, status: active,   note: "join/leave/takeover/eviction notifications" }
@@ -579,6 +579,19 @@ safety_causes:
   2: { name: fault,        note: "hub/driver-detected fault" }
   3: { name: relay,        note: "relay-originated (segment-local safety event): §5.5" }
   4: { name: session_loss, note: "RFC-022.3: the owning session ended by ANY non-deadman teardown path (GOODBYE, rude detach, either eviction, slot reuse): §6.8 / RFC-005's teardownSession() loss policy. Was misreported as cause=deadman before this value existed." }
+
+# ---------------------------------------------------------------------------
+# Source kinds (u8) -- what each control-owner slot drives (RFC-098, §11.4).
+# A client draws the plan strip for a stream, classic or advanced owner and the
+# jog tape otherwise. A slot the hub never declares is `reserved`.
+# ---------------------------------------------------------------------------
+source_kinds:
+  0: { name: jog,      note: "a manual point move. Never takes the rail from another source (RFC-085); released when its move settles." }
+  1: { name: stream,   note: "c2h STREAM motion input. Released when its last admitted bundle has played out and nothing arrived for stream_quiet_release_ms (never below the grant's schedule horizon)." }
+  2: { name: classic,  note: "the hub's classic pattern generator (RFC-093). Released on stop." }
+  3: { name: advanced, note: "the hub's advanced generator (RFC-093). Released on stop." }
+  4: { name: remote,   note: "a hand-held remote driving the rail through the hub. Released when its source is quiet." }
+  5: { name: reserved, note: "the slot names no source: never owned, never drawn." }
 
 # ---------------------------------------------------------------------------
 # NACK / GOODBYE reason codes (u16, ranged).
@@ -1359,6 +1372,7 @@ limits:
   deadman_default_ms: 600
   deadman_min_ms: 250
   deadman_max_ms: 5000
+  stream_quiet_release_ms: 500      # RFC-098 (§11.4): a stream source is released when its last admitted bundle has played out and no bundle arrived for this long, or for the grant's schedule horizon when that is longer.
   pairing_window_default_s: 120
   pairing_pin_digits: 4
   pairing_gesture_boot_count: 3       # RFC-049g: N in §12.3(c)'s power-cycle gesture — this many CONSECUTIVE short boots arm the push-to-pair window on the next boot. Was prose-only ("N (default 3)"); the panel's own complaint pattern (registry doctrine says numbers are never left as hedges) applies to this one too.

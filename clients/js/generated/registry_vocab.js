@@ -159,7 +159,7 @@ export const CORE_CHANNEL = {
   catalog: 0x0001,  // catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces u
   session_roster: 0x0002,  // RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder dec
   safety: 0x0003,  // latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero
-  control_owner: 0x0004,  // active arbiter source + owning session per source (§11.4)
+  control_owner: 0x0004,  // owning session per arbiter source (§11.4). 4 slots {src<i> u8, owner<i> u32 (0 = unowned)} = 20 
   safety_intents: 0x0005,  // the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/r
   hub_status: 0x0006,  // boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identit
   session_events: 0x0007,  // join/leave/takeover/eviction notifications
@@ -537,6 +537,24 @@ export const SAFETY_CAUSE_NAME = {
   2: 'fault',
   3: 'relay',
   4: 'session_loss',
+};
+
+// ---- source_kinds --------------------------------------------------
+export const SOURCE_KIND = {
+  jog: 0,  // a manual point move. Never takes the rail from another source (RFC-085); released when its move 
+  stream: 1,  // c2h STREAM motion input. Released when its last admitted bundle has played out and nothing arriv
+  classic: 2,  // the hub's classic pattern generator (RFC-093). Released on stop.
+  advanced: 3,  // the hub's advanced generator (RFC-093). Released on stop.
+  remote: 4,  // a hand-held remote driving the rail through the hub. Released when its source is quiet.
+  reserved: 5,  // the slot names no source: never owned, never drawn.
+};
+export const SOURCE_KIND_NAME = {
+  0: 'jog',
+  1: 'stream',
+  2: 'classic',
+  3: 'advanced',
+  4: 'remote',
+  5: 'reserved',
 };
 
 // ---- stream_kinds --------------------------------------------------
@@ -1264,6 +1282,7 @@ export const LIMITS = {
   deadman_default_ms: 600,
   deadman_min_ms: 250,
   deadman_max_ms: 5000,
+  stream_quiet_release_ms: 500,
   pairing_window_default_s: 120,
   pairing_pin_digits: 4,
   pairing_gesture_boot_count: 3,

@@ -93,7 +93,7 @@ namespace channels {
 inline constexpr uint16_t catalog = 0x0001;  // STATE: catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends clients back to SYNCING.
 inline constexpr uint16_t session_roster = 0x0002;  // STATE: RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder declares it (see RFC-QUEUE.md deferred ledger, SPEC.md §18). `status: reserved` is the machine-checkable fact the registry never carried before: a channel can be allocated and described on paper without any conformant hub being able to claim it is live. Specified layout: generation u16 + count u8 + flags u8, then 8 packed slots {session_id u32, role u8, flags u8, name str16} = 8x22 + 4 = 180 B, inside the 242 B floor at default_max_clients_ws 8. The str16 name (feasibility pass) is intended to FIX the never-replayed-join-events blocker: a late joiner would learn existing sessions' names from the roster snapshot instead of missed 0x0007 events. Names over 16 B would truncate here; the full name rides 0x0007 while the session lives.
 inline constexpr uint16_t safety = 0x0003;  // STATE: latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by ESTOP on an estop_cuts_power hub, cleared by a completed home); modes bit1 was bypass_limits before RFC-085.
-inline constexpr uint16_t control_owner = 0x0004;  // STATE: active arbiter source + owning session per source (§11.4)
+inline constexpr uint16_t control_owner = 0x0004;  // STATE: owning session per arbiter source (§11.4). 4 slots {src<i> u8, owner<i> u32 (0 = unowned)} = 20 B, then appended per slot (RFC-098) {kind<i> u8 (source_kinds), client_kind<i> str16, client_name<i> str32}, the owner's HELLO kind and name, zero-filled when unowned: 216 B. Names are display strings, never a key.
 inline constexpr uint16_t safety_intents = 0x0005;  // INTENT: the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest `control`.
 inline constexpr uint16_t hub_status = 0x0006;  // STATE: boot_id, heap, uptime, transport stats. NO fw version: RFC-016 puts identity in WELCOME `identity`: one home, no drift.
 inline constexpr uint16_t session_events = 0x0007;  // EVENT: join/leave/takeover/eviction notifications
@@ -309,6 +309,15 @@ inline constexpr uint8_t fault = 2;  // hub/driver-detected fault
 inline constexpr uint8_t relay = 3;  // relay-originated (segment-local safety event): §5.5
 inline constexpr uint8_t session_loss = 4;  // RFC-022.3: the owning session ended by ANY non-deadman teardown path (GOODBYE, rude detach, either eviction, slot reuse): §6.8 / RFC-005's teardownSession() loss policy. Was misreported as cause=deadman before this value existed.
 }  // namespace safety_causes
+
+namespace source_kinds {
+inline constexpr uint8_t jog = 0;  // a manual point move. Never takes the rail from another source (RFC-085); released when its move settles.
+inline constexpr uint8_t stream = 1;  // c2h STREAM motion input. Released when its last admitted bundle has played out and nothing arrived for stream_quiet_release_ms (never below the grant's schedule horizon).
+inline constexpr uint8_t classic = 2;  // the hub's classic pattern generator (RFC-093). Released on stop.
+inline constexpr uint8_t advanced = 3;  // the hub's advanced generator (RFC-093). Released on stop.
+inline constexpr uint8_t remote = 4;  // a hand-held remote driving the rail through the hub. Released when its source is quiet.
+inline constexpr uint8_t reserved = 5;  // the slot names no source: never owned, never drawn.
+}  // namespace source_kinds
 
 namespace stream_kinds {
 inline constexpr uint8_t samples = 0;  // dense points reporting a value AT AN INSTANT (§9.2); a dropped sample is recoverable by interpolation from its neighbors. Decimable under congestion. The default: absent on the wire means this.
@@ -703,6 +712,7 @@ inline constexpr uint32_t ping_interval_idle_ms = 1000;
 inline constexpr uint32_t deadman_default_ms = 600;
 inline constexpr uint32_t deadman_min_ms = 250;
 inline constexpr uint32_t deadman_max_ms = 5000;
+inline constexpr uint32_t stream_quiet_release_ms = 500;
 inline constexpr uint32_t pairing_window_default_s = 120;
 inline constexpr uint32_t pairing_pin_digits = 4;
 inline constexpr uint32_t pairing_gesture_boot_count = 3;
