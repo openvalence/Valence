@@ -24,14 +24,14 @@ import {
   K, PRIORITY, FRAME, ACCESS, PACKED, PACKED_SIZE, GOODBYE_CODE, NACK,
   SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_EVENT_KIND, BLOB_NS, CH_SAFETY, LIMITS,
   UI_CATEGORY, UI_RANK, VALUE_ASPECT, VALUE_SCOPE, VALUE_PROVENANCE, UNIT_ID,
-  UI_NAV_TIER, UI_CATEGORY_TIER, UI_NAV_TIER_CATEGORIES,
+  UI_NAV_TIER, UI_CATEGORY_TIER, UI_NAV_TIER_CATEGORIES, SOURCE_KIND, SOURCE_KIND_NAME,
   encodeFrame, encodeEstopFrame, crc32, ESTOP_FRAME_BYTES,
 } from '../frames.js';
 import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair,
   parseBlobChunk, BlobReassembler, BLOB_CHUNK_HEADER_BYTES,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody,
-  schemaByKey, optionAccessFor, canUseOption, storeItemDigestOk,
+  schemaByKey, optionAccessFor, canUseOption, storeItemDigestOk, decodeControlOwner,
 } from '../catalog.js';
 import { sha256, catalogEtag, toHex, bytesEqual } from '../sha256.js';
 
@@ -349,6 +349,39 @@ assert('safety decode: modes byte (override+home_required)',
 const sd8 = decodePacked(safety9.subarray(0, 8), safetyLayout);
 assert('safety decode: 8-byte prefix still decodes, modes simply absent',
   sd8.owner_session === 0xdeadbeef && sd8.modes === undefined);
+
+// ---- control-owner 0x0004 (SPEC §11.4, RFC-098): 216 B, registry layout ----
+// Built by hand at the spec's offsets: pair i at 5i {src u8, owner u32}; slot
+// i's names at 20 + 49i {kind u8, client_kind str16, client_name str32}.
+{
+  const enc = new TextEncoder();
+  const p = new Uint8Array(216);
+  const dv = new DataView(p.buffer);
+  for (let i = 0; i < 4; i++) p[5 * i] = i;
+  dv.setUint32(1 + 5 * 1, 0x01020304, true);  // stream owned
+  dv.setUint32(1 + 5 * 2, 7, true);           // classic owned
+  const kinds = [SOURCE_KIND.jog, SOURCE_KIND.stream, SOURCE_KIND.classic, SOURCE_KIND.reserved];
+  for (let i = 0; i < 4; i++) p[20 + 49 * i] = kinds[i];
+  enc.encodeInto('MultiFunPlayer', p.subarray(70, 86));
+  enc.encodeInto('ATLANTIC-PC', p.subarray(86, 118));
+  enc.encodeInto('0123456789abcdef', p.subarray(119, 135));                   // full str16
+  enc.encodeInto('0123456789abcdefghijklmnopqrstuv', p.subarray(135, 167));   // full str32
+  const slots = decodeControlOwner(p);
+  assert('control-owner: four slots in order', slots.length === 4 && slots.every((s, i) => s.src === i));
+  assert('control-owner: owners u32 LE, 0 unowned',
+    slots[0].owner === 0 && slots[1].owner === 0x01020304 && slots[2].owner === 7 && slots[3].owner === 0);
+  assert('control-owner: each slot names its source kind',
+    slots.map((s) => SOURCE_KIND_NAME[s.kind]).join() === 'jog,stream,classic,reserved');
+  assert('control-owner: owner client_kind and client_name',
+    slots[1].clientKind === 'MultiFunPlayer' && slots[1].clientName === 'ATLANTIC-PC');
+  assert('control-owner: full-width str16/str32 decode whole, no terminator',
+    slots[2].clientKind === '0123456789abcdef' && slots[2].clientName === '0123456789abcdefghijklmnopqrstuv');
+  assert('control-owner: unowned slots read empty names',
+    slots[0].clientName === '' && slots[3].clientKind === '');
+  const old = decodeControlOwner(p.subarray(0, 20));
+  assert('control-owner: a pre-RFC-098 20 B payload keeps its pairs, kind null',
+    old.length === 4 && old[1].owner === 0x01020304 && old[1].kind === null && old[1].clientName === '');
+}
 
 // ---- catalog decode: RFC-009 annotations + option_access -------------------
 // A hand-built entry in the exact shape catalog_codec.hpp emits: one INTENT

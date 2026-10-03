@@ -111,6 +111,8 @@ public:
     uint32_t scheduleLatencyUs(uint16_t) override { return latencyUs; }
     uint16_t horizonMs = 0;                // RFC-087: 0 = the 250 ms default
     uint16_t scheduleHorizonMs(uint16_t) override { return horizonMs; }
+    uint8_t kind = source_kinds::reserved;  // RFC-098: what source 0 is
+    uint8_t sourceKind(uint8_t) override { return kind; }
     std::vector<RecordedBundle> bundles;
     std::vector<RecordedOwnership> ownership;
     std::vector<uint8_t> deadmanStops;
@@ -1849,4 +1851,104 @@ TEST_CASE("SI-87: a segments bundle spans up to the granted horizon in 100 us t_
         REQUIRE(w.granted_publishes_count == 1);
         CHECK(w.granted_publishes[0].schedule_horizon_ms == 0);
     }
+}
+
+// ---- SI-98 (RFC-098, §11.4) -------------------------------------------------
+// Quiet release of a stream source: its last bundle played out and no bundle
+// for stream_quiet_release_ms, or the grant's horizon when that is longer.
+TEST_CASE("SI-98: a stream is released (reason 5) stream_quiet_release_ms after its last bundle; the session stays LIVE") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(980);
+    StreamHubDelegate del;
+    del.kind = source_kinds::stream;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 98, true, {PublishWish{kStreamCh, 200.0f}});
+
+    writeValidBundle(link.endpointB(), kStreamCh, 3, clock.nowUs() + 200000);  // plays 200 ms ahead
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(del.ownership.size() == 1);
+    for (int i = 0; i < 4; ++i) tickAndDrain(hub, clock, link.endpointB(), 100000);
+    CHECK(del.ownership.size() == 1);  // 400 ms: inside the window
+
+    // A bundle restarts the window.
+    writeValidBundle(link.endpointB(), kStreamCh, 3, clock.nowUs());
+    tickAndDrain(hub, clock, link.endpointB());
+    for (int i = 0; i < 4; ++i) tickAndDrain(hub, clock, link.endpointB(), 100000);
+    tickAndDrain(hub, clock, link.endpointB(), 99000);
+    CHECK(del.ownership.size() == 1);  // 499 ms since the last arrival
+    tickAndDrain(hub, clock, link.endpointB(), 1000);
+    REQUIRE(del.ownership.size() == 2);
+    CHECK(del.ownership[1].owner_session == 0);
+    CHECK(del.ownership[1].reason == 5);
+
+    // Past the deadman window: nothing more, the session owns nothing and is LIVE.
+    for (int i = 0; i < 3; ++i) tickAndDrain(hub, clock, link.endpointB(), 100000);
+    CHECK(del.ownership.size() == 2);
+    REQUIRE(hub.sessionBySlot(0) != nullptr);
+    CHECK(hub.sessionBySlot(0)->state == HubSessionState::LIVE);
+    CHECK_FALSE(hub.pauseLatched());
+
+    // The next accepted bundle re-acquires.
+    writeValidBundle(link.endpointB(), kStreamCh, 3, clock.nowUs());
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(del.ownership.size() == 3);
+    CHECK(del.ownership[2].reason == 0);
+}
+
+TEST_CASE("SI-98b: a segments grant's horizon is the quiet window when it is longer than stream_quiet_release_ms") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(981);
+    StreamHubDelegate del;
+    del.kind = source_kinds::stream;
+    del.horizonMs = uint16_t(limits::schedule_horizon_max_ms);  // 1000
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 99, true, {{kSegCh, 50.0f}});
+
+    writeSegmentBundle(link.endpointB(), {{5000, 200, kSegNoEndVel}}, clock.nowUs() + 900000);  // starts 900 ms ahead
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(del.ownership.size() == 1);
+    // PINGs keep the session inside its deadman; only the quiet window is under test.
+    for (int i = 0; i < 9; ++i) {
+        writeFrame(link.endpointB(), FrameType::PING, 0, {});
+        tickAndDrain(hub, clock, link.endpointB(), 100000);
+    }
+    writeFrame(link.endpointB(), FrameType::PING, 0, {});
+    tickAndDrain(hub, clock, link.endpointB(), 99000);
+    CHECK(del.ownership.size() == 1);  // 999 ms: past 500, inside the 1000 ms horizon
+    tickAndDrain(hub, clock, link.endpointB(), 1000);
+    REQUIRE(del.ownership.size() == 2);
+    CHECK(del.ownership[1].owner_session == 0);
+    CHECK(del.ownership[1].reason == 5);
+}
+
+TEST_CASE("SI-98c: a stream source without the stream kind keeps today's rule: released by its deadman, never quietly") {
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(982);
+    StreamHubDelegate del;  // kind reserved: the delegate names no source
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 97, true, {PublishWish{kStreamCh, 200.0f}});
+    writeValidBundle(link.endpointB(), kStreamCh, 3, clock.nowUs());
+    tickAndDrain(hub, clock, link.endpointB());
+    REQUIRE(del.ownership.size() == 1);
+    for (int i = 0; i < 7; ++i) tickAndDrain(hub, clock, link.endpointB(), 100000);
+    REQUIRE(del.ownership.size() == 2);
+    CHECK(del.ownership[1].reason == 3);  // deadman-release
 }

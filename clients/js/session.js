@@ -85,7 +85,7 @@ import {
   FRAME, FRAME_NAME, K, IDENTITY_K, TRUST_K, WELCOME_LIMITS_K, PRIORITY, WS_SUBPROTOCOL,
   PROTO_VER, LIMITS, nackName, GOODBYE_CODE,
   CBOR_FIELD, CHANNEL_CLASS, SAFETY_OP, SAFETY_CAUSE,
-  CH_SAFETY, CH_SAFETY_INTENTS, CH_SETTINGS_TRIAL,
+  CH_SAFETY, CH_SAFETY_INTENTS, CH_SETTINGS_TRIAL, CH_CONTROL_OWNER,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
   STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK, decodeSafetySnapshot,
@@ -94,7 +94,7 @@ import {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk,
   decodeCatalog, catalogChannelMap, decodePacked, decodeEventBody, schemaByKey,
-  optionAccessFor, canUseOption, encodePacked, storeItemDigestOk,
+  optionAccessFor, canUseOption, encodePacked, storeItemDigestOk, decodeControlOwner,
 } from './catalog.js';
 import { catalogEtag, bytesEqual, toHex, fromHex } from './sha256.js';
 
@@ -340,6 +340,7 @@ export function createSession(opts = {}) {
     //  hub_instance_id_u64 (the same value as a BigInt), estop_cuts_power}
     identity: null,
     safety: null, // latest 0x0003 snapshot by registry bits (decodeSafetySnapshot); also emitted as 'safety'
+    controlOwner: null, // latest 0x0004 slots by registry layout (decodeControlOwner); also emitted as 'control-owner'
     // §6.3: the last admission refusal {code, name, retryAfterMs, reconnectInMs, atMs}; null once WELCOMEd
     admission: null,
     roles: null,
@@ -1415,6 +1416,10 @@ export function createSession(opts = {}) {
       state.safety = decodeSafetySnapshot(payload);
       if (state.safety && state.safety.estopLatched) estopActive = false;
       emit('safety', state.safety);
+    }
+    if (header.channel === CH_CONTROL_OWNER) {
+      state.controlOwner = decodeControlOwner(payload);
+      emit('control-owner', state.controlOwner);
     }
 
     if (welcomeGrants.has(header.channel) && !adoptedChannels.has(header.channel)) {

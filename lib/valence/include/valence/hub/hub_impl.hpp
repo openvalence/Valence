@@ -254,6 +254,9 @@ inline void Hub::update(uint32_t nowUs) {
             // handlePing); the hub does not itself originate PING.
         }
     }
+    // RFC-098: after the walk, so a bundle or intent taken this tick has
+    // already stamped its source.
+    pumpQuietRelease(nowMs, nowUs);
 }
 
 // ---- Frame pump for one slot ------------------------------------------------
@@ -1986,6 +1989,13 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
             return;
         }
     }
+    // §11.4 (RFC-085): a jog never takes the rail from a source; override is
+    // the only way past one.
+    if (mappedSource && _delegate.sourceKind(*mappedSource) == source_kinds::jog &&
+        (_safetyModes & safety_mode_bits::OVERRIDE) == 0 && railHeldByOtherSource(*mappedSource)) {
+        refuseIntent(slot, m, NackCode::SOURCE_CONFLICT, "rail owned by a source", nowMs);
+        return;
+    }
     if (mappedSource) {
         uint8_t source = *mappedSource;
         bool takeoverFlag = m.has_takeover && m.takeover;
@@ -2011,6 +2021,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
             emitTakeoverEvent(source, slot.session.session_id, nowMs);
         }
         // AlreadyOwner: idempotent re-activation, nothing to notify.
+        markSourceActive(source, nowMs, _clock.nowUs(), limits::stream_quiet_release_ms);
     }
 
     // 7) Delegate applies + clamps.
@@ -2175,8 +2186,8 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
     // counts t_off in segment_t_off_unit_us; every other bundle keeps 1 us
     // units and the 20 ms span.
     const bool segments = _catalog.isSegmentClass(*entry);
-    uint32_t horizonMs = advertisedHorizonMs(channel_id);
-    if (horizonMs == 0) horizonMs = limits::max_future_schedule_ms;
+    const uint32_t grantHorizonMs = advertisedHorizonMs(channel_id);
+    uint32_t horizonMs = grantHorizonMs != 0 ? grantHorizonMs : limits::max_future_schedule_ms;
 
     // 3) Parse + re-validate §5.4 caps against the payload (n≤32, span≤20ms,
     // strictly-increasing t_off with t_off[0]==0, exact total size /
@@ -2265,6 +2276,10 @@ inline void Hub::handleStream(Slot& slot, const FrameHeader& h, std::span<const 
             }
         }
         // AlreadyOwner: idempotent refresh, nothing to notify.
+        // RFC-098: the quiet window is stream_quiet_release_ms, or the grant's
+        // schedule horizon when that is longer.
+        markSourceActive(source, nowMs, bundle.sampleTimeUs(n - 1u),
+                         std::max<uint32_t>(limits::stream_quiet_release_ms, grantHorizonMs));
     }
 
     // 6) Deliver. Post-clamp / arbiter application is the delegate's job (sole-
@@ -3185,6 +3200,8 @@ inline void Hub::emitPairingEvent(uint8_t kind, std::span<const std::byte> insta
     if (!instance_id.empty()) {
         ev.body[ev.body_count++] = {pairing_body::instance_id, IntentValue::ofBstr(instance_id)};
     }
+    // registry pairing_body::name: the ledger's cap, never HELLO's.
+    name = name.substr(0, kLedgerNameMaxBytes);
     if (!name.empty()) ev.body[ev.body_count++] = {pairing_body::name, IntentValue::ofTstr(name)};
     ev.body[ev.body_count++] = {pairing_body::mode, IntentValue::ofU64(mode)};
     ev.body[ev.body_count++] = {pairing_body::role, IntentValue::ofU64(uint8_t(role))};
@@ -3713,15 +3730,74 @@ inline void Hub::sendNackTracked(Slot& slot, const NackMsg& n, uint32_t nowMs) {
 // Shared by the intent pipeline and deadman (§11.4 control-owner STATE,
 // session-events takeover EVENT).
 
-inline std::array<std::byte, 20> Hub::buildControlOwnerPayload() const {
-    std::array<std::byte, 20> buf{};
+inline std::array<std::byte, Hub::kControlOwnerBytes> Hub::buildControlOwnerPayload() const {
+    static_assert(kControlOwnerBytes <= limits::min_transport_payload, "control-owner must fit one STATE frame (§9.1)");
+    static_assert(limits::trust_ledger_kind_max_bytes <= kHelloMaxClientKindBytes,
+                  "a session's client_kind must fit the str16 field whole");
+    std::array<std::byte, kControlOwnerBytes> buf{};
     std::span<std::byte> s(buf);
+    constexpr size_t kNamesAt = SourceOwnershipTable::kMaxSources * kControlOwnerPairBytes;
+    const auto putStr = [&](size_t off, size_t width, std::string_view v) {
+        for (size_t b = 0; b < width && b < v.size(); ++b) s[off + b] = std::byte(uint8_t(v[b]));
+    };
     for (uint8_t i = 0; i < SourceOwnershipTable::kMaxSources; ++i) {
-        size_t off = size_t(i) * 5;
-        putU8(s.subspan(off, 1), i);
-        putU32(s.subspan(off + 1, 4), _ownership.ownerOf(i));
+        const uint32_t owner = _ownership.ownerOf(i);
+        const size_t pair = size_t(i) * kControlOwnerPairBytes;
+        putU8(s.subspan(pair, 1), i);
+        putU32(s.subspan(pair + 1, 4), owner);
+        const size_t names = kNamesAt + size_t(i) * kControlOwnerNameBytes;
+        putU8(s.subspan(names, 1), _delegate.sourceKind(i));
+        if (owner == 0) continue;
+        for (const Slot& slot : _slots) {
+            if (!slot.session.occupied() || slot.session.session_id != owner) continue;
+            putStr(names + 1, kHelloMaxClientKindBytes, slot.session.clientKind.view());
+            putStr(names + 1 + kHelloMaxClientKindBytes, kHelloMaxClientNameBytes, slot.session.clientName.view());
+            break;
+        }
     }
     return buf;
+}
+
+inline void Hub::markSourceActive(uint8_t source_id, uint32_t nowMs, uint32_t playoutEndUs, uint32_t windowMs) {
+    if (source_id >= _sourceQuiet.size()) return;
+    SourceQuiet& q = _sourceQuiet[source_id];
+    // A late bundle never pulls the playout end earlier while the previous
+    // one is still current.
+    const bool expired = timeReached(nowMs, q.lastActiveMs + q.windowMs);
+    if (expired || timeDelta(playoutEndUs, q.playoutEndUs) > 0) q.playoutEndUs = playoutEndUs;
+    q.lastActiveMs = nowMs;
+    q.windowMs = windowMs;
+}
+
+inline bool Hub::railHeldByOtherSource(uint8_t source_id) {
+    for (uint8_t src = 0; src < SourceOwnershipTable::kMaxSources; ++src) {
+        if (src == source_id || _ownership.ownerOf(src) == 0) continue;
+        const uint8_t kind = _delegate.sourceKind(src);
+        if (kind == source_kinds::stream || kind == source_kinds::classic || kind == source_kinds::advanced ||
+            kind == source_kinds::remote)
+            return true;
+    }
+    return false;
+}
+
+// §11.4 quiet release (RFC-098): a stream on the hub's own bundle clock (its
+// last bundle played out and the quiet window elapsed since it arrived), every
+// other kind on the delegate's word. Only the slot is released: the session
+// keeps its grants and its tier, and nothing latches.
+inline void Hub::pumpQuietRelease(uint32_t nowMs, uint32_t nowUs) {
+    bool releasedAny = false;
+    for (uint8_t src = 0; src < SourceOwnershipTable::kMaxSources; ++src) {
+        const uint32_t owner = _ownership.ownerOf(src);
+        if (owner == 0) continue;
+        const SourceQuiet& q = _sourceQuiet[src];
+        const bool quiet = _delegate.sourceKind(src) == source_kinds::stream
+                               ? timeReached(nowUs, q.playoutEndUs) && timeReached(nowMs, q.lastActiveMs + q.windowMs)
+                               : _delegate.sourceQuiet(src);
+        if (!quiet || !_ownership.release(src, owner)) continue;
+        releasedAny = true;
+        _delegate.onSourceOwnership(src, 0, /*reason=*/5);
+    }
+    if (releasedAny) publishControlOwnerStateIfPresent();
 }
 
 inline void Hub::publishControlOwnerStateIfPresent() {

@@ -38,6 +38,7 @@
 #include <cstring>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -67,7 +68,8 @@ void safetyCatalog(Catalog32& c, bool wideOps = false) {
 
     // -- 0x0004 "control-owner" — STATE, viewer, critical (§10.1's minimum
     // never-shed set explicitly names this channel). Layout: 4x
-    // {source_id:u8, owner_session:u32} = 20 bytes, matching
+    // {source_id:u8, owner_session:u32}, then 4x {kind:u8, client_kind:str16,
+    // client_name:str32} (RFC-098) = 216 bytes, matching
     // Hub::buildControlOwnerPayload().
     c.addEntry({.id = 0x0004, .name = "control-owner",
                 .cls = ChannelClass::STATE, .dir = Direction::h2c,
@@ -76,6 +78,11 @@ void safetyCatalog(Catalog32& c, bool wideOps = false) {
     for (size_t i = 0; i < 4; ++i) {
         c.addLayoutField({.name = "source_id", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
         c.addLayoutField({.name = "owner_session", .type = PackedFieldType::u32, .unit = "", .scale = 1.0f});
+    }
+    for (size_t i = 0; i < 4; ++i) {
+        c.addLayoutField({.name = "kind", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_kind", .type = PackedFieldType::str16, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_name", .type = PackedFieldType::str32, .unit = "", .scale = 1.0f});
     }
 
     // -- 0x0005 "safety-intents" — INTENT. RFC-025b: the channel ACCESS FLOOR
@@ -102,8 +109,18 @@ void safetyCatalog(Catalog32& c, bool wideOps = false) {
                             AccessLevel::watch, gated, gated, gated, gated});
 
     // -- the rest of the mini fixture (0x0080 .. 0x0090); ids stay ascending.
-    for (uint16_t i = 1; i < mini.count; ++i) c.addEntryFrom(mini, mini.entries[i]);
-    REQUIRE(c.count == 8);
+    // 0x0085 "generator" (INTENT, controller) follows 0x0084: a second
+    // source-mappable writer for the RFC-098 cases.
+    for (uint16_t i = 1; i < mini.count; ++i) {
+        c.addEntryFrom(mini, mini.entries[i]);
+        if (mini.entries[i].id != 0x0084) continue;
+        c.addEntry({.id = 0x0085, .name = "generator",
+                    .cls = ChannelClass::INTENT, .dir = Direction::c2h,
+                    .access = AccessLevel::control, .maxRateHz = 10.0f,
+                    .defaultPriority = Priority::normal});
+        c.addSchemaField({.key = 1, .name = "rate", .type = CborFieldType::f32_t, .unit = ""});
+    }
+    REQUIRE(c.count == 9);
     REQUIRE(c.ok());
 }
 
@@ -226,6 +243,9 @@ public:
     };
     std::vector<OwnershipEvent> ownershipEvents;
     int estopCallCount = 0;
+    // RFC-098: each source's source_kinds value, and the sources reporting quiet.
+    std::map<uint8_t, uint8_t> kinds;
+    std::set<uint8_t> quiet;
 
     AccessLevel validateToken(std::span<const std::byte>, std::span<const std::byte>, bool hasToken) override {
         if (hasToken && grantController) return AccessLevel::control;
@@ -265,6 +285,11 @@ public:
     }
     bool canClearEstop() override { return allowClearEstop; }
     std::string_view intentNackDetail(uint16_t, NackCode) override { return refuseDetail; }
+    uint8_t sourceKind(uint8_t source_id) override {
+        auto it = kinds.find(source_id);
+        return it != kinds.end() ? it->second : source_kinds::reserved;
+    }
+    bool sourceQuiet(uint8_t source_id) override { return quiet.count(source_id) != 0; }
 
     // §11.1: what admitsUnderPause() answers, and the overrideLatched flag of
     // every call, so a test can model "home/jog admitted" per mode.
@@ -1657,4 +1682,217 @@ TEST_CASE("M4a/RFC-045: an actual silence timeout ALSO latches nothing — the d
     auto& snap = delA.lastStateByChannel[0x0003];
     REQUIRE(snap.size() == 9);
     CHECK((uint8_t(snap[0]) & safety_bits::PAUSE) == 0);
+}
+
+// ############################################################################
+// RFC-098 (§11.4): quiet release and the named control-owner slots.
+// ############################################################################
+
+namespace {
+
+constexpr uint16_t kJogCh = 0x0084;
+constexpr uint16_t kGenCh = 0x0085;
+constexpr size_t kPairBytes = 5;
+constexpr size_t kNamesAt = 4 * kPairBytes;  // 20
+constexpr size_t kSlotNameBytes = 1 + kHelloMaxClientKindBytes + kHelloMaxClientNameBytes;  // 49
+constexpr size_t kOwnerBytes = kNamesAt + 4 * kSlotNameBytes;  // 216
+
+// A zero-padded field read back as a string.
+std::string strAt(const std::vector<std::byte>& p, size_t off, size_t width) {
+    std::string s;
+    for (size_t i = 0; i < width && p[off + i] != std::byte{0}; ++i) s.push_back(char(p[off + i]));
+    return s;
+}
+
+uint32_t u32At(const std::vector<std::byte>& p, size_t off) {
+    return getU32(std::span<const std::byte>(p).subspan(off, 4));
+}
+
+// Two control sessions on one hub, both subscribed to control-owner. Source 0
+// is the jog (0x0084), source 2 the classic generator (0x0085); slots 1 and 3
+// name no source.
+struct OwnerRig {
+    Catalog32 catalog{};
+    ManualClock clock{};
+    XorShift32 hubRng{9801};
+    SafetyHubDelegate hubDelegate{};
+    std::optional<Hub> hub{};
+    std::optional<InProcessLink> linkA{}, linkB{};
+    XorShift32 rngA{9802}, rngB{9803};
+    TestClientDelegate delA{}, delB{};
+    std::optional<Client> a{}, b{};
+
+    explicit OwnerRig(ClientIdentity idA = makeIdentity(81, true), ClientIdentity idB = makeIdentity(82, true)) {
+        safetyCatalog(catalog);
+        hubDelegate.channelToSource[kJogCh] = 0;
+        hubDelegate.channelToSource[kGenCh] = 2;
+        hubDelegate.kinds = {{0, source_kinds::jog}, {2, source_kinds::classic}};
+        hub.emplace(catalog, clock, hubRng, hubDelegate);
+        hubDelegate.hub = &*hub;
+        hub->publishControlOwnerStateIfPresent();
+        linkA.emplace(clock, hubRng);
+        linkB.emplace(clock, hubRng);
+        REQUIRE(hub->attachTransport(linkA->endpointA()));
+        REQUIRE(hub->attachTransport(linkB->endpointA()));
+        a.emplace(idA, linkA->endpointB(), clock, rngA, delA);
+        b.emplace(idB, linkB->endpointB(), clock, rngB, delB);
+        a->addSubscriptionWish(channels::control_owner, 0.0f, Priority::critical);
+        b->addSubscriptionWish(channels::control_owner, 0.0f, Priority::critical);
+        REQUIRE(a->connect());
+        REQUIRE(b->connect());
+        step(12);
+        REQUIRE(a->state() == ClientSessionState::LIVE);
+        REQUIRE(b->state() == ClientSessionState::LIVE);
+    }
+
+    void step(int rounds = 6) { pump(*hub, clock, {&*a, &*b}, rounds); }
+
+    // The last control-owner snapshot B saw.
+    const std::vector<std::byte>& owners() {
+        auto it = delB.lastStateByChannel.find(channels::control_owner);
+        REQUIRE(it != delB.lastStateByChannel.end());
+        REQUIRE(it->second.size() == kOwnerBytes);
+        return it->second;
+    }
+};
+
+}  // namespace
+
+TEST_CASE("RFC-098: control-owner is 216 B: four {src, owner} pairs, then per slot {kind, client_kind, client_name}") {
+    ClientIdentity idA = makeIdentity(81, true);
+    idA.client_kind = "phosphor";
+    idA.client_name = "ATLANTIC-PC";
+    OwnerRig rig(idA);
+
+    // The boot seed: every slot unowned, every kind published, every name zero.
+    {
+        const auto& p = rig.owners();
+        for (size_t i = 0; i < 4; ++i) CHECK(u32At(p, i * kPairBytes + 1) == 0);
+    }
+
+    REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+    rig.step();
+    const auto& p = rig.owners();
+    const uint8_t kinds[4] = {source_kinds::jog, source_kinds::reserved, source_kinds::classic,
+                              source_kinds::reserved};
+    for (uint8_t i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        CHECK(uint8_t(p[i * kPairBytes]) == i);
+        CHECK(u32At(p, i * kPairBytes + 1) == (i == 2 ? rig.a->sessionId() : 0u));
+        const size_t at = kNamesAt + i * kSlotNameBytes;
+        CHECK(uint8_t(p[at]) == kinds[i]);
+        if (i == 2) continue;
+        for (size_t k = 1; k < kSlotNameBytes; ++k) CHECK(p[at + k] == std::byte{0});  // unowned: zero-filled
+    }
+    // Slot 2 at bytes 118 (kind), 119..134 (client_kind), 135..166 (client_name).
+    CHECK(kNamesAt + 2 * kSlotNameBytes == 118);
+    CHECK(strAt(p, 119, 16) == "phosphor");
+    CHECK(strAt(p, 135, 32) == "ATLANTIC-PC");
+}
+
+TEST_CASE("RFC-098: a full-width client_kind (16 B) and client_name (32 B) fill their fields whole, no terminator") {
+    ClientIdentity idA = makeIdentity(83, true);
+    idA.client_kind = "0123456789abcdef";                  // HELLO's cap
+    idA.client_name = "0123456789abcdefghijklmnopqrstuv";  // HELLO's cap
+    OwnerRig rig(idA);
+    REQUIRE(rig.a->sendIntent(kJogCh, makeSpeedIntent(10.0f)).has_value());
+    rig.step();
+    const auto& p = rig.owners();
+    CHECK(u32At(p, 1) == rig.a->sessionId());
+    CHECK(strAt(p, kNamesAt + 1, 16) == idA.client_kind);
+    CHECK(strAt(p, kNamesAt + 17, 32) == idA.client_name);
+    CHECK(uint8_t(p[kNamesAt + kSlotNameBytes]) == source_kinds::reserved);  // slot 1 starts right after
+}
+
+TEST_CASE("RFC-098: a generator is released (reason 5) when it reports quiet; another session then starts it") {
+    OwnerRig rig;
+    REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 1);
+    rig.step(20);  // running: never quiet, never released
+    CHECK(rig.hubDelegate.ownershipEvents.size() == 1);
+
+    rig.hubDelegate.quiet.insert(2);  // the generator stopped
+    rig.step();
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 2);
+    CHECK(rig.hubDelegate.ownershipEvents[1].source == 2);
+    CHECK(rig.hubDelegate.ownershipEvents[1].owner == 0);
+    CHECK(rig.hubDelegate.ownershipEvents[1].reason == 5);
+    const auto& p = rig.owners();
+    CHECK(u32At(p, 2 * kPairBytes + 1) == 0);
+    const size_t at = kNamesAt + 2 * kSlotNameBytes;
+    CHECK(uint8_t(p[at]) == source_kinds::classic);
+    for (size_t k = 1; k < kSlotNameBytes; ++k) CHECK(p[at + k] == std::byte{0});
+    // Only the slot: the session stays LIVE with its tier, and nothing latched.
+    CHECK(rig.hub->sessionBySlot(0)->state == HubSessionState::LIVE);
+    CHECK_FALSE(rig.hub->pauseLatched());
+
+    rig.hubDelegate.quiet.clear();
+    REQUIRE(rig.b->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());  // no takeover flag
+    rig.step();
+    CHECK(rig.delB.nacks.empty());
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 3);
+    CHECK(rig.hubDelegate.ownershipEvents[2].owner == rig.b->sessionId());
+    CHECK(rig.hubDelegate.ownershipEvents[2].reason == 0);
+}
+
+TEST_CASE("RFC-098: a jog holds its slot until its move settles; then any control session jogs without takeover") {
+    OwnerRig rig;
+    REQUIRE(rig.a->sendIntent(kJogCh, makeSpeedIntent(10.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 1);
+
+    // Still moving: the slot is A's.
+    REQUIRE(rig.b->sendIntent(kJogCh, makeSpeedIntent(20.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.delB.nacks.size() == 1);
+    CHECK(rig.delB.nacks[0].code == NackCode::TAKEOVER_REQUIRED);
+
+    rig.hubDelegate.quiet.insert(0);  // the move settled
+    rig.step();
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 2);
+    CHECK(rig.hubDelegate.ownershipEvents[1].source == 0);
+    CHECK(rig.hubDelegate.ownershipEvents[1].owner == 0);
+    CHECK(rig.hubDelegate.ownershipEvents[1].reason == 5);
+
+    rig.hubDelegate.quiet.clear();
+    rig.delB.nacks.clear();
+    REQUIRE(rig.b->sendIntent(kJogCh, makeSpeedIntent(20.0f)).has_value());
+    rig.step();
+    CHECK(rig.delB.nacks.empty());
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 3);
+    CHECK(rig.hubDelegate.ownershipEvents[2].owner == rig.b->sessionId());
+    CHECK(rig.hubDelegate.ownershipEvents[2].reason == 0);
+}
+
+TEST_CASE("RFC-085/RFC-098: a jog is refused SOURCE_CONFLICT while a generator owns the rail and takes no slot; override admits it") {
+    OwnerRig rig;
+    REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 1);
+
+    REQUIRE(rig.b->sendIntent(kJogCh, makeSpeedIntent(20.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.delB.nacks.size() == 1);
+    CHECK(rig.delB.nacks[0].code == NackCode::SOURCE_CONFLICT);
+    CHECK(rig.hubDelegate.ownershipEvents.size() == 1);  // the jog slot was never taken
+
+    // The generator's own session meets the same rule.
+    REQUIRE(rig.a->sendIntent(kJogCh, makeSpeedIntent(20.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.delA.nacks.size() == 1);
+    CHECK(rig.delA.nacks[0].code == NackCode::SOURCE_CONFLICT);
+
+    // Override is the operator's way past a source.
+    rig.hubDelegate.admitUnderPause = true;
+    REQUIRE(rig.b->sendIntent(0x0005, makeSafetyOp(safety_ops::override)).has_value());
+    rig.step();
+    REQUIRE(rig.hub->safetyModes() == safety_mode_bits::OVERRIDE);
+    rig.delB.nacks.clear();
+    REQUIRE(rig.b->sendIntent(kJogCh, makeSpeedIntent(20.0f)).has_value());
+    rig.step();
+    CHECK(rig.delB.nacks.empty());
+    REQUIRE(rig.hubDelegate.ownershipEvents.size() == 2);
+    CHECK(rig.hubDelegate.ownershipEvents[1].source == 0);
+    CHECK(rig.hubDelegate.ownershipEvents[1].owner == rig.b->sessionId());
 }

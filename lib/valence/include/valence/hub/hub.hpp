@@ -143,10 +143,27 @@ public:
     // in hub_impl.hpp.
     virtual void onDeadmanStop(uint8_t source_id) { (void)source_id; }
     // §11.4: ownership transitions (reason: 0 acquire, 1 takeover, 2 release,
-    // 3 deadman-release, 4 session-loss-release). owner_session 0 = released.
+    // 3 deadman-release, 4 session-loss-release, 5 quiet release (RFC-098)).
+    // owner_session 0 = released.
     virtual void onSourceOwnership(uint8_t source_id, uint32_t owner_session,
                                    uint8_t reason) {
         (void)source_id; (void)owner_session; (void)reason;
+    }
+    // RFC-098 (§11.4): the `source_kinds` value of `source_id`, published per
+    // slot on control-owner. The hub releases a `stream` source on its own
+    // bundle clock, refuses a `jog` while a stream, classic, advanced or
+    // remote source owns the rail (RFC-085), and asks sourceQuiet() for every
+    // other kind. The default names no source.
+    virtual uint8_t sourceKind(uint8_t source_id) {
+        (void)source_id; return source_kinds::reserved;
+    }
+    // RFC-098 (§11.4): true when owned, non-stream `source_id` has nothing left
+    // to execute (a generator stopped, a jog's move settled). The hub then
+    // releases the slot with reason 5. Polled every update() while the source
+    // is owned, so a jog admitted this tick MUST answer false until its move
+    // has begun. The default never releases.
+    virtual bool sourceQuiet(uint8_t source_id) {
+        (void)source_id; return false;
     }
     // §11.2: application-side release precondition (velocity zero, fault gone —
     // machine domain the library can't see). false -> NACK CLEAR_REFUSED.
@@ -636,6 +653,12 @@ public:
     void setHomeRequired(bool required);
     uint8_t safetyModes() const;
 
+    // §11.4: republishes control-owner (0x0004) when the catalog declares it.
+    // The hub publishes every ownership transition itself; a host calls this
+    // once, after its delegate is constructed (the payload reads
+    // sourceKind()), to seed the boot snapshot.
+    void publishControlOwnerStateIfPresent();
+
     // ---- M5: congestion input (§10.3) --------------------------------------
     // The in-process binding's congestion signal is Simulated (§13.1): the
     // test/sim injects it here per slot. Real bindings feed their native
@@ -1015,6 +1038,14 @@ private:
     // ---- M5: pairing (§12.2) + source ownership (§11.4) ---------------------
     PairingManager _pairing;
     SourceOwnershipTable _ownership;
+    // RFC-098: per source id, when its last bundle arrived (hub ms), when that
+    // bundle's last sample plays (hub us), and its quiet window.
+    struct SourceQuiet {
+        uint32_t lastActiveMs = 0;
+        uint32_t playoutEndUs = 0;
+        uint32_t windowMs = 0;
+    };
+    std::array<SourceQuiet, SourceOwnershipTable::kMaxSources> _sourceQuiet{};
 
     // RFC-099: every session's trial set in one table; session_id 0 = free.
     // The baseline is a scalar's raw bits: u64, i64 as two's complement, f32
@@ -1169,8 +1200,21 @@ private:
 
     // ---- M5 helpers, defined in hub_impl.hpp --------------------------------
     void publishSafetySnapshot();                       // republish 0x0003 from _safetyWord/_safetyCause/...
-    void publishControlOwnerStateIfPresent();            // republish 0x0004 iff the catalog declares it (§11.4)
-    std::array<std::byte, 20> buildControlOwnerPayload() const;
+    // RFC-098: 4 x {src u8, owner u32}, then 4 x {kind u8, client_kind str16,
+    // client_name str32}.
+    static constexpr size_t kControlOwnerPairBytes = 5;
+    static constexpr size_t kControlOwnerNameBytes = 1 + kHelloMaxClientKindBytes + kHelloMaxClientNameBytes;
+    static constexpr size_t kControlOwnerBytes =
+        SourceOwnershipTable::kMaxSources * (kControlOwnerPairBytes + kControlOwnerNameBytes);
+    std::array<std::byte, kControlOwnerBytes> buildControlOwnerPayload() const;
+    // RFC-098: release every owned source that has gone quiet (§11.4).
+    void pumpQuietRelease(uint32_t nowMs, uint32_t nowUs);
+    // RFC-098: a stream source's quiet clock, stamped on every accepted bundle
+    // and every activating intent.
+    void markSourceActive(uint8_t source_id, uint32_t nowMs, uint32_t playoutEndUs, uint32_t windowMs);
+    // RFC-085: a stream, classic, advanced or remote source other than
+    // `source_id` owns the rail.
+    bool railHeldByOtherSource(uint8_t source_id);
     void emitTakeoverEvent(uint8_t source_id, uint32_t newOwnerSession, uint32_t nowMs);  // §11.4, session-events 0x0007
     bool anySubscribed(uint16_t channel_id) const;
 

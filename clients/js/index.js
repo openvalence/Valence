@@ -122,6 +122,7 @@ export {
   PRIORITY, ACCESS, ACCESS_NAME, CHANNEL_CLASS, CHANNEL_CLASS_NAME,
   PACKED, PACKED_NAME, PACKED_SIZE, CBOR_FIELD, NACK, NACK_NAME, GOODBYE_CODE,
   SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_CAUSE, SAFETY_CAUSE_NAME, HOME_OP, TRIAL_OP,
+  SOURCE_KIND, SOURCE_KIND_NAME,
   SESSION_EVENT_KIND, SAFETY_EVENT_KIND, LOG_EVENT_KIND, LOG_LEVEL_NAME,
   SETTING_FLAG, STREAM_KIND,
   // RFC-047/048 rendering metamodel. SETTING_CATEGORY* is GONE: `setting_categories`
@@ -154,7 +155,7 @@ export { encodeEstopDatagram, broadcastEstop, nextEstopSeq } from './estop-datag
 export {
   buildBlobReq, buildCatalogRequest, buildCatalogRepair, buildBlobDone, BLOB_DONE_STATUS,
   BlobReassembler, parseBlobChunk, BLOB_CHUNK_HEADER_BYTES, BLOB_CHUNK_PAYLOAD,
-  decodeCatalog, catalogChannelMap, decodePacked, encodePacked, decodeEventBody,
+  decodeCatalog, catalogChannelMap, decodePacked, encodePacked, decodeEventBody, decodeControlOwner,
   schemaByKey, optionAccessFor, canUseOption, entriesOfClass, hasChannel,
 } from './catalog.js';
 

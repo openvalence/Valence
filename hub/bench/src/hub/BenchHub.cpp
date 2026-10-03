@@ -223,6 +223,19 @@ private:
         c.addLayoutField({.name = "owner2", .type = PackedFieldType::u32, .unit = "", .scale = 1.0f});
         c.addLayoutField({.name = "src3", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
         c.addLayoutField({.name = "owner3", .type = PackedFieldType::u32, .unit = "", .scale = 1.0f});
+        // RFC-098: per slot, the source kind and the owner's HELLO kind and name.
+        c.addLayoutField({.name = "kind0", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_kind0", .type = PackedFieldType::str16, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_name0", .type = PackedFieldType::str32, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "kind1", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_kind1", .type = PackedFieldType::str16, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_name1", .type = PackedFieldType::str32, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "kind2", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_kind2", .type = PackedFieldType::str16, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_name2", .type = PackedFieldType::str32, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "kind3", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_kind3", .type = PackedFieldType::str16, .unit = "", .scale = 1.0f});
+        c.addLayoutField({.name = "client_name3", .type = PackedFieldType::str32, .unit = "", .scale = 1.0f});
 
         c.addEntry({.id = valence::channels::safety_intents, .name = "safety-intents",
                     .cls = ChannelClass::INTENT, .dir = Direction::c2h,

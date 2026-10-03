@@ -12,6 +12,7 @@
 #include "valence/channel/subscription.hpp"
 #include "valence/generated/registry_constants.hpp"
 #include "valence/util/bounded_string.hpp"
+#include "valence/wire/messages/hello.hpp"
 
 namespace valence {
 
@@ -61,9 +62,11 @@ struct HubSession {
     // NAME the device long after that — an operator approving "something with
     // instance id 3f9a..." is being asked to authorize a hex blob. So the
     // session keeps its own truncated copies, at the ledger's caps so nothing
-    // appears to change between the roster and the prompt.
+    // appears to change between the roster and the prompt. The name is kept
+    // whole (HELLO's cap) for control-owner (RFC-098); the ledger truncates its
+    // own copy.
     BoundedString<size_t(limits::trust_ledger_kind_max_bytes)> clientKind{};
-    BoundedString<size_t(limits::trust_ledger_name_max_bytes)> clientName{};
+    BoundedString<kHelloMaxClientNameBytes> clientName{};
     BoundedString<size_t(limits::client_ver_max_bytes)> clientVer{};
     bool hasClientVer = false;
     // trust_keys.presentation_mode as the client declared it. Recorded, not

@@ -683,6 +683,40 @@ export function decodePacked(payload, layout) {
   return out;
 }
 
+// control-owner (0x0004, SPEC §11.4) by its registry layout, never a hub's
+// catalog: four {src, owner} pairs, then per slot (RFC-098) the source kind and
+// the owner's HELLO client_kind and client_name, 216 B.
+const OWNER_SLOTS = [0, 1, 2, 3];
+const CONTROL_OWNER_LAYOUT = [
+  ...OWNER_SLOTS.flatMap((i) => [{ name: 'src' + i, type: PACKED.u8 }, { name: 'owner' + i, type: PACKED.u32 }]),
+  ...OWNER_SLOTS.flatMap((i) => [
+    { name: 'kind' + i, type: PACKED.u8 },
+    { name: 'client_kind' + i, type: PACKED.str16 },
+    { name: 'client_name' + i, type: PACKED.str32 },
+  ]),
+];
+
+/**
+ * Decode a control-owner payload into its slots, in slot order. `owner` is the
+ * session id (0 = unowned), `kind` a SOURCE_KIND value; names are display
+ * strings, never a key. A pre-RFC-098 hub's 20 B payload reads kind null and
+ * empty names.
+ * @param {Uint8Array} payload
+ * @returns {Array<{src:number, owner:number, kind:number|null, clientKind:string, clientName:string}>}
+ */
+export function decodeControlOwner(payload) {
+  const d = decodePacked(payload, CONTROL_OWNER_LAYOUT);
+  const slots = [];
+  for (const i of OWNER_SLOTS) {
+    if (d['owner' + i] === undefined) break;
+    slots.push({
+      src: d['src' + i], owner: d['owner' + i], kind: d['kind' + i] ?? null,
+      clientKind: d['client_kind' + i] ?? '', clientName: d['client_name' + i] ?? '',
+    });
+  }
+  return slots;
+}
+
 const PACKED_RANGE = {
   [PACKED.u8]: [0, 0xff], [PACKED.i8]: [-0x80, 0x7f],
   [PACKED.u16]: [0, 0xffff], [PACKED.i16]: [-0x8000, 0x7fff],
