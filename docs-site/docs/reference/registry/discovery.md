@@ -78,4 +78,14 @@ A reply carries `magic + nonce + hub_name + hub_id + proto_ver + ws_port +
 fw_version + catalog_etag + flags`. A passive observer of a normal
 WELCOME could already learn all of it.
 
+## UDP discovery reply flags
+
+The `flags` byte closing the `DISCOVER_REPLY` (`0x1F`) payload. Bits
+not listed are zero.
+
+| Mask | Bit | Name | Notes |
+|---|---|---|---|
+| `0x01` | `bit 0` | `pairing_window_open` | a §12.3 association window is open right now (the 0x17 BEACON flag's meaning, plus the endpoint) |
+| `0x02` | `bit 1` | `datagram_estop` | RFC-053 item 2b: this hub honors an ESTOP frame on this UDP port right now (the setting's live value), so a sessionless sender learns at setup whether its ESTOP will be heard; the BEACON bit1 mirror |
+
 > DEMO-CANDIDATE: send a live UDP probe to a real hub and decode its reply on the page.

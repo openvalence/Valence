@@ -1120,6 +1120,16 @@ export const BEACON_FLAG_NAME = {
   8: 'estop_latched',
 };
 
+// ---- discover_reply_flags (bit flags) ------------------------------
+export const DISCOVER_REPLY_FLAG = {
+  pairing_window_open: 1 << 0,  // a §12.3 association window is open right now (the 0x17 BEACON flag's meaning, plus the endpoint)
+  datagram_estop: 1 << 1,  // RFC-053 item 2b: this hub honors an ESTOP frame on this UDP port right now (the setting's live v
+};
+export const DISCOVER_REPLY_FLAG_NAME = {
+  1: 'pairing_window_open',
+  2: 'datagram_estop',
+};
+
 // ---- field_roles (tstr wire values) -------------------------------
 export const FIELD_ROLE = {
   limit_jog_speed: 'limit.jog.speed',  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEIL

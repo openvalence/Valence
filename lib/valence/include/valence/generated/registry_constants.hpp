@@ -547,6 +547,11 @@ inline constexpr uint8_t accessory_host = 1u << 2;  // RFC-075: this hub runs th
 inline constexpr uint8_t estop_latched = 1u << 3;  // RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every ESTOP repeat.
 }  // namespace beacon_flags
 
+namespace discover_reply_flags {
+inline constexpr uint8_t pairing_window_open = 1u << 0;  // a §12.3 association window is open right now (the 0x17 BEACON flag's meaning, plus the endpoint)
+inline constexpr uint8_t datagram_estop = 1u << 1;  // RFC-053 item 2b: this hub honors an ESTOP frame on this UDP port right now (the setting's live value), so a sessionless sender learns at setup whether its ESTOP will be heard; the BEACON bit1 mirror
+}  // namespace discover_reply_flags
+
 namespace field_roles {
 inline constexpr std::string_view limit_jog_speed = "limit.jog.speed";  // speed ceiling of the JOG (manual) limit set: jog moves and the override `return` run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed.
 inline constexpr std::string_view limit_jog_accel = "limit.jog.accel";  // accel ceiling of the jog limit set. RFC-085 renamed it from limit.user.accel.

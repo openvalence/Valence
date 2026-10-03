@@ -127,6 +127,7 @@ SECTION_HOMES: dict[str, str] = {
     "ble_identity": "discovery.md",
     "ble_adv_flags": "discovery.md",
     "beacon_flags": "discovery.md",
+    "discover_reply_flags": "discovery.md",
     "udp_discovery": "discovery.md",
     "ui_categories": "rendering.md",
     "ui_nav_tiers": "rendering.md",
@@ -772,6 +773,10 @@ def page_discovery(reg: dict, reg_display: str) -> str:
     p("A reply carries `magic + nonce + hub_name + hub_id + proto_ver + ws_port +\n")
     p("fw_version + catalog_etag + flags`. A passive observer of a normal\n")
     p("WELCOME could already learn all of it.\n\n")
+    p("## UDP discovery reply flags\n\n")
+    p("The `flags` byte closing the `DISCOVER_REPLY` (`0x1F`) payload. Bits\n")
+    p("not listed are zero.\n\n")
+    table(p, ["Mask", "Bit", "Name", "Notes"], bit_rows(reg["discover_reply_flags"]))
     p("> DEMO-CANDIDATE: send a live UDP probe to a real hub and decode its "
       "reply on the page.\n")
     return w.getvalue()
