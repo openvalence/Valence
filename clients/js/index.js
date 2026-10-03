@@ -102,6 +102,14 @@ export {
 // In-page hub over the WebSocketImpl seam: demo/configure mode (localhub.js header).
 export { createLocalHub, defaultSnapshot } from './localhub.js';
 
+// SPEC §13.8 UDP discovery: the probe/reply codec and a probe loop over an
+// injected socket factory, since a page cannot send UDP (discover.js header).
+export {
+  discover, discoveredKey, encodeDiscoverProbe, decodeDiscoverProbe, encodeDiscoverReply, decodeDiscoverReply,
+  DISCOVERY_PORT, DISCOVERY_MAGIC, DISCOVERY_REPLY_INTERVAL_MS, DISCOVER_PROBE_BYTES, DISCOVER_REPLY_BYTES,
+  DISCOVER_FLAG_PAIRING_WINDOW_OPEN,
+} from './discover.js';
+
 // wire codec (for tests / advanced integrators)
 export {
   cbUint, cbInt, cbBool, cbF32, cbTstr, cbBstr, cbArray, cbMap,
