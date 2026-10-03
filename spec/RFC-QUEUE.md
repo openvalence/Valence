@@ -1743,6 +1743,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
 | [096](#rfc-096----a----separator-in-a-group-string-names-a-section) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
+| [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
 
 ---
 
@@ -7958,3 +7959,37 @@ say exactly which, future-us will want the receipts.*
      section.
   2. Should the separator be a named registry constant, so clients and
      lint share one spelling?
+
+## RFC-097 -- The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes)
+
+- **Status:** DRAFT (2026-10-02, from the RFC-077 library landing fd36721).
+- **Origin:** the reference library now re-announces a grown catalog on the
+  `catalog` channel 0x0001 (RFC-077, SPEC §8.6) and the JS client must
+  check a background refetch against the announced etag. The registry's
+  `core_channels` note for 0x0001 says only "etag, chunk count, entry
+  count" and pins no layout, so a client cannot decode the announcement
+  without reading the library.
+- **Problem.** Every other core STATE channel carries a pinned layout in the
+  registry (the `accessory_status` precedent). 0x0001 is the one every
+  client MUST subscribe to and the only one with no wire shape. The
+  library chose one; the JS client cannot rely on it until the registry
+  does. Until then valence-js adopts a refetched catalog unverified and
+  does not cache it.
+- **Proposed change.** Registry `core_channels` 0x0001 gains
+  `layout: "etag_lo u32 + etag_hi u32 (the 8 etag bytes in wire order) +
+  chunk_count u16 + entry_count u16 = 12 B"`, on-change, retained,
+  `watch` access, normal priority, exactly as the library emits it today.
+  SPEC §4.2-3 and §8.6 gain the pointer "layout per the registry". The
+  JS client then verifies a background refetch against the announced etag
+  and caches it.
+- **Pros.** One shape, pinned where every other shape is; the refetch path
+  becomes verifiable; no implementation changes (the library already
+  emits it, no hub declares 0x0001 yet).
+- **Cons.** Twelve bytes where eight would do if the counts were dropped;
+  the counts are what let a client size its reassembly budget before the
+  transfer starts (§8.5(a)), so they stay.
+- **Cost.** Registry one line, codegen, SPEC two pointers, clients/js one
+  decode and one check, one conformance vector pinning the 12 bytes.
+- **Wire impact.** None today (no hub declares 0x0001); the first hub that
+  does emits this shape.
+- **Open questions.** None.
