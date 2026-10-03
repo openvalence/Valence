@@ -148,9 +148,11 @@ public:
     // omitted; NackCode selection in the hub's intent pipeline only checks
     // its truth value, so "explicitly false" and "absent" are equivalent on
     // the wire for every purpose this library cares about).
+    // `trial` (RFC-099): a trial write, applied but not persisted. Send it
+    // only to a hub whose catalog declares settings-trial (0x0016).
     std::optional<uint16_t> sendIntent(uint16_t channel_id, const IntentValueMap& values,
                                        std::optional<uint16_t> preconditionCfgGen = std::nullopt,
-                                       bool takeover = false);
+                                       bool takeover = false, bool trial = false);
 
     // §11.2: initiate ESTOP — sends the 12-byte frame now and re-sends every
     // limits::estop_repeat_interval_ms until the safety channel's latched

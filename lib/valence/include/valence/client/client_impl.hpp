@@ -785,7 +785,8 @@ inline void Client::handlePing(std::span<const std::byte> payload) {
 // ---- sendIntent (§9.3) ------------------------------------------------------
 
 inline std::optional<uint16_t> Client::sendIntent(uint16_t channel_id, const IntentValueMap& values,
-                                                   std::optional<uint16_t> preconditionCfgGen, bool takeover) {
+                                                   std::optional<uint16_t> preconditionCfgGen, bool takeover,
+                                                   bool trial) {
     if (_state != ClientSessionState::LIVE) return std::nullopt;
     // RFC-029 item 1, NORMATIVE: "a clone fails the signature; the client MUST
     // surface 'this is not your machine' and withhold intents". WITHHELD HERE,
@@ -809,6 +810,8 @@ inline std::optional<uint16_t> Client::sendIntent(uint16_t channel_id, const Int
     }
     m.has_takeover = true;
     m.takeover = takeover;
+    m.has_trial = trial;
+    m.trial = trial;
 
     std::array<std::byte, 300> buf{};
     size_t n = encodeIntent(m, std::span<std::byte>(buf));

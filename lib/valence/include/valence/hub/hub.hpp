@@ -22,6 +22,7 @@
 #include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/log_channel.hpp"
 #include "valence/channel/safety_events_channel.hpp"
+#include "valence/channel/settings_trial_channel.hpp"
 #include "valence/channel/trust_channels.hpp"
 #include "valence/channel/retained_store.hpp"
 #include "valence/core/clock.hpp"
@@ -51,6 +52,10 @@
 namespace valence {
 
 inline constexpr size_t kHubMaxSessions = 4;  // conformance floor (§6.3, §17.1)
+// RFC-099: (channel, key) pairs on trial at once, across every session. Keys
+// are exclusive across sessions, so a catalog with at most this many
+// trialable keys never fills it.
+inline constexpr size_t kHubMaxTrials = 32;
 
 // What the application (firmware / sim model) provides to the hub.
 class HubDelegate {
@@ -243,6 +248,39 @@ public:
     // answering a report with a request nobody made.
     virtual void onBlobDone(uint32_t session_id, const BlobId& id, BlobDoneStatus status) {
         (void)session_id; (void)id; (void)status;
+    }
+
+    // ---- RFC-099: trial writes (§9.3) ---------------------------------------
+    // The current value of setting `key` written through INTENT `channel_id`,
+    // in that write's own frame and type: the baseline a revert restores.
+    // nullopt = not trialable (a verb, a motion command, a value whose write
+    // the machine gates on live state, a string); the hub then NACKs the trial
+    // UNSUPPORTED_OP. Only U64, I64, F32 and Bool baselines are kept; any
+    // other kind is refused the same way. The default trials nothing.
+    virtual std::optional<IntentValue> trialBaseline(uint16_t channel_id, uint8_t key) {
+        (void)channel_id; (void)key;
+        return std::nullopt;
+    }
+    // A trial write: applyIntent()'s contract, except nothing it applies may
+    // be persisted until onTrialCommit() names the key. Reached only for keys
+    // trialBaseline() answered.
+    virtual Result<IntentValueMap, NackCode> applyTrialIntent(uint16_t channel_id,
+                                                              const IntentValueMap& requested,
+                                                              AccessLevel role, bool& cfgChanged) {
+        return applyIntent(channel_id, requested, role, cfgChanged);
+    }
+    // Revert, or the end of the session that held the trial: put each key of
+    // `baselines` back to its value. MUST NOT refuse: a value a constraint no
+    // longer admits lands at its nearest legal value. Nothing to persist, the
+    // stored value is the baseline. cfgChanged as applyIntent()'s.
+    virtual void restoreTrial(uint16_t channel_id, const IntentValueMap& baselines, bool& cfgChanged) {
+        (void)channel_id; (void)baselines; (void)cfgChanged;
+    }
+    // Commit, or a durable write by the trial's own session: each key of
+    // `keys` (values are the discarded baselines) is durable at its CURRENT
+    // value. Persist it, even when no value changed.
+    virtual void onTrialCommit(uint16_t channel_id, const IntentValueMap& keys) {
+        (void)channel_id; (void)keys;
     }
 };
 
@@ -634,6 +672,20 @@ public:
     // Test/observability access (read-only).
     const HubSession* sessionBySlot(size_t i) const;
 
+    // ---- RFC-099: trial writes (§9.3) ---------------------------------------
+    // Advances on every change of any session's trial set: a delegate
+    // republishes its meta.trial_pending fields when it moves.
+    uint32_t trialGen() const { return _trialGen; }
+    size_t trialCount() const;
+    // Bit i set: the i-th setting-annotated field of STATE `state_channel` is
+    // on trial (the meta.trial_pending value, fields past 31 not reported).
+    // 0 for a channel without a setting channel.
+    uint32_t trialMask(uint16_t state_channel) const;
+    // The pre-trial value of (channel_id, key) while a session holds it on
+    // trial, else nullopt. A persisting delegate stores this in place of the
+    // live value (§9.3: a trial value is never persisted before its commit).
+    std::optional<IntentValue> trialBaselineOf(uint16_t channel_id, uint8_t key) const;
+
     // ---- M4 test-only hook (documented deviation; real congestion/re-grant
     // policy is M5) -----------------------------------------------------------
     // Forces an unsolicited GRANT (§10.2) for one already-granted channel of
@@ -964,6 +1016,19 @@ private:
     PairingManager _pairing;
     SourceOwnershipTable _ownership;
 
+    // RFC-099: every session's trial set in one table; session_id 0 = free.
+    // The baseline is a scalar's raw bits: u64, i64 as two's complement, f32
+    // in the low 32 bits, bool as 0/1, `kind` an IntentValue::Kind.
+    struct TrialEntry {
+        uint64_t bits = 0;
+        uint32_t session_id = 0;
+        uint16_t channel_id = 0;
+        uint8_t key = 0;
+        uint8_t kind = 0;
+    };
+    std::array<TrialEntry, kHubMaxTrials> _trials{};
+    uint32_t _trialGen = 0;
+
     // ---- M4b: the trust ledger's BLOB-store identity ------------------------
     // Discovered from the catalog (at construction, and again after a
     // re-sync), never legislated: if the
@@ -1155,6 +1220,13 @@ private:
     // teardownSession() so "owner departs" is ONE behavior regardless of
     // whether the session went stale or was destroyed outright.
     void releaseSessionSources(uint32_t sessionId, uint8_t reason, uint32_t nowMs);
+    // RFC-099: commit or revert every trial `sessionId` holds, one delegate
+    // call per channel, and clear them.
+    void endSessionTrials(uint32_t sessionId, bool commit);
+    TrialEntry* findTrial(uint16_t channel_id, uint8_t key);
+    const TrialEntry* findTrial(uint16_t channel_id, uint8_t key) const;
+    // Refuses with `code` and `detail` on the intent's own id.
+    void refuseIntent(Slot& slot, const IntentMsg& m, NackCode code, std::string_view detail, uint32_t nowMs);
     // Centralized teardown for one session slot: releases source ownership
     // (above) with the given `reason` (default session-loss), notifies the
     // roster (onSessionLeft), and frees the slot (session.reset() +
@@ -1201,6 +1273,7 @@ private:
     // RFC-018/027/029 admin verbs on 0x0009. Returns true when it handled the
     // intent (echoing or NACKing itself).
     bool handleAdminIntent(Slot& slot, const IntentMsg& m, uint32_t nowMs);
+    void handleTrialOpIntent(Slot& slot, const IntentMsg& m, uint32_t nowMs);
     Slot* findSlotBySession(uint32_t session_id);
     void handleProbeRequest(Slot& slot, uint32_t nowMs);
     void handleProbeReportFrame(Slot& slot, std::span<const std::byte> payload);

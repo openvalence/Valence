@@ -34,7 +34,9 @@
  * refusals (ESTOP_ACTIVE, NOT_HOMED, INTERLOCK under PAUSE, SOURCE_CONFLICT
  * between the pattern.running and advgen.running sources and for a move
  * while one runs, §11.4); store reads (ns 1) and the action.store ops on an
- * in-memory item list with the roster STATE.
+ * in-memory item list with the roster STATE; trial writes (RFC-099, §9.3)
+ * when the catalog declares settings-trial: per-session baselines, commit,
+ * revert, TRIAL_CONFLICT, revert on close, and every meta.trial_pending field.
  *
  * Does not: move, plan or publish telemetry (position holds at its snapshot);
  * grant c2h STREAM publications (PUBLISH grants nothing); time out deadman or
@@ -47,12 +49,12 @@ import { cbUint, cbInt, cbBool, cbF32, cbTstr, cbBstr, cbArray, cbMap, cbDecodeF
 import {
   FRAME, K, IDENTITY_K, BLOB_K, BLOB_NS, WELCOME_LIMITS_K, ACCESS, CHANNEL_CLASS, PACKED, PACKED_SIZE,
   CBOR_FIELD, NACK, SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_CAUSE, SAFETY_EVENT_KIND, FIELD_ROLE, ACTION_TAG,
-  LIMITS, PROTO_VER, WS_SUBPROTOCOL, CH_SAFETY, CH_SAFETY_INTENTS, CH_SAFETY_EVENTS,
+  LIMITS, PROTO_VER, WS_SUBPROTOCOL, CH_SAFETY, CH_SAFETY_INTENTS, CH_SAFETY_EVENTS, CH_SETTINGS_TRIAL,
   encodeFrame, parseFrames, crc32, ESTOP_FRAME_BYTES,
 } from './frames.js';
 import { decodeCatalog, decodePacked, schemaByKey, canUseOption } from './catalog.js';
 import { catalogEtag, bytesEqual } from './sha256.js';
-import { STORE_OP } from './generated/registry_vocab.js';
+import { STORE_OP, TRIAL_OP } from './generated/registry_vocab.js';
 
 const CHUNK = LIMITS.catalog_chunk_payload;
 const RING = 32; // idempotency_ring_depth (§9.3)
@@ -347,6 +349,45 @@ export function createLocalHub(o) {
     return {};
   }
 
+  // ---- RFC-099 trial writes: 'channel:key' -> {sid, base: [[state, field, value]]} ----
+  const trialsOn = byId.has(CH_SETTINGS_TRIAL);
+  const trials = new Map();
+  const trialKey = (ch, k) => ch + ':' + k;
+  function trialMasks(changed) {
+    for (const st of entries) {
+      if (!snaps.has(st.id) || st.settingChannel == null) continue;
+      const marks = st.layout.filter((f) => f.role === FIELD_ROLE.meta_trial_pending);
+      if (!marks.length) continue;
+      let bits = 0, i = 0;
+      for (const f of st.layout) {
+        if (f.settingKey == null) continue;
+        if (trials.has(trialKey(st.settingChannel, f.settingKey))) bits |= 1 << i;
+        i++;
+      }
+      marks.forEach((f, j) => {
+        const v = (bits >>> (8 * j)) & 0xff;
+        if (valueOf(st, f) !== v) { setField(st, f, v); changed.add(st.id); }
+      });
+    }
+  }
+  /** Commit or revert every trial `sid` holds; true when a value moved. */
+  function endTrials(sid, commit, changed) {
+    let moved = false;
+    for (const [k, t] of trials) {
+      if (t.sid !== sid) continue;
+      trials.delete(k);
+      if (commit) continue;
+      for (const [st, f, v] of t.base) {
+        if (valueOf(st, f) === v) continue;
+        setField(st, f, v);
+        changed.add(st.id);
+        moved = true;
+      }
+    }
+    trialMasks(changed);
+    return moved;
+  }
+
   function applyIntent(entry, vals, changed) {
     const has = (role) => entry.schema.some((f) => f.role === role && vals.has(f.key));
     if (has(ROLE_STORE)) return storeOp(entry, vals, changed);
@@ -408,8 +449,46 @@ export function createLocalHub(o) {
       vals.set(k, x);
     }
     const changed = new Set();
-    const r = opKey != null ? (safetyOp(vals.get(opKey)) || {}) : applyIntent(entry, vals, changed);
+    const me = c.sessionId;
+    const trial = trialsOn && m.get(K.trial) === true;
+    const opened = new Map();
+    if (trialsOn) {
+      for (const k of vals.keys()) {
+        const t = trials.get(trialKey(ch, k));
+        if (t && t.sid !== me) return refuse(NACK.TRIAL_CONFLICT, 'on trial by another session');
+      }
+    }
+    if (trial) {
+      const verb = (entry.schema || []).some((f) => typeof f.role === 'string' && f.role.startsWith('action.'));
+      if (opKey != null || ch === CH_SETTINGS_TRIAL || verb) return refuse(NACK.UNSUPPORTED_OP, 'not trialable');
+      for (const k of vals.keys()) {
+        if (trials.has(trialKey(ch, k))) continue;
+        const base = [];
+        for (const st of stateFor(ch)) {
+          for (const f of st.layout) if (f.settingKey === k) base.push([st, f, valueOf(st, f)]);
+        }
+        if (!base.length || base.some(([, f]) => SOURCES.has(f.role) || (f.flagBits && f.flagBits.secret))) {
+          return refuse(NACK.UNSUPPORTED_OP, 'not trialable');
+        }
+        opened.set(k, base);
+      }
+    }
+    let r;
+    if (trialsOn && ch === CH_SETTINGS_TRIAL) {
+      const op = vals.get(1);
+      if (op !== TRIAL_OP.commit && op !== TRIAL_OP.revert) return refuse(NACK.UNSUPPORTED_OP, 'op is commit or revert');
+      r = { config: endTrials(me, op === TRIAL_OP.commit, changed) };
+    } else {
+      r = opKey != null ? (safetyOp(vals.get(opKey)) || {}) : applyIntent(entry, vals, changed);
+    }
     if (r.code != null) return refuse(r.code, r.detail);
+    if (trialsOn && ch !== CH_SETTINGS_TRIAL) {
+      for (const k of vals.keys()) {
+        if (opened.has(k)) trials.set(trialKey(ch, k), { sid: me, base: opened.get(k) });
+        else if (!trial && trials.get(trialKey(ch, k))?.sid === me) trials.delete(trialKey(ch, k));
+      }
+      trialMasks(changed);
+    }
     if (r.config) cfgGen = (cfgGen + 1) & 0xffff;
     const echo = map([[K.cfg_gen, cbUint(cfgGen)], [K.intent_id, cbUint(intentId)],
       [K.applied, map([...vals].map(([k, x]) => [k, cbAs(schema.get(k), x)]))]]);
@@ -552,6 +631,10 @@ export function createLocalHub(o) {
       if (this.readyState >= 2) return;
       this.readyState = 3;
       conns.delete(this._c);
+      // RFC-099: a session's end reverts its trials.
+      const changed = new Set();
+      if (endTrials(this._c.sessionId, false, changed)) cfgGen = (cfgGen + 1) & 0xffff;
+      for (const ch of changed) broadcast(ch);
       later(() => { if (this.onclose) this.onclose({ code, reason, wasClean: true }); });
     }
   }

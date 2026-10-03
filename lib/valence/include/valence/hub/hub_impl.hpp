@@ -13,6 +13,7 @@
 #pragma once
 
 #include <algorithm>
+#include <bit>
 #include <cstring>
 #include <limits>
 
@@ -1886,6 +1887,10 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         handleAdminIntent(slot, m, nowMs);
         return;
     }
+    if (m.channel_id == channels::settings_trial) {
+        handleTrialOpIntent(slot, m, nowMs);
+        return;
+    }
 
     // 5d) RFC-085 §11.1: `resume` is the only clear of PAUSE and is refused
     // while something the operator must resolve first still holds.
@@ -1912,10 +1917,57 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         }
     }
 
+    // 5e) RFC-099 (§9.3): a key on another session's trial refuses the whole
+    // intent, trial or durable. A trial write takes a baseline for each key
+    // this session does not already hold, before anything is applied, so a
+    // refusal leaves no partial set. Decided BEFORE step 6 acquires a source.
+    const uint32_t me = slot.session.session_id;
+    const bool trial = m.has_trial && m.trial;
+    std::optional<uint8_t> mappedSource = _delegate.sourceForChannel(m.channel_id);
+    std::array<TrialEntry, kIntentMaxValueFields> opened{};
+    size_t openedCount = 0;
+    for (uint32_t i = 0; i < m.value_count; ++i) {
+        const TrialEntry* t = findTrial(m.channel_id, m.value[i].key);
+        if (t != nullptr && t->session_id != me) {
+            refuseIntent(slot, m, NackCode::TRIAL_CONFLICT, "on trial by another session", nowMs);
+            return;
+        }
+    }
+    if (trial) {
+        if (mappedSource || m.channel_id == channels::safety_intents) {
+            refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "not trialable", nowMs);
+            return;
+        }
+        for (uint32_t i = 0; i < m.value_count; ++i) {
+            const uint8_t key = m.value[i].key;
+            if (findTrial(m.channel_id, key) != nullptr) continue;  // this session's own: keeps its baseline
+            const std::optional<IntentValue> b = _delegate.trialBaseline(m.channel_id, key);
+            if (!b || b->kind == IntentValue::Kind::Tstr || b->kind == IntentValue::Kind::Bstr) {
+                refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "not trialable", nowMs);
+                return;
+            }
+            TrialEntry& o = opened[openedCount++];
+            o.session_id = me;
+            o.channel_id = m.channel_id;
+            o.key = key;
+            o.kind = uint8_t(b->kind);
+            o.bits = b->kind == IntentValue::Kind::I64    ? uint64_t(b->i64_val)
+                     : b->kind == IntentValue::Kind::F32  ? uint64_t(std::bit_cast<uint32_t>(b->f32_val))
+                     : b->kind == IntentValue::Kind::Bool ? uint64_t(b->bool_val ? 1 : 0)
+                                                          : b->u64_val;
+        }
+        size_t free = 0;
+        for (const TrialEntry& t : _trials)
+            if (t.session_id == 0) ++free;
+        if (free < openedCount) {
+            refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "trial table full", nowMs);
+            return;
+        }
+    }
+
     // 6) Source ownership (§11.4): a channel the delegate maps to an arbiter
     // source acquires exclusive ownership BEFORE applyIntent — Conflict/
     // TakenOver are decided here, never inside the delegate.
-    std::optional<uint8_t> mappedSource = _delegate.sourceForChannel(m.channel_id);
     // §11.1 (RFC-085): PAUSE suspends every source. A motion intent is refused
     // INTERLOCK before it can acquire anything, unless the application admits
     // it (the home verb; a jog under override).
@@ -1964,7 +2016,8 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     // 7) Delegate applies + clamps.
     IntentValueMap requested{m.value_count, m.value};
     bool cfgChanged = false;
-    auto applied = _delegate.applyIntent(m.channel_id, requested, slot.session.role, cfgChanged);
+    auto applied = trial ? _delegate.applyTrialIntent(m.channel_id, requested, slot.session.role, cfgChanged)
+                         : _delegate.applyIntent(m.channel_id, requested, slot.session.role, cfgChanged);
 
     if (!applied) {
         NackMsg n;
@@ -1978,6 +2031,30 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     }
 
     if (cfgChanged) ++_cfgGen;
+
+    // RFC-099: a key joins the trial set only when the ECHO carries it. A
+    // durable write ends this session's own trial on each key it applied, and
+    // the delegate persists that key even if its value did not move.
+    IntentValueMap ended{};
+    for (uint32_t i = 0; i < applied.value().count; ++i) {
+        const uint8_t key = applied.value().fields[i].key;
+        if (trial) {
+            for (size_t k = 0; k < openedCount; ++k) {
+                if (opened[k].key != key) continue;
+                for (TrialEntry& t : _trials) {
+                    if (t.session_id != 0) continue;
+                    t = opened[k];
+                    ++_trialGen;
+                    break;
+                }
+            }
+        } else if (TrialEntry* t = findTrial(m.channel_id, key); t != nullptr && t->session_id == me) {
+            ended.fields[ended.count++] = {key, *trialBaselineOf(m.channel_id, key)};
+            *t = TrialEntry{};
+            ++_trialGen;
+        }
+    }
+    if (ended.count > 0) _delegate.onTrialCommit(m.channel_id, ended);
 
     // RFC-025a/RFC-085: the hub latches PAUSE and the override mode, triggered
     // by DELEGATE ACCEPTANCE. Reaching this line IS the acceptance: a delegate
@@ -3714,6 +3791,7 @@ inline void Hub::emitSessionEvent(uint8_t kind, uint32_t session_id, uint32_t no
 // not termination, and the client may never even notice.
 inline void Hub::markStale(Slot& slot, uint32_t nowMs, uint8_t reason) {
     releaseSessionSources(slot.session.session_id, reason, nowMs);
+    endSessionTrials(slot.session.session_id, /*commit=*/false);
     slot.session.state = HubSessionState::STALE;
     slot.session.staleSinceMs = nowMs;
     emitSessionEvent(session_events::session_stale, slot.session.session_id, nowMs);
@@ -3906,6 +3984,7 @@ inline void Hub::releaseSessionSources(uint32_t sessionId, uint8_t reason, uint3
 inline void Hub::teardownSession(Slot& slot, uint32_t nowMs, uint8_t reason) {
     if (slot.session.occupied()) {
         releaseSessionSources(slot.session.session_id, reason, nowMs);
+        endSessionTrials(slot.session.session_id, /*commit=*/false);
         // M4b: a pending KNOCK belongs to the session that made it, and dies
         // with it. This is the same lesson as the source-ownership field bug,
         // applied before it could happen twice: session-scoped state that
@@ -3993,6 +4072,123 @@ inline bool Hub::regrantForTest(size_t slotIdx, uint16_t channel_id, float new_r
     size_t glen = encodeGrant(batch, std::span<std::byte>(gbuf));
     if (glen == 0) return false;
     return sendFrameTo(*slot.transport, FrameType::GRANT, 0, std::span<const std::byte>(gbuf.data(), glen));
+}
+
+// ---- RFC-099: trial writes (§9.3) -------------------------------------------
+
+inline Hub::TrialEntry* Hub::findTrial(uint16_t channel_id, uint8_t key) {
+    for (TrialEntry& t : _trials)
+        if (t.session_id != 0 && t.channel_id == channel_id && t.key == key) return &t;
+    return nullptr;
+}
+
+inline const Hub::TrialEntry* Hub::findTrial(uint16_t channel_id, uint8_t key) const {
+    for (const TrialEntry& t : _trials)
+        if (t.session_id != 0 && t.channel_id == channel_id && t.key == key) return &t;
+    return nullptr;
+}
+
+inline size_t Hub::trialCount() const {
+    size_t n = 0;
+    for (const TrialEntry& t : _trials)
+        if (t.session_id != 0) ++n;
+    return n;
+}
+
+inline std::optional<IntentValue> Hub::trialBaselineOf(uint16_t channel_id, uint8_t key) const {
+    const TrialEntry* t = findTrial(channel_id, key);
+    if (t == nullptr) return std::nullopt;
+    switch (IntentValue::Kind(t->kind)) {
+        case IntentValue::Kind::I64:  return IntentValue::ofI64(int64_t(t->bits));
+        case IntentValue::Kind::F32:  return IntentValue::ofF32(std::bit_cast<float>(uint32_t(t->bits)));
+        case IntentValue::Kind::Bool: return IntentValue::ofBool(t->bits != 0);
+        default:                      return IntentValue::ofU64(t->bits);
+    }
+}
+
+inline uint32_t Hub::trialMask(uint16_t state_channel) const {
+    const CatalogEntry* e = _catalog.find(state_channel);
+    if (e == nullptr || !e->hasSettingChannel) return 0;
+    uint32_t mask = 0;
+    uint32_t i = 0;
+    for (const LayoutField& f : _catalog.layoutFields(*e)) {
+        if (!f.hasSettingKey) continue;
+        if (i < 32 && findTrial(e->settingChannel, f.settingKey) != nullptr) mask |= 1u << i;
+        ++i;
+    }
+    return mask;
+}
+
+inline void Hub::endSessionTrials(uint32_t sessionId, bool commit) {
+    if (sessionId == 0) return;
+    bool cfgChanged = false;
+    bool any = false;
+    for (;;) {
+        size_t first = _trials.size();
+        for (size_t i = 0; i < _trials.size(); ++i) {
+            if (_trials[i].session_id == sessionId) {
+                first = i;
+                break;
+            }
+        }
+        if (first == _trials.size()) break;
+        const uint16_t ch = _trials[first].channel_id;
+        IntentValueMap batch{};
+        for (size_t i = first; i < _trials.size() && batch.count < kIntentMaxValueFields; ++i) {
+            TrialEntry& t = _trials[i];
+            if (t.session_id != sessionId || t.channel_id != ch) continue;
+            batch.fields[batch.count++] = {t.key, *trialBaselineOf(ch, t.key)};
+            t = TrialEntry{};
+        }
+        if (commit) {
+            _delegate.onTrialCommit(ch, batch);
+        } else {
+            bool changed = false;
+            _delegate.restoreTrial(ch, batch, changed);
+            cfgChanged = cfgChanged || changed;
+        }
+        any = true;
+    }
+    if (cfgChanged) ++_cfgGen;
+    if (any) ++_trialGen;
+}
+
+inline void Hub::refuseIntent(Slot& slot, const IntentMsg& m, NackCode code, std::string_view detail,
+                              uint32_t nowMs) {
+    NackMsg n;
+    n.code = code;
+    n.has_channel_id = true;
+    n.channel_id = m.channel_id;
+    n.has_intent_id = true;
+    n.intent_id = m.intent_id;
+    n.detail = detail;
+    n.has_detail = !detail.empty();
+    sendNackTracked(slot, n, nowMs);
+}
+
+// Reached only from handleIntent, after rate, readiness, catalog, access
+// (`control` floor) and the cfg_gen CAS. Acts on the sender's set only.
+inline void Hub::handleTrialOpIntent(Slot& slot, const IntentMsg& m, uint32_t nowMs) {
+    uint64_t op = 0;
+    for (uint32_t i = 0; i < m.value_count; ++i)
+        if (m.value[i].key == trial_value::op && m.value[i].value.kind == IntentValue::Kind::U64)
+            op = m.value[i].value.u64_val;
+    if (op != trial_ops::commit && op != trial_ops::revert) {
+        refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "op is commit or revert", nowMs);
+        return;
+    }
+    endSessionTrials(slot.session.session_id, op == trial_ops::commit);
+
+    EchoMsg echo;
+    echo.intent_id = m.intent_id;
+    echo.cfg_gen = _cfgGen;
+    echo.applied_count = 1;
+    echo.applied[0] = {trial_value::op, IntentValue::ofU64(op)};
+    std::array<std::byte, 32> ebuf{};
+    const size_t elen = encodeEcho(echo, std::span<std::byte>(ebuf));
+    if (elen == 0) return;
+    slot.session.intentRing.store(m.intent_id, std::span<const std::byte>(ebuf.data(), elen));
+    sendFrameToTracked(slot, FrameType::ECHO, m.channel_id, std::span<const std::byte>(ebuf.data(), elen), nowMs);
 }
 
 }  // namespace valence

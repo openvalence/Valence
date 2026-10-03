@@ -85,7 +85,7 @@ import {
   FRAME, FRAME_NAME, K, IDENTITY_K, TRUST_K, WELCOME_LIMITS_K, PRIORITY, WS_SUBPROTOCOL,
   PROTO_VER, LIMITS, nackName, GOODBYE_CODE,
   CBOR_FIELD, CHANNEL_CLASS, SAFETY_OP, SAFETY_CAUSE,
-  CH_SAFETY, CH_SAFETY_INTENTS,
+  CH_SAFETY, CH_SAFETY_INTENTS, CH_SETTINGS_TRIAL,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
   STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK, decodeSafetySnapshot,
@@ -1084,7 +1084,9 @@ export function createSession(opts = {}) {
    *
    * @param {number} channelId an INTENT channel from the catalog
    * @param {Object<number, (number|boolean|string)>} valueMap field key -> value
-   * @param {Object} [o] {timeoutMs, precondition (cfg_gen CAS), takeover}
+   * @param {Object} [o] {timeoutMs, precondition (cfg_gen CAS), takeover, trial}
+   *   `trial: true` (RFC-099) applies without persisting; refused here unless
+   *   the catalog declares settings-trial, since a hub without it would persist.
    * @returns {Promise<{applied:Object, intentId:number, cfgGen:number}>}
    */
   function sendIntent(channelId, valueMap, o = {}) {
@@ -1102,6 +1104,10 @@ export function createSession(opts = {}) {
         ' is ' + entry.clsName + ', not INTENT'));
     }
 
+    if (o.trial && !(channelMap && channelMap.has(CH_SETTINGS_TRIAL))) {
+      return Promise.reject(new Error('sendIntent: this hub declares no settings-trial channel; a trial would persist'));
+    }
+
     intentSeq = (intentSeq % 0xffff) + 1; // 1..65535, session-scoped (§9.3)
     const intentId = intentSeq;
 
@@ -1116,7 +1122,7 @@ export function createSession(opts = {}) {
     }
 
     // intent map: keys ascending — channel_id(15) < intent_id(18) < value(20)
-    // [< precondition(30)] [< takeover(32)].
+    // [< precondition(30)] [< takeover(32)] [< trial(51)].
     const intentPairs = [
       [K.channel_id, cbUint(channelId)],
       [K.intent_id, cbUint(intentId)],
@@ -1124,6 +1130,7 @@ export function createSession(opts = {}) {
     ];
     if (o.precondition != null) intentPairs.push([K.precondition, cbUint(o.precondition)]);
     if (o.takeover != null) intentPairs.push([K.takeover, cbBool(!!o.takeover)]);
+    if (o.trial) intentPairs.push([K.trial, cbBool(true)]);
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -1155,6 +1162,8 @@ export function createSession(opts = {}) {
   const sendModesSet = (fields, o) => sendIntent(CH_MODES_SET, fields, o);
   const sendHome = (op = 1, o) => sendIntent(CH_HOME, { 1: op }, o);
   const sendSafetyIntent = (op, o) => sendIntent(CH_SAFETY_INTENTS, { 1: op }, o);
+  // RFC-099: TRIAL_OP.commit or TRIAL_OP.revert, on this session's own trial set.
+  const sendTrialOp = (op, o) => sendIntent(CH_SETTINGS_TRIAL, { 1: op }, o);
 
   /**
    * ASSERT E-STOP (RFC-010). `safety_ops::estop` (6) on 0x0005: the hub treats
@@ -1734,6 +1743,7 @@ export function createSession(opts = {}) {
     sendModesSet,
     sendHome,
     sendSafetyIntent,
+    sendTrialOp,
     assertEstop,
     assertEstopRaw,
     // catalog introspection (RFC-009 helpers, resolved against THIS hub)

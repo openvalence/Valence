@@ -32,7 +32,7 @@ export {
   ACCESS, ACCESS_NAME, PRIORITY, CHANNEL_CLASS, CHANNEL_CLASS_NAME,
   PACKED, PACKED_NAME,
   SETTING_FLAG, STREAM_KIND,
-  SAFETY_OP, SAFETY_CAUSE, SAFETY_CAUSE_NAME, SESSION_ADMIN_OP,
+  SAFETY_OP, SAFETY_CAUSE, SAFETY_CAUSE_NAME, SESSION_ADMIN_OP, TRIAL_OP,
   SESSION_EVENT_KIND, SAFETY_EVENT_KIND, LOG_EVENT_KIND, PAIRING_EVENT_KIND,
   LOG_LEVEL, LOG_LEVEL_NAME,
   PAIRING_MODE, PAIRING_MODE_NAME, BLE_ADV_FLAG,
@@ -90,6 +90,8 @@ export const CH_PAIRING_EVENTS = CORE_CHANNEL.pairing_events;
 export const CH_PAIRED_DEVICES = CORE_CHANNEL.paired_devices;
 export const CH_PAIRED_DEVICES_ROSTER = CORE_CHANNEL.paired_devices_roster;
 export const CH_SAFETY_EVENTS = CORE_CHANNEL.safety_events;
+// RFC-099: a hub accepts the `trial` key iff its catalog declares this channel.
+export const CH_SETTINGS_TRIAL = CORE_CHANNEL.settings_trial;
 
 // ---- Device channel ids (include/comms/ValenceCatalog.h ch::) -------------
 // RFC-047 "Phase C2" renumbered these onto the new grid (Jul 2026). Values

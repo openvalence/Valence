@@ -2,7 +2,7 @@
 // changes anything.
 //
 // CBOR map, keys ascending: channel_id(15), intent_id(18), value(20),
-// optional precondition(30), optional takeover(32).
+// optional precondition(30), optional takeover(32), optional trial(51).
 //
 // `value` (20) is schema-dependent per the catalog (§9.3: "per the channel's
 // schema") — this codec has no catalog in scope, so it represents `value` as
@@ -201,6 +201,10 @@ struct IntentMsg {
 
     bool has_takeover = false;
     bool takeover = false;
+
+    // RFC-099 (§9.3): true = a trial write, applied but never persisted.
+    bool has_trial = false;
+    bool trial = false;
 };
 
 // ---- Encode -----------------------------------------------------------------
@@ -211,6 +215,7 @@ inline size_t encodeIntent(const IntentMsg& m, std::span<std::byte> out) {
     uint32_t nKeys = 3;  // channel_id, intent_id, value
     if (m.has_precondition) ++nKeys;
     if (m.has_takeover) ++nKeys;
+    if (m.has_trial) ++nKeys;
 
     CborWriter w(out);
     w.mapHeader(nKeys);
@@ -227,6 +232,9 @@ inline size_t encodeIntent(const IntentMsg& m, std::span<std::byte> out) {
     }
     if (m.has_takeover) {
         w.key(CborKey::takeover).boolVal(m.takeover);
+    }
+    if (m.has_trial) {
+        w.key(CborKey::trial).boolVal(m.trial);
     }
     return w.size();
 }
@@ -280,6 +288,13 @@ inline Result<IntentMsg, DecodeError> decodeIntent(std::span<const std::byte> in
                 if (!v) return Ret::err(v.error());
                 m.takeover = v.value();
                 m.has_takeover = true;
+                break;
+            }
+            case uint64_t(CborKey::trial): {
+                auto v = r.readBool();
+                if (!v) return Ret::err(v.error());
+                m.trial = v.value();
+                m.has_trial = true;
                 break;
             }
             default: {

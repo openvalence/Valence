@@ -24,6 +24,7 @@
 #include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/state_apply.hpp"
 #include "valence/channel/safety_events_channel.hpp"
+#include "valence/channel/settings_trial_channel.hpp"
 #include "valence/channel/trust_channels.hpp"
 #include "valence/wire/sha256.hpp"
 #include "valence/wire/catalog_codec.hpp"
