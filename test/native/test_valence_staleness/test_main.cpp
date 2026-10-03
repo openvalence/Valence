@@ -1004,3 +1004,62 @@ TEST_CASE("STALE-11: goodbyeAll(REBOOTING) GOODBYEs every session and ends each"
         CHECK(g->code == NackCode::REBOOTING);
     }
 }
+
+// ---- STALE-12 (rfc-904) -----------------------------------------------------
+// One hub-ms base (§7.2): a session parked by detachTransport(), outside
+// update(), on a hub up past the u32 µs wrap (~71.6 min) ages on the clock
+// update() keeps, so slot pressure still reclaims the session parked LONGEST.
+TEST_CASE("STALE-12: past the microsecond wrap, slot pressure reclaims the session parked longest") {
+    Catalog32 cat;
+    makeStaleCatalog(cat);
+    ManualClock clock(0xFFFF0000u);  // 65.536 ms before the u32 µs wrap
+    XorShift32 rng(9013);
+    StaleDelegate del;
+    Hub hub(cat, clock, rng, del);
+
+    std::vector<std::unique_ptr<InProcessLink>> links;
+    for (int i = 0; i < int(kHubMaxSessions); ++i) {
+        links.push_back(std::make_unique<InProcessLink>(clock, rng));
+        REQUIRE(hub.attachTransport(links.back()->endpointA()));
+        REQUIRE(links.back()->endpointB().open());
+    }
+    // Slots 0 and 1: WATCH sessions that park, one tier, so only park time
+    // decides. Slots 2..N-1: CONTROL sessions that stay LIVE.
+    connectSession(hub, clock, links[0]->endpointB(), 1, /*control=*/false, {});
+    const WelcomeMsg later = connectSession(hub, clock, links[1]->endpointB(), 2, /*control=*/false, {});
+    for (int i = 2; i < int(kHubMaxSessions); ++i) {
+        connectSession(hub, clock, links[size_t(i)]->endpointB(), uint8_t(10 + i), /*control=*/true, {});
+    }
+
+    // Everyone but slot 0 pings: slot 0 parks on silence, inside update().
+    constexpr uint32_t kIdleMs = limits::idle_reap_multiplier * limits::ping_interval_idle_ms;
+    for (uint32_t t = 0; t <= kIdleMs + 1500; t += 250) {
+        for (int i = 1; i < int(kHubMaxSessions); ++i) {
+            writeFrame(links[size_t(i)]->endpointB(), FrameType::PING, 0, std::span<const std::byte>{});
+        }
+        tickAndDrain(hub, clock, links[0]->endpointB(), 250000);
+        for (int i = 1; i < int(kHubMaxSessions); ++i) tickAndDrain(hub, clock, links[size_t(i)]->endpointB(), 0);
+    }
+    REQUIRE(clock.nowUs() < 0xFFFF0000u);  // wrapped once
+    REQUIRE(hub.sessionBySlot(0)->state == HubSessionState::STALE);
+    REQUIRE(hub.sessionBySlot(1)->state == HubSessionState::LIVE);
+
+    // Slot 1 parks over a second later, on a transport loss.
+    hub.detachTransport(links[1]->endpointA());
+    REQUIRE(hub.sessionBySlot(1)->state == HubSessionState::STALE);
+
+    // A new identity under slot pressure: slot 0, parked first, yields.
+    InProcessLink newcomer(clock, rng);
+    REQUIRE(hub.attachTransport(newcomer.endpointA()));
+    REQUIRE(newcomer.endpointB().open());
+    writeHello(newcomer.endpointB(), 99, /*control=*/false, {});
+    REQUIRE(findWelcome(tickAndDrain(hub, clock, newcomer.endpointB())).has_value());
+    const auto gb = findGoodbye(tickAndDrain(hub, clock, links[0]->endpointB(), 0));
+    REQUIRE(gb.has_value());
+    CHECK(gb->code == NackCode::SLOT_RECLAIMED);
+
+    // The later park is untouched and still resumable.
+    REQUIRE(hub.sessionBySlot(1) != nullptr);
+    CHECK(hub.sessionBySlot(1)->state == HubSessionState::STALE);
+    CHECK(hub.sessionBySlot(1)->session_id == later.session_id);
+}

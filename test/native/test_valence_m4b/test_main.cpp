@@ -14,6 +14,8 @@
 //   M4B-27..31  ITEM 4  the trust ledger as a BLOB STORE (RFC-029/027.4) and
 //                       its access gate.
 //   M4B-32..36  ITEM 5  the client-change tripwire (RFC-029 item 2).
+//   M4B-37..39  rfc-904 one hub-ms base (§7.2): pairing windows and the
+//                       ESTOP API on a hub up past a clock wrap.
 //
 // Native (host-side, hardware-free): InProcessLink + ManualClock + XorShift32,
 // doctest's bundled main(), same harness shape as test_valence_m3b.
@@ -42,6 +44,7 @@
 #include "valence/wire/raw/catalog_ready.hpp"
 #include "valence/wire/raw/ping_pong.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <memory>
@@ -1564,4 +1567,177 @@ TEST_CASE("M4B-36: a device that reports NO version can never trip the wire — 
     auto second = pm.observeHello(std::span<const std::byte>(id), "c5-remote", "potato", "1.0.1", true, 0);
     CHECK(second.versionChanged);
     CHECK(second.suspended);
+}
+
+// ---- rfc-904 ----------------------------------------------------------------
+// One hub-ms base (§7.2) for every timer. The entry points that run outside
+// update() (the PAIR button, the window predicates, the ESTOP API) stamp the
+// hub-ms update() keeps. nowUs / 1000 restarts at every u32 µs wrap (~71.6
+// min), so a deadline stamped with it no longer compares against update()'s.
+
+namespace {
+
+constexpr uint32_t kNearWrapUs = 0xFFFF0000u;  // 65.536 ms before the u32 µs wrap
+
+// Runs an idle hub built on `clock` at 0 forward to `hubMs`, one tick per
+// 30 min: MonotonicMs needs a tick inside every 35.8 min half wrap.
+void ageHubTo(Hub& hub, ManualClock& clock, uint64_t hubMs) {
+    constexpr uint64_t kStepUs = 30ull * 60ull * 1000000ull;
+    for (uint64_t us = 0, target = hubMs * 1000ull; us < target;) {
+        const uint64_t step = std::min(kStepUs, target - us);
+        clock.advanceUs(uint32_t(step));
+        us += step;
+        hub.update(clock.nowUs());
+    }
+}
+
+// hub-ms for a clock started at kNearWrapUs that has wrapped exactly once.
+uint32_t hubMsPastOneWrap(const ManualClock& clock) {
+    return uint32_t(((uint64_t(1) << 32) + clock.nowUs()) / 1000u);
+}
+
+// A PING with every tick keeps the session clear of idle reaping (3 s).
+std::vector<DecodedReply> pingTick(Hub& hub, ManualClock& clock, ITransport& ep, uint32_t stepUs) {
+    std::array<std::byte, 4> payload{};
+    std::array<std::byte, 16> buf{};
+    const size_t n = encodePing(std::span<const std::byte>(payload), std::span<std::byte>(buf));
+    writeFrame(ep, FrameType::PING, 0, std::span<const std::byte>(buf.data(), n));
+    return tickAndDrain(hub, clock, ep, stepUs);
+}
+
+int countEvents(const std::vector<DecodedReply>& replies, uint16_t channel, uint16_t kind) {
+    int n = 0;
+    for (const auto& e : collectEvents(replies, channel)) n += e.event_kind == kind ? 1 : 0;
+    return n;
+}
+
+}  // namespace
+
+TEST_CASE("M4B-37 (rfc-904): the PAIR button opens a full 120 s window on a hub up past a clock wrap") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    bool agedPastMsWrap = false;
+    SUBCASE("71.6 min of uptime: just past the u32 microsecond wrap") { clock.setUs(kNearWrapUs); }
+    SUBCASE("49.7 days of uptime: the window straddles the u32 hub-ms wrap") { agedPastMsWrap = true; }
+    XorShift32 rng(4037);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    if (agedPastMsWrap) ageHubTo(hub, clock, 0xFFFF0000ull);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 2, 0, allSubs());
+    pingTick(hub, clock, link.endpointB(), 100000);
+
+    // Presence window (mode c): open through 119 s, closed with its edge at 120 s.
+    hub.openPresenceWindow();
+    for (int s = 1; s < 120; ++s) {
+        CAPTURE(s);
+        auto r = pingTick(hub, clock, link.endpointB(), 1000000);
+        REQUIRE(countEvents(r, channels::pairing_events, pairing_events::window_closed) == 0);
+        REQUIRE(hub.presenceWindowOpen());
+        REQUIRE(hub.pairingWindowOpen());
+    }
+    auto closing = pingTick(hub, clock, link.endpointB(), 1000000);
+    CHECK(countEvents(closing, channels::pairing_events, pairing_events::window_closed) == 1);
+    CHECK_FALSE(hub.presenceWindowOpen());
+    CHECK_FALSE(hub.pairingWindowOpen());
+
+    // PIN window (mode b): the WELCOME update() builds offers it, and it stays
+    // open through 119 s.
+    const char pin[] = "4821";
+    hub.openPairingWindow(std::span<const char>(pin, 4));
+    const WelcomeMsg w = connectSession(hub, clock, link.endpointB(), 2, 0, allSubs());
+    REQUIRE(w.has_trust);
+    CHECK((w.trust_map.pairing_modes_mask & pairing_modes::pin_proof) != 0);
+    for (int s = 1; s < 120; ++s) {
+        CAPTURE(s);
+        pingTick(hub, clock, link.endpointB(), 1000000);
+        REQUIRE(hub.pairingWindowOpen());
+    }
+    pingTick(hub, clock, link.endpointB(), 1000000);
+    CHECK_FALSE(hub.pairingWindowOpen());
+}
+
+TEST_CASE("M4B-38 (rfc-904): an ESTOP latched and released past the microsecond wrap stamps both edges in hub-ms") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock(kNearWrapUs);
+    XorShift32 rng(4038);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 1, 0, allSubs());
+    pingTick(hub, clock, link.endpointB(), 100000);
+    REQUIRE(clock.nowUs() < kNearWrapUs);  // wrapped once
+
+    hub.latchEstop(safety_causes::user, 0);
+    const uint32_t latchMs = hubMsPastOneWrap(clock);
+    auto r1 = pingTick(hub, clock, link.endpointB(), 1000);
+    auto e1 = collectEvents(r1, channels::safety_events);
+    REQUIRE(e1.size() == 1);
+    CHECK(e1[0].event_kind == safety_events::estop_latched);
+    CHECK(e1[0].timestamp == latchMs);
+    CHECK(del.estops == 1);
+    auto s1 = latestState(r1, channels::safety);
+    REQUIRE(s1.has_value());
+    CHECK((uint8_t((*s1)[0]) & safety_bits::ESTOP) != 0);
+
+    pingTick(hub, clock, link.endpointB(), 250000);
+    REQUIRE(hub.releaseEstop());
+    const uint32_t releaseMs = hubMsPastOneWrap(clock);
+    auto r2 = pingTick(hub, clock, link.endpointB(), 1000);
+    auto e2 = collectEvents(r2, channels::safety_events);
+    REQUIRE(e2.size() == 2);
+    CHECK(e2[0].event_kind == safety_events::estop_cleared);
+    CHECK(e2[1].event_kind == safety_events::pause_latched);
+    CHECK(e2[0].timestamp == releaseMs);
+    CHECK(e2[1].timestamp == releaseMs);
+    CHECK(releaseMs - latchMs == 251u);
+    CHECK_FALSE(hub.estopLatched());
+    CHECK(hub.pauseLatched());
+    auto s2 = latestState(r2, channels::safety);
+    REQUIRE(s2.has_value());
+    CHECK(uint8_t((*s2)[0]) == safety_bits::PAUSE);
+}
+
+TEST_CASE("M4B-39 (rfc-904): an ESTOP latched on a stalled link past the wrap parks the session after 2 s, not at once") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock(kNearWrapUs);
+    XorShift32 rng(4039);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 1, 0, allSubs());
+    pingTick(hub, clock, link.endpointB(), 100000);
+    REQUIRE(clock.nowUs() < kNearWrapUs);  // wrapped once
+
+    // The client stops reading: sixteen PONGs fill the hub->client ring.
+    for (int i = 0; i < 16; ++i) writeFrame(link.endpointB(), FrameType::PING, 0, std::span<const std::byte>{});
+    clock.advanceUs(1000);
+    hub.update(clock.nowUs());
+    hub.setCongestionLevel(link.endpointA(), 2);
+
+    // Its broadcast fails, so the §10.4 step 4 stall clock starts at the latch.
+    hub.latchEstop(safety_causes::user, 0);
+    REQUIRE(hub.estopLatched());
+
+    // The client repeats the stop (§11.2). Each repeat's broadcast fails inside
+    // update() and reads that clock.
+    uint16_t intentId = 0;
+    auto repeatAfterMs = [&](uint32_t ms) {
+        writeSafetyOp(link.endpointB(), ++intentId, safety_ops::estop);
+        clock.advanceUs(ms * 1000u);
+        hub.update(clock.nowUs());
+        return hub.sessionBySlot(0)->state;
+    };
+    CHECK(repeatAfterMs(1) == HubSessionState::LIVE);
+    CHECK(repeatAfterMs(limits::never_shed_stall_eviction_ms - 2) == HubSessionState::LIVE);
+    CHECK(repeatAfterMs(1) == HubSessionState::STALE);  // RFC-051: parked at 2 s
 }

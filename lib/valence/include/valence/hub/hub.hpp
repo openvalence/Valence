@@ -286,7 +286,7 @@ public:
     // registered in applogBegin() alongside the existing web/serial sinks. The
     // library stays hardware-free because that is the entire contract: an
     // already-formatted line, a level from `log_levels`, a tag. This function
-    // stamps hub-ms from the injected IClock, encodes ONE `log_events::entry`
+    // stamps the hub-ms of the latest update(), encodes ONE `log_events::entry`
     // EVENT with its fields in the scoped `body` (40) sub-map, files it in the
     // bounded replay ring, and fans it to every current subscriber.
     //
@@ -420,11 +420,11 @@ public:
     // True while EITHER the PIN window (mode b) or the presence window (mode
     // c) is open — the same meaning as the ESP-NOW BEACON frame's own
     // pairing-open flag (§13.7) and this hub's BLE advertising flag bit0
-    // (§13.4/registry `ble_adv_flags`). Uses the hub's own clock so callers
-    // (an advertising-refresh hook, a status LED) never thread nowMs through.
+    // (§13.4/registry `ble_adv_flags`). Reads the hub-ms of the latest
+    // update() so callers (an advertising-refresh hook, a status LED) never
+    // thread nowMs through.
     bool pairingWindowOpen() const {
-        const uint32_t nowMs = _clock.nowMs();
-        return _pairing.windowOpen(nowMs) || _pairing.presenceWindowOpen(nowMs);
+        return _pairing.windowOpen(_lastUpdateMs) || _pairing.presenceWindowOpen(_lastUpdateMs);
     }
 
     // ---- RFC-030: the curve family granted to a live publish ---------------
@@ -913,9 +913,10 @@ private:
     uint16_t _digestCount = 0;
     uint16_t _fixedCount = 0;  // entries before the user-space mark at the last encode
     std::array<uint16_t, Catalog32::kEntryCapacity> _withdrawnScratch{};
-    // hub-ms of the latest update(): the timebase every session deadline is
-    // kept in, for work done outside update() (MonotonicMs, not _clock.nowMs(),
-    // which wraps at 2^32 us).
+    // hub-ms (§7.2) as of the latest update(), seeded at construction: the ONE
+    // base for every deadline and EVENT timestamp set outside update(). Do not
+    // use _clock.nowMs() there: nowUs / 1000 jumps 4294967 -> 0 at each u32 µs
+    // wrap (~71.6 min) and stops comparing against update()'s deadlines.
     uint32_t _lastUpdateMs = 0;
     // RFC-016(a) identity views — caller-owned storage, see setIdentity().
     std::string_view _idProduct{};
@@ -928,7 +929,10 @@ private:
     uint32_t _ipv4 = 0;
     uint32_t _bootId = 0;
     uint16_t _cfgGen = 1;
-    MonotonicMs _monoMs;  // wrap-safe ms derivation for all deadline bookkeeping (§7.2)
+    // Wrap-safe hub-ms (§7.2). Advanced ONLY by the constructor and update():
+    // an extra advance() from a fresh clock read can leave update()'s nowUs
+    // behind it, which MonotonicMs reads as a ~71.6 min jump forward.
+    MonotonicMs _monoMs;
 
     // ---- RFC-001: NACK ↔ inbound-frame correlation --------------------------
     // The frame-header seq of the frame currently being dispatched, valid ONLY

@@ -46,6 +46,9 @@ inline constexpr uint32_t kHubBusyRetryAfterMs = limits::busy_retry_after_defaul
 
 inline Hub::Hub(const Catalog32& catalog, IClock& clock, IRandom& rng, HubDelegate& delegate, ICrypto& crypto)
     : _catalog(catalog), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto) {
+    // Seeded here, not by the first update(): an application may open a window
+    // or latch before it ever ticks (the boot gesture does).
+    _lastUpdateMs = _monoMs.advance(_clock.nowUs());
     _catalogEncodedLen = encodeCatalogInto(_digestSide, _digestCount);
     if (_catalogEncodedLen == 0) _digestCount = 0;
     _fixedCount = std::min<uint16_t>(_catalog.userSpaceStart(), _digestCount);
@@ -88,7 +91,7 @@ inline Hub::Hub(const Catalog32& catalog, IClock& clock, IRandom& rng, HubDelega
     // EMPTY approval list it had never actually been told was empty. That
     // distinction — "nothing pending" versus "no idea" — is exactly the
     // ground-truth doctrine.
-    publishPendingPairingState(0);
+    publishPendingPairingState(_lastUpdateMs);
     publishPairedRosterState();
 }
 
@@ -124,7 +127,7 @@ inline bool Hub::attachTransport(ITransport& t) {
             victim->transport->close();
             victim->transport = nullptr;
         }
-        teardownSession(*victim, _clock.nowMs());
+        teardownSession(*victim, _lastUpdateMs);
         if (!t.open()) return false;
         victim->transport = &t;
         return true;
@@ -137,10 +140,9 @@ inline void Hub::detachTransport(ITransport& t) {
         if (slot.transport == &t) {
             // RFC-042's third staleness trigger: "transport reports closed/
             // errored out of band" — the case that matters most for a genuine
-            // WiFi blip, and unlike silence it is DETECTED, not timed out. No
-            // nowMs is threaded to detach (the transport layer, not update(),
-            // drives it), so read the injected clock — same as latchEstop().
-            parkAndDetach(slot, _clock.nowMs());
+            // WiFi blip, and unlike silence it is DETECTED, not timed out. The
+            // transport layer, not update(), drives it: stamp update()'s base.
+            parkAndDetach(slot, _lastUpdateMs);
             return;
         }
     }
@@ -2705,7 +2707,7 @@ inline bool Hub::publishLog(uint8_t level, std::string_view tag, std::string_vie
     if (tag.size() > kLogTagMaxBytes) tag = tag.substr(0, kLogTagMaxBytes);
     if (message.size() > kLogMessageMaxBytes) message = message.substr(0, kLogMessageMaxBytes);
 
-    const uint32_t nowMs = _clock.nowMs();
+    const uint32_t nowMs = _lastUpdateMs;
 
     EventMsg ev{};
     ev.channel_id = channels::log;
@@ -2822,7 +2824,7 @@ inline void Hub::latchEstop(uint8_t cause, uint8_t origin, uint16_t estop_seq) {
     f.cause = cause;
     f.origin = origin;
     f.seq = estop_seq;
-    handleEstopFrame(f, _clock.nowMs());
+    handleEstopFrame(f, _lastUpdateMs);
 }
 
 inline uint16_t Hub::nextEstopSeq() const {
@@ -2845,7 +2847,7 @@ inline void Hub::setOverride(bool engaged) {
     if (next == _safetyModes) return;  // ground truth unchanged: no publish, no wake-up
     _safetyModes = next;
     publishSafetySnapshot();
-    broadcastSafetyNow(_clock.nowMs());
+    broadcastSafetyNow(_lastUpdateMs);
 }
 
 inline void Hub::setHomeRequired(bool required) {
@@ -2854,7 +2856,7 @@ inline void Hub::setHomeRequired(bool required) {
     if (next == _safetyModes) return;
     _safetyModes = next;
     publishSafetySnapshot();
-    broadcastSafetyNow(_clock.nowMs());
+    broadcastSafetyNow(_lastUpdateMs);
 }
 
 // §11.1 (RFC-085): the hub latches PAUSE and the override mode. Called only
@@ -2914,7 +2916,7 @@ inline bool Hub::releaseEstop() {
     const uint8_t before = _safetyWord;
     _safetyWord = uint8_t((_safetyWord & ~safety_bits::ESTOP) | safety_bits::PAUSE);
     publishSafetySnapshot();
-    const uint32_t nowMs = _clock.nowMs();
+    const uint32_t nowMs = _lastUpdateMs;
     broadcastSafetyNow(nowMs);
     emitSafetyEdgeEvents(before, nowMs);  // §9.4 duality: the release is an edge too
     return true;
@@ -2922,7 +2924,7 @@ inline bool Hub::releaseEstop() {
 
 // ---- M5: pairing (§12.2) ----------------------------------------------------
 
-inline void Hub::openPairingWindow(std::span<const char> pinAscii) { _pairing.openWindow(pinAscii, _clock.nowMs()); }
+inline void Hub::openPairingWindow(std::span<const char> pinAscii) { _pairing.openWindow(pinAscii, _lastUpdateMs); }
 
 inline void Hub::closePairingWindow() { _pairing.closeWindow(); }
 
@@ -3065,10 +3067,10 @@ inline void Hub::setPresenceDefaultRole(AccessLevel r) { _pairing.setPresenceDef
 inline void Hub::setKnockApproveEnabled(bool on) { _pairing.setKnockApproveEnabled(on); }
 inline void Hub::setTrustChangeAutoKeepMax(AccessLevel r) { _pairing.setTrustChangeAutoKeepMax(r); }
 inline void Hub::setWallClockSeconds(uint32_t epochSeconds) { _pairing.setWallClockSeconds(epochSeconds); }
-inline bool Hub::presenceWindowOpen() const { return _pairing.presenceWindowOpen(_clock.nowMs()); }
+inline bool Hub::presenceWindowOpen() const { return _pairing.presenceWindowOpen(_lastUpdateMs); }
 
 inline void Hub::openPresenceWindow() {
-    const uint32_t nowMs = _clock.nowMs();
+    const uint32_t nowMs = _lastUpdateMs;
     if (_pairing.presenceWindowOpen(nowMs)) return;  // already open: not an edge
     _pairing.openPresenceWindow(nowMs);
     _presenceWasOpen = true;
@@ -3082,7 +3084,7 @@ inline void Hub::openPresenceWindow() {
 }
 
 inline void Hub::closePresenceWindow() {
-    const uint32_t nowMs = _clock.nowMs();
+    const uint32_t nowMs = _lastUpdateMs;
     if (!_pairing.presenceWindowOpen(nowMs)) return;
     _pairing.closePresenceWindow();
     _presenceWasOpen = false;
