@@ -96,6 +96,16 @@ needs   = ["node"]
 order   = 20
 description = "The reference client decoded against the pinned vectors."
 
+[[tool]]
+id      = "js-provision-suite"
+name    = "Provisioning page suite"
+group   = "suites"
+run     = ["node", "clients/provision/test/provision.test.mjs"]
+inputs  = ["clients/provision/**", "clients/js/**", "spec/registry/registry.yaml"]
+needs   = ["node"]
+order   = 30
+description = "The provisioning page's COBS codec and setup walk, both links end to end against a local hub. The browser APIs are fakes."
+
 # ---- Fuzz -------------------------------------------------------------------
 # POSIX-only by construction: these are shell scripts driving libFuzzer.
 # Per SCHEMA.md, an OS-specific script is its own entry rather than a branch.

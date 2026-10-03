@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valence Provision</title>
+<meta name="description" content="Put a Valence hub on your WiFi over USB or Bluetooth, from the browser.">
+<style>
+  :root {
+    --bg: #f6f6f4; --raised: #ffffff; --ink: #1d1d1b; --dim: #5d5d58; --line: #d6d6d0;
+    --accent: #1f6feb; --warn-bg: #fff4d6; --warn-ink: #5c4400;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --raised: #1d1d1b; --ink: #ecece8; --dim: #a3a39c; --line: #3a3a36;
+      --accent: #58a6ff; --warn-bg: #3a2f12; --warn-ink: #f5dc9a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --raised: #1d1d1b; --ink: #ecece8; --dim: #a3a39c; --line: #3a3a36;
+    --accent: #58a6ff; --warn-bg: #3a2f12; --warn-ink: #f5dc9a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 8px; }
+  h3 { font-size: .85rem; margin: 12px 0 8px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--dim); }
+  .banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 12px; margin: 16px 0; }
+  .card { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; min-height: 44px; padding: 0 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--raised); color: var(--ink);
+  }
+  button.primary, .row button { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+  dt { color: var(--dim); }
+  dd { margin: 0; overflow-wrap: anywhere; }
+  .rail { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0 0 8px; }
+  .rail button { min-height: 36px; font-size: .9rem; }
+  .rail button[aria-current="step"] { border-color: var(--accent); color: var(--accent); }
+  .body { display: grid; gap: 8px; }
+  label { font-size: .9rem; color: var(--dim); }
+  input, select {
+    font: inherit; min-height: 44px; padding: 0 10px; width: 100%;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink);
+  }
+  input[type="checkbox"] { width: 24px; min-height: 24px; }
+  .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+  .note, .result { color: var(--dim); font-size: .95rem; }
+  #status { margin: 12px 0 0; }
+  footer { color: var(--dim); font-size: .85rem; margin-top: 24px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Valence Provision</h1>
+  <p class="lede">Put a Valence machine on your WiFi. Start the machine in setup mode (hold PAIR while powering on), then connect over USB or Bluetooth.</p>
+
+  <p id="banner" class="banner" role="alert" hidden></p>
+
+  <section class="card">
+    <div class="row">
+      <button id="usb" type="button">Connect over USB</button>
+      <button id="ble" type="button">Connect over Bluetooth</button>
+    </div>
+    <p id="status" class="note" role="status" aria-live="polite">Not connected.</p>
+  </section>
+
+  <section id="hub" class="card" hidden>
+    <h2>Machine</h2>
+    <dl>
+      <dt>Name</dt><dd id="hub-name"></dd>
+      <dt>Firmware</dt><dd id="hub-fw"></dd>
+      <dt>Network</dt><dd id="hub-net"></dd>
+      <dt>Setup mode</dt><dd id="hub-setup"></dd>
+    </dl>
+  </section>
+
+  <section id="steps" class="card" hidden></section>
+
+  <footer>
+    <p>The passphrase goes to the machine and nowhere else: this page keeps no copy and stores nothing in the browser. It speaks the open Valence protocol (SPEC §13.9) and needs Chrome or Edge.</p>
+  </footer>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
