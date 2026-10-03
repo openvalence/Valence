@@ -184,8 +184,7 @@ def run_camelcase_check():
 # by construction (the extras dict above, this comment), legal texts are
 # verbatim by law, not by style, and the hook below holds its OWN en-GB
 # wordlist as a fallback for when codespell is not installed -- same
-# standing as this file (exemption precedent: SlopDrive-32 canon_lint,
-# 2026-08-04).
+# standing as this file.
 BRITISH_SPELLING_SCAN_EXEMPT = ("LICENSE", "LICENSE-SPEC", "NOTICE",
                                 "tools/valence_lint.py",
                                 ".claude/hooks/style_check.py")

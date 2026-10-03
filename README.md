@@ -45,13 +45,11 @@ Full scope, non-goals, and design philosophy: [`spec/SPEC.md`](spec/SPEC.md)
 
 ## Provenance
 
-Extracted from the machine repo that was then named SlopDrive-32, @
-`458fba076e05b2d26610467b84256380109673a4` (that repo keeps its name as the
-archived ESP32-S3 era; the name is spelled here because it is a git
-provenance fact, not a live pointer). Valence started life as the sync
-protocol for a single machine and was pulled out into its own repository to
-be the first-class source of truth once it stood on its own. Fresh git
-history — no filter-repo surgery.
+Valence started life as the sync protocol of the machine firmware that
+preceded Nucleus and was pulled out into its own repository to be the
+first-class source of truth once it stood on its own. Fresh git history — no
+filter-repo surgery. That predecessor is frozen: no file here names or cites
+it (Nucleus `.claude/rules/governance.md` §6, amendment 2026-10-03).
 
 ## Relationship to Nucleus
 
