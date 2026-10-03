@@ -1746,6 +1746,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
 | [098](#rfc-098----rail-ownership-is-released-when-its-source-goes-quiet-control-owner-names-each-slots-source-kind) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
+| [100](#rfc-100----plan-feasibility-flags-one-byte-on-the-plan-telemetry-says-how-the-planner-bent-the-segment) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Accepted 2026-10-03 (rfc-6qf) |
 
 ---
 
@@ -8155,3 +8156,83 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.** None blocking. Whether a durable write by the owning
   session should instead be refused while its own trial is open stays the
   draft's call (it ends the trial, which is what "set this for good" means).
+
+## RFC-100 -- Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment
+
+- **Status:** ACCEPTED (operator, 2026-10-03: "yes add the bit"; rfc-6qf).
+- **Origin.** Phosphor's rail draws the planned segment while a source owns
+  the rail (ph-ryi7, Phosphor c07a60f), and the operator wants its moving
+  marker amber when the plan is infeasible. The plan telemetry carries no
+  such signal, so the marker can only go amber on the stall rule (the plan
+  channel stopped publishing, or `plan.elapsed` ran past `plan.duration`),
+  which sees a stretched deadline late and a shortened stroke never. The
+  funscript analyzer's offline planner (Nucleus `tools/kinetic-wasm`, the
+  machine's own planner compiled for a client) already reports per sample
+  that a segment was shaped, fell back or was clamped; the live machine says
+  nothing of the kind.
+- **Problem.** Inside the reference hub the arbiter knows, at every plan,
+  whether the planner held the commanded deadline by shortening the stroke,
+  ran past it, substituted its fallback method, or had the command changed
+  by a clamp. None of it reaches the wire except as per-kind anomaly counters
+  on a diagnostics channel, which say that something happened since boot,
+  not whether the segment in flight is the one it happened to.
+- **Change.**
+  1. **The `plan.flags` field role** (registry `field_roles`): a `bitfield8`
+     on the plan telemetry layout, beside the other `plan.*` fields. Its bits
+     are the new registry table `plan_flags`:
+     bit0 `shaped` (the planner shortened the commanded stroke, or flattened
+     its shape, to hold the deadline), bit1 `stretched` (the segment runs
+     past the commanded deadline), bit2 `fallback` (the planner substituted
+     its fallback method for the segment), bit3 `clamped` (a ceiling or the
+     travel window changed the command). Bits 4-7 are reserved, zero on send
+     and ignored on receipt.
+  2. **Semantics per sample.** The byte describes the segment in flight: set
+     by the plan that produced it, cleared when the next segment plans clean,
+     zero while no plan is in flight. A hub publishes it on the same sample
+     as the rest of `plan.*`, so a client never pairs flags with another
+     segment's span.
+  3. **No `plan.feasible`.** The flags are the signal: one field. A derived
+     bool beside them would be a second source of truth for one byte, the
+     reason §8.8 gives for not registering lag. "Infeasible" is any of bits
+     0-3, computed by the client.
+  4. **Inclusion test.** Every planner that accepts a timed command meets
+     these four outcomes, so the role passes §8.8's test ("would a different
+     machine's motion planner have this concept?"). What the fallback method
+     is, and which ceiling clamped, stay the hub's own (its anomaly EVENTs,
+     §9.4).
+- **Who publishes (reference hub).** The plan telemetry is not a registry
+  channel: `plan.*` are roles (RFC-035) and the channel is the device's own,
+  `plan-strip` 0x1110 on Nucleus. Its 18 B layout {flags bitfield8 (active,
+  live_mode, grad_mode), style u8, start_norm u16, end_norm u16, cur_norm
+  u16, cur_vel i16, duration_us u32, elapsed_us u32} gains an appended
+  `feasibility` bitfield8 tagged `plan.flags`: 19 B, +1. The motion arbiter
+  computes it at each plan from the anomalies that plan recorded
+  (WaveformScaled and WaveformSmoothed: shaped; DeadlineStretched:
+  stretched; WaveformFallback: fallback; EndVelClamped, or a window clamp of
+  the target: clamped), carries it in the motion census, and the hub packs it
+  from the same census read as the rest of the strip.
+- **The simulator.** valencesim compiles the arbiter and the hub delegate
+  from the firmware's own sources, so it publishes the byte from the same
+  code, verbatim.
+- **Backward compatibility.** Additive. The field is appended, so a client
+  that does not know the role decodes it by layout and renders it as a
+  generic bitfield or ignores it; nothing it read before moves. An adopting
+  hub's catalog etag moves.
+- **Rendering (Phosphor, RENDERING.md `plan-view`).** The planned segment's
+  marker is amber, the warn token the stall rule already uses, when any of
+  bits 0-3 is set; the stall rule stays as the fallback for a hub that does
+  not declare `plan.flags`. The plan readback's tooltip names the set bits in
+  words: "shaped", "stretched", "fallback", "clamped".
+- **Pros.** The marker turns amber on the sample the planner bent the
+  segment, on any hub that declares the role; the analyzer's offline flags
+  and the live machine speak the same four words.
+- **Cons.** One role, one four-bit table, one byte per plan sample.
+- **Cost.** SPEC §8.8 one sentence, RENDERING.md `plan-view` one clause,
+  registry one role and one bit table, codegen. Nucleus: arbiter flags,
+  census field, catalog field, publisher. Phosphor: the claim, the marker
+  rule, the tooltip.
+- **Wire impact.** A role and a bit table; the reference hub's plan layout
+  grows 1 B and its etag moves.
+- **Open questions.** None. The render-time velocity cap in the arbiter's
+  tick (a backstop that never fires on a legal plan) does not set `clamped`:
+  the byte describes plans, not ticks.
