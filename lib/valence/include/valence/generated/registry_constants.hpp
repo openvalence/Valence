@@ -111,6 +111,7 @@ inline constexpr uint16_t accessory_admin = 0x0012;  // INTENT: RFC-076 (§8.10)
 inline constexpr uint16_t relationships = 0x0013;  // STORE: RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered item grammar `relationship_keys` (§8.7 carve-out: the hub interprets the item). Capacity at most relationships_max.
 inline constexpr uint16_t relationships_roster = 0x0014;  // STATE: RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfield8} = 8 B, `watch`; bit i = rel_id i. Carries store_id (entry key 17) naming 0x0013.
 inline constexpr uint16_t relationships_write = 0x0015;  // INTENT: RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with `enabled` changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-intents resume (§11.6).
+inline constexpr uint16_t settings_trial = 0x0016;  // INTENT: RFC-099 (§9.3): `control`; one op select (key 1, role action.trial) over `trial_ops`: commit persists every value the sender trial-wrote and clears its trial set, revert restores every pre-trial value and clears it. Acts only on the sender's own set. Hub-handled. Declaring this channel is how a hub says it supports the `trial` key (cbor_keys 51): a client MUST NOT send `trial` to a hub without it, because §4.3 makes such a hub ignore the key and persist the write.
 }  // namespace channels
 
 enum class CborKey : uint8_t {
@@ -164,6 +165,7 @@ enum class CborKey : uint8_t {
     requested_curve_family = 48,  // uint: publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WISH verbatim, unmodified by `curve_policy`. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a client has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a hub with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049).
     schedule_latency_us = 49,  // uint: granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample's time (segments: t_base + t_off; samples: its arrival stamp, RFC-084) and the start of its execution, inclusive of every hub-internal hop. On a samples-kind grant it is the chase-planning budget. A commitment, constant for the life of the grant; a change is an unsolicited GRANT. Absent or 0 = unspecified. No client wish exists (§9.6).
     schedule_horizon_ms = 50,  // uint: granted_publishes ENTRY maps (RFC-087), segments-kind grants only: the schedule horizon, how far ahead of hub time a segment's START may be stamped, and the span cap of a c2h segments bundle. One of 250 (the default, max_future_schedule_ms), 500 or 1000 (schedule_horizon_max_ms); the larger steps exist for lookahead players on poor WiFi. A cap, never a delay. Absent = 250. A commitment for the life of the grant; a change is an unsolicited GRANT. The hub picks it; no client wish exists.
+    trial = 51,  // bool: INTENT (RFC-099, §9.3): true = a TRIAL write: applied, clamped, echoed and published like any write, bumps cfg_gen like any change, but never persisted. The hub keeps the key's pre-trial value in the sender's trial set until settings-trial (0x0016) commit or revert, or the session's end, which reverts. Absent or false = a durable write. Send only to a hub whose catalog declares 0x0016.
 };
 
 namespace welcome_limits {
@@ -428,6 +430,11 @@ inline constexpr uint8_t forget = 2;  // GOODBYE the accessory, delete its recor
 inline constexpr uint8_t rename = 3;  // set the hub-authored name of the accessory named by accessory_id
 }  // namespace accessory_admin_ops
 
+namespace trial_ops {
+inline constexpr uint8_t commit = 1;  // persist every value the sender trial-wrote, as it stands, and clear the sender's trial set. No effective value changes, so cfg_gen does not move.
+inline constexpr uint8_t revert = 2;  // restore every pre-trial value of the sender's trial set and clear it. A restored value that differs bumps cfg_gen and republishes. Never refused: where a constraint no longer admits a pre-trial value, the nearest legal one.
+}  // namespace trial_ops
+
 namespace join_results {
 inline constexpr uint8_t accepted = 0;  // joined (or rejoined); the accessory waits in its safe state for a command
 inline constexpr uint8_t window_closed = 1;  // unknown accessory and no association window open
@@ -571,6 +578,7 @@ inline constexpr std::string_view telemetry_temp = "telemetry.temp";  // a tempe
 inline constexpr std::string_view telemetry_uptime = "telemetry.uptime";  // hub uptime
 inline constexpr std::string_view identity_name = "identity.name";  // the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name.
 inline constexpr std::string_view meta_enabled_mask = "meta.enabled_mask";  // RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, retained, conflated: every client grays from one ground truth. Disabled means GRAY, never hide.
+inline constexpr std::string_view meta_trial_pending = "meta.trial_pending";  // RFC-099 (§8.8): a bitfield8 field whose bit i marks the i-th setting-annotated field of the SAME layout as holding a TRIAL value (cbor_keys 51), any session's: indexed exactly as meta.enabled_mask. On-change, retained. A set bit means the effective value shown is not the stored one and reverts when its trial ends.
 inline constexpr std::string_view meta_reset_gen = "meta.reset_gen";  // RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it.
 inline constexpr std::string_view pattern_running = "pattern.running";  // whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093).
 inline constexpr std::string_view pattern_select = "pattern.select";  // which built-in pattern the generator plays; options are the device's pattern names, index-aligned with the wire value
@@ -657,6 +665,7 @@ enum class NackCode : uint16_t {
     NETWORK_JOIN_FAILED = 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect.
     ACCESSORY_OFFLINE = 0x0305,  // RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone.
     ACCESSORY_CAPACITY = 0x0306,  // RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free peer entry, or less budget than the smallest legal declaration (the status entry plus one channel).
+    TRIAL_CONFLICT = 0x0307,  // RFC-099 (§9.3): a write, trial or durable, to a key in ANOTHER session's open trial set. The whole intent is refused, no key applied. Retry after that trial is committed or reverted (meta.trial_pending shows it). Not SOURCE_CONFLICT: that is a safety-range code naming a motion source.
     ESTOP_ACTIVE = 0x0400,  // refused while e-stop latched
     NOT_HOMED = 0x0401,  // motion intent before homing
     INTERLOCK = 0x0402,  // hub-specific safety interlock

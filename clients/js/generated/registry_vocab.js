@@ -177,6 +177,7 @@ export const CORE_CHANNEL = {
   relationships: 0x0013,  // RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered ite
   relationships_roster: 0x0014,  // RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfie
   relationships_write: 0x0015,  // RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, d
+  settings_trial: 0x0016,  // RFC-099 (§9.3): `control`; one op select (key 1, role action.trial) over `trial_ops`: commit per
 };
 export const CORE_CHANNEL_NAME = {
   0x0001: 'catalog',
@@ -200,6 +201,7 @@ export const CORE_CHANNEL_NAME = {
   0x0013: 'relationships',
   0x0014: 'relationships-roster',
   0x0015: 'relationships-write',
+  0x0016: 'settings-trial',
 };
 
 // ---- cbor_keys -----------------------------------------------------
@@ -254,6 +256,7 @@ export const K = {
   requested_curve_family: 48,  // publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WIS
   schedule_latency_us: 49,  // granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample'
   schedule_horizon_ms: 50,  // granted_publishes ENTRY maps (RFC-087), segments-kind grants only: the schedule horizon, how far
+  trial: 51,  // INTENT (RFC-099, §9.3): true = a TRIAL write: applied, clamped, echoed and published like any wr
 };
 export const K_NAME = {
   1: 'proto_ver',
@@ -306,6 +309,7 @@ export const K_NAME = {
   48: 'requested_curve_family',
   49: 'schedule_latency_us',
   50: 'schedule_horizon_ms',
+  51: 'trial',
 };
 
 // ---- welcome_limits_keys -------------------------------------------
@@ -610,6 +614,7 @@ export const NACK = {
   NETWORK_JOIN_FAILED: 0x0304,  // RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, tim
   ACCESSORY_OFFLINE: 0x0305,  // RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no an
   ACCESSORY_CAPACITY: 0x0306,  // RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free
+  TRIAL_CONFLICT: 0x0307,  // RFC-099 (§9.3): a write, trial or durable, to a key in ANOTHER session's open trial set. The who
   ESTOP_ACTIVE: 0x0400,  // refused while e-stop latched
   NOT_HOMED: 0x0401,  // motion intent before homing
   INTERLOCK: 0x0402,  // hub-specific safety interlock
@@ -656,6 +661,7 @@ export const NACK_NAME = {
   0x0304: 'NETWORK_JOIN_FAILED',
   0x0305: 'ACCESSORY_OFFLINE',
   0x0306: 'ACCESSORY_CAPACITY',
+  0x0307: 'TRIAL_CONFLICT',
   0x0400: 'ESTOP_ACTIVE',
   0x0401: 'NOT_HOMED',
   0x0402: 'INTERLOCK',
@@ -887,6 +893,16 @@ export const ACCESSORY_ADMIN_OP_NAME = {
   1: 'window_open',
   2: 'forget',
   3: 'rename',
+};
+
+// ---- trial_ops -----------------------------------------------------
+export const TRIAL_OP = {
+  commit: 1,  // persist every value the sender trial-wrote, as it stands, and clear the sender's trial set. No e
+  revert: 2,  // restore every pre-trial value of the sender's trial set and clear it. A restored value that diff
+};
+export const TRIAL_OP_NAME = {
+  1: 'commit',
+  2: 'revert',
 };
 
 // ---- join_results --------------------------------------------------
@@ -1150,6 +1166,7 @@ export const FIELD_ROLE = {
   telemetry_uptime: 'telemetry.uptime',  // hub uptime
   identity_name: 'identity.name',  // the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME i
   meta_enabled_mask: 'meta.enabled_mask',  // RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layo
+  meta_trial_pending: 'meta.trial_pending',  // RFC-099 (§8.8): a bitfield8 field whose bit i marks the i-th setting-annotated field of the SAME
   meta_reset_gen: 'meta.reset_gen',  // RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the
   pattern_running: 'pattern.running',  // whether the built-in (classic) pattern generator is currently driving the machine. The advanced 
   pattern_select: 'pattern.select',  // which built-in pattern the generator plays; options are the device's pattern names, index-aligne
@@ -1218,6 +1235,7 @@ export const ACTION_TAG = {
   reboot: 'reboot',  // firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)
   accessory: 'accessory',  // RFC-076: the accessory-admin op select on core channel 0x0012 (§8.10), options index-aligned wit
   provision: 'provision',  // RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `
+  trial: 'trial',  // RFC-099: the settings-trial op select on core channel 0x0016 (§9.3), options index-aligned with 
   store: 'store',  // RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options bey
 };
 
