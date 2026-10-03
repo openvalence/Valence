@@ -1742,6 +1742,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
+| [096](#rfc-096----a----separator-in-a-group-string-names-a-section) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
 
 ---
 
@@ -7896,3 +7897,64 @@ say exactly which, future-us will want the receipts.*
   3. Does a dwell count toward the modifiers' stroke clock (one stroke =
      move in, hold, move out, hold)? This draft says yes: a period is
      the whole cycle.
+
+## RFC-096 -- A ` / ` separator in a group string names a section
+
+- **Status:** DRAFT (2026-10-02; rfc-4ed). Ruling pending.
+- **Origin:** the RFC-094 landing, 2026-10-02 (Nucleus 312f396, Phosphor
+  79896da). Every field folded from `tuning` (9) and `library` (5) took the
+  subgroup's name as its `group`, so the eleven former Tuning cards (Active
+  plan, Planner, Anomalies, Plan time, Stream ingress, Motion behavior,
+  Streaming, Sample streams, Curve, Infeasible moves, Settling) drew as one
+  card on the Motion page. Operator ruling the same day: every former
+  heading stays its own card, under a Tuning (or Library) section. The
+  reference hub and client adopt this convention ahead of a ruling, as a
+  presentation choice (Nucleus val-mwu; Phosphor ph-efai, DESIGN §10.11).
+- **Problem.** `group` (SPEC §8.8, key 11) is one free-text string per
+  field, and RENDERING §3 makes it the subgroup under a category. A fold
+  has two levels to state, the former category and then the card, and one
+  string to state them in: the subgroup's name alone loses the cards, the
+  card heading alone loses the subgroup RFC-094 promised. Nothing on the
+  wire sits between a category and a card.
+- **Proposed change.**
+  1. **Convention (RENDERING §3, a note after the subgroup sentence):** the
+     first ` / ` (space, solidus, space) in a `group` string separates a
+     **section** from the card heading: `Tuning / Planner` is the card
+     Planner in section Tuning. A `group` without one is a card with no
+     section. Only the first separator splits; a later one belongs to the
+     card heading.
+  2. **Rendering (MAY):** a renderer that adopts it draws a section's cards
+     together under one section heading, catalog order within the section
+     (RENDERING §11), and keys each card on the whole string. Where a page
+     puts sections among cards with none is the renderer's craft (the
+     reference client draws cards with no section first). A renderer that
+     does not adopt it draws the whole string as the card heading, which
+     still reads correctly: that graceful path is why this is a
+     convention and not a field.
+  3. **Authoring (AUTHORING.md, the card row):** a hub that folds a
+     category into a subgroup writes `<subgroup> / <card>`; a card heading
+     that needs a slash writes it unspaced (`In/out`).
+- **Pros.** No wire, registry, codec or vector change, and every released
+  client already renders the string. `group` stays the one home of
+  grouping, so a section cannot disagree with its card. It states
+  membership, as `group` already does, never layout (SPEC §1.2 item 7).
+- **Cons.** Meaning inside free text: a heading that holds ` / ` by
+  accident is split. Two levels only. The prefix rides every field: the
+  reference catalog grew 829 B (25,471 to 26,300 B) and its etag moved.
+  Section names stay hub strings, unlocalized, as every `group` is.
+- **Cost.** Spec: one informative note in RENDERING §3 and one AUTHORING.md
+  line; no registry, codegen or vector change. Nucleus: the `card::` group
+  strings in `ValenceCatalog.h` (sim etag 8e5be2a88c0d69e7). Phosphor: the
+  splitter and the section header row. MFP plugin: untouched (it draws no
+  categories).
+- **Wire impact.** None. An adopting hub's group strings change and its
+  etag moves.
+- **Registry impact.** None.
+- **Conformance impact.** None required: MAY for renderers.
+- **Open questions.**
+  1. A field instead (a `section` key on the field or the entry)? It is
+     unambiguous and localizable, but costs a registry key and a codec
+     change before the tag, and a client that predates it loses the
+     section.
+  2. Should the separator be a named registry constant, so clients and
+     lint share one spelling?
