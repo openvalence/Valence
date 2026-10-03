@@ -1740,7 +1740,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [089](#rfc-089----store-writer-field-roles-find-slot-name-and-item-by-identity) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
 | [090](#rfc-090----spec-54-rule-3-repair-the-segments-span-cap-is-relative-to-t_base) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
 | [093](#rfc-093----classic-and-advanced-generators-are-two-rail-sources-not-one-generator-with-a-mode) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
-| [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Accepted 2026-10-02 |
+| [094](#rfc-094----navigation-tiers-machine-link-and-client-control-becomes-generator-tuning-and-library-fold-into-motion-and-system) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095----advanced-generator-dwell-advgendwell_crest-and-advgendwell_trough-a-hold-at-each-end-of-the-stroke-in-stroke-periods) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
 
 ---
@@ -7725,7 +7725,7 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-094 -- Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system`
 
-- **Status:** ACCEPTED (operator, 2026-10-02; rfc-ct1). The open questions
+- **Status:** LANDED 0c33da4 (2026-10-02). ACCEPTED (operator, 2026-10-02; rfc-ct1). The open questions
   resolve to the draft's answers: (1) ids 5 and 9 are retired pre-tag and
   never reissued; (2) the tier-2 identifier is `link`; (3) all of `session`
   (12) is tier 2; (4) the generated vocabulary exposes tier membership both
