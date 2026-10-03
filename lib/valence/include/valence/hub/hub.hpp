@@ -326,6 +326,8 @@ public:
     // startup and shout; the firmware and the sim both do.
     size_t catalogEncodedBytes() const { return _catalogEncodedLen; }
     static constexpr size_t catalogScratchCapacity() { return kCatalogScratchBytes; }
+    // STATE channels whose latest value the hub can hold (VALENCE_RETAINED_STATES).
+    static constexpr size_t retainedStateCapacity() { return kRetainedStates; }
 
     // ---- RFC-046: read-only catalog etag view (§8.3) -----------------------
     // Additive: something OUTSIDE the session/wire path (the UDP discovery
@@ -820,6 +822,15 @@ private:
 #endif
     static constexpr size_t kCatalogScratchBytes = VALENCE_CATALOG_SCRATCH_BYTES;
 
+    // One retained value per STATE channel the hub may ever serve, accessory
+    // channels included (§9.1): a publish past this is refused, so a joined
+    // accessory's STATE would never reach a subscriber. Same build-time rule
+    // as the catalog capacities (RFC-077 item 8). ~250 B per slot.
+#ifndef VALENCE_RETAINED_STATES
+#define VALENCE_RETAINED_STATES 32
+#endif
+    static constexpr size_t kRetainedStates = VALENCE_RETAINED_STATES;
+
     // ---- §8.4: per-update() chunk budget for a resumable blob transfer -------
     // NOT a wire number, so no registry entry: a receiver cannot observe this
     // except as pacing, and two conformant hubs may pick differently. What
@@ -871,7 +882,7 @@ private:
     IRandom& _rng;
     HubDelegate& _delegate;
     ICrypto& _crypto;
-    RetainedStore<> _retained;
+    RetainedStore<kRetainedStates> _retained;
     std::array<Slot, kSlotCapacity> _slots;  // Slot self-initializes; no braces (explicit ctor member)
     std::array<std::byte, limits::etag_bytes> _etag{};
     std::array<std::byte, kCatalogScratchBytes> _catalogEncoded{};

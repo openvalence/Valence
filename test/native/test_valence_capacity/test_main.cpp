@@ -10,6 +10,7 @@
 #define VALENCE_CATALOG_STORES 6
 #define VALENCE_CATALOG_SCRATCH_BYTES 131072
 #define VALENCE_CATALOG_SAFE_SLOTS 128
+#define VALENCE_RETAINED_STATES 120
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
@@ -35,6 +36,7 @@ static_assert(Catalog32::kLabelCapacity == 256);
 static_assert(Catalog32::kStoreCapacity == 6);
 static_assert(Hub::catalogScratchCapacity() == 131072);
 static_assert(Catalog32::kSafeCapacity == 128);
+static_assert(Hub::retainedStateCapacity() == 120);
 
 // rfc-bhd: RFC-076 `safe` is a side pool. A field carries only a 2-byte index,
 // and the pool is the only cost that scales with SafeSlots: 0 -> 32 slots
@@ -129,4 +131,13 @@ TEST_CASE("CAP-02 a 128-entry build encodes a hub catalog with four 30-channel a
 
     static std::array<std::byte, limits::catalog_max_entry_bytes + 64> entryScratch{};
     CHECK(conformance::checkCatalog(cat, entryScratch).ok());
+
+    // Every accessory STATE holds a retained value: the default 32 slots would
+    // refuse the 33rd publish.
+    const std::array<std::byte, kFieldsPerChannel * 4> value{};
+    size_t published = 0;
+    for (uint16_t i = 0; i < cat.count; ++i) {
+        if (hub.publishState(cat.entries[i].id, std::span<const std::byte>(value))) ++published;
+    }
+    CHECK(published == cat.count);
 }
