@@ -1745,7 +1745,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [096](#rfc-096----a----separator-in-a-group-string-names-a-section) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
 | [097](#rfc-097----the-catalog-channels-state-layout-etag-chunk-count-entry-count-12-bytes) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
 | [098](#rfc-098----rail-ownership-is-released-when-its-source-goes-quiet-control-owner-names-each-slots-source-kind) | Quiet release of rail ownership; source kind on control-owner | Draft 2026-10-03 |
-| [099](#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted) | Trial writes: apply live without persisting, commit or revert | Accepted 2026-10-03 (rfc-2s0) |
+| [099](#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
 
 ---
 
@@ -8061,7 +8061,9 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** ACCEPTED (operator, 2026-10-03: "neither mode saves to NVS
   until you apply your settings as defaults; if this needs an RFC build
-  like we'd accept it"; rfc-2s0).
+  like we'd accept it"; rfc-2s0). LANDED a0f3fcb (SPEC, registry, codegen),
+  28ba317 (library, valence-js, localhub), the live sim test beside this
+  line's commit; reference hub Nucleus c89ae84.
 - **Origin:** the Phosphor funscript player's analyzer (ph-smvd), which
   tunes the machine's writable settings (the travel and input limits, the
   kinetic limits, chase and waveform cards, blend) either LIVE or in a
