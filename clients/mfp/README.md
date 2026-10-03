@@ -40,12 +40,13 @@ live device wire test) and must **not** be copied into the Plugins folder.
 
 ## Usage
 
-1. In the plugin tab, set **Address** (the machine's IP, default `192.168.1.229`) and
-   **Port** (`82`). Or hit **Discover** to find machines on the LAN by the §13.8 UDP probe and pick
-   one from the list — it fills Address/Port for you. Manual entry always works;
-   discovery is a convenience.
-2. Confirm **Axis** (default `L0`), **Rate** (default `50` Hz), and **Mode**
-   (`Samples` or `Segments` — see below). Mode is locked while connected.
+1. Open **Link setup** (the cog in the **Link** row) and set **Address** (default
+   `192.168.1.229`) and **Port** (`82`), or press **Discover** to find hubs by the §13.8
+   UDP probe and pick one; it fills Address/Port. Manual entry always works. **Axis**
+   (default `L0`), **Rate** (default `50` Hz) and the paired token live there too, all
+   locked while connected.
+2. Pick the stream mode with the toolbar **mode** button (`Samples` or `Segments`, see
+   below).
 3. Press the **▶ toolbar button** to connect. It streams until you press it again
    (which shows as ■). Connect/disconnect is also bindable from MFP's **Shortcuts** as
    `ValenceConnect::Connection::Toggle` / `::Connect` / `::Disconnect` (mirroring a native
@@ -53,51 +54,55 @@ live device wire test) and must **not** be copied into the Plugins folder.
 
 ### The panel
 
-Laid out by what you actually touch mid-session. Everything set-once lives behind a
-toolbar button, so the panel costs about half the height it used to.
+Five groups, every row a fixed height: an answer, a refusal or a reconnect fills its
+own slot and never moves a control.
 
-**Toolbar** — connect/disconnect (▶/■), **Home** (the `action.home` INTENT, `home` op), the **mode
-toggle**, **limits**, and **setup**. The mode button's icon *is* the mode: a **bezier
-curve** for Segments (the machine renders the sender's own continuous waveform per
-stroke) and a **staircase** for Samples (discrete position points at a fixed rate).
-It shows the mode that is *active*; pressing it switches and, if you are connected,
-**re-negotiates the session** —
+**Toolbar**: connect/disconnect (▶/■) and the **mode** button. Its icon *is* the
+active mode: a **bezier curve** for Segments (the machine renders the sender's own
+continuous waveform per stroke) and a **staircase** for Samples (discrete position
+points at a fixed rate). Pressing it while connected **re-negotiates the session**:
 stream mode is settled in HELLO (different channels, different rates, and Segments
-declares a `curve_family`) and there is no frame that changes it on a live session. The
-machine stops receiving for the length of the reconnect and its deadman covers the gap,
-so it is safe, but it *is* a visible interruption mid-scene.
+declares a `curve_family`) and no frame changes it on a live session. The machine stops
+receiving for the length of the reconnect and its deadman covers the gap, so it is
+safe, but it *is* a visible interruption mid-scene.
 
-* **LIVE** (always visible) — granted rate, session, uptime, bundles/segments, STATE
-  count, NACK + rate-limited counts, clock offset/RTT, the **lag** row (see *The lag
-  meter* below), and the Segments-mode divergence warning.
-* **THE RAIL** — the machine's travel drawn to scale, with the stroke window on it and
-  three markers. The colors are the machine's own WebUI language:
-  * **blue (`reality`)** — the **measured carriage position**, plus the window band. This
+* **Link**: the session line (`Streaming L0 @ 50 Hz`, the granted rate), the endpoint,
+  and the **Link setup** button. While connected a second line shows the device, the
+  session id and uptime. The setup dialog also shows the adopted catalog's channel
+  count, role count and etag.
+* **Home**: runs the catalog's `action.home` verb (the op whose option label is
+  `home`) and shows the hub's answer in the same row: `accepted: home` (the op the ECHO
+  carries), or `refused <NACK name>`, followed by the hub's §16.1 `detail` text when it
+  sends one. Grayed on a hub that labels no `home` op.
+* **Window**: the min/max draft boxes over **the rail**, the machine's travel drawn to
+  scale with the stroke window on it and three markers in the machine WebUI's colors:
+  * **blue (`reality`)**: the **measured carriage position**, plus the window band. This
     is decoded STATE: where the machine actually is.
-  * **purple (`intent`)** — commanded and not-yet-confirmed. Two of these: the machine's
+  * **purple (`intent`)**: commanded and not yet confirmed. Two of these: the machine's
     own **setpoint**, and a ghosted marker for **where MFP last asked the axis to be**
-    (mapped through the device's window exactly as the machine's range mapper does).
-    Overlaying the request on the result is the whole point — the gap between them is
-    what the planner and the clamps did to what you sent.
-  * **Drag the two purple handles** to set the window, or type in the two boxes under the
-    track. A drag moves a dashed *draft* outline only; the solid band stays where the
-    machine says it is until you press **Apply** — and **Apply/Revert only appear once the
-    draft actually differs**, so there is never a lit button with nothing to do. The status
-    line then reports the **applied, post-clamp** value the device echoed back, or the NACK
-    that refused it, correlated by `intent_seq`. Handles snap to whole millimeters, which
-    is the device's own declared step for these fields.
-  * The rail hides entirely on a hub that advertises no travel roles (drawing it would
-    mean inventing the scale every marker is measured against); the numeric window editor
-    appears on its own in that case.
-* **Limits** (toolbar) — read-only machine-driven speed / accel / jerk. Reads
-  "not advertised" on a hub that declares none of those roles, rather than guessing.
-* **Setup & discovery** (toolbar) — Address/Port/Discover, the discovered-device list,
-  Axis/Rate/Mode/PIN, and the adopted catalog's channel count, role count and etag.
-  Everything here except Mode is locked while connected.
+    (mapped through the device's window exactly as the machine's range mapper does). The
+    gap between them is what the planner and the clamps did to what you sent.
+  * **Drag the two purple handles** or type in the boxes. A drag moves a dashed *draft*
+    outline only; the solid band stays where the machine says it is until **Apply**, and
+    **Apply/Revert appear only once the draft differs**. The answer line under the rail
+    then shows the **applied, post-clamp** values the ECHO carried, or
+    `refused <NACK name>` plus any `detail`, correlated by `intent_seq`. Handles snap to
+    whole millimeters, the device's declared step for these fields.
+  * On a hub with no travel roles the track stays empty (a scale would be invented) and
+    the boxes still work.
+* **Limits**: read-only machine-driven speed / accel / jerk; `n/a` for a role the hub
+  does not declare.
+* **Readback**: the status line `pos … · tgt … · vel … · window …`, every value decoded
+  by field role from STATE and printed in the catalog field's own unit (`--` before the
+  first value, `n/a` for a role the hub does not declare). Under it: bundles or segments
+  sent, STATE count, NACK and rate-limited counts, CLOCK RTT and offset, the **lag** row
+  (see *The lag meter* below), and in Segments mode the divergence warning.
 
 The machine **must be homed** before it will actually move. If it is not, the firmware
-accepts and counts your samples but drops them at the safety gate (correct behavior) —
-you will see bundles climbing but no motion. Home it from the machine's own WebUI/app.
+accepts and counts your samples but drops them at the safety gate (correct behavior):
+you will see bundles climbing but no motion. Home it from the **Home** row, or from the
+machine's own UI when the hub refuses the op (a board with no drive answers
+`UNSUPPORTED_OP`).
 
 ### Settings (persisted by MFP)
 
@@ -107,8 +112,8 @@ you will see bundles climbing but no motion. Home it from the machine's own WebU
 | **Port** | `82` | Valence WebSocket port. |
 | **Rate (Hz)** | `50` | How often the axis is sampled and streamed. Clamped 10–250; the machine may grant a *lower* rate (its channel cap is 333 Hz) and the plugin streams at the **granted** rate, not the wish. |
 | **Axis** | `L0` | Which MFP `DeviceAxis` to stream (`L0`, `L1`, `R0`, …). |
-| **Mode** | `Samples` | `Samples` = 50 Hz dense points on `0x2100` (was `0x0084`). `Segments` = one timed command per funscript action on `0x2101` (was `0x0085`). Locked while connected. See *Samples vs Segments* below. |
-| **PIN** | *(empty)* | Pairing PIN. Sent in HELLO's token field. The firmware currently accepts any client (LAN-trust), so this is forward-compatibility plumbing — leave it empty unless the device asks for it. |
+| **Mode** | `Samples` | `Samples` = 50 Hz dense points on `0x2100`. `Segments` = one timed command per funscript action on `0x2101`. Set with the toolbar mode button; switching while connected re-negotiates the session. See *Samples vs Segments* below. |
+| **Paired token** (`PairingPin`) | *(empty)* | A paired 16-byte token as 32 hex characters, sent in HELLO's token field. Anything else is ignored. Empty: the plugin mints a single-use control token from the hub's `/uitoken` on every connect; with neither, it connects at watch tier (telemetry and e-stop work, playback does not). |
 
 ### Samples vs Segments — which to use
 
@@ -240,15 +245,17 @@ All of this mirrors `tools/valence_probe.py` and `spec/SPEC.md`.
    `0x18`, CATALOG_READY `0x19`, BLOB_REQ `0x1A`, BLOB_CHUNK `0x1B`, AUTH `0x1C`,
    HUB_SIG `0x1D`) are named and tolerated; anything else is unknown-means-ignore.
    Malformed frames are logged and skipped, never fatal.
-7. **Operator INTENTs** — the Home button sends the catalog field whose role is
-   `action.home`, with the op value whose option label is `home` (`0x3101 {1: 1}` on
-   Nucleus). A hub that does not advertise or label it gets no frame and the status says
-   so. `force_home` and `clear_override` are never sent from this plugin: the first clears
-   the e-stop latch. The stroke-window editor sends the role-resolved config INTENT.
+7. **Operator INTENTs**: the Home button sends the catalog field whose role is
+   `action.home`, with the op value whose option label is `home`. A hub that labels no
+   `home` op grays the button. `force_home` is never sent from this plugin: it releases
+   the e-stop latch. The stroke-window editor writes `window.min` / `window.max` on each
+   role's `setting_key` through the paired `setting_channel`, value map keys ascending.
    Both are queued by the UI thread and sent by the connection task, which owns the
-   socket. **`header.seq` is set to `intent_id`** — the hub stamps a NACK's `intent_seq`
-   from the *inbound frame header's* seq, so making the two the same number is what turns
-   RFC-001's correlation key into a usable one.
+   socket. The answer each row shows is the ECHO (`applied`, post-clamp; for Home the
+   echoed op's label) or the NACK's registry name plus its §16.1 `detail` (key 17) when
+   the hub sends one. **`header.seq` is set to `intent_id`**: the hub stamps a NACK's
+   `intent_seq` from the *inbound frame header's* seq, so making the two the same number
+   is what turns RFC-001's correlation key into a usable one.
 8. **Reconnect** — an unexpected drop retries with 2 s → 5 s → 10 s backoff until you
    disconnect; the status shows "Reconnecting".
 
@@ -263,11 +270,9 @@ by scanning the fetched catalog for the registry `field_roles` values `window.mi
 channel, subscribed at a rate because it carries a moving value. `geometry.measured_travel` is preferred over
 `geometry.max_travel` for the rail's length because it is what a real home measured, and
 a zero there is treated as "no home yet", never as a measurement. The
-channel number appears nowhere in the plugin source. On this firmware they resolve to
-`0x0081` fields at byte offsets 0/4/16/20/28, writable through `0x0101` keys 1/2/5/6/7;
-on a hub that declares those roles elsewhere the same code works unchanged, and on a hub
-that declares none of them the panel reads **"not advertised"** and no extra SUBSCRIBE
-is sent. The catalog is also the *decoder ring*: a STATE payload is a flat packed struct
+channel number appears nowhere in the plugin source; LiveWireTest prints where a given
+hub resolves each role. On a hub that declares none of them the panel reads `n/a` and
+no extra SUBSCRIBE is sent. The catalog is also the *decoder ring*: a STATE payload is a flat packed struct
 with no self-description, so the layout the hub published is the only honest way to read
 it. There is deliberately no fallback layout table.
 
@@ -328,9 +333,11 @@ dotnet run --project clients/mfp/WireSelfTest.csproj
 ```
 Byte-compares the C# encoder against hex derived by running `valence_probe.py`'s own
 CBOR primitives (HELLO in five shapes, CLOCK, STREAM/SEGMENT bundles, SUBSCRIBE, GOODBYE,
-BLOB_REQ, CATALOG_READY, BLOB_CHUNK header decode, INTENT + frame seq). Exits 0 on
-all-pass. The codec in `WireSelfTest.cs` is a deliberate copy of `ValenceConnect.cs`'s — if you
-change one, mirror the other and re-run.
+BLOB_REQ, CATALOG_READY, BLOB_CHUNK header decode, and the two operator INTENTs as a
+Nucleus catalog resolves them by role: Home, the stroke window, the window value map's
+key order, and header seq == intent_id). Exits 0 on all-pass. The codec in
+`WireSelfTest.cs` is a deliberate copy of the one in `ValenceConnect.cs`: change one,
+mirror the other and re-run.
 
 **The HELLO goldens moved at v1.0 and that coupling is intentional.** Adding RFC-006's
 `subscriptions` wish to HELLO changes its bytes; this file is where that is enforced. The
@@ -345,21 +352,27 @@ against real hardware, see the safety gate note below.
 
 ```
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 82
+dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 8802 --http 8809 --sim
 ```
-Compiles `ValenceConnect.cs` itself (the plugin's real codec/client/catalog/discovery classes —
-no copies) into a console harness and runs the full session: UDP-probe discovery,
-HELLO→WELCOME publish grant, **BLOB_REQ catalog fetch + local SHA-256 verify +
-CATALOG_READY**, **RFC-006(b) role lookup and live role-value decode**, CLOCK sync, a
-role-resolved stroke-window INTENT round trip (**simulator only**), 5 s of STREAM @ 50 Hz,
-then diffs the target's `/api/kinetic` ingress counters.
+`--http N` is the target's HTTP port (valencesim's `--http`, for `/uitoken`); `--sim`
+declares a simulator that serves no `/api/capabilities`. Compiles `ValenceConnect.cs`
+itself (the plugin's real codec/client/catalog/discovery classes, no copies) into a
+console harness and runs the full session: UDP-probe discovery, HELLO→WELCOME publish
+grant, **BLOB_REQ catalog fetch + local SHA-256 verify + CATALOG_READY**, **RFC-006(b)
+role lookup and live role-value decode**, CLOCK sync, 5 s of STREAM @ 50 Hz, then a diff
+of the target's `/api/kinetic` ingress counters (skipped on a declared simulator, since
+valencesim serves none; missing on hardware is a failure). On a simulator it also writes the stroke window through the role-resolved
+setting channel and restores it, checking both ECHOs and that the role-decoded window
+readback follows them, and sends Home on the `action.home` locator, checking that the
+hub answers with an ECHO or a named NACK.
 
 **Safety gate.** On real hardware it reads `/api/status` and **refuses to run if the
 machine is homed or e-stopped** (unhomed = every sample is dropped at the HOMED safety
 gate, so the wire is exercised with zero motion risk). valencesim has no `/api/status`; the
-`sim: true` flag in `/api/capabilities` is an explicit waiver, and a target that is
-neither readable nor a declared sim is an **abort** — "unknown machine state" never
-passes. The config-writing INTENT block and everything that could move an axis is gated
-on `sim`; the Home intent is never sent by this harness at all.
+`sim: true` flag in `/api/capabilities` (or `--sim`) is an explicit waiver, and a target
+that is neither readable nor a declared sim is an **abort**: "unknown machine state" never
+passes. The window write and the Home intent are gated on `sim`; on real hardware this
+harness sends neither.
 
 **Run it TWICE back-to-back without restarting the target.** That is the
 source-ownership-release regression check, and it exists because a real field bug hid for

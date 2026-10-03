@@ -1,5 +1,5 @@
 #:name Valence Connect
-#:version 0.5.0
+#:version 0.6.0
 #:author ValenceDrive
 #:description Streams a MultiFunPlayer axis to a Nucleus machine over the native Valence protocol (device-shadow + capability negotiation, WebSocket + CBOR).
 #:url https://github.com/AtlanticTM
@@ -86,7 +86,7 @@ public class ValenceConnect : PluginBase
     // it cost two misread test runs before this existed. Keep in sync with the
     // #:version directive at the top of the file; MFP parses that one for its
     // UI and cannot see this one.
-    public const string PluginVersion = "0.5.0";
+    public const string PluginVersion = "0.6.0";
 
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
@@ -115,17 +115,9 @@ public class ValenceConnect : PluginBase
         {
             if (!SetAndNotify(ref _mode, value)) return;
             NotifyOfPropertyChange(nameof(IsSegmentsMode));
-            NotifyOfPropertyChange(nameof(ModeText));
+            NotifyOfPropertyChange(nameof(SentText));
         }
     }
-
-    /// <summary>Toolbar label for the mode toggle. Names the mode that is ACTIVE,
-    /// not the one the button would switch to — a control that labels its own
-    /// side effect reads as state to everyone who did not write it.</summary>
-    public string ModeText => _mode == StreamMode.Segments ? "SEG" : "SMP";
-
-    // Bound as the mode ComboBox's ItemsSource (Enum.GetValues gives the members).
-    public Array Modes => Enum.GetValues(typeof(StreamMode));
 
     // ---- Live UI state (not persisted) --------------------------------------
     private ConnectionStatus _status = ConnectionStatus.Disconnected;
@@ -156,6 +148,7 @@ public class ValenceConnect : PluginBase
             NotifyOfPropertyChange(nameof(IsConnected));
             NotifyOfPropertyChange(nameof(IsWindowEditable));
             NotifyOfPropertyChange(nameof(HasAxisOverlay));
+            NotifyOfPropertyChange(nameof(CanHome));
         }
     }
     public string StatusText { get => _statusText; set => SetAndNotify(ref _statusText, value); }
@@ -164,7 +157,11 @@ public class ValenceConnect : PluginBase
     public double GrantedRate { get => _grantedRate; set => SetAndNotify(ref _grantedRate, value); }
     public long ClockOffsetUs { get => _clockOffsetUs; set => SetAndNotify(ref _clockOffsetUs, value); }
     public long RttUs { get => _rttUs; set => SetAndNotify(ref _rttUs, value); }
-    public long BundlesSent { get => _bundlesSent; set => SetAndNotify(ref _bundlesSent, value); }
+    public long BundlesSent
+    {
+        get => _bundlesSent;
+        set { if (SetAndNotify(ref _bundlesSent, value)) NotifyOfPropertyChange(nameof(SentText)); }
+    }
     public long NackCount { get => _nackCount; set => SetAndNotify(ref _nackCount, value); }
     public long RateLimitedCount { get => _rateLimitedCount; set => SetAndNotify(ref _rateLimitedCount, value); }
     public long StatesReceived { get => _statesReceived; set => SetAndNotify(ref _statesReceived, value); }
@@ -174,7 +171,14 @@ public class ValenceConnect : PluginBase
         set { if (SetAndNotify(ref _lastTarget, value)) NotifyOfPropertyChange(nameof(RailAxisPx)); }
     }
     public string Uptime { get => _uptime; set => SetAndNotify(ref _uptime, value); }
-    public long SegmentsSent { get => _segmentsSent; set => SetAndNotify(ref _segmentsSent, value); }
+    public long SegmentsSent
+    {
+        get => _segmentsSent;
+        set { if (SetAndNotify(ref _segmentsSent, value)) NotifyOfPropertyChange(nameof(SentText)); }
+    }
+
+    /// <summary>The active mode's send counter: STREAM bundles in Samples, segments in Segments.</summary>
+    public string SentText => _mode == StreamMode.Segments ? $"segments {_segmentsSent}" : $"bundles {_bundlesSent}";
     public string DivergenceWarning { get => _divergenceWarning; set => SetAndNotify(ref _divergenceWarning, value); }
 
     // ---- End-to-end lag meter (see LagMeter) --------------------------------
@@ -211,7 +215,6 @@ public class ValenceConnect : PluginBase
         set
         {
             if (!SetAndNotify(ref _windowMinMm, value)) return;
-            NotifyOfPropertyChange(nameof(WindowText));
             NotifyRail();
         }
     }
@@ -221,7 +224,6 @@ public class ValenceConnect : PluginBase
         set
         {
             if (!SetAndNotify(ref _windowMaxMm, value)) return;
-            NotifyOfPropertyChange(nameof(WindowText));
             NotifyRail();
         }
     }
@@ -269,11 +271,22 @@ public class ValenceConnect : PluginBase
     public string WindowStatus { get => _windowStatus; set => SetAndNotify(ref _windowStatus, value); }
     public string HomeStatus { get => _homeStatus; set => SetAndNotify(ref _homeStatus, value); }
 
-    /// <summary>The device's window as one line — this is the value the machine
-    /// has, not the one in the boxes.</summary>
-    public string WindowText => double.IsNaN(_windowMinMm) || double.IsNaN(_windowMaxMm)
-        ? "—"
-        : $"{_windowMinMm:F1} – {_windowMaxMm:F1} mm";
+    /// <summary>The Readback status line, every value located by role: position,
+    /// target, velocity and the DEVICE window (never the draft boxes).</summary>
+    public string ReadbackText =>
+        $"pos {Readout(_rolePosition, _devicePosMm)} · tgt {Readout(_roleTarget, _deviceTargetMm)}" +
+        $" · vel {Readout(_roleVelocity, _deviceVelMmS, "N0")} · window {WindowText}";
+
+    private string WindowText
+    {
+        get
+        {
+            var r = _roleWindowMin ?? _roleWindowMax;
+            if (_catalog == null || (r != null && (double.IsNaN(_windowMinMm) || double.IsNaN(_windowMaxMm)))) return "--";
+            if (r == null) return "n/a";
+            return $"{_windowMinMm:F1}–{_windowMaxMm:F1} {r.Field.Unit}".TrimEnd();
+        }
+    }
 
     // ---- Machine limits — READ-ONLY DISPLAY, and that is the whole contract --
     // RFC-008: the plugin ships the sender's intent AS AUTHORED. It does not
@@ -285,25 +298,32 @@ public class ValenceConnect : PluginBase
     public double InputSpeed
     {
         get => _inputSpeed;
-        set { if (SetAndNotify(ref _inputSpeed, value)) NotifyOfPropertyChange(nameof(InputSpeedText)); }
+        set { if (SetAndNotify(ref _inputSpeed, value)) NotifyOfPropertyChange(nameof(LimitsText)); }
     }
     public double InputAccel
     {
         get => _inputAccel;
-        set { if (SetAndNotify(ref _inputAccel, value)) NotifyOfPropertyChange(nameof(InputAccelText)); }
+        set { if (SetAndNotify(ref _inputAccel, value)) NotifyOfPropertyChange(nameof(LimitsText)); }
     }
     public double InputJerk
     {
         get => _inputJerk;
-        set { if (SetAndNotify(ref _inputJerk, value)) NotifyOfPropertyChange(nameof(InputJerkText)); }
+        set { if (SetAndNotify(ref _inputJerk, value)) NotifyOfPropertyChange(nameof(LimitsText)); }
     }
 
-    public string InputSpeedText => Fmt(_inputSpeed, "mm/s");
-    public string InputAccelText => Fmt(_inputAccel, "mm/s²");
-    public string InputJerkText => Fmt(_inputJerk, "mm/s³");
+    public string LimitsText =>
+        $"speed {Readout(_roleInputSpeed, _inputSpeed, "N0")} · accel {Readout(_roleInputAccel, _inputAccel, "N0")}" +
+        $" · jerk {Readout(_roleInputJerk, _inputJerk, "N0")}";
 
-    private static string Fmt(double v, string unit) =>
-        double.IsNaN(v) ? "not advertised" : $"{v:N0} {unit}";
+    /// <summary>A role-located value in the catalog field's own unit: "--" until a
+    /// catalog and a STATE value exist, "n/a" when this hub does not advertise the role.</summary>
+    private string Readout(ValenceCatalog.RoleLocator r, double v, string format = "F1")
+    {
+        if (_catalog == null || (r != null && double.IsNaN(v))) return "--";
+        if (r == null) return "n/a";
+        string s = v.ToString(format);
+        return string.IsNullOrEmpty(r.Field.Unit) ? s : $"{s} {r.Field.Unit}";
+    }
 
     /// <summary>True once this hub advertised a WRITABLE window through the
     /// window.min / window.max roles. False on a hub that does not — the card
@@ -312,10 +332,10 @@ public class ValenceConnect : PluginBase
         (_roleWindowMin != null && _roleWindowMin.Writable) ||
         (_roleWindowMax != null && _roleWindowMax.Writable);
 
-    public bool HasLimitsReadback =>
-        _roleInputSpeed != null || _roleInputAccel != null || _roleInputJerk != null;
-
     public bool IsWindowEditable => IsConnected && HasWindowControl && !_windowPending;
+
+    /// <summary>Connected to a hub whose catalog labels an action.home "home" op.</summary>
+    public bool CanHome => IsConnected && _actionHome?.OpFor(ValenceWire.HomeOpLabel) != null;
 
     // =========================================================================
     // THE RAIL — live carriage telemetry drawn on the machine's own travel.
@@ -357,7 +377,7 @@ public class ValenceConnect : PluginBase
     public double DeviceVelocityMmS
     {
         get => _deviceVelMmS;
-        set { if (SetAndNotify(ref _deviceVelMmS, value)) NotifyOfPropertyChange(nameof(VelocityText)); }
+        set { if (SetAndNotify(ref _deviceVelMmS, value)) NotifyOfPropertyChange(nameof(ReadbackText)); }
     }
     public double MaxTravelMm
     {
@@ -471,8 +491,6 @@ public class ValenceConnect : PluginBase
         }
     }
 
-    public string PositionText => double.IsNaN(_devicePosMm) ? "—" : $"{_devicePosMm:F1} mm";
-    public string VelocityText => double.IsNaN(_deviceVelMmS) ? "—" : $"{_deviceVelMmS:N0} mm/s";
     public string RailMaxText => HasRail ? $"{RailMaxMm:F0}" : "?";
 
     /// <summary>Every rail-derived readout in one notify. Called from each setter
@@ -490,7 +508,7 @@ public class ValenceConnect : PluginBase
         NotifyOfPropertyChange(nameof(RailWindowLeftPx));
         NotifyOfPropertyChange(nameof(RailWindowWidthPx));
         NotifyOfPropertyChange(nameof(RailAxisPx));
-        NotifyOfPropertyChange(nameof(PositionText));
+        NotifyOfPropertyChange(nameof(ReadbackText));
         // The handles are a FRACTION of the rail, so a rail-length change moves
         // them even when the draft millimeters did not.
         NotifyOfPropertyChange(nameof(WindowMinFrac));
@@ -794,33 +812,11 @@ public class ValenceConnect : PluginBase
         Ui(() => { if (_task == null) OnConnectClick(); });
     }
 
-    // ---- Panel popups --------------------------------------------------------
-    // Setup and the limits readback are set-once / read-rarely, so they live
-    // behind toolbar buttons instead of costing permanent panel height.
-    private bool _setupOpen, _limitsOpen;
-    public bool SetupOpen
-    {
-        get => _setupOpen;
-        set { if (SetAndNotify(ref _setupOpen, value)) NotifyOfPropertyChange(nameof(DialogOpen)); }
-    }
-    public bool LimitsOpen
-    {
-        get => _limitsOpen;
-        set { if (SetAndNotify(ref _limitsOpen, value)) NotifyOfPropertyChange(nameof(DialogOpen)); }
-    }
-
-    /// <summary>The single DialogHost's open state. Writable so the host can
-    /// CLOSE it — clicking the scrim or pressing Esc sets this false, and that
-    /// has to reach the two flags the content is chosen by, or the dialog
-    /// reopens itself the next time anything else notifies.</summary>
-    public bool DialogOpen
-    {
-        get => _setupOpen || _limitsOpen;
-        set { if (!value) { SetupOpen = false; LimitsOpen = false; } }
-    }
-
-    public void OnToggleSetupClick() { LimitsOpen = false; SetupOpen = !SetupOpen; }
-    public void OnToggleLimitsClick() { SetupOpen = false; LimitsOpen = !LimitsOpen; }
+    // ---- Link setup dialog ---------------------------------------------------
+    // Writable: the DialogHost closes itself (scrim click, Esc) through this binding.
+    private bool _setupOpen;
+    public bool SetupOpen { get => _setupOpen; set => SetAndNotify(ref _setupOpen, value); }
+    public void OnToggleSetupClick() => SetupOpen = !SetupOpen;
 
     // =========================================================================
     // Connection state machine — connect, HELLO/WELCOME, SUBSCRIBE, CLOCK sync,
@@ -1144,19 +1140,24 @@ public class ValenceConnect : PluginBase
             if (n.IntentSeq.HasValue && n.IntentSeq.Value == _windowIntentId && _windowPending)
             {
                 _windowPending = false;
-                WindowStatus = $"REFUSED: {n.Name}";
+                WindowStatus = Refusal(n);
                 NotifyOfPropertyChange(nameof(IsWindowEditable));
             }
             if (n.IntentSeq.HasValue && n.IntentSeq.Value == _homeIntentId && _homePending)
             {
                 _homePending = false;
-                HomeStatus = $"REFUSED: {n.Name}";
+                HomeStatus = Refusal(n);
             }
         });
         Logger.Warn("NACK {0} channel=0x{1:X4} intent_seq={2}{3}",
             n.Name, n.Channel, n.IntentSeq?.ToString() ?? "-",
             string.IsNullOrEmpty(n.Detail) ? "" : $" detail={n.Detail}");
     }
+
+    /// <summary>A NACK as the operator reads it: the registry name, then the hub's
+    /// §16.1 detail when it sent one.</summary>
+    private static string Refusal(HubClient.NackInfo n) =>
+        string.IsNullOrEmpty(n.Detail) ? $"refused {n.Name}" : $"refused {n.Name}: {n.Detail}";
 
     private void OnState(ushort channel, byte[] payload)
     {
@@ -1191,7 +1192,11 @@ public class ValenceConnect : PluginBase
             if (_homePending && e.IntentId == _homeIntentId)
             {
                 _homePending = false;
-                HomeStatus = "homing accepted";
+                // §9.3: an action's ECHO carries the op; name it by the hub's own label.
+                var home = _actionHome;
+                string op = home?.Options != null && e.TryGetApplied(home.Key, out var v) &&
+                            v >= 0 && v < home.Options.Count ? home.Options[(int)v] : null;
+                HomeStatus = op == null ? "accepted" : $"accepted: {op}";
             }
         });
         Logger.Info("ECHO channel=0x{0:X4} intent_id={1} cfg_gen={2}", e.Channel, e.IntentId, e.CfgGen);
@@ -1348,8 +1353,9 @@ public class ValenceConnect : PluginBase
             CatalogInfo = $"{cat.Entries.Count} ch · {cat.RoleCount} roles · {ValenceCatalog.Hex(etag)}"
                         + (cachedPath ? " (cached)" : "");
             NotifyOfPropertyChange(nameof(HasWindowControl));
-            NotifyOfPropertyChange(nameof(HasLimitsReadback));
             NotifyOfPropertyChange(nameof(IsWindowEditable));
+            NotifyOfPropertyChange(nameof(CanHome));
+            NotifyOfPropertyChange(nameof(LimitsText));
             NotifyRail();
         });
 
@@ -1423,7 +1429,6 @@ public class ValenceConnect : PluginBase
             if (vel.HasValue) DeviceVelocityMmS = vel.Value;
             if (maxT.HasValue) MaxTravelMm = maxT.Value;
             if (measT.HasValue) MeasuredTravelMm = measT.Value;
-            NotifyOfPropertyChange(nameof(HasLimitsReadback));
         });
 
         double? Read(ValenceCatalog.RoleLocator r)
@@ -1451,7 +1456,6 @@ public class ValenceConnect : PluginBase
         _windowDirty = false;
         NotifyDraft();
         NotifyOfPropertyChange(nameof(HasWindowControl));
-        NotifyOfPropertyChange(nameof(HasLimitsReadback));
         NotifyOfPropertyChange(nameof(IsWindowEditable));
     }
 
@@ -1552,18 +1556,16 @@ public class ValenceConnect : PluginBase
         var chan = _roleWindowMin?.SettingChannel ?? _roleWindowMax?.SettingChannel;
         if (chan == null) { WindowStatus = "no paired settings channel"; return; }
 
-        var fields = new List<(int, byte[])>();
-        if (_roleWindowMin?.SettingKey is int kMin) fields.Add((kMin, ValenceWire.CborF32(WindowMinEdit)));
-        if (_roleWindowMax?.SettingKey is int kMax) fields.Add((kMax, ValenceWire.CborF32(WindowMaxEdit)));
-        if (fields.Count == 0) { WindowStatus = "nothing writable"; return; }
-        fields.Sort((a, b) => a.Item1.CompareTo(b.Item1));   // §5.3: map keys ascending
+        var fields = ValenceWire.WindowValue(_roleWindowMin?.SettingKey, WindowMinEdit,
+                                             _roleWindowMax?.SettingKey, WindowMaxEdit);
+        if (fields == null) { WindowStatus = "nothing writable"; return; }
 
         _windowIntentId = System.Threading.Interlocked.Increment(ref _intentSeqCounter);
         _windowPending = true;
         _windowDirty = false;
         WindowStatus = "pending…";
         NotifyOfPropertyChange(nameof(IsWindowEditable));
-        _intentQueue.Enqueue(new PendingIntent(chan.Value, _windowIntentId, fields.ToArray()));
+        _intentQueue.Enqueue(new PendingIntent(chan.Value, _windowIntentId, fields));
         Logger.Info("window INTENT queued: channel=0x{0:X4} intent_id={1} min={2:F1} max={3:F1}",
             chan.Value, _windowIntentId, WindowMinEdit, WindowMaxEdit);
     }
@@ -3242,9 +3244,8 @@ public static class ValenceWire
     public const string RoleActionHome = "action.home";
 
     // The ONLY home op this client sends, found by its option LABEL because op
-    // values are device-defined. force_home CLEARS the e-stop latch and
-    // clear_override drops the homing override: neither is a thing a media
-    // player may do, so never send them from here.
+    // values are device-defined. Never send force_home from here: it releases
+    // the e-stop latch, which is not a media player's call.
     public const string HomeOpLabel = "home";
 
     // ---- Device channel ids --------------------------------------------------
@@ -3532,6 +3533,17 @@ public static class ValenceWire
     public static byte[] CborF32(double v) { var w = new CborWriter(); w.WriteFloat32((float)v); return w.ToArray(); }
     /// <summary>One pre-encoded unsigned CBOR value, for an INTENT `value` entry.</summary>
     public static byte[] CborUInt(long v) { var w = new CborWriter(); w.WriteUInt(v); return w.ToArray(); }
+
+    /// <summary>The stroke-window INTENT's `value` map: each bound on its role's
+    /// setting key, keys ascending (§5.3). Null when neither bound has a key.</summary>
+    public static (int key, byte[] encoded)[] WindowValue(int? minKey, double minMm, int? maxKey, double maxMm)
+    {
+        var v = new List<(int key, byte[] encoded)>(2);
+        if (minKey is int a) v.Add((a, CborF32(minMm)));
+        if (maxKey is int b) v.Add((b, CborF32(maxMm)));
+        v.Sort((x, y) => x.key.CompareTo(y.key));
+        return v.Count == 0 ? null : v.ToArray();
+    }
 
     // ---- SUBSCRIBE (§6.6) — {10: [{12:rate,13:prio,15:channel}]} ------------
     public static byte[] BuildSubscribe(IEnumerable<(ushort ch, double rate, byte prio)> wishes)

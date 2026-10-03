@@ -5,28 +5,16 @@
                        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                        xmlns:plugin="clr-namespace:MultiFunPlayer.Plugin;assembly=MultiFunPlayer"
                        xmlns:s="https://github.com/canton7/Stylet"
-                       d:DesignHeight="420"
+                       d:DesignHeight="300"
                        d:DesignWidth="420"
                        StatusContent="{Binding Status}"
                        mc:Ignorable="d">
     <!--
-      LAYOUT RULE (M5d): what an operator TOUCHES mid-session is at the top and
-      always visible; what they set once lives behind a toolbar button. Nothing
-      was removed - every control the previous view had is still here and still
-      reachable.
-
-      THE RAIL replaces the old numeric-only window card. It draws the machine's
-      travel and puts three markers on it, and the marker COLORS carry the same
-      meaning they carry in the machine's own WebUI (webui/src/style.css):
-        reality #4DA6FF - MEASURED TRUTH: where the carriage is.
-        intent  #A78BFA - COMMANDED / NOT YET CONFIRMED: where it was asked to
-                          be, and a window draft the machine has not echoed.
-      Square corners and a 2px radius are that same identity, not an oversight.
-
-      RAIL TRACK WIDTH IS 372 AND IS COUPLED TO ValenceConnect.cs's RailTrackPx. The
-      view model computes every marker offset in pixels against that number, so
-      the two must agree; see the RAIL block in ValenceConnect.cs for why the geometry
-      lives there rather than in a converter.
+      Five groups: Link, Home, Window, Limits, Readback. Every row has a fixed
+      height, so an answer, a NACK or a reconnect never moves a control.
+      Colors are the machine WebUI palette: reality #4DA6FF is measured truth,
+      intent #A78BFA is commanded or not yet confirmed.
+      RAIL TRACK WIDTH IS 372 AND IS COUPLED TO RailTrackPx IN ValenceConnect.cs.
     -->
 
     <plugin:PluginViewBase.Resources>
@@ -34,33 +22,21 @@
         <SolidColorBrush x:Key="RailIntent" Color="#A78BFA"/>
         <SolidColorBrush x:Key="RailTrack" Color="#040507"/>
         <SolidColorBrush x:Key="RailTrackLine" Color="#1D2026"/>
-        <!-- The window band: reality at low alpha, so the band reads as machine
-             truth without competing with the position marker drawn over it. -->
         <SolidColorBrush x:Key="RailBand" Color="#4DA6FF" Opacity="0.14"/>
 
+        <Style x:Key="GroupLabel" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Opacity" Value="0.55"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <!--
-          A window drag handle. Deliberately a Slider rather than hand-rolled
-          mouse handling: WPF already owns capture, clamping and the value math,
-          and a plugin that ships as one .cs + one .xaml has no code-behind to
-          put drag handlers in.
-
-          IT RUNS ON A FIXED 0..1 DOMAIN. Maximum is never bound to the rail
-          length - see WindowMinFrac in ValenceConnect.cs for the coercion bug that
-          cost, which collapsed the stroke window to 0-1 mm.
-
-          THE 20px THUMB AND THE 392px WIDTH ARE THE ALIGNMENT. A Track gives its
-          thumb (TrackWidth - ThumbWidth) of travel, so a 392-wide slider moves a
-          20-wide thumb across exactly 372 - and offsetting the slider by -10
-          (half a thumb) puts the thumb's CENTER on the same frac*372 the view
-          model computes for the markers. Change either number and the handles
-          stop lining up with the band they are dragging.
-
-          The 20px grab area is deliberately far wider than the 3px grip it
-          draws: a miss used to fall through to MFP and drag the whole window.
-
-          The template has no RepeatButtons and no hit-testable background, so
-          only the thumb itself takes the mouse and the markers underneath stay
-          visible.
+          Window drag handle. FIXED 0..1 domain: Maximum bound to the rail length
+          let Slider coercion write a clamped value back over the draft (see
+          WindowMinFrac). Width = track 372 + thumb 20, offset by half a thumb,
+          so the thumb center lands on frac*372 like every marker. No
+          RepeatButtons and no hit-testable background: only the thumb takes
+          the mouse.
         -->
         <Style x:Key="RailHandle" TargetType="{x:Type Slider}">
             <Setter Property="Minimum" Value="0"/>
@@ -78,9 +54,6 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="{x:Type Thumb}">
-                                                <!-- Transparent background = the
-                                                     grab area; the visible grip is
-                                                     the 3px bar inside it. -->
                                                 <Grid Width="20" Background="Transparent">
                                                     <Rectangle Width="3" RadiusX="1" RadiusY="1"
                                                                Fill="{StaticResource RailIntent}"/>
@@ -122,10 +95,7 @@
         </Style>
     </plugin:PluginViewBase.Style>
 
-    <!-- Toolbar: every mid-session operator action, where the hand already is.
-         Home is the catalog's action.home INTENT; the mode button RE-NEGOTIATES the session
-         (see OnToggleModeClick - stream mode is settled in HELLO and cannot be
-         changed on a live one). -->
+    <!-- The mode button re-negotiates a live session: stream mode is settled in HELLO. -->
     <plugin:PluginViewBase.ToolBarContent>
         <StackPanel Orientation="Horizontal">
             <Button Style="{StaticResource MaterialDesignToolBarButton}"
@@ -150,19 +120,8 @@
             </Button>
             <Button Style="{StaticResource MaterialDesignToolBarButton}"
                     Padding="8"
-                    Click="{s:Action OnHomeClick}"
-                    IsEnabled="{Binding IsConnected}"
-                    ToolTip="Home the machine (the hub's action.home INTENT)">
-                <material:PackIcon Kind="HomeImportOutline" Width="19" Height="19"/>
-            </Button>
-            <!-- The icon IS the mode: a bezier curve for Segments (the machine
-                 renders the sender's own continuous waveform per stroke), a
-                 staircase for Samples (discrete position points at a fixed
-                 rate). Same distinction the two channels actually carry. -->
-            <Button Style="{StaticResource MaterialDesignToolBarButton}"
-                    Padding="8"
                     Click="{s:Action OnToggleModeClick}"
-                    ToolTip="Stream mode. Curve = Segments: one timed command per funscript action (0x2101), machine renders the native waveform. Stairs = Samples: dense position points (0x2100). Switching while connected re-negotiates the session, which briefly drops the stream.">
+                    ToolTip="Stream mode: segments (curve) or samples (stairs)">
                 <material:PackIcon Width="19" Height="19">
                     <material:PackIcon.Style>
                         <Style TargetType="{x:Type material:PackIcon}">
@@ -176,450 +135,258 @@
                     </material:PackIcon.Style>
                 </material:PackIcon>
             </Button>
-            <Button Style="{StaticResource MaterialDesignToolBarButton}"
-                    Padding="8"
-                    Click="{s:Action OnToggleLimitsClick}"
-                    ToolTip="Machine-driven limits (read-only)">
-                <material:PackIcon Kind="SpeedometerSlow" Width="19" Height="19"/>
-            </Button>
-            <Button Style="{StaticResource MaterialDesignToolBarButton}"
-                    Padding="8"
-                    Click="{s:Action OnToggleSetupClick}"
-                    ToolTip="Setup and discovery">
-                <material:PackIcon Kind="CogOutline" Width="19" Height="19"/>
-            </Button>
         </StackPanel>
     </plugin:PluginViewBase.ToolBarContent>
 
-    <!--
-      ONE DialogHost over the whole panel, rather than two Popups.
-
-      A Popup is a separate top-level HWND: it animates in on its own, does not
-      inherit MFP's chrome, and reads as a foreign window pasted over the app -
-      which is exactly how it looked and felt. DialogHost is MaterialDesign's own
-      in-visual-tree overlay and is what MFP dresses its dialogs with, so this
-      one matches the host by construction instead of by imitation.
-
-      IsOpen is TwoWay because the host CLOSES it (scrim click, Esc), and that
-      has to reach the two content flags - see DialogOpen.
-    -->
-    <material:DialogHost IsOpen="{Binding DialogOpen, Mode=TwoWay}" CloseOnClickAway="True">
+    <!-- IsOpen is TwoWay: the host closes the dialog itself (scrim click, Esc). -->
+    <material:DialogHost IsOpen="{Binding SetupOpen, Mode=TwoWay}" CloseOnClickAway="True">
         <material:DialogHost.DialogContent>
-            <Grid Margin="16" MaxWidth="380">
+            <StackPanel Margin="16" Width="340">
+                <TextBlock Text="Link" FontWeight="Bold" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="64"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             material:HintAssist.Hint="Address"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             IsEnabled="{Binding IsEditable}"
+                             Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Grid.Column="2"
+                             material:HintAssist.Hint="Port"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             IsEnabled="{Binding IsEditable}"
+                             Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Column="4"
+                            VerticalAlignment="Bottom" Height="26" Padding="10,2"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Click="{s:Action OnDiscoverClick}"
+                            IsEnabled="{Binding IsEditable}"
+                            ToolTip="Find hubs on the LAN"
+                            Content="Discover"/>
+                </Grid>
 
-                <!-- Machine-driven limits. READ-ONLY, and that is the entire
-                     contract: this plugin ships the funscript AS AUTHORED and
-                     does not map, clamp or scale anything to these numbers
-                     (RFC-008 - the machine owns motion processing). -->
-                <StackPanel Visibility="{Binding LimitsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="Machine-driven limits (read-only)" FontWeight="Bold" Margin="0,0,0,8"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Speed" Opacity="0.6"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding InputSpeedText}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Accel" Opacity="0.6"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding InputAccelText}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Jerk"  Opacity="0.6"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding InputJerkText}"/>
-                    </Grid>
-                    <TextBlock FontSize="10" Opacity="0.5" Margin="0,8,0,0" TextWrapping="Wrap"
-                               Text="Found by catalog field role, not by channel number - so this reads correctly on any hub that annotates its catalog, and says &quot;not advertised&quot; on one that does not. The script is always sent as authored; the machine does the clamping."/>
-                </StackPanel>
+                <ComboBox Margin="0,6,0,0"
+                          material:HintAssist.Hint="Discovered hubs"
+                          Style="{StaticResource MaterialDesignFloatingHintComboBox}"
+                          IsEnabled="{Binding IsEditable}"
+                          ItemsSource="{Binding DiscoveredDevices}"
+                          DisplayMemberPath="Display"
+                          SelectedItem="{Binding SelectedDevice}"/>
+                <ProgressBar Style="{StaticResource MaterialDesignLinearProgressBar}"
+                             IsIndeterminate="True"
+                             Height="3"
+                             Margin="0,3,0,0"
+                             Visibility="{Binding IsDiscovering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                <!-- Setup: everything here except Mode is locked while connected. -->
-                <StackPanel Visibility="{Binding SetupOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="Setup &amp; discovery" FontWeight="Bold" Margin="0,0,0,8"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="70"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                 material:HintAssist.Hint="Address"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 IsEnabled="{Binding IsEditable}"
-                                 Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox Grid.Column="2"
-                                 material:HintAssist.Hint="Port"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 IsEnabled="{Binding IsEditable}"
-                                 Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Grid.Column="4"
-                                VerticalAlignment="Bottom" Height="26" Padding="10,2"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Click="{s:Action OnDiscoverClick}"
-                                IsEnabled="{Binding IsEditable}"
-                                Content="Discover"/>
-                    </Grid>
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="2*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0"
+                             material:HintAssist.Hint="Axis"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             IsEnabled="{Binding IsEditable}"
+                             Text="{Binding SourceAxis, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Grid.Column="2"
+                             material:HintAssist.Hint="Rate (Hz)"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             IsEnabled="{Binding IsEditable}"
+                             Text="{Binding UpdateRateHz, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Grid.Column="4"
+                             material:HintAssist.Hint="Paired token"
+                             Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                             IsEnabled="{Binding IsEditable}"
+                             Text="{Binding PairingPin, UpdateSourceTrigger=PropertyChanged}"/>
+                </Grid>
 
-                    <ComboBox Margin="0,6,0,0"
-                              material:HintAssist.Hint="Discovered devices (UDP probe)"
-                              Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                              IsEnabled="{Binding IsEditable}"
-                              ItemsSource="{Binding DiscoveredDevices}"
-                              DisplayMemberPath="Display"
-                              SelectedItem="{Binding SelectedDevice}"/>
-                    <ProgressBar Style="{StaticResource MaterialDesignLinearProgressBar}"
-                                 IsIndeterminate="True"
-                                 Height="3"
-                                 Margin="0,3,0,0"
-                                 Visibility="{Binding IsDiscovering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-                    <Grid Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                 material:HintAssist.Hint="Axis"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 IsEnabled="{Binding IsEditable}"
-                                 Text="{Binding SourceAxis, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox Grid.Column="2"
-                                 material:HintAssist.Hint="Rate (Hz)"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 IsEnabled="{Binding IsEditable}"
-                                 Text="{Binding UpdateRateHz, UpdateSourceTrigger=PropertyChanged}"/>
-                        <ComboBox Grid.Column="4"
-                                  material:HintAssist.Hint="Mode"
-                                  Style="{StaticResource MaterialDesignFloatingHintComboBox}"
-                                  ItemsSource="{Binding Modes}"
-                                  SelectedItem="{Binding Mode}"/>
-                        <TextBox Grid.Column="6"
-                                 material:HintAssist.Hint="PIN"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 IsEnabled="{Binding IsEditable}"
-                                 Text="{Binding PairingPin, UpdateSourceTrigger=PropertyChanged}"/>
-                    </Grid>
-
-                    <TextBlock FontSize="10" Opacity="0.5" Margin="0,8,0,0" TextWrapping="Wrap"
-                               Text="{Binding CatalogInfo, StringFormat=catalog: {0}}"
-                               Visibility="{Binding CatalogInfo, Converter={StaticResource NullableToVisibilityConverter}}"/>
-
-                    <TextBlock TextWrapping="Wrap" Opacity="0.5" FontSize="10" Margin="0,6,0,0"
-                               Text="Samples mode streams the axis on channel 0x2100 (motion-input); Segments mode sends one timed command per funscript action on 0x2101 (motion-segment). Changing mode while connected re-negotiates the session. The machine must be homed before motion runs, and it clamps everything - every value shown is the device's own, post-clamp."/>
-                </StackPanel>
-            </Grid>
+                <TextBlock FontSize="10" Opacity="0.5" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Text="{Binding CatalogInfo, StringFormat=catalog: {0}}"
+                           Visibility="{Binding CatalogInfo, Converter={StaticResource NullableToVisibilityConverter}}"/>
+            </StackPanel>
         </material:DialogHost.DialogContent>
 
-    <Grid x:Name="PanelRoot" Margin="10,8,10,10">
-        <StackPanel>
+        <!-- Background Transparent is load-bearing: an unset background is not
+             hit-testable, and a click that falls through drags the MFP window. -->
+        <Grid Margin="10,8,10,10" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="62"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-            <!-- ============================================================
-                 LIVE - session line + compact stat grid.
-                 ============================================================ -->
-            <Border Background="{DynamicResource MaterialDesignChipBackground}"
-                    CornerRadius="2" Padding="8,6">
-                <StackPanel>
-                    <TextBlock Text="{Binding StatusText}" FontWeight="Bold" FontSize="11" Margin="0,0,0,2"
-                               TextWrapping="Wrap"
-                               Visibility="{Binding StatusText, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                    <TextBlock Text="{Binding DeviceInfo}" Opacity="0.6" FontSize="10" Margin="0,0,0,4"
-                               Visibility="{Binding DeviceInfo, Converter={StaticResource NullableToVisibilityConverter}}"/>
-
-                    <!-- 2 label/value pairs per row: half the vertical space of
-                         the old one-per-row ladder, same information. -->
-                    <Grid TextElement.FontSize="11">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="14"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Granted" Opacity="0.6"/>
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding GrantedRate, StringFormat={}{0:F0} Hz}"/>
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="Uptime"  Opacity="0.6"/>
-                        <TextBlock Grid.Row="0" Grid.Column="6" Text="{Binding Uptime}"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Session" Opacity="0.6"/>
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding SessionId}"/>
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="States"  Opacity="0.6"/>
-                        <TextBlock Grid.Row="1" Grid.Column="6" Text="{Binding StatesReceived}"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Bundles" Opacity="0.6"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding BundlesSent}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="4" Text="Segments" Opacity="0.6"
-                                   Visibility="{Binding IsSegmentsMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="6" Text="{Binding SegmentsSent}"
-                                   Visibility="{Binding IsSegmentsMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="NACKs"   Opacity="0.6"/>
-                        <StackPanel Grid.Row="3" Grid.Column="2" Orientation="Horizontal">
-                            <TextBlock Text="{Binding NackCount}"/>
-                            <TextBlock Text=" / rl " Opacity="0.6"/>
-                            <TextBlock Text="{Binding RateLimitedCount}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Row="3" Grid.Column="4" Text="Clock"    Opacity="0.6"/>
-                        <StackPanel Grid.Row="3" Grid.Column="6" Orientation="Horizontal">
-                            <TextBlock Text="{Binding ClockOffsetUs, StringFormat={}{0} us}"/>
-                            <TextBlock Text=" · rtt " Opacity="0.6"/>
-                            <TextBlock Text="{Binding RttUs}"/>
-                        </StackPanel>
-
-                        <!-- END-TO-END LAG (LagMeter). A METER, NOT A CONTROL:
-                             it is displayed and logged and drives nothing. The
-                             operator sets their own sync offset from it. The
-                             "hub:" cell is the hub's OWN declared scheduling
-                             latency and reads n/a until RFC-059 lands. -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Lag" Opacity="0.6"
-                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding LagText}"
-                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                        <TextBlock Grid.Row="4" Grid.Column="6" Text="{Binding HubScheduleText}" Opacity="0.6"
-                                   Visibility="{Binding LagText, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                    </Grid>
-
-                    <!-- Divergence warning (Segments mode): visible only when set. -->
-                    <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11"
-                               Foreground="{DynamicResource MaterialDesignErrorBrush}"
-                               Text="{Binding DivergenceWarning}"
-                               Visibility="{Binding DivergenceWarning, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                </StackPanel>
+            <!-- ==== LINK ==== -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource GroupLabel}" Text="Link"/>
+            <Grid Grid.Row="0" Grid.Column="1" Height="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" FontWeight="Bold"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding StatusText, TargetNullValue=Disconnected}"
+                           ToolTip="{Binding StatusText}"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="10" Opacity="0.6" Margin="8,0,2,0"><Run Text="{Binding Address, Mode=OneWay}"/><Run Text=":"/><Run Text="{Binding Port, Mode=OneWay}"/></TextBlock>
+                <Button Grid.Column="2" Width="28" Height="24" Padding="0"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Click="{s:Action OnToggleSetupClick}"
+                        ToolTip="Link setup">
+                    <material:PackIcon Kind="CogOutline" Width="16" Height="16"/>
+                </Button>
+            </Grid>
+            <Border Grid.Row="1" Grid.Column="1" Height="15">
+                <TextBlock FontSize="10" Opacity="0.6" TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding IsConnected, Converter={StaticResource BooleanToVisibilityConverter}}"><Run Text="{Binding DeviceInfo, Mode=OneWay}"/><Run Text=" · session "/><Run Text="{Binding SessionId, Mode=OneWay}"/><Run Text=" · up "/><Run Text="{Binding Uptime, Mode=OneWay}"/></TextBlock>
             </Border>
 
-            <!-- ============================================================
-                 THE RAIL - live carriage telemetry on the machine's travel,
-                 and the stroke window drawn where it actually sits.
+            <!-- ==== HOME: the catalog action.home verb and the hub answer ==== -->
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource GroupLabel}" Text="Home"/>
+            <Grid Grid.Row="2" Grid.Column="1" Height="24" Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Height="22" Padding="10,0" FontSize="11"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Click="{s:Action OnHomeClick}"
+                        IsEnabled="{Binding CanHome}"
+                        ToolTip="Run the homing cycle"
+                        Content="Home"/>
+                <TextBlock Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding HomeStatus}" ToolTip="{Binding HomeStatus}"/>
+            </Grid>
 
-                 GROUND-TRUTH DOCTRINE, drawn rather than described: the band and
-                 the position marker are DEVICE values (decoded STATE); the draft
-                 outline and the drag handles are the operator's DRAFT and are a
-                 different color for exactly that reason. A drag changes only
-                 the outline until Apply, so a value the machine would refuse can
-                 never sit on the rail pretending to be where the window is.
+            <!-- ==== WINDOW: draft boxes; Apply/Revert only once the draft differs ==== -->
+            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource GroupLabel}" Text="Window"/>
+            <Grid Grid.Row="3" Grid.Column="1" Height="24" Margin="0,6,0,0" IsEnabled="{Binding IsWindowEditable}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="54"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="54"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="4"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" FontSize="11" Padding="2,1" VerticalContentAlignment="Center"
+                         ToolTip="Window lower bound"
+                         Text="{Binding WindowMinEdit, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Grid.Column="1" Text=" – " Opacity="0.5" FontSize="11" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="2" FontSize="11" Padding="2,1" VerticalContentAlignment="Center"
+                         ToolTip="Window upper bound"
+                         Text="{Binding WindowMaxEdit, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Grid.Column="3" Text=" mm" Opacity="0.5" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="5" Height="22" Padding="8,0" FontSize="11"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Click="{s:Action OnApplyWindowClick}"
+                        Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="Write the window"
+                        Content="Apply"/>
+                <Button Grid.Column="7" Height="22" Padding="6,0" FontSize="11"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Click="{s:Action OnRevertWindowClick}"
+                        Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="Discard the draft"
+                        Content="Revert"/>
+            </Grid>
 
-                 The whole card hides on a hub that advertises no travel: drawing
-                 a rail without knowing its length would mean inventing the scale
-                 every marker on it is measured against.
-                 ============================================================ -->
-            <!-- Background is Transparent, not unset, and that is load-bearing:
-                 an unset background is INVISIBLE TO HIT-TESTING, so every click
-                 that missed a drag handle fell through to MFP and dragged the
-                 whole application window. Transparent absorbs the mouse. -->
-            <Border BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1"
-                    Background="Transparent"
-                    CornerRadius="2" Padding="8,6" Margin="0,6,0,0"
-                    Visibility="{Binding HasRail, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <StackPanel>
+            <!-- The rail: band and markers are DEVICE values (decoded STATE); the
+                 dashed outline and the handles are the operator draft. The track
+                 always draws so the rows never move; without travel roles it
+                 stays empty rather than inventing a scale. -->
+            <Grid Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,6,0,0"
+                  Width="372" Height="28" HorizontalAlignment="Left">
+                <Border Background="{StaticResource RailTrack}"
+                        BorderBrush="{StaticResource RailTrackLine}"
+                        BorderThickness="1" CornerRadius="2"/>
+                <Canvas ClipToBounds="True">
+                    <Rectangle Canvas.Left="{Binding RailWindowLeftPx}" Canvas.Top="1"
+                               Width="{Binding RailWindowWidthPx}" Height="28"
+                               Fill="{StaticResource RailBand}"/>
+                    <Rectangle Canvas.Left="{Binding RailDraftLeftPx}" Canvas.Top="1"
+                               Width="{Binding RailDraftWidthPx}" Height="28"
+                               Stroke="{StaticResource RailIntent}" StrokeThickness="1"
+                               StrokeDashArray="3 2" Fill="Transparent"
+                               Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Rectangle Canvas.Left="{Binding RailAxisPx}" Canvas.Top="1" Margin="-1,0,0,0"
+                               Width="2" Height="28" Fill="{StaticResource RailIntent}" Opacity="0.5"
+                               Visibility="{Binding HasAxisOverlay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               ToolTip="MFP axis request"/>
+                    <Rectangle Canvas.Left="{Binding RailTargetPx}" Canvas.Top="4" Margin="-1,0,0,0"
+                               Width="2" Height="22" Fill="{StaticResource RailIntent}"
+                               Visibility="{Binding HasRailTarget, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               ToolTip="Machine setpoint"/>
+                    <Rectangle Canvas.Left="{Binding RailPositionPx}" Canvas.Top="1" Margin="-1.5,0,0,0"
+                               Width="3" Height="28" RadiusX="1" RadiusY="1"
+                               Fill="{StaticResource RailReality}"
+                               Visibility="{Binding HasRailPosition, Converter={StaticResource BooleanToVisibilityConverter}}"
+                               ToolTip="Measured carriage position"/>
+                </Canvas>
+                <TextBlock HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                           Margin="4,0,0,1" FontSize="9" Opacity="0.35" Text="0"/>
+                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                           Margin="0,0,4,1" FontSize="9" Opacity="0.35"
+                           Text="{Binding RailMaxText, StringFormat={}{0} mm}"/>
+                <Slider Style="{StaticResource RailHandle}"
+                        Value="{Binding WindowMinFrac, Mode=TwoWay}"
+                        IsEnabled="{Binding IsWindowEditable}"
+                        Visibility="{Binding HasRail, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="Window lower bound"/>
+                <Slider Style="{StaticResource RailHandle}"
+                        Value="{Binding WindowMaxFrac, Mode=TwoWay}"
+                        IsEnabled="{Binding IsWindowEditable}"
+                        Visibility="{Binding HasRail, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        ToolTip="Window upper bound"/>
+            </Grid>
 
-                    <!-- Readout row: measured position leads, in reality blue. -->
-                    <Grid Margin="0,0,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Orientation="Horizontal">
-                            <TextBlock Text="{Binding PositionText}" FontWeight="Bold" FontSize="14"
-                                       Foreground="{StaticResource RailReality}"/>
-                            <TextBlock Text="{Binding VelocityText}" Opacity="0.55" FontSize="10"
-                                       Margin="6,0,0,1" VerticalAlignment="Bottom"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="2" VerticalAlignment="Bottom" FontSize="10"
-                                   Text="{Binding WindowText}" Opacity="0.75"
-                                   ToolTip="The machine's current stroke window - device truth, never the handles"/>
-                    </Grid>
+            <TextBlock Grid.Row="5" Grid.Column="1" Height="15" Margin="0,3,0,0" FontSize="10" Opacity="0.75"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding WindowStatus}" ToolTip="{Binding WindowStatus}"/>
 
-                    <!-- The track. 372 wide, matching RailTrackPx. -->
-                    <Grid Width="372" Height="28" HorizontalAlignment="Left">
-                        <Border Background="{StaticResource RailTrack}"
-                                BorderBrush="{StaticResource RailTrackLine}"
-                                BorderThickness="1" CornerRadius="2"/>
+            <!-- ==== LIMITS: read-only display; nothing sent is scaled to them (RFC-008) ==== -->
+            <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource GroupLabel}" Text="Limits"/>
+            <TextBlock Grid.Row="6" Grid.Column="1" Height="16" Margin="0,4,0,0" FontSize="11"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding LimitsText}" ToolTip="Machine-driven ceilings, read-only"/>
 
-                        <Canvas ClipToBounds="True">
-                            <!-- device stroke window -->
-                            <Rectangle Canvas.Left="{Binding RailWindowLeftPx}" Canvas.Top="1"
-                                       Width="{Binding RailWindowWidthPx}" Height="28"
-                                       Fill="{StaticResource RailBand}"/>
-
-                            <!-- the operator's DRAFT window, only while it differs -->
-                            <Rectangle Canvas.Left="{Binding RailDraftLeftPx}" Canvas.Top="1"
-                                       Width="{Binding RailDraftWidthPx}" Height="28"
-                                       Stroke="{StaticResource RailIntent}" StrokeThickness="1"
-                                       StrokeDashArray="3 2" Fill="Transparent"
-                                       Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-                            <!-- where MFP last ASKED the axis to be, mapped through
-                                 the device's own window. Ghosted so it reads as the
-                                 request behind the machine's answer, not as a peer. -->
-                            <Rectangle Canvas.Left="{Binding RailAxisPx}" Canvas.Top="1" Margin="-1,0,0,0"
-                                       Width="2" Height="28" Fill="{StaticResource RailIntent}" Opacity="0.5"
-                                       Visibility="{Binding HasAxisOverlay, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                       ToolTip="MFP axis request"/>
-
-                            <!-- where the MACHINE is commanding it -->
-                            <Rectangle Canvas.Left="{Binding RailTargetPx}" Canvas.Top="4" Margin="-1,0,0,0"
-                                       Width="2" Height="22" Fill="{StaticResource RailIntent}"
-                                       Visibility="{Binding HasRailTarget, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                       ToolTip="machine setpoint"/>
-
-                            <!-- where the carriage measurably IS -->
-                            <Rectangle Canvas.Left="{Binding RailPositionPx}" Canvas.Top="1" Margin="-1.5,0,0,0"
-                                       Width="3" Height="28" RadiusX="1" RadiusY="1"
-                                       Fill="{StaticResource RailReality}"
-                                       Visibility="{Binding HasRailPosition, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                       ToolTip="measured carriage position"/>
-                        </Canvas>
-
-                        <!-- Travel scale, INSIDE the track: it costs no row of its
-                             own and sits where the numbers it labels actually are. -->
-                        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                   Margin="4,0,0,1" FontSize="9" Opacity="0.35" Text="0"/>
-                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                   Margin="0,0,4,1" FontSize="9" Opacity="0.35"
-                                   Text="{Binding RailMaxText, StringFormat={}{0} mm}"/>
-
-                        <!-- Drag handles. Enabled only when the hub advertised a
-                             WRITABLE window, same gate the numeric boxes use.
-                             Value is a FRACTION against the style's fixed 0..1
-                             domain - never the rail length (see WindowMinFrac). -->
-                        <Slider Style="{StaticResource RailHandle}"
-                                Value="{Binding WindowMinFrac, Mode=TwoWay}"
-                                IsEnabled="{Binding IsWindowEditable}"
-                                ToolTip="Drag the window's lower bound, then Apply"/>
-                        <Slider Style="{StaticResource RailHandle}"
-                                Value="{Binding WindowMaxFrac, Mode=TwoWay}"
-                                IsEnabled="{Binding IsWindowEditable}"
-                                ToolTip="Drag the window's upper bound, then Apply"/>
-                    </Grid>
-
-                    <!-- ONE compact row: the two numbers, then Apply/Revert only
-                         once the draft differs from the machine. There is nothing
-                         to apply or revert until then, and a permanently-lit
-                         Apply is what made this card read as a form rather than
-                         an instrument. The boxes stay ALWAYS visible on purpose -
-                         gating them on dirty too would mean the only way to type
-                         a value was to drag one first. Floating hints are gone:
-                         they cost a whole label row to say what "min - max mm"
-                         already says. -->
-                    <Grid Margin="0,5,0,0" Height="24" IsEnabled="{Binding IsWindowEditable}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="54"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="54"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="4"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" FontSize="11" Padding="2,1" VerticalContentAlignment="Center"
-                                 ToolTip="Stroke window lower bound, mm"
-                                 Text="{Binding WindowMinEdit, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Grid.Column="1" Text=" – " Opacity="0.5" FontSize="11"
-                                   VerticalAlignment="Center"/>
-                        <TextBox Grid.Column="2" FontSize="11" Padding="2,1" VerticalContentAlignment="Center"
-                                 ToolTip="Stroke window upper bound, mm"
-                                 Text="{Binding WindowMaxEdit, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBlock Grid.Column="3" Text=" mm" Opacity="0.5" FontSize="11"
-                                   VerticalAlignment="Center"/>
-
-                        <Button Grid.Column="5" Height="22" Padding="8,0" FontSize="11"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Click="{s:Action OnApplyWindowClick}"
-                                Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                ToolTip="Write min/max via the paired config INTENT; the reply is the APPLIED (post-clamp) value"
-                                Content="Apply"/>
-                        <Button Grid.Column="7" Height="22" Padding="6,0" FontSize="11"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                Click="{s:Action OnRevertWindowClick}"
-                                Visibility="{Binding IsWindowDirty, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                ToolTip="Discard the draft and re-read the machine's values"
-                                Content="Revert"/>
-                    </Grid>
-
-                    <TextBlock FontSize="10" Opacity="0.75" Margin="0,3,0,0" TextWrapping="Wrap"
-                               Text="{Binding WindowStatus}"
-                               Visibility="{Binding WindowStatus, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                    <TextBlock FontSize="10" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
-                               Text="{Binding HomeStatus}"
-                               Visibility="{Binding HomeStatus, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Fallback for a hub with no travel roles: the window editor still
-                 has to be reachable, so it appears here instead of on a rail that
-                 cannot be drawn honestly. -->
-            <Border BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1"
-                    CornerRadius="2" Padding="10,8" Margin="0,8,0,0">
-                <Border.Style>
-                    <Style TargetType="{x:Type Border}">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasRail}" Value="False">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <Grid>
-                        <TextBlock HorizontalAlignment="Left" Text="Stroke window" FontWeight="SemiBold" FontSize="12"/>
-                        <TextBlock HorizontalAlignment="Right" FontSize="12" Text="{Binding WindowText}"/>
-                    </Grid>
-                    <Grid Margin="0,4,0,0" IsEnabled="{Binding IsWindowEditable}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="6"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="6"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="4"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0"
-                                 material:HintAssist.Hint="Min (mm)"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 Text="{Binding WindowMinEdit, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox Grid.Column="2"
-                                 material:HintAssist.Hint="Max (mm)"
-                                 Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                                 Text="{Binding WindowMaxEdit, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Grid.Column="4" VerticalAlignment="Bottom" Height="26" Padding="10,2"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Click="{s:Action OnApplyWindowClick}" Content="Apply"/>
-                        <Button Grid.Column="6" VerticalAlignment="Bottom" Height="26" Padding="8,2"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                Click="{s:Action OnRevertWindowClick}" Content="Revert"/>
-                    </Grid>
-                    <TextBlock FontSize="11" Opacity="0.75" Margin="0,4,0,0" TextWrapping="Wrap"
-                               Text="{Binding WindowStatus}"
-                               Visibility="{Binding WindowStatus, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                    <TextBlock FontSize="11" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
-                               Text="{Binding HomeStatus}"
-                               Visibility="{Binding HomeStatus, Converter={StaticResource NullableToVisibilityConverter}}"/>
-                </StackPanel>
-            </Border>
-
-        </StackPanel>
-    </Grid>
+            <!-- ==== READBACK: the role-located status line, then link counters ==== -->
+            <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource GroupLabel}" Text="Readback"/>
+            <TextBlock Grid.Row="7" Grid.Column="1" Height="16" Margin="0,4,0,0" FontSize="11"
+                       TextTrimming="CharacterEllipsis"
+                       Text="{Binding ReadbackText}" ToolTip="{Binding ReadbackText}"/>
+            <TextBlock Grid.Row="8" Grid.Column="1" Height="15" FontSize="10" Opacity="0.6"
+                       TextTrimming="CharacterEllipsis"><Run Text="{Binding SentText, Mode=OneWay}"/><Run Text=" · states "/><Run Text="{Binding StatesReceived, Mode=OneWay}"/><Run Text=" · NACKs "/><Run Text="{Binding NackCount, Mode=OneWay}"/><Run Text=" / rl "/><Run Text="{Binding RateLimitedCount, Mode=OneWay}"/><Run Text=" · rtt "/><Run Text="{Binding RttUs, Mode=OneWay}"/><Run Text=" us"/></TextBlock>
+            <TextBlock Grid.Row="9" Grid.Column="1" Height="15" FontSize="10" Opacity="0.6"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="Measured end-to-end lag; a meter, drives nothing"><Run Text="lag "/><Run Text="{Binding LagText, Mode=OneWay, TargetNullValue=--}"/><Run Text=" · "/><Run Text="{Binding HubScheduleText, Mode=OneWay}"/><Run Text=" · clock "/><Run Text="{Binding ClockOffsetUs, Mode=OneWay}"/><Run Text=" us"/></TextBlock>
+            <TextBlock Grid.Row="10" Grid.Column="1" Height="15" FontSize="10"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource MaterialDesignErrorBrush}"
+                       Text="{Binding DivergenceWarning}" ToolTip="{Binding DivergenceWarning}"
+                       Visibility="{Binding IsSegmentsMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </Grid>
     </material:DialogHost>
 </plugin:PluginViewBase>

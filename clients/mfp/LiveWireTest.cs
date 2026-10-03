@@ -6,8 +6,11 @@
 // to golden-byte-check it) — it links and drives the plugin's own classes,
 // unmodified, exactly as ValenceConnect.cs's SessionAsync does.
 //
-// The DEFAULT run never sends an INTENT frame or any motion command besides the
-// STREAM bundles described below, and is GET-only against the device's HTTP API.
+// On real hardware the DEFAULT run sends no INTENT and no motion command besides
+// the STREAM bundles described below, and is GET-only against the HTTP API. On a
+// declared simulator (--sim, or `sim: true` in /api/capabilities) it also writes
+// the stroke window and restores it, and sends Home, both resolved by role, to
+// prove the answers and the readback the plugin shows.
 // Two extra modes have their own contracts, stated at their own entry points:
 //   --lag          live check of the plugin's LagMeter. DELIBERATELY MOVES THE
 //                  MACHINE (force-home + window config-set + 14 s of sine).
@@ -16,7 +19,7 @@
 //   --discovery-selftest  UdpDiscovery's probe and reply decode against a
 //                  synthesized DISCOVER_REPLY. No hub, no socket opened.
 //
-// Run:  dotnet run --project clients/mfp/LiveWireTest.csproj [ip] [port]
+// Run:  dotnet run --project clients/mfp/LiveWireTest.csproj [ip] [port] [--http N] [--sim]
 // Exit 0 only if every hard PASS criterion below is met.
 //
 // VERIFICATION DEBT (plugin v0.4.0 — RFC-013 honest rate/burst + RFC-030
@@ -66,7 +69,7 @@ internal static class LiveWireTest
         if (Array.Exists(args, a => a == "--discovery-selftest"))
             return DiscoverySelfTest();
         if (Array.Exists(args, a => a == "--lag"))
-            return await LagModeAsync(ip, port);
+            return await LagModeAsync(ip, port, baseUrl);
 
         Console.WriteLine("=============================================================");
         Console.WriteLine($" Valence LiveWireTest — target {ip}:{port}  mode={(segments ? "SEGMENTS (0x2101)" : "SAMPLES (0x2100)")}");
@@ -125,9 +128,9 @@ internal static class LiveWireTest
         Console.WriteLine();
 
         // ---- Baseline /api/kinetic sync counters --------------------------
-        var (baseBundles, baseSamples, baseEnqueued, baseDropped) = await ReadSyncCounters(http, baseUrl);
-        Console.WriteLine("[baseline] /api/kinetic sync block:");
-        Console.WriteLine($"    bundles={baseBundles} samples={baseSamples} enqueued={baseEnqueued} dropped={baseDropped}");
+        var baseCounters = await ReadSyncCounters(http, baseUrl);
+        if (baseCounters is { } bc)
+            Console.WriteLine($"[baseline] /api/kinetic sync: bundles={bc.bundles} samples={bc.samples} enqueued={bc.enqueued} dropped={bc.dropped}");
         Console.WriteLine();
 
         // ---- Discovery test ----------------------------------------------------
@@ -289,10 +292,23 @@ internal static class LiveWireTest
         var nackLog = new List<(ushort code, ushort channel)>();
         var roleValues = new Dictionary<string, double>();
 
+        // The plugin's Readback line roles, decoded the same way it decodes them.
+        var rbPos = catalog?.LocateRole(ValenceWire.RoleTelemetryPosition);
+        var rbTgt = catalog?.LocateRole(ValenceWire.RoleTelemetryTarget);
+        double posFirst = double.NaN, posLast = double.NaN, tgtLast = double.NaN;
+        int posFrames = 0;
+        var windowSeen = new List<string>();   // distinct device windows, in arrival order
+        static string W(double lo, double hi) => $"{lo:F1}-{hi:F1}";
+
         string homeNack = null;   // NACK answering the Home proof intent (id 201); not a stream failure
         void OnNack(HubClient.NackInfo n)
         {
-            if (n.IntentSeq == 201) { homeNack = n.Name; Console.WriteLine($"    [recv] NACK {n.Name} channel=0x{n.Channel:X4} intent_seq=201 (home proof)"); return; }
+            if (n.IntentSeq == 201)
+            {
+                homeNack = string.IsNullOrEmpty(n.Detail) ? n.Name : $"{n.Name} (detail: {n.Detail})";
+                Console.WriteLine($"    [recv] NACK {homeNack} channel=0x{n.Channel:X4} intent_seq=201 (home proof)");
+                return;
+            }
             nackCount++;
             nackLog.Add((n.Code, n.Channel));
             Console.WriteLine($"    [recv] NACK {n.Name} channel=0x{n.Channel:X4} intent_seq={n.IntentSeq?.ToString() ?? "-"}");
@@ -311,6 +327,17 @@ internal static class LiveWireTest
                 double v = ValenceCatalog.ReadField(payload, kv.Value.Field);
                 if (!double.IsNaN(v)) roleValues[kv.Key] = v;
             }
+            if (rbPos?.ChannelId == channel && ValenceCatalog.ReadField(payload, rbPos.Field) is var rp && !double.IsNaN(rp))
+            {
+                if (posFrames++ == 0) posFirst = rp;
+                posLast = rp;
+            }
+            if (rbTgt?.ChannelId == channel && ValenceCatalog.ReadField(payload, rbTgt.Field) is var rt && !double.IsNaN(rt))
+                tgtLast = rt;
+            if (roleValues.TryGetValue(ValenceWire.RoleWindowMin, out var wLo) &&
+                roleValues.TryGetValue(ValenceWire.RoleWindowMax, out var wHi) &&
+                (windowSeen.Count == 0 || windowSeen[^1] != W(wLo, wHi)))
+                windowSeen.Add(W(wLo, wHi));
         }
 
         var recvTask = client.ReceiveLoopAsync(OnNack, OnState, token);
@@ -353,6 +380,7 @@ internal static class LiveWireTest
         // and (3) header.seq == intent_id, so a NACK's intent_seq would name
         // the same number the ECHO does (RFC-001).
         bool intentTested = false, intentEchoed = false, intentRestored = false;
+        string windowApplied = null, windowOrig = null;   // what the readback must show
         var wMinLoc = locators.TryGetValue(ValenceWire.RoleWindowMin, out var wl) ? wl : null;
         var wMaxLoc = locators.TryGetValue(ValenceWire.RoleWindowMax, out var wh) ? wh : null;
         if (isSim && wMinLoc != null && wMaxLoc != null && wMinLoc.Writable && wMaxLoc.Writable &&
@@ -360,6 +388,7 @@ internal static class LiveWireTest
         {
             double origMin = roleValues[ValenceWire.RoleWindowMin];
             double origMax = roleValues[ValenceWire.RoleWindowMax];
+            windowOrig = W(origMin, origMax);
             double tryMin = origMin + 10.0;
             double tryMax = origMax - 10.0;
 
@@ -370,7 +399,10 @@ internal static class LiveWireTest
                 string ap = "-";
                 if (e.TryGetApplied(wMinLoc.SettingKey.Value, out var am) &&
                     e.TryGetApplied(wMaxLoc.SettingKey.Value, out var ax))
+                {
                     ap = $"min={am:F1} max={ax:F1}";
+                    if (e.IntentId == 101) windowApplied = W(am, ax);
+                }
                 Console.WriteLine($"    [recv] ECHO channel=0x{e.Channel:X4} intent_id={e.IntentId} cfg_gen={e.CfgGen} applied {ap}");
             }
             client.SetEchoHandler(OnEcho);
@@ -406,6 +438,8 @@ internal static class LiveWireTest
         // ---- Home intent proof (SIMULATOR ONLY) -----------------------------
         // Same channel/key/op resolution the plugin's OnHomeClick uses. Sent
         // on an unhomed sim; the proof is the hub's ECHO or named NACK.
+        bool homeTested = false;
+        string homeAnswer = null;
         if (isSim && catalog?.LocateAction(ValenceWire.RoleActionHome) is { } hl &&
             hl.OpFor(ValenceWire.HomeOpLabel) is long hop)
         {
@@ -415,7 +449,9 @@ internal static class LiveWireTest
             await client.SendIntentAsync(hl.ChannelId, 201, new (int, byte[])[] { (hl.Key, ValenceWire.CborUInt(hop)) }, token);
             await Task.Delay(800, token);
             client.SetEchoHandler(null);
-            Console.WriteLine($"[home] hub answered: {(homeEcho != null ? "ECHO" : homeNack != null ? "NACK " + homeNack : "NOTHING")}");
+            homeTested = true;
+            homeAnswer = homeEcho != null ? "ECHO" : homeNack != null ? "NACK " + homeNack : null;
+            Console.WriteLine($"[home] hub answered: {homeAnswer ?? "NOTHING"}");
             Console.WriteLine();
         }
 
@@ -520,17 +556,32 @@ internal static class LiveWireTest
         int roleValuesRead = roleValues.Count;
         Console.WriteLine();
 
-        // ---- After counters + diff --------------------------------------------
-        var (afterBundles, afterSamples, afterEnqueued, afterDropped) = await ReadSyncCounters(http, baseUrl);
-        long dBundles = afterBundles - baseBundles;
-        long dSamples = afterSamples - baseSamples;
-        long dEnqueued = afterEnqueued - baseEnqueued;
-        long dDropped = afterDropped - baseDropped;
-
-        Console.WriteLine("[after] /api/kinetic sync block:");
-        Console.WriteLine($"    bundles={afterBundles} samples={afterSamples} enqueued={afterEnqueued} dropped={afterDropped}");
-        Console.WriteLine($"[diff]  bundles={dBundles} samples={dSamples} enqueued={dEnqueued} dropped={dDropped}");
+        // ---- The Readback line's roles, as the plugin decodes them ------------
+        Console.WriteLine(rbPos == null ? "[readback] telemetry.position NOT ADVERTISED"
+            : $"[readback] telemetry.position 0x{rbPos.ChannelId:X4} '{rbPos.Field.Name}': {posFrames} frames, first {posFirst:F1} last {posLast:F1} {rbPos.Field.Unit}");
+        Console.WriteLine(rbTgt == null ? "[readback] telemetry.target NOT ADVERTISED"
+            : $"[readback] telemetry.target   0x{rbTgt.ChannelId:X4} '{rbTgt.Field.Name}': last {tgtLast:F1} {rbTgt.Field.Unit}");
+        Console.WriteLine($"[readback] window by role from STATE: {string.Join(" -> ", windowSeen)}");
+        bool windowFollowed = windowApplied != null && windowSeen.Contains(windowApplied) &&
+                              windowSeen.Count > 0 && windowSeen[^1] == windowOrig;
         Console.WriteLine();
+
+        // ---- After counters + diff --------------------------------------------
+        // valencesim serves no /api/kinetic, so on a declared sim the four counter
+        // checks skip; on hardware a missing endpoint fails them.
+        var afterCounters = await ReadSyncCounters(http, baseUrl);
+        bool haveCounters = baseCounters.HasValue && afterCounters.HasValue;
+        long dBundles = 0, dSamples = 0, dEnqueued = 0, dDropped = 0;
+        if (haveCounters)
+        {
+            var (b0, s0, e0, x0) = baseCounters.Value;
+            var (b1, s1, e1, x1) = afterCounters.Value;
+            dBundles = b1 - b0; dSamples = s1 - s0; dEnqueued = e1 - e0; dDropped = x1 - x0;
+            Console.WriteLine($"[after] /api/kinetic sync: bundles={b1} samples={s1} enqueued={e1} dropped={x1}");
+            Console.WriteLine($"[diff]  bundles={dBundles} samples={dSamples} enqueued={dEnqueued} dropped={dDropped}");
+            Console.WriteLine();
+        }
+        string noKinetic = isSim ? "skipped (sim serves no /api/kinetic)" : "no /api/kinetic";
 
         // ---- PASS/FAIL table ----------------------------------------------------
         var checks = new List<(string name, bool pass, string detail)>
@@ -544,11 +595,17 @@ internal static class LiveWireTest
             ("role values decoded from STATE", roleValuesRead == rolesFound, $"read={roleValuesRead}/{rolesFound}"),
             ("window INTENT ECHOed (sim only)", !intentTested || intentEchoed, intentTested ? $"echoed={intentEchoed}" : "skipped (not a sim)"),
             ("window restored by 2nd INTENT (sim only)", !intentTested || intentRestored, intentTested ? $"echoed={intentRestored}" : "skipped (not a sim)"),
+            ("window readback by role followed the write and the restore (sim only)", !intentTested || windowFollowed,
+                intentTested ? string.Join(" -> ", windowSeen) : "skipped (not a sim)"),
+            ("Home answered by the hub: ECHO or a named NACK (sim only)", !homeTested || homeAnswer != null,
+                homeTested ? homeAnswer ?? "no answer" : "skipped (not a sim, or no labeled home op)"),
+            ("telemetry.position decoded by role from STATE", rbPos == null || posFrames > 0,
+                rbPos == null ? "not advertised" : $"frames={posFrames}"),
             ("CLOCK rtt < 200000 us", haveClock && bestRtt < 200000, haveClock ? $"rtt={bestRtt} us" : "no exchange completed"),
-            ("bundles delta == sends (zero wire loss)", dBundles == sends, $"delta={dBundles} sends={sends}"),
-            ("samples delta == sends", dSamples == sends, $"delta={dSamples} sends={sends}"),
-            ("enqueued delta == 0", dEnqueued == 0, $"delta={dEnqueued}"),
-            ("dropped delta == sends (unhomed HOMED-gate drop)", dDropped == sends, $"delta={dDropped} sends={sends}"),
+            ("bundles delta == sends (zero wire loss)", haveCounters ? dBundles == sends : isSim, haveCounters ? $"delta={dBundles} sends={sends}" : noKinetic),
+            ("samples delta == sends", haveCounters ? dSamples == sends : isSim, haveCounters ? $"delta={dSamples} sends={sends}" : noKinetic),
+            ("enqueued delta == 0", haveCounters ? dEnqueued == 0 : isSim, haveCounters ? $"delta={dEnqueued}" : noKinetic),
+            ("dropped delta == sends (unhomed HOMED-gate drop)", haveCounters ? dDropped == sends : isSim, haveCounters ? $"delta={dDropped} sends={sends}" : noKinetic),
             ("STATE frames received > 0", stateCount > 0, $"count={stateCount}"),
             ("NACKs received == 0", nackCount == 0, $"count={nackCount}"),
         };
@@ -670,7 +727,7 @@ internal static class LiveWireTest
     private const double LagLookaheadMs = 120.0;    // ValenceConnect.cs SegLookaheadMs
     private const double LagSeconds = 14.0;
 
-    private static async Task<int> LagModeAsync(string ip, int port)
+    private static async Task<int> LagModeAsync(string ip, int port, string baseUrl)
     {
         Console.WriteLine("=============================================================");
         Console.WriteLine($" Valence Connect LagMeter live check -- target {ip}:{port}");
@@ -679,7 +736,7 @@ internal static class LiveWireTest
         Console.WriteLine("=============================================================");
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        byte[] token16 = await MintUiTokenAsync(http, $"http://{ip}");
+        byte[] token16 = await MintUiTokenAsync(http, baseUrl);
         if (token16 == null)
         {
             Console.WriteLine("ABORT: no /uitoken -- a watch-tier session cannot publish a stream.");
@@ -898,11 +955,11 @@ internal static class LiveWireTest
         return null;
     }
 
-    private static async Task<(long bundles, long samples, long enqueued, long dropped)> ReadSyncCounters(HttpClient http, string baseUrl)
+    private static async Task<(long bundles, long samples, long enqueued, long dropped)?> ReadSyncCounters(HttpClient http, string baseUrl)
     {
         string body;
         try { body = await http.GetStringAsync($"{baseUrl}/api/kinetic"); }
-        catch (HttpRequestException ex) { Console.WriteLine($"[kinetic] unavailable ({ex.Message}); counters read as 0"); return (0, 0, 0, 0); }
+        catch (HttpRequestException ex) { Console.WriteLine($"[kinetic] unavailable ({ex.Message})"); return null; }
         var obj = JObject.Parse(body);
         var sync = obj["sync"];
         long bundles = sync?.Value<long?>("bundles") ?? 0;

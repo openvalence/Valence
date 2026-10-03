@@ -239,24 +239,38 @@ internal static class Program
             Wire.TryDecodeBlobChunk(new byte[13], out _), false);
 
         // ====================================================================
-        // INTENT (§9.3) — and RFC-001's correlation rule.
+        // INTENT (§9.3): the plugin's two operator intents, and RFC-001's
+        // correlation rule (header.seq == intent_id, because the hub stamps
+        // NACK.intent_seq from the refused frame's HEADER seq).
         // ====================================================================
-        // The hub stamps NACK.intent_seq from the REFUSED FRAME'S HEADER seq,
-        // so the plugin sets header.seq = intent_id. These two frames are the
-        // proof that both correlation keys name the same number.
-        var iWin = Wire.BuildIntent(0x0101, 7,
-            new (int, byte[])[] { (1, Wire.CborF32(20.0)), (2, Wire.CborF32(150.0)) });
-        Check("INTENT payload (config-set window 20/150)", iWin,
-            "A30F190101120714A201FA41A0000002FA43160000");
-        Check("INTENT frame (config-set, header seq == intent_id 7)",
-            Wire.EncodeFrame(0x0D, 0x0101, iWin, 7),
-            "0D00010107001500A30F190101120714A201FA41A0000002FA43160000");
-
-        var iHome = Wire.BuildIntent(0x0103, 3, new (int, byte[])[] { (1, Wire.CborUInt(1)) });
-        Check("INTENT payload (home op 1)", iHome, "A30F190103120314A10101");
+        // The numbers are what valencesim's catalog resolves BY ROLE (LiveWireTest
+        // prints the resolution): action.home on 0x3101 key 1, option "home" at
+        // index 1; window.min/max through setting channel 0x3000, keys 1/2. The
+        // plugin names none of them. Goldens from valence_probe.py's build_intent
+        // and encode_frame.
+        var iHome = Wire.BuildIntent(0x3101, 3, new (int, byte[])[] { (1, Wire.CborUInt(1)) });
+        Check("INTENT payload (action.home, op 'home' = 1)", iHome, "A30F193101120314A10101");
         Check("INTENT frame (home, header seq == intent_id 3)",
-            Wire.EncodeFrame(0x0D, 0x0103, iHome, 3),
-            "0D00030103000B00A30F190103120314A10101");
+            Wire.EncodeFrame(0x0D, 0x3101, iHome, 3),
+            "0D00013103000B00A30F193101120314A10101");
+
+        var iWin = Wire.BuildIntent(0x3000, 7, Wire.WindowValue(1, 20.0, 2, 150.0));
+        Check("INTENT payload (window 20/150 on window.min/max keys 1/2)", iWin,
+            "A30F193000120714A201FA41A0000002FA43160000");
+        Check("INTENT frame (window, header seq == intent_id 7)",
+            Wire.EncodeFrame(0x0D, 0x3000, iWin, 7),
+            "0D00003007001500A30F193000120714A201FA41A0000002FA43160000");
+
+        // Each bound rides its own role's key, and the map still goes out
+        // ascending (§5.3) when a hub numbers the bounds the other way round.
+        Check("INTENT payload (window.min on key 2, window.max on key 1: ascending)",
+            Wire.BuildIntent(0x3000, 8, Wire.WindowValue(2, 20.0, 1, 150.0)),
+            "A30F193000120814A201FA4316000002FA41A00000");
+        Check("INTENT payload (only window.max writable: one key)",
+            Wire.BuildIntent(0x3000, 9, Wire.WindowValue(null, 20.0, 2, 150.0)),
+            "A30F193000120914A102FA43160000");
+        CheckEq("window value map is null when neither bound is writable",
+            Wire.WindowValue(null, 20.0, null, 150.0) == null, true);
 
         Console.WriteLine();
         if (_fail == 0) { Console.WriteLine("ALL PASS"); return 0; }
@@ -453,6 +467,15 @@ internal static class Wire
 
     public static byte[] CborF32(double v) { var w = new Cbor(); w.F((float)v); return w.ToArray(); }
     public static byte[] CborUInt(long v) { var w = new Cbor(); w.U(v); return w.ToArray(); }
+
+    public static (int key, byte[] encoded)[] WindowValue(int? minKey, double minMm, int? maxKey, double maxMm)
+    {
+        var v = new List<(int key, byte[] encoded)>(2);
+        if (minKey is int a) v.Add((a, CborF32(minMm)));
+        if (maxKey is int b) v.Add((b, CborF32(maxMm)));
+        v.Sort((x, y) => x.key.CompareTo(y.key));
+        return v.Count == 0 ? null : v.ToArray();
+    }
 
     public static byte[] BuildStreamBundle(uint tBase, IReadOnlyList<(ushort off, double target, double vel)> samples)
     {
