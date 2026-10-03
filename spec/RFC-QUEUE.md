@@ -8032,6 +8032,14 @@ say exactly which, future-us will want the receipts.*
      remote, reserved) beside its owner id, and the control-owner entry's
      option labels stop being the only naming. Clients draw the plan strip
      for stream, classic and advanced owners and the jog tape otherwise.
+  4. **The owner announces who it is (operator, 2026-10-03).** Beside the
+     kind, each owned slot carries the owning session's `client_kind` and
+     `client_name` as given in its HELLO (§6.2), so any client can name the
+     source in words ("stream: MultiFunPlayer on ATLANTIC-PC", "advanced:
+     Phosphor funscript player"), find it, and offer the §11.4 TAKEOVER
+     with the owner named rather than a bare session id. The hub-served
+     page's own session is named the same way. Names are display strings
+     and never a key: ownership keys stay the session id.
 - **Pros.** "Idle" becomes a wire fact; the tape and the plan strip stop
   guessing; a client's earlier stream never locks its own jog; the
   plugin's field-order shortcut retires.
@@ -8042,8 +8050,8 @@ say exactly which, future-us will want the receipts.*
   vocabulary, codegen; library arbiter release on quiet; Nucleus
   `railOwned()` and the arbiter's owner bookkeeping, sim, fixture;
   Phosphor `railOwned()` reads the kind instead of the running flags.
-- **Wire impact.** One field per slot on `control-owner` (etag moves on
-  adopting hubs); one new limit.
+- **Wire impact.** Three fields per slot on `control-owner` (kind, client
+  kind, client name; etag moves on adopting hubs); one new limit.
 - **Open questions.** (1) 500 ms quiet window, or tie it to the grant's
   horizon only. (2) Does a quiet release of a stream also clear a PAUSE it
   never latched (no: command-driven sources latch nothing, §11.4).
