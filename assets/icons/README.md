@@ -15,7 +15,8 @@ ICO and ICNS is generated.
 | `icon-mono.svg` | Ring and core only, single color (black) on transparent, 16 px grid | Any | Status badges, the macOS menu bar template (tinted by the system), favicon masks |
 | `avatar.svg` | Ring and core only on a full square tile (the host crops the corners) | 512 | GitHub org avatar, uploaded by hand |
 
-The app variants sit on a rounded square (corner radius about 22% of the
+The ring's outer edge reaches about 89% of the tile width at every size (1 px
+inside the tile edge at 16). The app variants sit on a rounded square (corner radius about 22% of the
 side; transparent outside it), except the iOS and apple-touch icons, which
 stay square for the system mask. The Windows ICO ladder renders each layer
 with a 1 px clear edge.
