@@ -8243,3 +8243,69 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.** None. The render-time velocity cap in the arbiter's
   tick (a backstop that never fires on a legal plan) does not set `clamped`:
   the byte describes plans, not ticks.
+
+## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
+
+- **Status:** DRAFT (Nucleus val-dbo). The operator ruled the reference hub's
+  homing on 2026-10-03 ahead of this text; Nucleus builds against the
+  behavior below, so acceptance amends SPEC to what already runs, or the
+  ruling moves the firmware.
+- **Origin.** The reference hub gained a real home cycle: home op 1 seeks the
+  home end until a stall level from a current-sense board reads HIGH, takes
+  that point as 0, backs off a fixed distance and is homed. Until then op 1
+  was refused and `force_home` (RFC-025) was the only way to be homed.
+- **Problem.** SPEC names the verb (`action.home`, §8.8 roles), admits it
+  under PAUSE whether or not the hub is unhomed (§11.1), and clears
+  `home_required` on "a completed home" (§11.2). It says nothing of what the
+  verb's ECHO means for a cycle that lasts seconds, how a cycle that fails is
+  reported, what ends a cycle early, or what other motion does meanwhile. A
+  client cannot tell "homing started" from "homed", and cannot learn why a
+  cycle ended unhomed.
+- **Change.**
+  1. **The ECHO answers the start.** An accepted `action.home` ECHOes when
+     the cycle is queued. The outcome is state, not a reply: the
+     motion-status `homing` bit (the reference `motion-status` flags, Appendix D
+     row 0xEE05) is set from acceptance until the cycle ends, `homed` is
+     set if and only if it completed, and `home_required` (§11.2) clears
+     only on a completed cycle.
+  2. **Refusals at the start.** `UNSUPPORTED_OP` when the hub has no means
+     to home (no end-of-travel sense on this build); `INTERLOCK` when its
+     sense cannot be trusted (undriven, or already reading end-of-travel),
+     while the machine moves, or under override (§11.1: `return` first);
+     `ESTOP_ACTIVE` while ESTOP is latched; `SOURCE_CONFLICT` while a source
+     owns the rail outside PAUSE (under PAUSE an owning source is suspended
+     and the verb is admitted, §11.1). Each carries a `detail` (§16.1).
+  3. **During a cycle.** The cycle owns the rail: every other motion intent
+     is refused `INTERLOCK`, and a second `action.home` is an ordinary ECHO
+     that changes nothing. A bench verb that declares the machine homed
+     (`force_home`) is refused `INTERLOCK` until the cycle ends.
+  4. **What ends a cycle early, unhomed.** ESTOP; a `pause` op, even with
+     PAUSE already latched (the cycle runs under the latch, so a fresh pause
+     is the operator saying stop); loss of motor power; a change to the
+     travel geometry. The reason goes to the log channel at Warn (§16.2).
+  5. **Failure.** No end-of-travel across the configured search distance
+     (`geometry.max_travel`), or no end by the cycle's own deadline, ends it
+     unhomed with the reason logged. No NACK follows: the intent was already
+     answered (item 1).
+  6. **Not protocol.** What senses end-of-travel (a switch, a current
+     threshold, the drive), the seek speed, the debounce and the backoff are
+     the hub's. The protocol fixes only that 0 is where the cycle says the
+     home end is, and that the flip (§9.6) swaps which end that is.
+- **The simulator.** valencesim compiles the reference arbiter verbatim; its
+  `--home-sense-at MM` places a stand-in stop so the cycle runs end to end.
+- **Backward compatibility.** No wire change. A client that treated the
+  ECHO as "homed" was already wrong on any hub whose cycle takes time; one
+  that watches `homed` and `home_required` keeps working.
+- **Pros.** One meaning for the ECHO on every hub; a client shows "homing"
+  from the bit, not a guess, and knows a cycle's end without polling a verb.
+- **Cons.** A failed cycle's reason reaches only a client that reads the log
+  channel.
+- **Cost.** SPEC §11.1 and §11.2, a few sentences; Appendix D's 0xEE05 row a clause.
+  Reference hub: none beyond what landed (Nucleus val-dbo).
+- **Wire impact.** None.
+- **Open questions.** A deferred answer: once a hub library can answer an
+  intent after its handler returns (Nucleus val-9u0.22, the provisioning
+  desk's need), should `action.home` hold its ECHO until the cycle ends and
+  NACK a failure, and with which code (a new `HOMING_FAILED`, or
+  `INTERLOCK` with a detail)? This draft keeps the start-ECHO because no
+  reference library can defer today.
