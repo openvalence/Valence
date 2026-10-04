@@ -103,25 +103,26 @@ export function setHttpGet(fn) { _httpGet = typeof fn === 'function' ? fn : brow
  * never throw into the connect path — a client that cannot get a token should
  * still connect as a viewer.
  *
- * @param {string} host
+ * @param {string|{host: string, http?: number}} host see mintUrl
  * @returns {Promise<Uint8Array|null>}
  */
 /**
  * Where to ask for a mint.
  *
  * When the page is served BY the machine — the normal case — use a
- * same-origin relative URL. Building `http://<host>/uitoken` by hand assumes
- * the HTTP server is on port 80 and silently fails with a connection refusal
- * anywhere it is not, which is exactly what happened against a simulator
- * serving on :8080: the socket connected, the catalog rendered, and the client
- * quietly dropped to `watch` with three console errors as the only clue.
+ * same-origin relative URL: it is the shape the endpoint's no-CORS defense is
+ * designed around. Otherwise the origin's `http` port when the caller knows it
+ * (a sidecar sim's --http), else port 80. SPEC section 12.8 names no port; a
+ * guessed :80 against a hub serving elsewhere drops the client to `watch`.
  *
- * Same-origin is also the safer request: it is the shape the endpoint's
- * no-CORS defense is designed around.
+ * @param {string|{host: string, http?: number}} hub an origin, or a host
+ *        string used as is ("host:port" allowed)
  */
-function mintUrl(host) {
-  if (typeof location !== 'undefined' && location.hostname === host) return '/uitoken';
-  return 'http://' + host + '/uitoken';
+function mintUrl(hub) {
+  const { host, http } = typeof hub === 'object' && hub ? hub : { host: String(hub) };
+  const authority = http ? host + ':' + http : host;
+  if (typeof location !== 'undefined' && (location.host === authority || (!http && location.hostname === host))) return '/uitoken';
+  return 'http://' + authority + '/uitoken';
 }
 
 export async function mintUiToken(host, attempts = 4) {
@@ -164,7 +165,9 @@ export async function mintUiToken(host, attempts = 4) {
  * with every control dead. Minting per connect is what makes reconnection
  * transparent.
  *
- * @param {string} host
+ * @param {string|{host: string, port?: number, http?: number}} host a
+ *        session origin (session.origin) or a host string; see mintUrl and
+ *        identity.js tokenKey
  * @param {Object} [opts]
  * @param {boolean} [opts.allowMint=true] set false to require a paired token
  * @param {Function} [opts.log]

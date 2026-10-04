@@ -241,6 +241,8 @@ function defaultCatalogStore() {
  * @param {Object} opts
  * @param {string} opts.host device host/IP (default 192.168.1.229)
  * @param {number} [opts.port] hub WS port (default 82)
+ * @param {number} [opts.http] hub HTTP port serving /uitoken; absent = the
+ *        page's own origin, else port 80
  * @param {string} [opts.clientKind] HELLO client_kind (default 'webui')
  * @param {string} [opts.clientName] HELLO client_name
  * @param {Uint8Array} [opts.instanceId] stable 8-byte identity (default random)
@@ -275,6 +277,7 @@ function defaultCatalogStore() {
 export function createSession(opts = {}) {
   const host = opts.host || '192.168.1.229';
   const port = opts.port || 82;
+  const origin = { host, port, http: opts.http || undefined };
   const clientKind = opts.clientKind || 'webui';
   const clientName = opts.clientName || 'valence-js';
   const instanceId = opts.instanceId || newInstanceId();
@@ -1603,7 +1606,7 @@ export function createSession(opts = {}) {
     // degrades to a tokenless HELLO — the hub answers `watch` and the UI comes
     // up as a viewer, which is a working state.
     Promise.resolve()
-      .then(() => tokenProvider(host))
+      .then(() => tokenProvider(host, origin))
       .then((t) => { liveToken = t || null; })
       .catch((e) => { log('warn', 'token provider failed — connecting as viewer', e); liveToken = null; })
       .then(() => {
@@ -1775,9 +1778,10 @@ export function createSession(opts = {}) {
     get channelMap() { return channelMap; },
     get instanceId() { return instanceId; },
     get identity() { return state.identity; },
-    // The host this session dials — the SAME key identity.js's per-hub token
-    // store (getPairedToken/setPairedToken) uses, so a caller that just
-    // received a PAIR_GRANT can persist it without re-deriving the host.
     get host() { return host; },
+    // {host, port, http}: the key identity.js's per-hub token store takes
+    // (getPairedToken/setPairedToken) and where acquireToken mints, so a
+    // caller that just received a PAIR_GRANT persists it without re-deriving.
+    get origin() { return origin; },
   };
 }

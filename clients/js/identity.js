@@ -13,7 +13,8 @@
  *
  * WHAT IS STORED, AND WHERE
  *   valence.instance   — 8 random bytes, hex. This install's identity.
- *   valence.tok.<host> — 16-byte pairing token, hex, ONE PER HUB.
+ *   valence.tok.<host[:port]> — 16-byte pairing token, hex, ONE PER HUB
+ *                       (the WS port, elided when it is the default 82).
  *
  * Tokens are per-host on purpose: a token is a credential issued BY one hub and
  * meaningless at another, and this same bundle is expected to talk to several
@@ -122,7 +123,12 @@ export function resetIdentity() {
 
 // ---- per-hub pairing tokens ------------------------------------------------
 
-function tokenKey(host) { return KEY_TOKEN_PREFIX + String(host); }
+// `hub` is a session origin {host, port} or a plain host string (used as is).
+// The default WS port is elided, so tokens stored by bare host still load.
+function tokenKey(hub) {
+  if (typeof hub !== 'object' || !hub) return KEY_TOKEN_PREFIX + String(hub);
+  return KEY_TOKEN_PREFIX + hub.host + (hub.port && hub.port !== 82 ? ':' + hub.port : '');
+}
 
 /**
  * The stored pairing token for `host`, or null.
