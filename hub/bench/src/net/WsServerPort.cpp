@@ -119,23 +119,23 @@ std::string ValenceBenchWsTransport::peer() const {
 
 // ---- ValenceBenchWsPort --------------------------------------------------------
 
-bool ValenceBenchWsPort::begin(valence::Hub* hub, uint16_t port, SessionLog* log) {
+bool ValenceBenchWsPort::begin(valence::Hub* hub, uint16_t port, SessionLog* log, const std::string& bindHost) {
     _hub = hub;
     _log = log;
     for (auto& s : _slots) s.setNowMsSource(&_nowMs);
 
-    _server = std::make_unique<ix::WebSocketServer>(port, "0.0.0.0");
+    _server = std::make_unique<ix::WebSocketServer>(port, bindHost);
     _server->setOnClientMessageCallback(
         [this](std::shared_ptr<ix::ConnectionState> state, ix::WebSocket& ws,
                const ix::WebSocketMessagePtr& msg) { onMessage(state, ws, msg); });
 
     auto res = _server->listen();
     if (!res.first) {
-        if (_log) _log->logf('E', "ws: listen failed on :%u -- %s", unsigned(port), res.second.c_str());
+        if (_log) _log->logf('E', "ws: listen failed on %s:%u -- %s", bindHost.c_str(), unsigned(port), res.second.c_str());
         return false;
     }
     _server->start();
-    if (_log) _log->logf('I', "ws: listening on :%u (valence.v1)", unsigned(port));
+    if (_log) _log->logf('I', "ws: listening on %s:%u (valence.v1)", bindHost.c_str(), unsigned(port));
     return true;
 }
 

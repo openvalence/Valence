@@ -97,7 +97,8 @@ class ValenceBenchWsPort {
 public:
     static constexpr uint8_t kSlots = valence::kHubMaxSessions + 1;
 
-    bool begin(valence::Hub* hub, uint16_t port, SessionLog* log);
+    // bindHost: the listen address; "127.0.0.1" keeps the port off the LAN.
+    bool begin(valence::Hub* hub, uint16_t port, SessionLog* log, const std::string& bindHost = "0.0.0.0");
     void stop();
 
     // Hub-thread pump: consume open/close events (attach/detach), sweep stalls.
