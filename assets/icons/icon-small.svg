@@ -2,5 +2,5 @@
   <rect width="30" height="30" rx="6.5" fill="#111318"/>
   <circle cx="15" cy="15" r="8.5" fill="none" stroke="#A78BFA" stroke-width="3"/>
   <circle cx="15" cy="15" r="4" fill="#4DA6FF"/>
-  <g fill="#EDE7FF"><circle cx="15" cy="6.5" r="1.5"/><circle cx="22.36" cy="19.25" r="1.5"/><circle cx="7.64" cy="19.25" r="1.5"/></g>
+  <g fill="#4DA6FF"><circle cx="15" cy="6.5" r="1.5"/><circle cx="22.36" cy="19.25" r="1.5"/><circle cx="7.64" cy="19.25" r="1.5"/></g>
 </svg>
