@@ -2959,7 +2959,7 @@
 </table>
 <p>Composition rules that hold across the whole document:</p>
 <ul>
-<li><strong>Safety <code>stop</code> and <code>estop</code> are role-EXEMPT</strong> (<a href="../safety/#s11-2">§11.2</a>): any session including <code>watch</code> may send them. Watch-tier stop spam is a <strong>named, bounded, accepted</strong> risk — exempt ops are still <a href="../channels/#s9-3">§9.3</a> rate-limited, and the person standing in the room being able to stop the machine outranks the nuisance.</li>
+<li><strong>Safety <code>pause</code> and <code>estop</code> are role-EXEMPT</strong> (<a href="../safety/#s11-1">§11.1</a>, <a href="../safety/#s11-2">§11.2</a>): any session including <code>watch</code> may send them. Watch-tier pause spam is a <strong>named, bounded, accepted</strong> risk — exempt ops are still <a href="../channels/#s9-3">§9.3</a> rate-limited, and the person standing in the room being able to stop the machine outranks the nuisance.</li>
 <li><strong>OTA rights are NEVER derivable from any tier.</strong> Firmware update lives on its own credential plane; a <code>configure</code>-tier compromise cannot flash firmware.</li>
 <li><strong>Serial and in-process transports are implicitly <code>configure</code></strong> — possession of the cable or the process is the credential (<a href="#s12-9">§12.9</a>).</li>
 <li>Hubs MAY offer a lock-down setting in which even <code>watch</code> requires a token, for shared-space deployments.</li>
@@ -2984,7 +2984,7 @@ A <strong>physical-presence proof</strong> opens a short <strong>single-grant</s
 <li>A hub with a real button MAY bind it as the pairing control: a UX upgrade, never a requirement. A hub with indicator hardware SHOULD show a pairing state on it; window state is in any case observable in-band by any <code>watch</code> session.</li>
 <li><strong>Factory reset (wiping the token store) MUST be a deliberately harder gesture</strong> than opening pairing — a longer sequence, or the physically-attached console, which is implicitly <code>configure</code> anyway.</li>
 </ul>
-<p><strong>Grant rule: if zero <code>configure</code> tokens exist, the window grants <code>configure</code> — physical possession is root.</strong> Thereafter it grants the hub's configured default (<code>control</code>), and knock-and-approve does the rest.</p>
+<p><strong>Grant rule: if zero <code>configure</code> tokens exist, the window grants <code>configure</code> — physical possession is root.</strong> Thereafter it grants the hub's configured default (<code>control</code>), and knock-and-approve does the rest. <strong>Config-mode exception (RFC-079, <a href="../transports/#s13-4">§13.4</a>.1):</strong> booting with the pairing control held is a physical-presence proof, so in config mode the window's single grant is <code>configure</code> <strong>whether or not <code>configure</code> tokens already exist</strong>. No new wire: the client connects at <code>watch</code>, sends a bare PAIR_REQ, receives PAIR_GRANT <code>{token, configure}</code>, presents it by AUTH (<a href="#s12-4">§12.4</a>), and keeps a durable token, so its later WebSocket session after migration is <code>configure</code> too. Sessions that did not win the grant stay <code>watch</code>.</p>
 <pre class="mermaid"><code>flowchart TD
     Req([PAIR_REQ arrives]):::start
     Req --&gt; Mode{which mode\ndoes it carry?}
@@ -3085,7 +3085,7 @@ produced it.</em></p>
 <ul>
 <li><strong>WebSocket:</strong> plain <code>ws://</code> on LAN by default. Hubs MAY offer <code>wss://</code> with a self-signed certificate; browser trust UX for self-signed LAN certificates is hostile, which is why TLS is optional rather than baseline.</li>
 <li><strong>BLE:</strong> transports SHOULD use LE Secure Connections pairing/bonding where the client stack allows; the token layer applies identically above it.</li>
-<li><strong>ESP-NOW:</strong> the pairing ceremony doubles as key distribution — PAIR_GRANT MAY carry segment keys enabling the radio's native encryption, and relays store them as clients store tokens. Unencrypted operation remains permitted for <code>watch</code>-class traffic.</li>
+<li><strong>ESP-NOW:</strong> the pairing ceremony doubles as key distribution — PAIR_GRANT MAY carry segment keys enabling the radio's native encryption, and relays store them as clients store tokens. Unencrypted operation remains permitted for <code>watch</code>-class traffic. The spoke profile (<a href="../transports/#s13-3">§13.3</a>.1) is unencrypted at every tier; see H13.</li>
 <li><strong>Serial / in-process:</strong> physically-attached transports are implicitly <code>configure</code>-capable, because possession of the cable or the process <strong>is</strong> the credential. Hubs MAY still require pairing on serial.</li>
 </ul>
 <h2 id="s12-10">12.10 Future work <em>(informative)</em><a class="headerlink" href="#s12-10" title="Link to this section">#</a></h2>

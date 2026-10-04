@@ -2248,6 +2248,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#source-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source kinds
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2701,6 +2712,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#source-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source kinds
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2746,7 +2768,7 @@
 <h1 id="safety-codes">Safety codes<a class="headerlink" href="#safety-codes" title="Link to this section">#</a></h1>
 <h2 id="safety-intent-operations">Safety <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> operations<a class="headerlink" href="#safety-intent-operations" title="Link to this section">#</a></h2>
 <p>These are the <code>value</code> map key 1 of the <a href="../channels/#spec-core-channels"><code>safety-intents</code> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr></a> (<code>0x0005</code>).</p>
-<p><strong><code>stop</code> and <code>estop</code> are role-exempt. Any <abbr title="The stateful association between one client and the hub.">session</abbr> may send them,
+<p><strong><code>pause</code> and <code>estop</code> are role-exempt. Any <abbr title="The stateful association between one client and the hub.">session</abbr> may send them,
 including a <code>watch</code> <abbr title="The stateful association between one client and the hub.">session</abbr>.</strong> Safety outranks authorization. The wrong
 choice here means the person who is in the room cannot stop the
 machine. Every other operation requires <code>control</code>.</p>
@@ -2761,53 +2783,33 @@ machine. Every other operation requires <code>control</code>.</p>
 <tbody>
 <tr>
 <td><code>1</code></td>
-<td><code>estop_clear</code></td>
-<td>clear the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> (§11.2 conditions apply; NACK CLEAR_REFUSED otherwise). Requires <code>control</code>.</td>
-</tr>
-<tr>
-<td><code>2</code></td>
-<td><code>stop</code></td>
-<td>controlled decel stop (§11.1). ROLE-EXEMPT.</td>
-</tr>
-<tr>
-<td><code>3</code></td>
-<td><code>hold</code></td>
-<td>position hold (§11.1). Requires <code>control</code>. The HUB latches all four levels in 0x0003: delegate acceptance is what triggers the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr>; a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> whose delegate does not implement this NACKs UNSUPPORTED_OP, which is discoverable and honest (RFC-025a).</td>
+<td><code>release</code></td>
+<td>RFC-085 (was estop_clear): release the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> (§11.2 preconditions; NACK CLEAR_REFUSED otherwise). Lands in <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr>, never in motion; on an estop_cuts_power <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, unhomed. Requires <code>control</code>.</td>
 </tr>
 <tr>
 <td><code>4</code></td>
 <td><code>pause</code></td>
-<td>pattern pause (§11.1). Requires <code>control</code>.</td>
+<td>RFC-085: <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> (§11.1): decelerate, hold position, every source suspended, stream <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundles</abbr> dropped and counted. ROLE-EXEMPT. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with a motion source MUST implement it.</td>
 </tr>
 <tr>
 <td><code>5</code></td>
 <td><code>resume</code></td>
-<td>resume from <abbr title="Decelerate, then actively hold position, with the source suspended.">HOLD</abbr>/<abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> (§11.1). Requires <code>control</code>.</td>
+<td>the only clear of <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> (§11.1). Refused ESTOP_ACTIVE while <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr>, INTERLOCK while override is <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr>, NOT_HOMED while home_required. Requires <code>control</code>. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> never sends it on its own initiative.</td>
 </tr>
 <tr>
 <td><code>6</code></td>
 <td><code>estop</code></td>
-<td>ASSERT <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">e-stop</abbr> (RFC-010). ROLE-EXEMPT. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> treats it exactly as a valid 0xE5 frame: <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr>, cause=user, publish 0x0003, <abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> twin. The raw 0xE5 frame stays as the deframed-path/<abbr title="A forwarding node between the hub and clients on a transport the hub cannot reach directly.">relay</abbr> guarantee; this op is the trivially-implementable <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> path: without it the red button silently degrades to a decel-stop, which is why this gated port-81 deletion.</td>
+<td>ASSERT <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">e-stop</abbr> (RFC-010). ROLE-EXEMPT. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> treats it exactly as a valid 0xE5 frame: <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr>, cause=user, publish 0x0003, <abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> twin. The raw 0xE5 frame stays as the deframed-path/<abbr title="A forwarding node between the hub and clients on a transport the hub cannot reach directly.">relay</abbr> guarantee; this op is the trivially-implementable <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> path: without it the red button silently degrades to a decel-stop.</td>
 </tr>
 <tr>
 <td><code>7</code></td>
-<td><code>override_on</code></td>
-<td>engage manual override (RFC-025c). Requires <code>control</code>. Override/bypass are SAFETY-domain state, not rail-UI state: they render near the rail but other surfaces need them, so they live in the 0x0003 snapshot (appended byte) and are written here.</td>
+<td><code>override</code></td>
+<td>RFC-085 (was override_on; merges the former bypass): <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> the override mode, carrying <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr>: the rail is handed to the operator, travel window and soft limits lifted, jog enabled, the paused position recorded (§11.1). Requires <code>control</code>. An essential binding of the axis archetype.</td>
 </tr>
 <tr>
 <td><code>8</code></td>
-<td><code>override_off</code></td>
-<td>release manual override. Requires <code>control</code>.</td>
-</tr>
-<tr>
-<td><code>9</code></td>
-<td><code>bypass_on</code></td>
-<td>engage limit bypass (RFC-025c). Requires <code>control</code>. The per-move <code>bypass</code> key on a motion <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> is unaffected and stays as-is.</td>
-</tr>
-<tr>
-<td><code>10</code></td>
-<td><code>bypass_off</code></td>
-<td>release limit bypass. Requires <code>control</code>.</td>
+<td><code>return_op</code></td>
+<td>RFC-085, the <code>return</code> op (was override_off; <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> identifier <code>return_op</code> only because <code>return</code> is a C++ keyword in the generated header): a smooth move back to the paused position at jog speed and accel; on arrival override clears and the machine is in plain <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr>. Requires <code>control</code>.</td>
 </tr>
 </tbody>
 </table>
@@ -2826,7 +2828,7 @@ byte, and the <code>cause</code> field of the <abbr title="A safety condition th
 <tr>
 <td><code>0</code></td>
 <td><code>user</code></td>
-<td>operator-initiated (physical button, UI, safety-<abbr title="A channel class, and the only way a client changes anything.">intents</abbr> <code>estop</code>/<code>stop</code>): §5.5</td>
+<td>operator-initiated (physical button, UI, safety-<abbr title="A channel class, and the only way a client changes anything.">intents</abbr> <code>estop</code>/<code>pause</code>): §5.5</td>
 </tr>
 <tr>
 <td><code>1</code></td>
@@ -2854,6 +2856,49 @@ byte, and the <code>cause</code> field of the <abbr title="A safety condition th
 <abbr title="The stateful association between one client and the hub.">session</abbr> ends latches <code>session_loss</code>. A closed browser tab is not the
 same event as a <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> timeout. An earlier bug reported them as the
 same thing. These are two different events.</p>
+<h2 id="source-kinds">Source kinds<a class="headerlink" href="#source-kinds" title="Link to this section">#</a></h2>
+<p>What each control-owner slot drives (SPEC §11.4). A slot the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> never declares is <code>reserved</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>jog</code></td>
+<td>a manual point move. Never takes the rail from another source (RFC-085); released when its move settles.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>stream</code></td>
+<td>c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> motion input. Released when its last admitted <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr> has played out and nothing arrived for stream_quiet_release_ms (never below the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>'s schedule horizon).</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>classic</code></td>
+<td>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s classic pattern generator (RFC-093). Released on stop.</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>advanced</code></td>
+<td>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s advanced generator (RFC-093). Released on stop.</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>remote</code></td>
+<td>a hand-held remote driving the rail through the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>. Released when its source is quiet.</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>reserved</code></td>
+<td>the slot names no source: never owned, never drawn.</td>
+</tr>
+</tbody>
+</table>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
      defined term shows its Dictionary definition on hover. -->

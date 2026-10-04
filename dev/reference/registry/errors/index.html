@@ -2885,7 +2885,7 @@ unknown code is ambiguous.</p>
 <tr>
 <td><code>0x0100</code></td>
 <td><code>BUSY</code></td>
-<td><abbr title="Any endpoint that establishes a session with the hub.">client</abbr> limit reached; carries retry_after_ms</td>
+<td>refused per-request work (concurrent <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> transfers, §8.4 row 4); carries retry_after_ms. RFC-055 moved <abbr title="The stateful association between one client and the hub.">session</abbr> admission to HUB_AT_CAPACITY; a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> meeting BUSY on a HELLO (a pre-RFC-055 <abbr title="The single authoritative endpoint of one machine.">hub</abbr>) treats it as HUB_AT_CAPACITY.</td>
 </tr>
 <tr>
 <td><code>0x0101</code></td>
@@ -2950,7 +2950,17 @@ unknown code is ambiguous.</p>
 <tr>
 <td><code>0x010D</code></td>
 <td><code>SLOT_RECLAIMED</code></td>
-<td>RFC-042: a HELLO that would otherwise NACK BUSY instead <abbr title="The hub closing a session it has decided it cannot keep.">evicted</abbr> a STALE <abbr title="The stateful association between one client and the hub.">session</abbr> to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed <abbr title="The stateful association between one client and the hub.">session</abbr> was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all).</td>
+<td>RFC-042: a HELLO that would otherwise NACK HUB_AT_CAPACITY (BUSY before RFC-055) instead <abbr title="The hub closing a session it has decided it cannot keep.">evicted</abbr> a STALE <abbr title="The stateful association between one client and the hub.">session</abbr> to make room (lowest access tier first, tie-break longest continuously stale): best-effort GOODBYE code, since the reclaimed <abbr title="The stateful association between one client and the hub.">session</abbr> was stale for a reason and may never receive it. Distinguishable from SESSION_EVICTED (admin kick only, since RFC-051) and from DEADMAN_TIMEOUT/IDLE_REAPED (which no longer fire for silence at all).</td>
+</tr>
+<tr>
+<td><code>0x010E</code></td>
+<td><code>HUB_AT_CAPACITY</code></td>
+<td>RFC-055 (§6.3): HELLO refused because max_sessions are in use (incumbents are never degraded to admit a newcomer). REQUIRES retry_after_ms; usable as a GOODBYE code. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST NOT retry sooner and MUST apply jitter.</td>
+</tr>
+<tr>
+<td><code>0x010F</code></td>
+<td><code>HUB_SHEDDING</code></td>
+<td>RFC-055 (§6.3): HELLO or connection refused because the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is protecting itself (resource pressure, stalled handshakes, a <abbr title="What the hub drops, and in what order, when a link cannot carry everything granted.">shedding</abbr> policy). REQUIRES retry_after_ms; usable as a GOODBYE code. Never applies to <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> or its connectionless forms.</td>
 </tr>
 </tbody>
 </table>
@@ -2990,6 +3000,11 @@ unknown code is ambiguous.</p>
 <td><code>SUBSCRIBE_REJECTED</code></td>
 <td>RFC-033.2: the SUBSCRIBE frame as a WHOLE could not be processed (undecodable, or more wishes than max_subscriptions_per_frame): as opposed to the per-<abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> codes above, which reject one wish and <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> the rest. <code>detail</code> carries the reason. Exists because the alternative was observed silence: a dropped SUBSCRIBE leaves a healthy-looking LIVE <abbr title="The stateful association between one client and the hub.">session</abbr> with zero <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>, which presents as a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> rendering bug and cost two debugging nights.</td>
 </tr>
+<tr>
+<td><code>0x0205</code></td>
+<td><code>CHANNEL_WITHDRAWN</code></td>
+<td>RFC-077 (§8.6): UNSOLICITED, one per withdrawn subscription or publication <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>, carrying <code>channel_id</code>, when a user-space <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> is removed (an accessory forgotten or its declaration replaced). Silence is not an option: a subscription that silently stops presents as a rendering bug.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="0x03xx-intent"><code>0x03xx</code>: <abbr title="A channel class, and the only way a client changes anything.">intent</abbr><a class="headerlink" href="#0x03xx-intent" title="Link to this section">#</a></h2>
@@ -3022,6 +3037,26 @@ unknown code is ambiguous.</p>
 <td><code>0x0303</code></td>
 <td><code>UNSUPPORTED_OP</code></td>
 <td><abbr title="A channel class, and the only way a client changes anything.">intent</abbr> op not implemented on this <abbr title="The single authoritative endpoint of one machine.">hub</abbr></td>
+</tr>
+<tr>
+<td><code>0x0304</code></td>
+<td><code>NETWORK_JOIN_FAILED</code></td>
+<td>RFC-069: a provisioning <code>wifi_join</code> (§13.9) did not join (wrong passphrase, no such network, timeout). <code>detail</code> MUST NOT contain either credential. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s prior network configuration stays in effect.</td>
+</tr>
+<tr>
+<td><code>0x0305</code></td>
+<td><code>ACCESSORY_OFFLINE</code></td>
+<td>RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> stay in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>; it is offline, not gone.</td>
+</tr>
+<tr>
+<td><code>0x0306</code></td>
+<td><code>ACCESSORY_CAPACITY</code></td>
+<td>RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free peer entry, or less budget than the smallest legal declaration (the status entry plus one <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>).</td>
+</tr>
+<tr>
+<td><code>0x0307</code></td>
+<td><code>TRIAL_CONFLICT</code></td>
+<td>RFC-099 (§9.3): a write, trial or durable, to a key in ANOTHER <abbr title="The stateful association between one client and the hub.">session</abbr>'s open trial set. The whole <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> is refused, no key applied. Retry after that trial is committed or reverted (meta.trial_pending shows it). Not SOURCE_CONFLICT: that is a safety-range code naming a motion source.</td>
 </tr>
 </tbody>
 </table>

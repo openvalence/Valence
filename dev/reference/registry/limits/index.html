@@ -2387,6 +2387,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#esp-now-accessory-spoke-rfc-075-1331" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP-NOW accessory spoke (RFC-075, §13.3.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2811,6 +2822,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#esp-now-accessory-spoke-rfc-075-1331" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP-NOW accessory spoke (RFC-075, §13.3.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2895,7 +2917,12 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>bundle_max_span_ms</code></td>
 <td><code>20</code></td>
-<td></td>
+<td>RFC-087: the span cap of samples-kind and every h2c <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr>; a c2h <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr> spans up to its <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>'s schedule horizon instead.</td>
+</tr>
+<tr>
+<td><code>segment_t_off_unit_us</code></td>
+<td><code>100</code></td>
+<td>RFC-087: t_off unit on a c2h <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr> (a u16 spans 6.5535 s, covering the 1000 ms horizon ceiling at 0.1 ms resolution). samples-kind and h2c <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundles</abbr> keep 1 us units.</td>
 </tr>
 <tr>
 <td><code>seq_width_bits</code></td>
@@ -2976,6 +3003,11 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <td><code>deadman_max_ms</code></td>
 <td><code>5000</code></td>
 <td></td>
+</tr>
+<tr>
+<td><code>stream_quiet_release_ms</code></td>
+<td><code>500</code></td>
+<td>RFC-098 (§11.4): a stream source is released when its last admitted <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr> has played out and no <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr> arrived for this long, or for the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>'s schedule horizon when that is longer.</td>
 </tr>
 <tr>
 <td><code>pairing_window_default_s</code></td>
@@ -3087,11 +3119,6 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <td><code>valence.v1</code></td>
 <td></td>
 </tr>
-<tr>
-<td><code>mdns_service</code></td>
-<td><code>_valence._tcp</code></td>
-<td></td>
-</tr>
 </tbody>
 </table>
 <h2 id="per-binding-max_frame-defaults">Per-binding max_frame defaults<a class="headerlink" href="#per-binding-max_frame-defaults" title="Link to this section">#</a></h2>
@@ -3159,14 +3186,29 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 </thead>
 <tbody>
 <tr>
+<td><code>schedule_horizon_max_ms</code></td>
+<td><code>1000</code></td>
+<td>RFC-087: ceiling of the per-<abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> schedule horizon (cbor key 50). The pinned steps are 250 (default), 500 and 1000.</td>
+</tr>
+<tr>
 <td><code>max_future_schedule_ms</code></td>
 <td><code>250</code></td>
-<td>RFC-014: for <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>-class <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>, t_base + t_off[i] IS the intended execution start of sample i; the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> clamps scheduling this far ahead. It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> lookahead &lt;= half of this.</td>
+<td>RFC-014, widened by RFC-084, refined by RFC-087: the lead cap for samples-kind c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> and the DEFAULT schedule horizon of a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> (a <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> MAY advertise 500 or 1000 via schedule_horizon_ms); a sample stamped further ahead is <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr>, never rejected. Segments: t_base + t_off[i] IS the execution start; samples: it is the arrival time (§5.4). It was already the shipped fw 2.1.45 behavior but registered NOWHERE — the MFP plugin carried a private SegLookaheadMs=120 against it. Interop by folklore, now by number. Recommended <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> lookahead &lt;= half of this.</td>
 </tr>
 <tr>
 <td><code>max_burst_multiple</code></td>
 <td><code>4</code></td>
 <td>RFC-013: cap on <code>burst</code> relative to granted rate. An unbounded <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-declared burst would reintroduce the exact flood the <abbr title="The ingress rate limiter, a bucket that refills at the granted sample rate and holds one burst's worth of tokens.">token bucket</abbr> exists to stop.</td>
+</tr>
+<tr>
+<td><code>segment_end_vel_unspecified</code></td>
+<td><code>-32768</code></td>
+<td>RFC-058: the §5.4 <code>unspecified</code> sentinel of a motion-input i16 end-velocity field (a signed field's type minimum; zero is a real slope). Without a scheduled successor a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> MUST resolve it to rest (§9.6). Also the absent value for any motion-input field a sender has no value for (RFC-071). Replaces the hand copies (reference <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> comment, MFP SegmentEndVelSentinel).</td>
+</tr>
+<tr>
+<td><code>segment_dwell_span</code></td>
+<td><code>0.02</code></td>
+<td>RFC-058: §9.6 dwell rule, normalized units: a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> whose target is within this of the previous accepted target on the same source is a hold; a nonzero end velocity on it SHOULD be bounded to zero and surfaced as its own anomaly kind. Tested against the target, never position.</td>
 </tr>
 <tr>
 <td><code>segment_handoff_k</code></td>
@@ -3275,9 +3317,56 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 </thead>
 <tbody>
 <tr>
+<td><code>provision_join_timeout_ms</code></td>
+<td><code>20000</code></td>
+<td>RFC-069 (§13.9): longest a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> defers its answer to a provisioning wifi_join before NACK NETWORK_JOIN_FAILED. Covers association plus DHCP on a slow access point.</td>
+</tr>
+<tr>
 <td><code>log_replay_depth_default</code></td>
 <td><code>32</code></td>
 <td>entries the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> MAY replay from its ring tail when a <abbr title="The stateful association between one client and the hub.">session</abbr> is granted the log <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>. THE named exception to §9.4's no-replay rule ("except where a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>'s <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry declares a replay depth"); the actual depth is declared per-entry, this is the default. 32 lines is roughly "what went wrong just before I connected" without making every <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> a burst.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="esp-now-accessory-spoke-rfc-075-1331">ESP-NOW accessory spoke (RFC-075, §13.3.1)<a class="headerlink" href="#esp-now-accessory-spoke-rfc-075-1331" title="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spoke_beacon_interval_ms</code></td>
+<td><code>1000</code></td>
+<td>an accessory host's BEACON cadence while the spoke is up (500 ms while a <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> window is open)</td>
+</tr>
+<tr>
+<td><code>spoke_deadman_ms</code></td>
+<td><code>5000</code></td>
+<td>accessory <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> default: five missed beacons at the idle cadence. A declaration MAY carry a shorter window, never below 2 x spoke_beacon_interval_ms.</td>
+</tr>
+<tr>
+<td><code>accessory_slice_ids</code></td>
+<td><code>32</code></td>
+<td>RFC-076 (§8.10): ids per accessory slice in the user space 0x8000-0xBFFF (512 slices). r 0 <abbr title="The stateful association between one client and the hub.">session</abbr>-scoped, r 1 accessory-status, r 2-31 the accessory's own (30 at most). Narrowed from the draft's 0x80 by ruling.</td>
+</tr>
+<tr>
+<td><code>relationships_max</code></td>
+<td><code>16</code></td>
+<td>RFC-078 (§8.11): most relationships a host stores; the relationships-roster masks are 2 x bitfield8.</td>
+</tr>
+<tr>
+<td><code>accessory_declaration_max_bytes</code></td>
+<td><code>4096</code></td>
+<td>RFC-076 (§8.10): largest encoded accessory declaration a host accepts. A worst-case 30-<abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> declaration is about 3.5 KB (19 chunks of catalog_chunk_payload).</td>
+</tr>
+<tr>
+<td><code>spoke_scan_dwell_ms</code></td>
+<td><code>150</code></td>
+<td>an accessory's per-<abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> x 150 ms = about 2 s cold join.</td>
 </tr>
 </tbody>
 </table>

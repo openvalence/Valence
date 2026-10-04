@@ -2193,10 +2193,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#channel-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel roles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#setting-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
         Setting flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plan-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plan flags
       
     </span>
   </a>
@@ -2735,10 +2757,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#channel-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Channel roles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#setting-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
         Setting flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plan-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plan flags
       
     </span>
   </a>
@@ -2899,12 +2943,12 @@ role is never an error.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>limit.user.speed</code></td>
-<td>speed ceiling of the USER (manual) <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr>. CEILING, never a target.</td>
+<td><code>limit.jog.speed</code></td>
+<td>speed ceiling of the JOG (manual) <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr>: jog moves and the override <code>return</code> run at it. CEILING, never a target. RFC-085 renamed it from limit.user.speed.</td>
 </tr>
 <tr>
-<td><code>limit.user.accel</code></td>
-<td>accel ceiling of the user <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr></td>
+<td><code>limit.jog.accel</code></td>
+<td>accel ceiling of the jog <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr>. RFC-085 renamed it from limit.user.accel.</td>
 </tr>
 <tr>
 <td><code>limit.input.speed</code></td>
@@ -2971,12 +3015,16 @@ role is never an error.</p>
 <td>RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr>, <abbr title="Keeping at most one queued unsent frame per channel and subscriber, so a newer snapshot replaces an older one.">conflated</abbr>: every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> grays from one <abbr title="The doctrine that a client never displays machine state that differs from the device's, in either direction.">ground truth</abbr>. Disabled means GRAY, never hide.</td>
 </tr>
 <tr>
+<td><code>meta.trial_pending</code></td>
+<td>RFC-099 (§8.8): a bitfield8 field whose bit i marks the i-th setting-annotated field of the SAME layout as holding a TRIAL value (cbor_keys 51), any <abbr title="The stateful association between one client and the hub.">session</abbr>'s: indexed exactly as meta.enabled_mask. On-change, <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr>. A set bit means the effective value shown is not the stored one and reverts when its trial ends.</td>
+</tr>
+<tr>
 <td><code>meta.reset_gen</code></td>
 <td>RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it.</td>
 </tr>
 <tr>
 <td><code>pattern.running</code></td>
-<td>whether the built-in pattern generator is currently driving the machine</td>
+<td>whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093).</td>
 </tr>
 <tr>
 <td><code>pattern.select</code></td>
@@ -3003,6 +3051,26 @@ role is never an error.</p>
 <td>RFC-032: <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> field carrying a commanded ABSOLUTE target position in the <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>'s own unit. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that finds it MAY render a positional control (rail, tape, slider) and send the value on that field's <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>.</td>
 </tr>
 <tr>
+<td><code>axis.flipped</code></td>
+<td>RFC-088 (§9.6): a stored, writable bool (or two-option select) setting: the rail's direction flip. On, position 0 is the far end; the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> mirrors telemetry, the travel window and every c2h target against geometry.measured_travel. A change is refused SOURCE_CONFLICT while a source owns the rail, NOT_HOMED while unhomed, INTERLOCK under override or in motion. Rendered as the confirm-gated Flip toggle on the axis control row.</td>
+</tr>
+<tr>
+<td><code>input.target</code></td>
+<td>RFC-071: the commanded position of a motion-input sample or <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>, in the field's own unit and scale. REQUIRED on a c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> entry that accepts motion.</td>
+</tr>
+<tr>
+<td><code>input.velocity</code></td>
+<td>RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that does not understand it leaves the field at its unspecified sentinel (§5.4).</td>
+</tr>
+<tr>
+<td><code>input.duration</code></td>
+<td>RFC-071: a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind sample's commanded time extent</td>
+</tr>
+<tr>
+<td><code>input.end_velocity</code></td>
+<td>RFC-071: a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind sample's velocity at its end (the §9.6 handoff); its type minimum means unspecified (RFC-058)</td>
+</tr>
+<tr>
 <td><code>plan.start</code></td>
 <td>normalized start position of the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> in flight</td>
 </tr>
@@ -3027,12 +3095,112 @@ role is never an error.</p>
 <td>total duration of the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> in flight</td>
 </tr>
 <tr>
+<td><code>plan.latency</code></td>
+<td>RFC-059: optional live telemetry twin of a <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>'s schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance.</td>
+</tr>
+<tr>
 <td><code>plan.style</code></td>
 <td>which planning style produced the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>; options are the device's style names, index-aligned with the wire value</td>
 </tr>
 <tr>
+<td><code>plan.flags</code></td>
+<td>RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans, from that plan, cleared when the next <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans clean, zero while no plan is in flight. A <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> planned ahead of its start sets it then, up to one schedule horizon early. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth).</td>
+</tr>
+<tr>
+<td><code>advgen.running</code></td>
+<td>RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff.</td>
+</tr>
+<tr>
+<td><code>advgen.master</code></td>
+<td>RFC-081: overall rate scale of the advanced program, percent of its own range</td>
+</tr>
+<tr>
+<td><code>advgen.depth_max</code></td>
+<td>RFC-081: the deep stroke bound the program swings to, percent of the <abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr></td>
+</tr>
+<tr>
+<td><code>advgen.depth_min</code></td>
+<td>RFC-081: the shallow stroke bound the program swings to, percent of the <abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr></td>
+</tr>
+<tr>
+<td><code>advgen.speed_in</code></td>
+<td>RFC-081: inward stroke speed base</td>
+</tr>
+<tr>
+<td><code>advgen.speed_out</code></td>
+<td>RFC-081: outward stroke speed base</td>
+</tr>
+<tr>
+<td><code>advgen.accel_in</code></td>
+<td>RFC-081: inward acceleration base</td>
+</tr>
+<tr>
+<td><code>advgen.accel_out</code></td>
+<td>RFC-081: outward acceleration base</td>
+</tr>
+<tr>
+<td><code>advgen.dwell_crest</code></td>
+<td>RFC-095: hold at the deep bound (advgen.depth_max) after the inward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive: the stroke period grows by the dwell, the moving halves keep their speed and acceleration, and one stroke on the modulators' clock (RFC-066) is the whole cycle, both dwells included. A modulator whose mod_target is a dwell varies it per stroke. Optional binding of generator-advanced.</td>
+</tr>
+<tr>
+<td><code>advgen.dwell_trough</code></td>
+<td>RFC-095: hold at the shallow bound (advgen.depth_min) after the outward half completes and before the reversal, unit strokes (the period of one stroke as the clock, two decimals), 0 = no hold. Additive, as advgen.dwell_crest. Optional binding of generator-advanced.</td>
+</tr>
+<tr>
+<td><code>mod.amount</code></td>
+<td>RFC-066: how far the modulator swings its target, in the target's terms; 0 = no modulation</td>
+</tr>
+<tr>
+<td><code>mod.rise</code></td>
+<td>RFC-066: duration of the rising leg of the cycle (field unit: strokes or seconds)</td>
+</tr>
+<tr>
+<td><code>mod.hold</code></td>
+<td>RFC-066: dwell at the top of the cycle (field unit: strokes or seconds)</td>
+</tr>
+<tr>
+<td><code>mod.fall</code></td>
+<td>RFC-066: duration of the falling leg of the cycle (field unit: strokes or seconds)</td>
+</tr>
+<tr>
+<td><code>mod.rest</code></td>
+<td>RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds)</td>
+</tr>
+<tr>
+<td><code>mod.phase</code></td>
+<td>RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds)</td>
+</tr>
+<tr>
+<td><code>mod.shape</code></td>
+<td>RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest)</td>
+</tr>
+<tr>
+<td><code>color.red</code></td>
+<td>RFC-083: writable numeric red <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> of one color group; color.red/green/blue together trigger the <code>color</code> archetype (all three essential)</td>
+</tr>
+<tr>
+<td><code>color.green</code></td>
+<td>RFC-083: writable numeric green <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> of one color group</td>
+</tr>
+<tr>
+<td><code>color.blue</code></td>
+<td>RFC-083: writable numeric blue <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> of one color group</td>
+</tr>
+<tr>
+<td><code>datetime.moment</code></td>
+<td>RFC-083: a scheduled moment in HUB TIME: whole seconds in the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s §7.1 timebase (unit_ids hub_s), never Unix epoch. Valid for the current <abbr title="A random 32-bit number the hub generates at every boot, naming which incarnation of the hub you are talking to.">boot_id</abbr>; a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> re-arms after a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> reboot. Triggers the <code>datetime</code> archetype.</td>
+</tr>
+<tr>
+<td><code>datetime.start</code></td>
+<td>RFC-083: interval start, <abbr title="The single authoritative endpoint of one machine.">hub</abbr> time seconds (as datetime.moment); with datetime.end in one group triggers the <code>datetime</code> archetype</td>
+</tr>
+<tr>
+<td><code>datetime.end</code></td>
+<td>RFC-083: interval end, <abbr title="The single authoritative endpoint of one machine.">hub</abbr> time seconds (as datetime.moment)</td>
+</tr>
+<tr>
 <td><code>source.background_run</code></td>
-<td>bool, <code>setting_key</code>-annotated: whether THIS autonomous source keeps running when its owning <abbr title="The stateful association between one client and the hub.">session</abbr> ends. false (DEFAULT) = the source stops when its controlling <abbr title="The stateful association between one client and the hub.">session</abbr> ends. true = the source deliberately continues in the background, reachable only by the role-exempt stop/estop ops (§11.2) from any <abbr title="The stateful association between one client and the hub.">session</abbr>. Applies to any <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-autonomous source, never to a command-driven one.</td>
+<td>bool, <code>setting_key</code>-annotated: whether THIS autonomous source keeps running when its owning <abbr title="The stateful association between one client and the hub.">session</abbr> ends. false (DEFAULT) = the source stops when its controlling <abbr title="The stateful association between one client and the hub.">session</abbr> ends. true = the source deliberately continues in the background, reachable only by the role-exempt pause/estop ops (§11.1, §11.2) from any <abbr title="The stateful association between one client and the hub.">session</abbr>. Applies to any <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-autonomous source, never to a command-driven one.</td>
 </tr>
 </tbody>
 </table>
@@ -3041,6 +3209,28 @@ role is never an error.</p>
 <li><code>&lt;role&gt;.peak</code> is the peak companion of any telemetry role.</li>
 <li><code>action.&lt;name&gt;</code> marks an <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> field as a verb, not a value.</li>
 </ul>
+<h2 id="channel-roles"><abbr title="A named, numbered, typed data flow declared in the catalog.">Channel</abbr> roles<a class="headerlink" href="#channel-roles" title="Link to this section">#</a></h2>
+<p>A <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> role is the entry-level <code>role</code> (<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry key 18). It
+names the purpose of a whole <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, where a <abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr> names one
+field. The same doctrine applies: unknown roles render generically.</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>events.anomaly</code></td>
+<td><abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> entry: edges reporting the machine did something other than what it was asked (a <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> command, a planner fallback, a rejected plan). A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> giving anomalies a dedicated surface MUST bind by this role or core identity, never by name.</td>
+</tr>
+<tr>
+<td><code>anomaly.summary</code></td>
+<td><abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> entry: the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> counters twin of an events.anomaly <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (§9.4 duality rule), so the event log and its counters bind together.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="setting-flags">Setting flags<a class="headerlink" href="#setting-flags" title="Link to this section">#</a></h2>
 <table>
 <thead>
@@ -3068,7 +3258,52 @@ role is never an error.</p>
 <td><code>0x04</code></td>
 <td><code>bit 2</code></td>
 <td><code>secret</code></td>
-<td>NORMATIVE (RFC-009.5): the value NEVER appears in <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>. The snapshot carries only a set/unset presence bit. Writes ride the paired <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> normally and <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> confirms application WITHOUT echoing the value. A WiFi password must never ride a <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> snapshot that open-access <code>watch</code> <abbr title="The stateful association between one client and the hub.">sessions</abbr> receive.</td>
+<td>NORMATIVE (RFC-009.5): the value NEVER appears in <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>. The snapshot carries only a set/unset presence bit. Writes ride the paired <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> normally and <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> confirms application WITHOUT echoing the value: the applied key carries the <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> value <code>true</code> in its place (RFC-069), and a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST accept <code>true</code> for a secret key whatever the field's type. A WiFi password must never ride a <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> snapshot that open-access <code>watch</code> <abbr title="The stateful association between one client and the hub.">sessions</abbr> receive.</td>
+</tr>
+<tr>
+<td><code>0x08</code></td>
+<td><code>bit 3</code></td>
+<td><code>destructive</code></td>
+<td>RFC-063: on a schema field with an <code>action.*</code> role, invoking the verb loses state the operator cannot restore from the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> (configuration, stored items, counters, <abbr title="The stateful association between one client and the hub.">sessions</abbr>, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST confirm-gate (RENDERING.md §8.4 <code>trigger</code>), a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> MUST NOT change wire behavior on it. Per-option form: schema-field <code>destructive_options</code> (SPEC §8.8).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="plan-flags">Plan flags<a class="headerlink" href="#plan-flags" title="Link to this section">#</a></h2>
+<p>The bits of the <code>plan.flags</code> <abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr> (SPEC §8.8): how the planner
+bent a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> in flight. Any of bits 0 to 3 means infeasible.</p>
+<table>
+<thead>
+<tr>
+<th>Mask</th>
+<th>Bit</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x01</code></td>
+<td><code>bit 0</code></td>
+<td><code>shaped</code></td>
+<td>the planner shortened the commanded stroke, or flattened its shape, to hold the deadline</td>
+</tr>
+<tr>
+<td><code>0x02</code></td>
+<td><code>bit 1</code></td>
+<td><code>stretched</code></td>
+<td>the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> runs past the commanded deadline</td>
+</tr>
+<tr>
+<td><code>0x04</code></td>
+<td><code>bit 2</code></td>
+<td><code>fallback</code></td>
+<td>the planner substituted its fallback method for the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr></td>
+</tr>
+<tr>
+<td><code>0x08</code></td>
+<td><code>bit 3</code></td>
+<td><code>clamped</code></td>
+<td>a ceiling or the travel window changed the command</td>
 </tr>
 </tbody>
 </table>

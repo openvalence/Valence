@@ -2922,7 +2922,7 @@ read this property. They never guess it from a unit string.</p>
 </tr>
 </tbody>
 </table>
-<p>The safety operations <code>estop</code> and <code>stop</code> are exempt from these levels.
+<p>The safety operations <code>estop</code> and <code>pause</code> are exempt from these levels.
 Any <abbr title="The stateful association between one client and the hub.">session</abbr> may stop the machine.</p>
 <h2 id="priority-classes">Priority classes<a class="headerlink" href="#priority-classes" title="Link to this section">#</a></h2>
 <p>A subscription carries a <abbr title="The shedding rank of a subscription, from background up to critical.">priority class</abbr>. The lower number sheds first.</p>
@@ -2983,7 +2983,12 @@ Any <abbr title="The stateful association between one client and the hub.">sessi
 <td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware allocates; described by <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>. RFC-047: the RECOMMENDED allocation shape is the 0xCDSS grid (class nibble 1=<abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>/2=<abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr>/3=<abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>/4=<abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr>/5=<abbr title="A channel class declaring a set of numbered slots holding opaque documents.">STORE</abbr>, domain nibble device-chosen subsystem, slot byte): see CHANNEL-GRID.md for the grid convention. Each <abbr title="The single authoritative endpoint of one machine.">hub</abbr> documents its own device-range allocations; Valence Drive's CHANNEL-MAP.md is the worked example. Within this range, 0x7000-0x7FFF is reserved EXPERIMENTAL/VENDOR play space and MUST NEVER appear in a shipped <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</td>
 </tr>
 <tr>
-<td><code>0x8000-0xFFFF</code></td>
+<td><code>0x8000-0xBFFF</code></td>
+<td><code>user</code></td>
+<td>RFC-076 (§8.10): accessory <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> that arrive at runtime, never allocated by <abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware. 512 slices of accessory_slice_ids (0x20); slice k has base 0x8000 + 0x20*k; relative id r -&gt; base + r (r 0 never a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, r 1 accessory-status, r 2-31 the accessory's own). Slices are sticky and never reused after a forget.</td>
+</tr>
+<tr>
+<td><code>0xC000-0xFFFF</code></td>
 <td><code>reserved</code></td>
 <td></td>
 </tr>
@@ -3007,7 +3012,7 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>0x0001</code></td>
 <td><code>catalog</code></td>
 <td><code>STATE</code></td>
-<td><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> meta: <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>, chunk count, entry count</td>
+<td><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> meta: <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>, chunk count, entry count. Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> back to SYNCING.</td>
 </tr>
 <tr>
 <td><code>0x0002</code></td>
@@ -3019,19 +3024,19 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>0x0003</code></td>
 <td><code>safety</code></td>
 <td><code>STATE</code></td>
-<td><abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> safety word: estop/stop/hold/pause + cause + owner (§11.1); RFC-025 appends manual_override + bypass_limits to the same snapshot (append-only is legal)</td>
+<td><abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> safety word (§11.1, RFC-085): bit0 <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr>, bit3 <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr>; bits 1/2 (<abbr title="A controlled stop, decelerate to zero at the configured rate and deactivate the source.">STOP</abbr>/<abbr title="Decelerate, then actively hold position, with the source suspended.">HOLD</abbr>) retired, zero on send. Then cause + owner + estop_seq; appended modes byte: bit0 override, bit1 home_required (set by <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> on an estop_cuts_power <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, cleared by a completed home); modes bit1 was bypass_limits before RFC-085.</td>
 </tr>
 <tr>
 <td><code>0x0004</code></td>
 <td><code>control-owner</code></td>
 <td><code>STATE</code></td>
-<td>active <abbr title="The single component that commands the motor driver for positioning.">arbiter</abbr> source + owning <abbr title="The stateful association between one client and the hub.">session</abbr> per source (§11.4)</td>
+<td>owning <abbr title="The stateful association between one client and the hub.">session</abbr> per <abbr title="The single component that commands the motor driver for positioning.">arbiter</abbr> source (§11.4). 4 slots {src<i> u8, owner<i> u32 (0 = unowned)} = 20 B, then appended per slot (RFC-098) {kind<i> u8 (source_kinds), client_kind<i> str16, client_name<i> str32}, the owner's HELLO kind and name, zero-filled when unowned: 216 B. Names are display strings, never a key.</td>
 </tr>
 <tr>
 <td><code>0x0005</code></td>
 <td><code>safety-intents</code></td>
 <td><code>INTENT</code></td>
-<td><abbr title="A controlled stop, decelerate to zero at the configured rate and deactivate the source.">STOP</abbr>/<abbr title="Decelerate, then actively hold position, with the source suspended.">HOLD</abbr>/<abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr>/RESUME/ESTOP_CLEAR/<abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr>/TAKEOVER + override/bypass (§11, safety_intent_ops)</td>
+<td>the three safety pairs (§11, RFC-085; safety_intent_ops): pause/resume, override/return, estop/release. pause and estop role-exempt; the rest <code>control</code>.</td>
 </tr>
 <tr>
 <td><code>0x0006</code></td>
@@ -3086,6 +3091,54 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>safety-events</code></td>
 <td><code>EVENT</code></td>
 <td>RFC/§9.4 duality: the <abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> TWIN of the <code>safety</code> <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (0x0003). Kinds in <code>safety_event_kinds</code>; fields ride the scoped <code>body</code> (40) sub-map keyed by this <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>'s own <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> schema (word, cause, owner_session, estop_seq, level). <code>critical</code> priority and <code>watch</code> access, matching its <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> twin exactly: an edge nobody is allowed to be denied and nobody is allowed to shed. Carries <code>seq_of_state</code> (34) naming the 0x0003 frame it corresponds to, which is what lets a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that missed the edge reconcile against the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> it DID receive. Emitted on TRANSITIONS ONLY: a repeated <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> frame re-broadcasts the <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> (that is §11.2's loss recovery) but does NOT re-emit the edge, because an edge that did not happen is a lie.</td>
+</tr>
+<tr>
+<td><code>0x000F</code></td>
+<td><code>provisioning</code></td>
+<td><code>INTENT</code></td>
+<td>RFC-069 (§13.9), specified, not yet implemented by a reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr>: <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-pushed network credentials. <code>configure</code> access. Schema: 1 op (action.provision over provisioning_ops), 2 ssid (tstr, secret), 3 passphrase (tstr, secret, may be empty), 4 ipv4 / 5 ws_port (uint, <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> result keys). Accepted only on BLE GATT, serial or in-process bindings, with a <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> window open or the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> factory-fresh; else NACK ACCESS_DENIED. Answer deferred until the join concludes (provision_join_timeout_ms): <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> with <code>true</code> for each secret key, or NACK NETWORK_JOIN_FAILED. Credentials never appear anywhere else.</td>
+</tr>
+<tr>
+<td><code>0x0010</code></td>
+<td><code>accessories</code></td>
+<td><code>STORE</code></td>
+<td>RFC-076 (§8.10): the accessory-record store, kind 'accessory.record', <code>watch</code> access, registered item grammar <code>accessory_record_keys</code> (§8.7 carve-out: protocol content). One item per paired accessory.</td>
+</tr>
+<tr>
+<td><code>0x0011</code></td>
+<td><code>accessories-roster</code></td>
+<td><code>STATE</code></td>
+<td>RFC-076 (§8.10): {generation u16, count u8, capacity u8, online 4 x bitfield8, safe 4 x bitfield8, unconfirmed_estop 4 x bitfield8} = 16 B, <code>watch</code>. Bit i of each mask = the accessory in slot i of the accessories store. capacity = the host's accessory capacity. RFC-077 tail (§5.4 append): per_accessory_entries u8, free_entries u16, free_layout_fields u16, free_schema_fields u16, free_catalog_bytes u16 = 25 B total; a host MUST NOT advertise room it lacks.</td>
+</tr>
+<tr>
+<td><code>0x0012</code></td>
+<td><code>accessory-admin</code></td>
+<td><code>INTENT</code></td>
+<td>RFC-076 (§8.10): <code>configure</code>; one op select with role action.accessory over <code>accessory_admin_ops</code> (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only.</td>
+</tr>
+<tr>
+<td><code>0x0013</code></td>
+<td><code>relationships</code></td>
+<td><code>STORE</code></td>
+<td>RFC-078 (§8.11): the relationship store, kind 'relationship.map', <code>watch</code> access, registered item grammar <code>relationship_keys</code> (§8.7 carve-out: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> interprets the item). Capacity at most relationships_max.</td>
+</tr>
+<tr>
+<td><code>0x0014</code></td>
+<td><code>relationships-roster</code></td>
+<td><code>STATE</code></td>
+<td>RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfield8} = 8 B, <code>watch</code>; bit i = rel_id i. Carries store_id (entry key 17) naming 0x0013.</td>
+</tr>
+<tr>
+<td><code>0x0015</code></td>
+<td><code>relationships-write</code></td>
+<td><code>INTENT</code></td>
+<td>RFC-078 (§8.11): <code>configure</code>; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with <code>enabled</code> changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-<abbr title="A channel class, and the only way a client changes anything.">intents</abbr> resume (§11.6).</td>
+</tr>
+<tr>
+<td><code>0x0016</code></td>
+<td><code>settings-trial</code></td>
+<td><code>INTENT</code></td>
+<td>RFC-099 (§9.3): <code>control</code>; one op select (key 1, role action.trial) over <code>trial_ops</code>: commit persists every value the sender trial-wrote and clears its trial set, revert restores every pre-trial value and clears it. Acts only on the sender's own set. <abbr title="The single authoritative endpoint of one machine.">Hub</abbr>-handled. Declaring this <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> is how a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> says it supports the <code>trial</code> key (cbor_keys 51): a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST NOT send <code>trial</code> to a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> without it, because §4.3 makes such a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> ignore the key and persist the write.</td>
 </tr>
 </tbody>
 </table>

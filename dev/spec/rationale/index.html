@@ -2887,7 +2887,7 @@
 </tr>
 <tr>
 <td>S5 hold-vs-stop taxonomy</td>
-<td><a href="../safety/#s11-1">§11.1</a> four levels, hub-latched</td>
+<td><a href="../safety/#s11-1">§11.1</a> two levels (ESTOP, PAUSE; RFC-085), hub-latched</td>
 </tr>
 <tr>
 <td>S6 same-source contention</td>
@@ -2943,7 +2943,7 @@
 </tr>
 <tr>
 <td>T11 admission control</td>
-<td><a href="../session/#s6-3">§6.3</a> BUSY + retry_after + the capacity-exceeds-sessions rule</td>
+<td><a href="../session/#s6-3">§6.3</a> HUB_AT_CAPACITY/HUB_SHEDDING + retry_after + incumbency + the capacity-exceeds-sessions rule (RFC-055)</td>
 </tr>
 <tr>
 <td>X1 which classes ECHO</td>
@@ -3027,15 +3027,15 @@
 </tr>
 <tr>
 <td><strong>F16</strong> HOLD/PAUSE latched by nobody in particular</td>
-<td><a href="../safety/#s11-1">§11.1</a> hub latches all four</td>
+<td><a href="../safety/#s11-1">§11.1</a> hub latches both levels (HOLD retired by RFC-085)</td>
 </tr>
 <tr>
 <td><strong>F17</strong> unclear whether a watcher may stop the machine</td>
-<td><a href="../safety/#s11-2">§11.2</a> role-exempt <code>stop</code>/<code>estop</code></td>
+<td><a href="../safety/#s11-1">§11.1</a>/<a href="../safety/#s11-2">§11.2</a> role-exempt <code>pause</code>/<code>estop</code></td>
 </tr>
 <tr>
 <td><strong>F18</strong> override/bypass with no in-band home</td>
-<td><a href="../safety/#s11-1">§11.1</a> safety-domain modes</td>
+<td><a href="../safety/#s11-1">§11.1</a> safety-domain override mode (RFC-085 merged bypass into it)</td>
 </tr>
 <tr>
 <td><strong>F19</strong> no way to see the machine's name</td>
@@ -3073,7 +3073,7 @@
 <li><strong>EVENT kind-specific fields moved into <code>body</code> (40)</strong>, keyed by the channel's own catalog schema.</li>
 <li>New channel class <strong>STORE (4)</strong>; new packed field types <strong><code>str16</code>/<code>str32</code>/<code>str64</code></strong> (8/9/10); new catalog entry keys <code>category</code>, <code>category_label</code>, <code>replay_depth</code>, <code>setting_channel</code>, <code>stream_kind</code>, <code>store</code>; the whole <a href="../catalog/#s8-8">§8.8</a> annotation block on layout and schema fields, including schema-field <code>access</code> and <code>option_access</code>.</li>
 <li>Spec-core channels added: <code>log</code>, <code>session-admin</code>, <code>pending-pairing</code>, <code>pairing-events</code>, <code>paired-devices</code>, <code>paired-devices-roster</code>, <code>safety-events</code>. <code>session-roster</code> remains allocated and specified only — no reference catalog builder declares it (<a href="../limitations/#s18">§18</a> item 17).</li>
-<li>New NACK/GOODBYE codes <code>DEADMAN_TIMEOUT</code>, <code>REBOOTING</code>, <code>READY_TIMEOUT</code>, <code>NOT_READY</code>; new safety cause <code>session_loss</code>; new safety ops <code>estop</code>, <code>override_on/off</code>, <code>bypass_on/off</code>.</li>
+<li>New NACK/GOODBYE codes <code>DEADMAN_TIMEOUT</code>, <code>REBOOTING</code>, <code>READY_TIMEOUT</code>, <code>NOT_READY</code>; new safety cause <code>session_loss</code>; new safety ops <code>estop</code> and the override pair (RFC-085 later folded the safety surface into three pairs: pause/resume, override/return, estop/release; <code>stop</code>, <code>hold</code> and the bypass ops are retired gaps).</li>
 <li>Per-binding <code>max_frame</code> defaults registered (the registry previously had none, so every binding invented one).</li>
 </ul>
 <p><strong>Renames with unchanged wire values:</strong> access tiers <code>viewer/controller/admin</code> → <strong><code>watch</code>/<code>control</code>/<code>configure</code></strong> (0/1/2).</p>
@@ -3085,13 +3085,13 @@
 <li><strong>Blob transfer is paced and backpressure-respecting</strong> (<a href="../catalog/#s8-4">§8.4</a>): a refused write is retried at the same index rather than dropped, and a hub bounds how many chunks one transfer emits per service tick. Found in the field — the device catalog delivered 47 of 57 chunks against a 32-deep TX queue because the transfer discarded transport refusals.</li>
 <li>Idle reaping promoted from MAY to SHOULD with a registered multiplier (<a href="../session/#s6-6">§6.6</a>).</li>
 <li>The <a href="../qos/#s10-4">§10.4</a> shedding table is normative, with the <strong>segment exception</strong>.</li>
-<li>Safety: the hub latches all four levels; <code>stop</code>/<code>estop</code> are role-exempt; override/bypass join the safety snapshot.</li>
+<li>Safety: the hub latches every level it offers (two since RFC-085: ESTOP and PAUSE); <code>pause</code>/<code>estop</code> are role-exempt; the override mode joins the safety snapshot.</li>
 <li><strong><a href="../security/#s12-2">§12.2</a>'s "admin only via the hub's own UI" is struck</strong> — <code>configure</code> is obtainable by ceremony, which makes the administration surface pairing-reachable by design.</li>
 <li>Segment scheduling semantics for <code>t_base</code> (<a href="../wire-format/#s5-4">§5.4</a>) and <code>max_future_schedule_ms</code>.</li>
 <li>Parser totality (<a href="../wire-format/#s5-8">§5.8</a>) and the fuzz gate (<a href="../conformance/#s17-4">§17.4</a>) became conformance obligations for <strong>both</strong> roles.</li>
 </ul>
 <p><strong>Rejected, numbers retained:</strong> a separate stored-vs-effective field flag, and a reserved <code>machine-limits</code> channel id — both <strong>superseded by the <a href="../catalog/#s8-8">§8.8</a> mechanism</strong>, where <code>setting_key</code> presence answers the first and <code>field_roles</code> answers the second, so the registry never grows two ways to express one thing.</p>
-<p><strong>Fixture re-freeze:</strong> the conformance mini-catalog is now <strong>775 bytes</strong> with etag <strong><code>F4 A2 8F BB 58 CE D1 6A</code></strong> (was 733 / <code>21 CB 26 C9 4F B3 88 B5</code>), re-frozen at this tag (<a href="../conformance/#s17-2">§17.2</a>).</p>
+<p><strong>Fixture re-freeze:</strong> the conformance mini-catalog was re-frozen at <strong>775 bytes</strong> / <strong><code>F4 A2 8F BB 58 CE D1 6A</code></strong> (was 733 / <code>21 CB 26 C9 4F B3 88 B5</code>), and re-pinned again before the tag at <strong>805 bytes</strong> / <strong><code>8C 5D 68 F4 1A D0 32 5E</code></strong> by RFC-037's key 18 (<a href="../conformance/#s17-2">§17.2</a>, C-6 amendment).</p>
 <hr />
 <p><em>End of SPEC.md — <code>valence/1</code>, document version v1.0.</em></p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

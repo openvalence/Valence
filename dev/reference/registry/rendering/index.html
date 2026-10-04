@@ -2378,6 +2378,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#navigation-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigation tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ranks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2454,6 +2465,39 @@
     <span class="md-ellipsis">
       
         Action tags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#store-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store ops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provisioning-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provisioning ops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-trial-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings-trial ops
       
     </span>
   </a>
@@ -2807,6 +2851,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#navigation-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigation tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#ranks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2883,6 +2938,39 @@
     <span class="md-ellipsis">
       
         Action tags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#store-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Store ops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provisioning-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provisioning ops
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-trial-ops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings-trial ops
       
     </span>
   </a>
@@ -2970,89 +3058,138 @@ generated: true</p>
 <h1 id="rendering-vocabulary">Rendering vocabulary<a class="headerlink" href="#rendering-vocabulary" title="Link to this section">#</a></h1>
 <p>These are the numbers behind <a href="../../../spec/rendering/">RENDERING.md</a>, the normative UI-rendering companion to the specification. Every vocabulary below is frozen at the v1.0 tag. None is wired onto a real <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry yet. See the specification's <a href="../../../spec/limitations/">known limitations</a>.</p>
 <h2 id="categories">Categories<a class="headerlink" href="#categories" title="Link to this section">#</a></h2>
-<p><code>category</code> answers WHERE a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry lives. Ids 1 to 14 are the frozen, complete spec set, in canonical menu order. An unrecognized id, including an untaught vendor id, MUST render under <code>other</code>. It keeps the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>-provided label. It is never dropped.</p>
+<p><code>category</code> answers WHERE a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry lives. Ids 1 to 15 are the frozen, complete spec set, in canonical menu order; 5 and 9 are retired and never emitted. An unrecognized id, including a retired or untaught vendor id, MUST render under <code>other</code>. It keeps the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>-provided label. It is never dropped.</p>
 <table>
 <thead>
 <tr>
 <th>Id</th>
 <th>Category</th>
+<th>Tier</th>
 <th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>1</code></td>
-<td><code>control</code></td>
-<td>driving the machine now: move, pattern run/speed/depth, streams</td>
+<td><code>generator</code></td>
+<td><code>machine</code></td>
+<td>RFC-094 (was <code>control</code>): driving the machine now: the generators and patterns, move, streams</td>
 </tr>
 <tr>
 <td><code>2</code></td>
 <td><code>motion</code></td>
-<td>live physical telemetry</td>
+<td><code>machine</code></td>
+<td>live physical telemetry; since RFC-094 also the engine internals and calibration that were <code>tuning</code> (9), under subgroup Tuning</td>
 </tr>
 <tr>
 <td><code>3</code></td>
 <td><code>safety</code></td>
+<td><code>machine</code></td>
 <td>faults, interlocks, <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">e-stop</abbr> state: the stop affordance itself is rank-pinned (ui_ranks), not a menu item here</td>
 </tr>
 <tr>
 <td><code>4</code></td>
 <td><code>limits</code></td>
+<td><code>machine</code></td>
 <td>window + ceilings</td>
 </tr>
 <tr>
 <td><code>5</code></td>
 <td><code>library</code></td>
-<td>stored content: presets, patterns, scripts, positions, profiles</td>
+<td>retired</td>
+<td>RETIRED pre-tag by RFC-094: folded into <code>system</code> (13) under subgroup Library. Never reissued.</td>
 </tr>
 <tr>
 <td><code>6</code></td>
 <td><code>playback</code></td>
+<td><code>machine</code></td>
 <td><abbr title="The single authoritative endpoint of one machine.">hub</abbr>-local content transport: play/pause/seek/queue</td>
 </tr>
 <tr>
 <td><code>7</code></td>
 <td><code>auxiliary</code></td>
+<td><code>machine</code></td>
 <td>secondary actuators: heat, lube, suction, inflation</td>
 </tr>
 <tr>
 <td><code>8</code></td>
 <td><code>automation</code></td>
+<td><code>machine</code></td>
 <td>routines, schedules, scenes</td>
 </tr>
 <tr>
 <td><code>9</code></td>
 <td><code>tuning</code></td>
-<td>engine internals, calibration</td>
+<td>retired</td>
+<td>RETIRED pre-tag by RFC-094: folded into <code>motion</code> (2) under subgroup Tuning. Never reissued.</td>
 </tr>
 <tr>
 <td><code>10</code></td>
 <td><code>hardware</code></td>
+<td><code>machine</code></td>
 <td>geometry, drive config, sensors, homing</td>
 </tr>
 <tr>
 <td><code>11</code></td>
 <td><code>network</code></td>
+<td><code>link</code></td>
 <td>WiFi/BLE state, endpoints, provisioning</td>
 </tr>
 <tr>
 <td><code>12</code></td>
 <td><code>session</code></td>
+<td><code>link</code></td>
 <td><abbr title="Any endpoint that establishes a session with the hub.">clients</abbr>, roles, ownership, <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>/trust</td>
 </tr>
 <tr>
 <td><code>13</code></td>
 <td><code>system</code></td>
-<td>power, thermals, memory, firmware, logs</td>
+<td><code>machine</code></td>
+<td>diagnostics and configuration: power, thermals, memory, firmware, logs; since RFC-094 also the stored content that was <code>library</code> (5) (presets, patterns, scripts, positions, profiles), under subgroup Library</td>
 </tr>
 <tr>
 <td><code>14</code></td>
 <td><code>other</code></td>
+<td><code>machine</code></td>
 <td>the defined overflow: every unrecognized category id (including an untaught vendor id) renders here, per the graceful-extension rule</td>
+</tr>
+<tr>
+<td><code>15</code></td>
+<td><code>setup</code></td>
+<td><code>machine</code></td>
+<td>RFC-079: the machine COMMISSIONING surface: network credentials (provisioning 0x000F), machine name, accessory <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>, and the machine's own geometry and ceilings. Pinout and board-level facts stay out. A config-mode <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> opens here with the wizard pattern (§13.4.1).</td>
 </tr>
 </tbody>
 </table>
-<p><code>0x40</code> to <code>0x7E</code> is the vendor/device range. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that declares one MUST supply a label. <code>15</code> to <code>0x3F</code> is reserved for future spec-registered categories. <code>0x7F</code> and above is reserved.</p>
+<p><code>0x40</code> to <code>0x7E</code> is the vendor/device range. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that declares one MUST supply a label. <code>16</code> to <code>0x3F</code> is reserved for future spec-registered categories. <code>0x7F</code> and above is reserved.</p>
+<h2 id="navigation-tiers">Navigation tiers<a class="headerlink" href="#navigation-tiers" title="Link to this section">#</a></h2>
+<p>Above the categories sit three tiers. A renderer draws tiers in id order, then categories in <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> order within a tier. The tier is not on the wire: it is the category's row above. Vendor and unrecognized ids are tier 1.</p>
+<table>
+<thead>
+<tr>
+<th>Id</th>
+<th>Tier</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>machine</code></td>
+<td>things on the machine: every tier-1 category, every vendor id and every unrecognized id</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>link</code></td>
+<td>things on or between the machine and its <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr>: <code>network</code> (11), <code>session</code> (12), and the renderer-provided views of the protocol itself (<abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>, the <abbr title="The stateful association between one client and the hub.">session</abbr> view, the 0x0008 log)</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>client</code></td>
+<td>renderer-local settings (display, plugins, saved <abbr title="The single authoritative endpoint of one machine.">hubs</abbr>, an embedded server). No category and no <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry ever lands here; the id is reserved so every renderer draws the same three, in the same order</td>
+</tr>
+</tbody>
+</table>
 <h2 id="ranks">Ranks<a class="headerlink" href="#ranks" title="Link to this section">#</a></h2>
 <p><code>rank</code> answers HOW MUCH a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry or field matters by default. Unknown rank, or no rank annotation at all, renders as <code>detail</code>.</p>
 <table>
@@ -3320,6 +3457,21 @@ generated: true</p>
 <td><code>bpm</code></td>
 <td>beats per minute, over-provisioned: bio-sync accessories</td>
 </tr>
+<tr>
+<td><code>23</code></td>
+<td><code>deg</code></td>
+<td>RFC-086: angle in degrees. Radians are a math convenience, not a knob unit.</td>
+</tr>
+<tr>
+<td><code>24</code></td>
+<td><code>us</code></td>
+<td>RFC-086: microseconds, the §7 <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-time resolution (only ms and s were registered)</td>
+</tr>
+<tr>
+<td><code>25</code></td>
+<td><code>hub_s</code></td>
+<td>RFC-086: seconds in the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own §7.1 timebase, distinct from <code>s</code> so a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> knows to apply its CLOCK offset; the unit of the RFC-083 datetime.* roles. Temperature stays deg_c only: K and F are display conversions.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="action-tags">Action tags<a class="headerlink" href="#action-tags" title="Link to this section">#</a></h2>
@@ -3338,7 +3490,7 @@ generated: true</p>
 </tr>
 <tr>
 <td><code>safety</code></td>
-<td>a safety-adjacent action outside the law-bound stop archetype itself (e.g. an override/bypass toggle's companion action)</td>
+<td>a safety-adjacent action outside the law-bound stop archetype and the three safety pairs themselves (RFC-085: pause/resume, override/return, estop/release are bound by op identity, never by this tag)</td>
 </tr>
 <tr>
 <td><code>home</code></td>
@@ -3377,12 +3529,94 @@ generated: true</p>
 <td>firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms)</td>
 </tr>
 <tr>
-<td><code>preset_save</code></td>
-<td>save-to-store, part of the generator-advanced preset roster</td>
+<td><code>accessory</code></td>
+<td>RFC-076: the accessory-admin op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> 0x0012 (§8.10), options index-aligned with <code>accessory_admin_ops</code>. Op forget is destructive.</td>
 </tr>
 <tr>
-<td><code>preset_recall</code></td>
-<td>load-from-store, same roster</td>
+<td><code>provision</code></td>
+<td>RFC-069: the provisioning op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> 0x000F (§13.9), options index-aligned with <code>provisioning_ops</code></td>
+</tr>
+<tr>
+<td><code>trial</code></td>
+<td>RFC-099: the settings-trial op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> 0x0016 (§9.3), options index-aligned with <code>trial_ops</code>. Neither op is destructive: commit stores values already live, revert restores stored ones.</td>
+</tr>
+<tr>
+<td><code>store</code></td>
+<td>RFC-067: the store CRUD op select (§8.7): options index-aligned with <code>store_ops</code>; no options beyond the registered ops. Op <code>delete</code> is destructive by registration (§8.8).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="store-ops">Store ops<a class="headerlink" href="#store-ops" title="Link to this section">#</a></h2>
+<p>The wire values of an <code>action.store</code> op select (SPEC §8.7). Index 0 is op-select filler.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>save</code></td>
+<td>capture current live state into the slot; a supplied <code>payload</code> makes it an import (§8.7)</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>load</code></td>
+<td>apply the slot; the resulting truth arrives on the ordinary <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> broadcasts</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>delete_item</code></td>
+<td>the <code>delete</code> verb (named <code>delete_item</code> only because the generated C++ constant would otherwise be a keyword; prose and <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> labels say 'delete'): remove the slot's item. Destructive by registration (§8.8): a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> confirm-gates it without a flag</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>rename</code></td>
+<td>change the slot's item name (&lt;= the store's name_max)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="provisioning-ops">Provisioning ops<a class="headerlink" href="#provisioning-ops" title="Link to this section">#</a></h2>
+<p>The wire values of the <code>action.provision</code> op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> <code>0x000F</code> (SPEC §13.9). Index 0 is op-select filler.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>wifi_join</code></td>
+<td>join the WiFi network named by <code>ssid</code> with <code>passphrase</code>; answered after the join concludes (§13.9)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="settings-trial-ops">Settings-trial ops<a class="headerlink" href="#settings-trial-ops" title="Link to this section">#</a></h2>
+<p>The wire values of the <code>action.trial</code> op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> <code>0x0016</code> (SPEC §9.3). Index 0 is op-select filler.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>commit</code></td>
+<td>persist every value the sender trial-wrote, as it stands, and clear the sender's trial set. No effective value changes, so <abbr title="A 16-bit generation counter that increments whenever applied configuration content changes.">cfg_gen</abbr> does not move.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>revert</code></td>
+<td>restore every pre-trial value of the sender's trial set and clear it. A restored value that differs bumps <abbr title="A 16-bit generation counter that increments whenever applied configuration content changes.">cfg_gen</abbr> and republishes. Never refused: where a constraint no longer admits a pre-trial value, the nearest legal one.</td>
 </tr>
 </tbody>
 </table>
@@ -3431,19 +3665,19 @@ generated: true</p>
 <tr>
 <td><code>5</code></td>
 <td><code>select</code></td>
-<td>enum + options; wire value is the array index</td>
+<td>enum + options; wire value is the array index; index 0 is filler only on op selects (SPEC §8.9, RFC-064)</td>
 <td><code>select</code></td>
 </tr>
 <tr>
 <td><code>6</code></td>
 <td><code>trigger</code></td>
-<td>payload-less <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> (button); destructive flag -&gt; mandatory confirm on every class</td>
+<td>payload-less <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> (button); destructive invocation (setting_flags.destructive, destructive_options, action.reboot/reset; SPEC §8.8) -&gt; mandatory confirm on every class</td>
 <td><code>trigger</code></td>
 </tr>
 <tr>
 <td><code>7</code></td>
 <td><code>axis</code></td>
-<td>1-D positional hero control (role command.position) with commanded-vs-actual overlay</td>
+<td>1-D positional hero control (role command.position) with commanded-vs-actual overlay; carries the override/return pair on its control row (RFC-085)</td>
 <td><code>axis</code></td>
 </tr>
 <tr>
@@ -3467,25 +3701,25 @@ generated: true</p>
 <tr>
 <td><code>11</code></td>
 <td><code>stop</code></td>
-<td>the safety stop affordance: bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden</td>
+<td>the safety stop affordances (RFC-085: the estop/release and pause/resume controls, one control per pair): bound BY LAW to safety-op identity, never derived from annotation; reachable at every rank on every class, never role-gated, never hidden</td>
 <td><code>stop</code></td>
 </tr>
 <tr>
 <td><code>12</code></td>
 <td><code>pad2d</code></td>
-<td>two-axis control: the multi-axis runway</td>
+<td>two-axis control: the multi-axis runway; triggered by two command.position fields on one <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> entry (RFC-083)</td>
 <td><code>slider</code> + <code>slider</code></td>
 </tr>
 <tr>
 <td><code>13</code></td>
 <td><code>color</code></td>
-<td>chromatic actuator setpoint (lighting/glow accessories)</td>
+<td>chromatic actuator setpoint (lighting/glow accessories); triggered by color.red/green/blue in one group (RFC-083)</td>
 <td><code>slider</code> + <code>slider</code> + <code>slider</code></td>
 </tr>
 <tr>
 <td><code>14</code></td>
 <td><code>datetime</code></td>
-<td>moment/interval input (automation schedules)</td>
+<td>moment/interval input (automation schedules) in <abbr title="The single authoritative endpoint of one machine.">hub</abbr> time; triggered by datetime.moment, or datetime.start + datetime.end in one group (RFC-083)</td>
 <td><code>text</code></td>
 </tr>
 </tbody>
@@ -3631,7 +3865,7 @@ generated: true</p>
 <tr>
 <td><code>10</code></td>
 <td><code>generator-advanced</code></td>
-<td>the fray-d surface: master controls + the four modifier lanes rendered as parallel lane groups + preset save/recall via the store, source.background_run co-located with the master run/stop</td>
+<td>the fray-d surface: master controls (advgen.* roles incl. its own run/stop advgen.running, RFC-081/RFC-093; the dwells advgen.dwell_crest and advgen.dwell_trough optional, RFC-095) + the modulators that target them (RFC-066), each rendered as a group under its target + preset save/recall via <code>action.store</code> (RFC-067), source.background_run co-located with the master run/stop</td>
 <td><code>yes</code></td>
 </tr>
 <tr>

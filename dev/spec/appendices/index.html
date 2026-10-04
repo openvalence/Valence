@@ -3113,6 +3113,20 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><a href="../catalog/#s8-4">§8.4</a></td>
 </tr>
 <tr>
+<td>0x21</td>
+<td>JOIN_REQ</td>
+<td>accessory→host</td>
+<td>raw</td>
+<td><a href="../transports/#s13-3">§13.3</a>.2</td>
+</tr>
+<tr>
+<td>0x22</td>
+<td>JOIN_REPLY</td>
+<td>host→accessory</td>
+<td>raw</td>
+<td><a href="../transports/#s13-3">§13.3</a>.2</td>
+</tr>
+<tr>
 <td>0xE5</td>
 <td>ESTOP</td>
 <td>any</td>
@@ -3122,7 +3136,7 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 </tbody>
 </table>
 <p><strong>Burned, never to be reallocated:</strong> <code>0x09</code> (was CATALOG_REQ) and <code>0x0A</code> (was CATALOG_CHUNK), superseded by BLOB_REQ/BLOB_CHUNK when chunked transfer was generalized into a namespaced verb (<a href="../catalog/#s8-4">§8.4</a>). They stay burned so that a stale v1-draft peer meets an <em>unknown</em> type and is ignored per <a href="../foundations/#s4-3">§4.3</a>, rather than silently misreading a blob frame.</p>
-<p><strong>Reserved:</strong> <code>0x02</code> and <code>0x21–0x3F</code> spec/core (31 slots free); <code>0x40–0x7F</code> future spec; <code>0x80–0xDF</code> experimental (never in tagged releases); <code>0xE0–0xFF</code> reserved except <code>0xE5</code>.</p>
+<p><strong>Reserved:</strong> <code>0x02</code> and <code>0x23–0x3F</code> spec/core (<code>0x21</code>/<code>0x22</code> allocated to RFC-076's JOIN_REQ/JOIN_REPLY); <code>0x40–0x7F</code> future spec; <code>0x80–0xDF</code> experimental (never in tagged releases); <code>0xE0–0xFF</code> reserved except <code>0xE5</code>.</p>
 <p><strong>Header flags:</strong> bit0 <code>FRAG_START</code>, bit1 <code>FRAG_MORE</code> (<a href="../wire-format/#s5-6">§5.6</a>). Other bits are zero on send and ignored on receive.</p>
 <p><em>Note on the "Defined in" column:</em> it cites <strong>this document's</strong> v1.0 section numbers. The registry's own <code>ref:</code> fields still carry the v1-draft numbering for several entries and are one subsection out in <a href="../session/#s6">§6</a> and <a href="../security/#s12">§12</a> (<a href="../wire-format/#s5-7">§5.7</a>, <a href="../limitations/#s18">§18-19</a>). The frame numbers themselves — the only thing that is normative here — are identical in both.</p>
 <h2 id="appendix-b">Appendix B — CBOR key registry <em>(normative, generated view of <code>registry.yaml</code>)</em><a class="headerlink" href="#appendix-b" title="Link to this section">#</a></h2>
@@ -3357,8 +3371,32 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td></td>
 <td></td>
 <td></td>
+<td>49</td>
+<td><code>schedule_latency_us</code></td>
+<td>uint</td>
+</tr>
+<tr>
 <td></td>
-<td><em>49–63 free</em></td>
+<td></td>
+<td></td>
+<td>50</td>
+<td><code>schedule_horizon_ms</code></td>
+<td>uint</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>51</td>
+<td><code>trial</code></td>
+<td>bool</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><em>52–63 free</em></td>
 <td></td>
 </tr>
 </tbody>
@@ -3374,7 +3412,7 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <tbody>
 <tr>
 <td><code>limits</code> (22)</td>
-<td>1 <code>max_frame</code>, 2 <code>max_subscriptions</code>, 3 <code>retained_pending</code>, 4 <code>max_subscriptions_per_frame</code></td>
+<td>1 <code>max_frame</code>, 2 <code>max_subscriptions</code>, 3 <code>retained_pending</code>, 4 <code>max_subscriptions_per_frame</code>, 5 <code>max_sessions</code>, 6 <code>sessions_in_use</code></td>
 </tr>
 <tr>
 <td><code>probe_result</code> (26)</td>
@@ -3382,11 +3420,11 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 </tr>
 <tr>
 <td><code>identity</code> (37)</td>
-<td>1 <code>product</code>, 2 <code>fw_version</code>, 3 <code>hub_name</code>, 4 <code>info</code> (device-defined map)</td>
+<td>1 <code>product</code>, 2 <code>fw_version</code>, 3 <code>hub_name</code>, 4 <code>info</code> (device-defined map), 5 <code>hub_instance_id</code>, 6 <code>estop_cuts_power</code></td>
 </tr>
 <tr>
 <td><code>blob</code> (38)</td>
-<td>1 <code>ns</code>, 2 <code>store_id</code>, 3 <code>slot</code>, 4 <code>generation</code>, 5 <code>name</code>, 6 <code>kind</code>, 7 <code>payload</code>, 8 <code>chunk_index</code>, 9 <code>chunk_count</code>, 10 <code>total_bytes</code></td>
+<td>1 <code>ns</code>, 2 <code>store_id</code>, 3 <code>slot</code>, 4 <code>generation</code>, 5 <code>name</code>, 6 <code>kind</code>, 7 <code>payload</code>, 8 <code>chunk_index</code>, 9 <code>chunk_count</code>, 10 <code>total_bytes</code>, 11 <code>digest</code></td>
 </tr>
 <tr>
 <td><code>trust</code> (39)</td>
@@ -3407,7 +3445,7 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <h2 id="appendix-d">Appendix D — Worked catalog sketch <em>(informative)</em><a class="headerlink" href="#appendix-d" title="Link to this section">#</a></h2>
 <blockquote>
 <h3 id="example-only-never-allocate-these-ids">⚠ EXAMPLE ONLY — NEVER ALLOCATE THESE IDS<a class="headerlink" href="#example-only-never-allocate-these-ids" title="Link to this section">#</a></h3>
-<p>Every channel id below is drawn from the <strong>reserved</strong> range <code>0x8000–0xFFFF</code> (<a href="../foundations/#s4-4">§4.4</a>), which no conforming hub may allocate. They exist to make the shape of a device catalog legible and <strong>cannot</strong> be mistaken for, or collide with, any real allocation.</p>
+<p>Every channel id below is drawn from the <strong>reserved</strong> range <code>0xC000–0xFFFF</code> (<a href="../foundations/#s4-4">§4.4</a>), which no conforming hub may allocate (<code>0x8000</code>-<code>0xBFFF</code> is the accessory user space, <a href="../catalog/#s8-10">§8.10</a>). They exist to make the shape of a device catalog legible and <strong>cannot</strong> be mistaken for, or collide with, any real allocation.</p>
 <p>This is deliberate. An earlier draft sketched device channels using ids inside the real device-defined range; a hub had already spent one of those ids on something else, and the sketch — despite carrying a disclaimer — read like an assignment and misled an implementation once. <strong>The shipped hub's catalog is self-describing and authoritative. It is the only source of a channel id.</strong></p>
 </blockquote>
 <p>A plausible motion machine, sketched to show how the classes and annotations compose:</p>
@@ -3675,6 +3713,11 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><a href="../safety/#s11-3">§11.3</a></td>
 </tr>
 <tr>
+<td><code>stream_quiet_release_ms</code></td>
+<td>500</td>
+<td><a href="../safety/#s11-4">§11.4</a></td>
+</tr>
+<tr>
 <td><code>idle_reap_multiplier</code></td>
 <td>3</td>
 <td><a href="../session/#s6-6">§6.6</a></td>
@@ -3690,6 +3733,11 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><a href="../wire-format/#s5-4">§5.4</a></td>
 </tr>
 <tr>
+<td><code>schedule_horizon_max_ms</code> / <code>segment_t_off_unit_us</code></td>
+<td>1000 / 100</td>
+<td><a href="../wire-format/#s5-4">§5.4</a></td>
+</tr>
+<tr>
 <td><code>max_burst_multiple</code></td>
 <td>4</td>
 <td><a href="../qos/#s10-5">§10.5</a></td>
@@ -3698,6 +3746,31 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><code>segment_handoff_k</code></td>
 <td>1.5</td>
 <td><a href="../channels/#s9-6">§9.6</a></td>
+</tr>
+<tr>
+<td><code>segment_end_vel_unspecified</code></td>
+<td>-32768</td>
+<td><a href="../wire-format/#s5-4">§5.4</a>, <a href="../channels/#s9-6">§9.6</a></td>
+</tr>
+<tr>
+<td><code>segment_dwell_span</code></td>
+<td>0.02</td>
+<td><a href="../channels/#s9-6">§9.6</a></td>
+</tr>
+<tr>
+<td><code>spoke_beacon_interval_ms</code> / <code>spoke_deadman_ms</code> / <code>spoke_scan_dwell_ms</code></td>
+<td>1000 / 5000 / 150</td>
+<td><a href="../transports/#s13-3">§13.3</a>.1</td>
+</tr>
+<tr>
+<td><code>accessory_slice_ids</code> / <code>accessory_declaration_max_bytes</code></td>
+<td>0x20 (32) / 4096</td>
+<td><a href="../catalog/#s8-10">§8.10</a></td>
+</tr>
+<tr>
+<td><code>relationships_max</code></td>
+<td>16</td>
+<td><a href="../catalog/#s8-11">§8.11</a></td>
 </tr>
 <tr>
 <td><code>pairing_window_default_s</code></td>
@@ -3825,6 +3898,11 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><a href="../errors/#s16-2">§16.2</a></td>
 </tr>
 <tr>
+<td><code>provision_join_timeout_ms</code></td>
+<td>20000</td>
+<td><a href="../transports/#s13-9">§13.9</a></td>
+</tr>
+<tr>
 <td><code>max_frame_ws</code> / <code>max_frame_espnow</code> / <code>max_frame_ble</code> / <code>max_frame_serial</code></td>
 <td>512 / 250 / 244 / 512</td>
 <td><a href="../wire-format/#s5-1">§5.1</a>, <a href="../transports/#s13-1">§13.1</a></td>
@@ -3843,11 +3921,6 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><code>ws_subprotocol</code></td>
 <td><code>valence.v1</code></td>
 <td><a href="../transports/#s13-2">§13.2</a></td>
-</tr>
-<tr>
-<td><code>mdns_service</code></td>
-<td><code>_valence._tcp</code></td>
-<td><a href="../transports/#s13-7">§13.7</a></td>
 </tr>
 </tbody>
 </table>

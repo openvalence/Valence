@@ -2923,6 +2923,11 @@ afford to miss also has a <abbr title="A safety condition that stays true in sta
 <td><code>recognized_pending</code></td>
 <td>RFC-029 item 2: a paired device's observed <code>client_ver</code> changed; state dropped trusted -&gt; RECOGNIZED-PENDING (admitted at watch, granted role suspended pending re-approval)</td>
 </tr>
+<tr>
+<td><code>9</code></td>
+<td><code>accessory_refused</code></td>
+<td>RFC-077: an accessory join was refused (body: accessory_id, result as a <code>join_results</code> value), so the operator who opened the window learns why nothing appeared</td>
+</tr>
 </tbody>
 </table>
 <h2 id="safety-events-0x000e">safety-events (<code>0x000E</code>)<a class="headerlink" href="#safety-events-0x000e" title="Link to this section">#</a></h2>
@@ -2944,17 +2949,17 @@ afford to miss also has a <abbr title="A safety condition that stays true in sta
 <tr>
 <td><code>2</code></td>
 <td><code>estop_cleared</code></td>
-<td>the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> bit went 1 -&gt; 0 via §11.2's guarded clear (<code>safety_ops::estop_clear</code> + the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s and delegate's preconditions). Clearing never restarts motion; this edge says the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> is gone, never that the machine moved.</td>
+<td>the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> bit went 1 -&gt; 0 via §11.2's guarded <code>release</code> (the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s and delegate's preconditions). Release lands in <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> and never restarts motion; this edge says the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> is gone, never that the machine moved.</td>
 </tr>
 <tr>
 <td><code>3</code></td>
-<td><code>stop_latched</code></td>
-<td>one or more of <abbr title="A controlled stop, decelerate to zero at the configured rate and deactivate the source.">STOP</abbr> / <abbr title="Decelerate, then actively hold position, with the source suspended.">HOLD</abbr> / <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> went 0 -&gt; 1. <code>body.level</code> is the bitmask of the bits that NEWLY set (safety word bits 1/2/3), so one edge reports one operator action even when it sets several. Cause distinguishes an operator <code>stop</code> (user) from a §11.3 <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> (<abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr>) from a <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr> loss policy (session_loss). That is the whole reason this edge is worth having: all three look identical in the snapshot.</td>
+<td><code>pause_latched</code></td>
+<td>RFC-085 (was stop_latched): the <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> bit went 0 -&gt; 1. Cause distinguishes an operator pause (user) from a §11.3 <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> (<abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr>) from a <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr> loss policy (session_loss); all three look identical in the snapshot. <code>body.level</code> is retired: one level leaves nothing to disambiguate.</td>
 </tr>
 <tr>
 <td><code>4</code></td>
-<td><code>stop_cleared</code></td>
-<td>one or more of <abbr title="A controlled stop, decelerate to zero at the configured rate and deactivate the source.">STOP</abbr> / <abbr title="Decelerate, then actively hold position, with the source suspended.">HOLD</abbr> / <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> went 1 -&gt; 0 (<code>resume</code>, or a <abbr title="A controlled stop, decelerate to zero at the configured rate and deactivate the source.">STOP</abbr> cleared by an accepted new motion <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> per §11.1). <code>body.level</code> is the bitmask of the bits that NEWLY cleared.</td>
+<td><code>pause_cleared</code></td>
+<td>RFC-085 (was stop_cleared): the <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> bit went 1 -&gt; 0, only ever by <code>resume</code>.</td>
 </tr>
 </tbody>
 </table>

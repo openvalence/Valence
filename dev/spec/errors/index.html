@@ -2741,7 +2741,7 @@
 
 <h1 id="s16">16. Errors and Diagnostics <em>(normative)</em><a class="headerlink" href="#s16" title="Link to this section">#</a></h1>
 <h2 id="s16-1">16.1 NACK and GOODBYE<a class="headerlink" href="#s16-1" title="Link to this section">#</a></h2>
-<p>NACK (CBOR): <code>code</code> (16) from the registry's ranged taxonomy, optional <code>channel_id</code> (15), <code>intent_id</code> (18), <code>intent_seq</code> (41), <code>detail</code> (17), and <code>retry_after_ms</code> (31) with BUSY.</p>
+<p>NACK (CBOR): <code>code</code> (16) from the registry's ranged taxonomy, optional <code>channel_id</code> (15), <code>intent_id</code> (18), <code>intent_seq</code> (41), <code>detail</code> (17), and <code>retry_after_ms</code> (31) with <code>BUSY</code>, <code>HUB_AT_CAPACITY</code> and <code>HUB_SHEDDING</code> (REQUIRED on the last two, RFC-055).</p>
 <ul>
 <li><strong>Ranges:</strong> <code>0x00xx</code> protocol, <code>0x01xx</code> session/auth, <code>0x02xx</code> subscription/QoS, <code>0x03xx</code> intent, <strong><code>0x04xx</code> safety refusals</strong>, <code>0x05xx</code> transfer. UIs SHOULD render <code>0x04xx</code> distinctly: a refusal because the machine is e-stopped is user-meaningful, not an "error".</li>
 <li><strong>Unknown code → treat as its range generic</strong> (<a href="../foundations/#s4-3">§4.3</a>).</li>

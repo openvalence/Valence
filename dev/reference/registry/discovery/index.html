@@ -2361,10 +2361,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#esp-now-beacon-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP-NOW BEACON flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#udp-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
         UDP discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#udp-discovery-reply-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UDP discovery reply flags
       
     </span>
   </a>
@@ -2713,10 +2735,32 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#esp-now-beacon-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ESP-NOW BEACON flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#udp-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
         UDP discovery
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#udp-discovery-reply-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UDP discovery reply flags
       
     </span>
   </a>
@@ -2796,6 +2840,7 @@ in ASCII, deliberately, so the UUID is greppable rather than an opaque v4.</p>
 </tr>
 </tbody>
 </table>
+<p>The scan-response flags record is Manufacturer-Specific Data under company id <code>0xFFFF</code>: <code>company_id:u16le + flags:u8</code>.</p>
 <h2 id="ble-advertising-flags">BLE advertising flags<a class="headerlink" href="#ble-advertising-flags" title="Link to this section">#</a></h2>
 <p>A legacy (≤31 B) advertising payload can spare one byte for flags,
 after the service UUID and a shortened <abbr title="The single authoritative endpoint of one machine.">hub</abbr> name. Bits not listed are
@@ -2821,6 +2866,51 @@ zero.</p>
 <td><code>bit 1</code></td>
 <td><code>ws_available</code></td>
 <td>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME <code>ws_port</code>/<code>ipv4</code> (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway.</td>
+</tr>
+<tr>
+<td><code>0x04</code></td>
+<td><code>bit 2</code></td>
+<td><code>config_mode</code></td>
+<td>RFC-079 (§13.4.1): the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> booted with its <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD mark the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> 'needs setup' and open on ui_categories 15 setup.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="esp-now-beacon-flags">ESP-NOW BEACON flags<a class="headerlink" href="#esp-now-beacon-flags" title="Link to this section">#</a></h2>
+<p>The <code>flags</code> byte of the pinned BEACON (<code>0x17</code>) payload, the accessory
+spoke's heartbeat (SPEC §13.3.1). Bits not listed are zero.</p>
+<table>
+<thead>
+<tr>
+<th>Mask</th>
+<th>Bit</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x01</code></td>
+<td><code>bit 0</code></td>
+<td><code>pairing_window_open</code></td>
+<td>a §12.3 association window is open (the original BEACON <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> flag)</td>
+</tr>
+<tr>
+<td><code>0x02</code></td>
+<td><code>bit 1</code></td>
+<td><code>datagram_estop</code></td>
+<td>this <abbr title="The single authoritative endpoint of one machine.">hub</abbr> accepts <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> frames from any peer on its <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (the RFC-053 item 2b mirror bit, ratified by RFC-075)</td>
+</tr>
+<tr>
+<td><code>0x04</code></td>
+<td><code>bit 2</code></td>
+<td><code>accessory_host</code></td>
+<td>RFC-075: this <abbr title="The single authoritative endpoint of one machine.">hub</abbr> runs the ESP-NOW spoke and accepts accessory joins (§13.3.1, §8.10)</td>
+</tr>
+<tr>
+<td><code>0x08</code></td>
+<td><code>bit 3</code></td>
+<td><code>estop_latched</code></td>
+<td>RFC-075: this <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s safety snapshot (0x0003) shows <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> repeat.</td>
 </tr>
 </tbody>
 </table>
@@ -2856,6 +2946,33 @@ in real homes.</p>
 A reply carries <code>magic + nonce + hub_name + hub_id + proto_ver + ws_port +
 fw_version + catalog_etag + flags</code>. A passive observer of a normal
 WELCOME could already learn all of it.</p>
+<h2 id="udp-discovery-reply-flags">UDP discovery reply flags<a class="headerlink" href="#udp-discovery-reply-flags" title="Link to this section">#</a></h2>
+<p>The <code>flags</code> byte closing the <code>DISCOVER_REPLY</code> (<code>0x1F</code>) payload. Bits
+not listed are zero.</p>
+<table>
+<thead>
+<tr>
+<th>Mask</th>
+<th>Bit</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x01</code></td>
+<td><code>bit 0</code></td>
+<td><code>pairing_window_open</code></td>
+<td>a §12.3 association window is open right now (the 0x17 BEACON flag's meaning, plus the endpoint)</td>
+</tr>
+<tr>
+<td><code>0x02</code></td>
+<td><code>bit 1</code></td>
+<td><code>datagram_estop</code></td>
+<td>RFC-053 item 2b: this <abbr title="The single authoritative endpoint of one machine.">hub</abbr> honors an <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> frame on this UDP port right now (the setting's live value), so a sessionless sender learns at setup whether its <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> will be heard; the BEACON bit1 mirror</td>
+</tr>
+</tbody>
+</table>
 <blockquote>
 <p>DEMO-CANDIDATE: send a live UDP probe to a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and decode its reply on the page.</p>
 </blockquote>

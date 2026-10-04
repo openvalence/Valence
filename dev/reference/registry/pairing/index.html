@@ -2899,6 +2899,294 @@ an honest update. A deliberately malicious one reports whatever version
 it likes and keeps its token. What bounds a hostile <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is role
 scoping, immediate revocation, its visibility in the roster, and the
 fact that safety operations are role-exempt for everyone.</p>
+<h1 id="accessories">Accessories<a class="headerlink" href="#accessories" title="Link to this section">#</a></h1>
+<p>Accessories join a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> over the ESP-NOW spoke (SPEC §13.3.1, §13.3.2) and
+their <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> live in the user space (SPEC §8.10).</p>
+<h2 id="join-results">Join results<a class="headerlink" href="#join-results" title="Link to this section">#</a></h2>
+<p>The <code>result</code> byte of JOIN_REPLY (<code>0x22</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>accepted</code></td>
+<td>joined (or rejoined); the accessory waits in its safe state for a command</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>window_closed</code></td>
+<td>unknown accessory and no association window open</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>capacity</code></td>
+<td>no free slice, no peer entry, or the declaration exceeds the host's advertised capacity</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>unsupported</code></td>
+<td>proto_ver not servable</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>declaration_invalid</code></td>
+<td>the declaration failed §8.10 validation; nothing stored</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>not_paired</code></td>
+<td>a rejoin from an accessory this host has forgotten; the accessory MAY clear its stored <abbr title="The single authoritative endpoint of one machine.">hub</abbr></td>
+</tr>
+</tbody>
+</table>
+<h2 id="accessory-admin-ops">Accessory admin ops<a class="headerlink" href="#accessory-admin-ops" title="Link to this section">#</a></h2>
+<p>The <code>action.accessory</code> op select on core <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> <code>0x0012</code>. Index 0 is op-select filler.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>window_open</code></td>
+<td>open the §12.3 association window for an accessory join: the in-band twin of the <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> button. One accepted join closes it.</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>forget</code></td>
+<td>GOODBYE the accessory, delete its record and every relationship targeting it, retire its slice, remove its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>. Destructive (§8.8 destructive_options on the reference op select).</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>rename</code></td>
+<td>set the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-authored name of the accessory named by accessory_id</td>
+</tr>
+</tbody>
+</table>
+<h2 id="accessory-record-keys">Accessory record keys<a class="headerlink" href="#accessory-record-keys" title="Link to this section">#</a></h2>
+<p>The registered item grammar of the <code>accessories</code> store (<code>0x0010</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>accessory_id</code></td>
+<td>bstr 8: the accessory's durable identity (§8.10), the record's primary key</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>slice</code></td>
+<td>uint: slice index k; the accessory's <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> are 0x8000 + 0x20*k + r</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>name</code></td>
+<td>tstr: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-authored name (renamed via accessory-admin rename)</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>product</code></td>
+<td>tstr: the JOIN_REQ product string (&lt;= 16 B)</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>fw_version</code></td>
+<td>tstr: the JOIN_REQ fw_version string (&lt;= 16 B)</td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td><code>declaration_etag</code></td>
+<td>bstr 8: <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> of the stored declaration (§8.3)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="accessory-status">Accessory status<a class="headerlink" href="#accessory-status" title="Link to this section">#</a></h2>
+<p>Relative id <code>0x01</code> of every slice: state u8 (accessory_states) + fault u8 (device-defined, 0 none) + beacon_seq u16 (header seq of the last accepted BEACON) = 4 B; pushed on change and at least every spoke_beacon_interval_ms.</p>
+<h2 id="accessory-states">Accessory states<a class="headerlink" href="#accessory-states" title="Link to this section">#</a></h2>
+<p>The accessory-status <code>state</code> byte (SPEC §17.1.1).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>live</code></td>
+<td>commanded and running normally</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>safe_joined</code></td>
+<td>joined, holding safe values, awaiting its first command</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>safe_deadman</code></td>
+<td>safe: no matching BEACON for its <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> window (§13.3.1)</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>safe_goodbye</code></td>
+<td>safe: a GOODBYE arrived from its <abbr title="The single authoritative endpoint of one machine.">hub</abbr></td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>safe_estop</code></td>
+<td>safe: an <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> frame or a BEACON with estop_latched; the host's acknowledgment that the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">e-stop</abbr> reached it</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>safe_fault</code></td>
+<td>safe: a local fault (see <code>fault</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="relationship-maps">Relationship maps<a class="headerlink" href="#relationship-maps" title="Link to this section">#</a></h2>
+<p>A relationship item's <code>map</code> (SPEC §8.11). Every output is <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> into the target's declared range.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>linear_clamp</code></td>
+<td>out = L(in) = out_min + (<abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamp</abbr>(in, in_min, in_max) - in_min) * (out_max - out_min) / (in_max - in_min), in_min != in_max</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>invert</code></td>
+<td>out = out_max + out_min - L(in): in_min maps to out_max</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>threshold_hysteresis</code></td>
+<td>params on_above, off_below (source units, off_below &lt;= on_above): out_max once the source rises to on_above, out_min once it falls to off_below, unchanged between; starts at out_min when armed</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>slew_limit</code></td>
+<td>L(in) with its rate of change bounded by params rise_per_s, fall_per_s (target units/s; one value serves both when the second is absent)</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>lowpass</code></td>
+<td>L(in) through a first-order low-pass, param tau_s (seconds)</td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td><code>gate</code></td>
+<td>out = L(in) while in_min &lt;= in &lt;= in_max, else the target's <code>safe</code> value</td>
+</tr>
+<tr>
+<td><code>7</code></td>
+<td><code>piecewise_table</code></td>
+<td>params: up to 8 (in, out) points flattened, in strictly ascending; linear between, held at the end values outside; the four bounds unused</td>
+</tr>
+</tbody>
+</table>
+<h2 id="relationship-keys">Relationship keys<a class="headerlink" href="#relationship-keys" title="Link to this section">#</a></h2>
+<p>The registered item grammar of the <code>relationships</code> store (<code>0x0013</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>rel_id</code></td>
+<td>uint: 0..relationships_max-1; bit index in the roster masks</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>name</code></td>
+<td>tstr: <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-authored label</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>source_channel</code></td>
+<td>uint: absolute id of an h2c <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> or <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr></td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td><code>source_field</code></td>
+<td>uint: layout index of a numeric field on source_channel</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>target_channel</code></td>
+<td>uint: absolute id of an accessory <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> or c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr></td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td><code>target_field</code></td>
+<td>uint: schema key (<abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr>) or layout index (<abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr>) of a value-bearing field</td>
+</tr>
+<tr>
+<td><code>7</code></td>
+<td><code>map</code></td>
+<td>uint: a <code>relationship_maps</code> value</td>
+</tr>
+<tr>
+<td><code>8</code></td>
+<td><code>in_min</code></td>
+<td>float: source physical units</td>
+</tr>
+<tr>
+<td><code>9</code></td>
+<td><code>in_max</code></td>
+<td>float: source physical units</td>
+</tr>
+<tr>
+<td><code>10</code></td>
+<td><code>out_min</code></td>
+<td>float: target physical units</td>
+</tr>
+<tr>
+<td><code>11</code></td>
+<td><code>out_max</code></td>
+<td>float: target physical units</td>
+</tr>
+<tr>
+<td><code>12</code></td>
+<td><code>params</code></td>
+<td>array of up to 16 floats, in the order the map lists them</td>
+</tr>
+<tr>
+<td><code>13</code></td>
+<td><code>enabled</code></td>
+<td>bool: persisted. <code>armed</code> is volatile, never stored, false at boot (§11.6)</td>
+</tr>
+</tbody>
+</table>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
      defined term shows its Dictionary definition on hover. -->

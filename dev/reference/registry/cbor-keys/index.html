@@ -3192,6 +3192,24 @@ experimental and never appear in a tagged release.</p>
 <td><code>uint</code></td>
 <td><abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> / granted_publishes ENTRY maps (RFC-049b): echoes the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>'s <code>curve_family</code> (45) WISH verbatim, unmodified by <code>curve_policy</code>. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049).</td>
 </tr>
+<tr>
+<td><code>49</code></td>
+<td><code>schedule_latency_us</code></td>
+<td><code>uint</code></td>
+<td>granted_publishes ENTRY maps (RFC-059): the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s declared fixed delay, in µs, between a sample's time (<abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>: t_base + t_off; samples: its arrival stamp, RFC-084) and the start of its execution, inclusive of every <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-internal hop. On a samples-kind <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr> it is the <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr>-planning budget. A commitment, constant for the life of the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>; a change is an unsolicited GRANT. Absent or 0 = unspecified. No <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> wish exists (§9.6).</td>
+</tr>
+<tr>
+<td><code>50</code></td>
+<td><code>schedule_horizon_ms</code></td>
+<td><code>uint</code></td>
+<td>granted_publishes ENTRY maps (RFC-087), <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr>-kind <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grants</abbr> only: the schedule horizon, how far ahead of <abbr title="The single authoritative endpoint of one machine.">hub</abbr> time a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>'s START may be stamped, and the span cap of a c2h <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr> <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr>. One of 250 (the default, max_future_schedule_ms), 500 or 1000 (schedule_horizon_max_ms); the larger steps exist for lookahead players on poor WiFi. A cap, never a delay. Absent = 250. A commitment for the life of the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>; a change is an unsolicited GRANT. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> picks it; no <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> wish exists.</td>
+</tr>
+<tr>
+<td><code>51</code></td>
+<td><code>trial</code></td>
+<td><code>bool</code></td>
+<td><abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> (RFC-099, §9.3): true = a TRIAL write: applied, <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr>, echoed and published like any write, bumps <abbr title="A 16-bit generation counter that increments whenever applied configuration content changes.">cfg_gen</abbr> like any change, but never persisted. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> keeps the key's pre-trial value in the sender's trial set until settings-trial (0x0016) commit or revert, or the <abbr title="The stateful association between one client and the hub.">session</abbr>'s end, which reverts. Absent or false = a durable write. Send only to a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> whose <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> declares 0x0016.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="scoped-sub-map-key-spaces">Scoped sub-map key spaces<a class="headerlink" href="#scoped-sub-map-key-spaces" title="Link to this section">#</a></h2>
@@ -3228,6 +3246,16 @@ number here has no meaning in the global space above.</p>
 <td><code>4</code></td>
 <td><code>max_subscriptions_per_frame</code></td>
 <td>RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was advertised, a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> could only find the reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s 16-wish decode cap by binary-searching against a live machine. Two <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> did this, one night each.</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td><code>max_sessions</code></td>
+<td>RFC-055 (§6.3): concurrent <abbr title="The stateful association between one client and the hub.">sessions</abbr> this <abbr title="The single authoritative endpoint of one machine.">hub</abbr> admits. 0 = unknown.</td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td><code>sessions_in_use</code></td>
+<td>RFC-055 (§6.3): <abbr title="The stateful association between one client and the hub.">sessions</abbr> occupying a slot, the admitted one included (STALE <abbr title="The stateful association between one client and the hub.">sessions</abbr> count). 0 = unknown.</td>
 </tr>
 </tbody>
 </table>
@@ -3300,6 +3328,11 @@ number here has no meaning in the global space above.</p>
 <td><code>hub_instance_id</code></td>
 <td>uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE <abbr title="The single authoritative endpoint of one machine.">hub</abbr> identity: generated once and NVS-persisted, survives every reboot and firmware update (only a factory reset regenerates it), as opposed to <code>boot_id</code> (cbor_keys 7, §6.1/§7.2), which is a FRESH random value EVERY boot and exists only to fence stale per-boot state. Distinguishes THIS PHYSICAL HUB from any other, across time. Present in WELCOME <code>identity</code> (37) for any <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that persists one; absent = the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> has no durable identity yet (a fresh dev build, a non-persisting <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>) and a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST tolerate its absence exactly as it tolerates the rest of <code>identity</code> (§6.3). Also the value DISCOVER_REPLY (0x1F, §13.8) now carries as <code>hub_instance_id</code>, replacing that frame's original <code>boot_id</code>-based disambiguator (see the <code>frame_types</code> 0x1F note): a boot-scoped id could not deduplicate 'two <abbr title="The single authoritative endpoint of one machine.">hubs</abbr> sharing a name' across a reboot, which was the field's whole job.</td>
 </tr>
+<tr>
+<td><code>6</code></td>
+<td><code>estop_cuts_power</code></td>
+<td>bool: RFC-085 (§11.2). Whether this <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> cuts motor power (true: category 0, the machine goes limp and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is unhomed after release) or is a maximum-deceleration halt with power and home kept (false). REQUIRED of a hardware-profile <abbr title="The single authoritative endpoint of one machine.">hub</abbr> (the declaration, never the mechanism); absent reads as false. Drives the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> label: true renders E-Stop, false or absent renders Halt.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="blob-key-38"><code>blob</code> (key 38)<a class="headerlink" href="#blob-key-38" title="Link to this section">#</a></h3>
@@ -3362,6 +3395,11 @@ number here has no meaning in the global space above.</p>
 <td><code>10</code></td>
 <td><code>total_bytes</code></td>
 <td>uint: total encoded byte length being transferred (lets a receiver size/reject before assembling: RFC-028 no-unbounded-allocation)</td>
+</tr>
+<tr>
+<td><code>11</code></td>
+<td><code>digest</code></td>
+<td>bstr: RFC-073, OPTIONAL on a store item map: SHA-256 (32 B) over <code>payload</code> alone. The receiver's local check for BLOB_DONE status 0 vs 1 on a store transfer (§8.4/§8.7). A store item IS a <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> map of these keys: slot 3, name 5, kind 6, payload 7 required, digest 11 optional.</td>
 </tr>
 </tbody>
 </table>
