@@ -1,13 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="14" height="14">
-  <rect width="14" height="14" rx="3" fill="#111318"/>
-  <g transform="translate(7 7.4)">
-    <circle r="4.4" fill="none" stroke="#A78BFA" stroke-width="1.3"/>
-    <circle r="2" fill="#4DA6FF"/>
-    <g fill="#111318">
-      <circle cy="-4.4" r="2.15"/><circle cx="3.81" cy="2.2" r="2.15"/><circle cx="-3.81" cy="2.2" r="2.15"/>
-    </g>
-    <g fill="#C4B5FD">
-      <circle cy="-4.4" r="1.5"/><circle cx="3.81" cy="2.2" r="1.5"/><circle cx="-3.81" cy="2.2" r="1.5"/>
-    </g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 30" width="30" height="30">
+  <rect width="30" height="30" rx="6.5" fill="#111318"/>
+  <circle cx="15" cy="15" r="8.5" fill="none" stroke="#A78BFA" stroke-width="3"/>
+  <circle cx="15" cy="15" r="4" fill="#4DA6FF"/>
+  <g fill="#EDE7FF"><circle cx="15" cy="6.5" r="1.5"/><circle cx="22.36" cy="19.25" r="1.5"/><circle cx="7.64" cy="19.25" r="1.5"/></g>
 </svg>
