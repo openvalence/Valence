@@ -8246,14 +8246,18 @@ say exactly which, future-us will want the receipts.*
 
 ## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
 
-- **Status:** DRAFT (Nucleus val-dbo). The operator ruled the reference hub's
-  homing on 2026-10-03 ahead of this text; Nucleus builds against the
-  behavior below, so acceptance amends SPEC to what already runs, or the
-  ruling moves the firmware.
+- **Status:** DRAFT (Nucleus val-dbo, amended for val-zsr). The operator
+  ruled the reference hub's homing on 2026-10-03 ahead of this text, and
+  ruled it two-sided the same day after the first cycle ran on silicon;
+  Nucleus builds against the behavior below, so acceptance amends SPEC to
+  what already runs, or the ruling moves the firmware.
 - **Origin.** The reference hub gained a real home cycle: home op 1 seeks the
-  home end until a stall level from a current-sense board reads HIGH, takes
-  that point as 0, backs off a fixed distance and is homed. Until then op 1
-  was refused and `force_home` (RFC-025) was the only way to be homed.
+  home end until a stall level from a current-sense board reads HIGH and
+  takes that point as 0. Until then op 1 was refused and `force_home`
+  (RFC-025) was the only way to be homed. The first cycle on silicon homed,
+  and the operator asked for two things: a second leg to the far end, so the
+  rail length is measured rather than typed in, and a faster approach (the
+  one-sided cycle crawled at 12 mm/s).
 - **Problem.** SPEC names the verb (`action.home`, §8.8 roles), admits it
   under PAUSE whether or not the hub is unhomed (§11.1), and clears
   `home_required` on "a completed home" (§11.2). It says nothing of what the
@@ -8283,25 +8287,63 @@ say exactly which, future-us will want the receipts.*
      PAUSE already latched (the cycle runs under the latch, so a fresh pause
      is the operator saying stop); loss of motor power; a change to the
      travel geometry. The reason goes to the log channel at Warn (§16.2).
-  5. **Failure.** No end-of-travel across the configured search distance
-     (`geometry.max_travel`), or no end by the cycle's own deadline, ends it
-     unhomed with the reason logged. No NACK follows: the intent was already
-     answered (item 1).
+  5. **Failure.** No end-of-travel within either leg's search
+     (`geometry.max_travel` plus a hub margin), a sense that still reads
+     end-of-travel after the hub backs off it, a far end closer than the
+     travel floor, or no end by the cycle's own deadline, ends it unhomed.
+     The log line names the leg (the home end or the far end) and the
+     reason. No NACK follows: the intent was already answered (item 1).
   6. **Not protocol.** What senses end-of-travel (a switch, a current
-     threshold, the drive), the seek speed, the debounce and the backoff are
-     the hub's. The protocol fixes only that 0 is where the cycle says the
-     home end is, and that the flip (§9.6) swaps which end that is.
+     threshold, the drive), the speeds, the debounce, the backoffs, the
+     search margin and the deadline are the hub's. The protocol fixes only
+     that 0 is where the cycle says the home end is, and that the flip
+     (§9.6) swaps which end that is.
+  7. **Two legs; the travel is measured.** The cycle takes a datum at the
+     home end, then at the far end. The home datum is 0; the far datum
+     minus it is the measured travel. On completion the hub publishes it as
+     `geometry.measured_travel` and writes it into its `geometry.max_travel`
+     setting through that setting's own writer: clamped to the setting's
+     catalog bounds, persisted, `cfg_gen` advanced once (a hub-side change,
+     RFC-011), the travel window held inside it as any write of that setting
+     holds it. The setting is the truth from then on, and it is also the next
+     cycle's search distance. No catalog field is added for the measurement:
+     `geometry.measured_travel` already names it, and it carries this boot's
+     raw measurement before the clamp. A rail later made longer needs the
+     owner to raise `geometry.max_travel` before a cycle can find its new
+     far end. The cycle ends backed off the far end, homed.
+  8. **The slow re-touch.** A datum is never taken at approach speed. At
+     each end the hub approaches, stalls, brakes, backs off, confirms its
+     sense has released, and re-approaches slowly; the second stall is the
+     datum. The reference re-touches at a quarter of its approach speed,
+     floored at 8 mm/s, and never above the approach, so the datum is taken
+     at low momentum and its overrun past contact is small and the same at
+     both ends.
+  9. **The approach speed is a device tuning.** The reference exposes it as
+     a stored, writable setting (`home_speed`, mm/s, factory 40, floor 5,
+     held at run time to the jog speed ceiling) on its machine-modes entry,
+     on the Motion behavior card beside its other homing setting. It
+     carries no registry role: no role fits, and a generic client renders a
+     role-less setting by its catalog label (RENDERING's generic settings).
+     A `home.speed` role, should any client need to bind it, is its own RFC.
 - **The simulator.** valencesim compiles the reference arbiter verbatim; its
-  `--home-sense-at MM` places a stand-in stop so the cycle runs end to end.
+  `--home-sense-at MM` places a stand-in home stop and `--rail-end-at MM`
+  the far stop (default `max_rail` from the home stop), so both legs run
+  end to end.
 - **Backward compatibility.** No wire change. A client that treated the
   ECHO as "homed" was already wrong on any hub whose cycle takes time; one
-  that watches `homed` and `home_required` keeps working.
+  that watches `homed` and `home_required` keeps working. A client holding
+  `geometry.max_travel` sees `cfg_gen` move when a cycle changes it, as for
+  any other hub-side change. The reference catalog's etag moves with the
+  new setting (its own field, not a registry change).
 - **Pros.** One meaning for the ECHO on every hub; a client shows "homing"
   from the bit, not a guess, and knows a cycle's end without polling a verb.
 - **Cons.** A failed cycle's reason reaches only a client that reads the log
-  channel.
-- **Cost.** SPEC §11.1 and §11.2, a few sentences; Appendix D's 0xEE05 row a clause.
-  Reference hub: none beyond what landed (Nucleus val-dbo).
+  channel. Overwriting `geometry.max_travel` with the measurement means the
+  search distance shrinks to the rail it found.
+- **Cost.** SPEC §11.1 and §11.2, a few sentences; §9 one sentence that a
+  completed home MAY store its measured travel in `geometry.max_travel`;
+  Appendix D's 0xEE05 row a clause. Reference hub: none beyond what landed
+  (Nucleus val-dbo, val-zsr).
 - **Wire impact.** None.
 - **Open questions.** A deferred answer: once a hub library can answer an
   intent after its handler returns (Nucleus val-9u0.22, the provisioning
