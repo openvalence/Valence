@@ -287,6 +287,7 @@ SOURCE_LINKS: dict[str, tuple[str, str]] = {
     "RFC-QUEUE.md#rfc-050--blob-transfer-backpressure--completion-acknowledgment": ("strip", ""),
     "RFC-QUEUE.md#rfc-051--critical-stall-parks-the-session-instead-of-evicting-it": ("strip", ""),
     "RFC-QUEUE.md#rfc-004--appendix-d-sketch-collides-with-real-device-allocations": ("strip", ""),
+    "RFC-QUEUE.md#rfc-099----trial-writes-a-setting-applied-live-without-persisting-then-committed-or-reverted": ("strip", ""),
     "V1-READINESS.md": ("strip", ""),
     # session-traces.md cites SPEC.md clauses directly by GitHub anchor slug,
     # rather than by the "§n.m" convention this generator auto-links. Each one

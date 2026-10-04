@@ -71,6 +71,7 @@ role is never an error.
 | `telemetry.uptime` | hub uptime |
 | `identity.name` | the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name. |
 | `meta.enabled_mask` | RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layout. On-change, retained, conflated: every client grays from one ground truth. Disabled means GRAY, never hide. |
+| `meta.trial_pending` | RFC-099 (§8.8): a bitfield8 field whose bit i marks the i-th setting-annotated field of the SAME layout as holding a TRIAL value (cbor_keys 51), any session's: indexed exactly as meta.enabled_mask. On-change, retained. A set bit means the effective value shown is not the stored one and reverts when its trial ends. |
 | `meta.reset_gen` | RFC-019: increments on every applied reset in this counter group, so ALL subscribers observe the reset, not just the sender who asked for it. |
 | `pattern.running` | whether the built-in (classic) pattern generator is currently driving the machine. The advanced generator has its own advgen.running (RFC-093). |
 | `pattern.select` | which built-in pattern the generator plays; options are the device's pattern names, index-aligned with the wire value |
@@ -92,6 +93,7 @@ role is never an error.
 | `plan.duration` | total duration of the segment in flight |
 | `plan.latency` | RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance. |
 | `plan.style` | which planning style produced the segment; options are the device's style names, index-aligned with the wire value |
+| `plan.flags` | RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a segment plans, from that plan, cleared when the next segment plans clean, zero while no plan is in flight. A segment planned ahead of its start sets it then, up to one schedule horizon early. A client reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth). |
 | `advgen.running` | RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff. |
 | `advgen.master` | RFC-081: overall rate scale of the advanced program, percent of its own range |
 | `advgen.depth_max` | RFC-081: the deep stroke bound the program swings to, percent of the stroke window |
@@ -141,6 +143,18 @@ field. The same doctrine applies: unknown roles render generically.
 | `0x02` | `bit 1` | `restart_required` | the applied value takes effect on the next boot (distinct from RFC-020's reboot_in_ms, which is the hub rebooting ITSELF to commit) |
 | `0x04` | `bit 2` | `secret` | NORMATIVE (RFC-009.5): the value NEVER appears in STATE. The snapshot carries only a set/unset presence bit. Writes ride the paired INTENT normally and ECHO confirms application WITHOUT echoing the value: the applied key carries the CBOR value `true` in its place (RFC-069), and a client MUST accept `true` for a secret key whatever the field's type. A WiFi password must never ride a retained snapshot that open-access `watch` sessions receive. |
 | `0x08` | `bit 3` | `destructive` | RFC-063: on a schema field with an `action.*` role, invoking the verb loses state the operator cannot restore from the client (configuration, stored items, counters, sessions, uptime); on a writable layout field, writing it has that effect. Rendering metadata only: a client MUST confirm-gate (RENDERING.md §8.4 `trigger`), a hub MUST NOT change wire behavior on it. Per-option form: schema-field `destructive_options` (SPEC §8.8). |
+
+## Plan flags
+
+The bits of the `plan.flags` field role (SPEC §8.8): how the planner
+bent a segment in flight. Any of bits 0 to 3 means infeasible.
+
+| Mask | Bit | Name | Notes |
+|---|---|---|---|
+| `0x01` | `bit 0` | `shaped` | the planner shortened the commanded stroke, or flattened its shape, to hold the deadline |
+| `0x02` | `bit 1` | `stretched` | the segment runs past the commanded deadline |
+| `0x04` | `bit 2` | `fallback` | the planner substituted its fallback method for the segment |
+| `0x08` | `bit 3` | `clamped` | a ceiling or the travel window changed the command |
 
 ## Procedure phases
 

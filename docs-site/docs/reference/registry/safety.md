@@ -51,3 +51,17 @@ byte, and the `cause` field of the latched [`safety` STATE snapshot](channels.md
 session ends latches `session_loss`. A closed browser tab is not the
 same event as a deadman timeout. An earlier bug reported them as the
 same thing. These are two different events.
+
+## Source kinds
+
+What each control-owner slot drives (SPEC §11.4). A slot the hub never declares is `reserved`.
+
+| Value | Name | Notes |
+|---|---|---|
+| `0` | `jog` | a manual point move. Never takes the rail from another source (RFC-085); released when its move settles. |
+| `1` | `stream` | c2h STREAM motion input. Released when its last admitted bundle has played out and nothing arrived for stream_quiet_release_ms (never below the grant's schedule horizon). |
+| `2` | `classic` | the hub's classic pattern generator (RFC-093). Released on stop. |
+| `3` | `advanced` | the hub's advanced generator (RFC-093). Released on stop. |
+| `4` | `remote` | a hand-held remote driving the rail through the hub. Released when its source is quiet. |
+| `5` | `reserved` | the slot names no source: never owned, never drawn. |
+

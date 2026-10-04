@@ -84,6 +84,7 @@ The intent is refused on its own merits.
 | `0x0304` | `NETWORK_JOIN_FAILED` | RFC-069: a provisioning `wifi_join` (§13.9) did not join (wrong passphrase, no such network, timeout). `detail` MUST NOT contain either credential. The hub's prior network configuration stays in effect. |
 | `0x0305` | `ACCESSORY_OFFLINE` | RFC-076 (§8.10): a write to a paired accessory that is not reachable right now (absent, or no answer after the §13.3 retransmits). Its channels stay in the catalog; it is offline, not gone. |
 | `0x0306` | `ACCESSORY_CAPACITY` | RFC-077 (§8.10): accessory-admin window_open refused because the host has no free slice, no free peer entry, or less budget than the smallest legal declaration (the status entry plus one channel). |
+| `0x0307` | `TRIAL_CONFLICT` | RFC-099 (§9.3): a write, trial or durable, to a key in ANOTHER session's open trial set. The whole intent is refused, no key applied. Retry after that trial is committed or reverted (meta.trial_pending shows it). Not SOURCE_CONFLICT: that is a safety-range code naming a motion source. |
 
 ## `0x04xx`: safety refusal
 

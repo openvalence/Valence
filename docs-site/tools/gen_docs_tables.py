@@ -150,6 +150,9 @@ SECTION_HOMES: dict[str, str] = {
     "ui_regions": "rendering.md",
     "renderer_classes": "rendering.md",
     "widget_patterns": "rendering.md",
+    "plan_flags": "catalog-vocabulary.md",
+    "source_kinds": "safety.md",
+    "trial_ops": "rendering.md",
 }
 
 
@@ -539,6 +542,11 @@ def page_catalog_vocabulary(reg: dict, reg_display: str) -> str:
     p("## Setting flags\n\n")
     table(p, ["Mask", "Bit", "Name", "Notes"], bit_rows(reg["setting_flags"]))
 
+    p("## Plan flags\n\n")
+    p("The bits of the `plan.flags` field role (SPEC §8.8): how the planner\n")
+    p("bent a segment in flight. Any of bits 0 to 3 means infeasible.\n\n")
+    table(p, ["Mask", "Bit", "Name", "Notes"], bit_rows(reg["plan_flags"]))
+
     p("## Procedure phases\n\n")
     p("Only the lifecycle phases are registered. Any generic client can render\n")
     p("these without knowing the procedure. Values 128 to 255 are device-defined\n")
@@ -635,7 +643,10 @@ def page_safety(reg: dict, reg_display: str) -> str:
     p("`deadman` means the silence window actually elapsed. Every other way a\n")
     p("session ends latches `session_loss`. A closed browser tab is not the\n")
     p("same event as a deadman timeout. An earlier bug reported them as the\n")
-    p("same thing. These are two different events.\n")
+    p("same thing. These are two different events.\n\n")
+    enum_table(p, reg["source_kinds"], "Source kinds",
+               "What each control-owner slot drives (SPEC §11.4). A slot the "
+               "hub never declares is `reserved`.")
     return w.getvalue()
 
 
@@ -862,6 +873,9 @@ def page_rendering(reg: dict, reg_display: str) -> str:
     enum_table(p, reg["provisioning_ops"], "Provisioning ops",
                "The wire values of the `action.provision` op select on core "
                "channel `0x000F` (SPEC §13.9). Index 0 is op-select filler.")
+    enum_table(p, reg["trial_ops"], "Settings-trial ops",
+               "The wire values of the `action.trial` op select on core "
+               "channel `0x0016` (SPEC §9.3). Index 0 is op-select filler.")
 
     p("## Archetypes\n\n")
     p("An archetype is the control style and interaction contract a catalog "

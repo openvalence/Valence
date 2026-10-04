@@ -148,6 +148,7 @@ A conformant client MAY special-case the specific `action.<name>` suffixes below
 | `reboot` | firmware reboot; SHOULD always confirm (cbor_keys.reboot_in_ms) |
 | `accessory` | RFC-076: the accessory-admin op select on core channel 0x0012 (§8.10), options index-aligned with `accessory_admin_ops`. Op forget is destructive. |
 | `provision` | RFC-069: the provisioning op select on core channel 0x000F (§13.9), options index-aligned with `provisioning_ops` |
+| `trial` | RFC-099: the settings-trial op select on core channel 0x0016 (§9.3), options index-aligned with `trial_ops`. Neither op is destructive: commit stores values already live, revert restores stored ones. |
 | `store` | RFC-067: the store CRUD op select (§8.7): options index-aligned with `store_ops`; no options beyond the registered ops. Op `delete` is destructive by registration (§8.8). |
 
 ## Store ops
@@ -168,6 +169,15 @@ The wire values of the `action.provision` op select on core channel `0x000F` (SP
 | Value | Name | Notes |
 |---|---|---|
 | `1` | `wifi_join` | join the WiFi network named by `ssid` with `passphrase`; answered after the join concludes (§13.9) |
+
+## Settings-trial ops
+
+The wire values of the `action.trial` op select on core channel `0x0016` (SPEC §9.3). Index 0 is op-select filler.
+
+| Value | Name | Notes |
+|---|---|---|
+| `1` | `commit` | persist every value the sender trial-wrote, as it stands, and clear the sender's trial set. No effective value changes, so cfg_gen does not move. |
+| `2` | `revert` | restore every pre-trial value of the sender's trial set and clear it. A restored value that differs bumps cfg_gen and republishes. Never refused: where a constraint no longer admits a pre-trial value, the nearest legal one. |
 
 ## Archetypes
 

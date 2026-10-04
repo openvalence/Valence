@@ -47,6 +47,7 @@ registry's own rationale where it records one.
 | `deadman_default_ms` | `600` |  |
 | `deadman_min_ms` | `250` |  |
 | `deadman_max_ms` | `5000` |  |
+| `stream_quiet_release_ms` | `500` | RFC-098 (§11.4): a stream source is released when its last admitted bundle has played out and no bundle arrived for this long, or for the grant's schedule horizon when that is longer. |
 | `pairing_window_default_s` | `120` |  |
 | `pairing_pin_digits` | `4` |  |
 | `pairing_gesture_boot_count` | `3` | RFC-049g: N in §12.3(c)'s power-cycle gesture — this many CONSECUTIVE short boots arm the push-to-pair window on the next boot. Was prose-only ("N (default 3)"); the panel's own complaint pattern (registry doctrine says numbers are never left as hedges) applies to this one too. |
