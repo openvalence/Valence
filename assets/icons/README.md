@@ -11,7 +11,9 @@ ring). These SVGs are the sources; every PNG, ICO and ICNS is generated.
 | `icon-16.svg` | Pixel-grid silhouette: 2 px ring, solid white electrons, no knockouts (ring plus core carries the family at this size) | 16 px | ICO 16, site `favicon.svg` |
 | `icon-mono.svg` | Single color (black) on transparent, 16 px grid | Any | Status badges, the macOS menu bar template (tinted by the system), favicon masks |
 
-The Windows ICO ladder renders each layer with a 1 px clear edge.
+Every variant on the chassis is a rounded square (corner radius about 22% of
+the side; transparent outside it). The Windows ICO ladder renders each layer
+with a 1 px clear edge.
 
 Regenerating: edit only these SVGs, then run `npm run icons` in Phosphor
 (`tools/icons.mjs`). Never hand-edit a generated PNG, and never fill a 16
