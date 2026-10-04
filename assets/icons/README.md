@@ -3,13 +3,16 @@
 One icon family, derived from the Valence mark
 (`docs-site/docs/assets/icon.svg`: the nucleus with three electrons in the
 ring). Every variant is the same flat silhouette: a thick violet ring around
-a large cyan core, the electrons as small light dots inside the ring band, no
-glow, no gradients, no knockout gaps. These SVGs are the sources; every PNG,
-ICO and ICNS is generated.
+a large cyan core, broken into three round-capped arcs, with a cyan electron
+dot sitting in each gap. The dots are as thick as the ring (diameter equals
+the stroke width) and the gap on either side of a dot is about a quarter of
+the dot. No glow, no gradients. The mono and avatar variants keep the ring
+whole, with no dots. These SVGs are the sources; every PNG, ICO and ICNS is
+generated.
 
 | Source | Artwork | Sizes | Used for |
 |---|---|---|---|
-| `icon-app.svg` | Ring, core and electron dots on the chassis square (#111318), full-bleed 1024 canvas | 48 px and up | Phosphor app icon: Windows ICO 48/64/256, PNG ladder, macOS ICNS (inside Apple's 824 px rounded square with its margins), Linux hicolor 128 plus scalable SVG, iOS, Android. Site `apple-touch-icon.png` (180) and `icon-512.png`. |
+| `icon-app.svg` | Three arcs, core and electron dots on the chassis square (#111318), full-bleed 1024 canvas | 48 px and up | Phosphor app icon: Windows ICO 48/64/256, PNG ladder, macOS ICNS (inside Apple's 824 px rounded square with its margins), Linux hicolor 128 plus scalable SVG, iOS, Android. Site `apple-touch-icon.png` (180) and `icon-512.png`. |
 | `icon-small.svg` | The same proportions on a 30 px grid | 24, 32 px | ICO 24/32, `32x32.png`, `Square30x30Logo.png`, site `favicon-32.png` |
 | `icon-16.svg` | The same proportions on a 14 px pixel grid (2 px ring) | 16 px | ICO 16, site `favicon.svg` |
 | `icon-mono.svg` | Ring and core only, single color (black) on transparent, 16 px grid | Any | Status badges, the macOS menu bar template (tinted by the system), favicon masks |
