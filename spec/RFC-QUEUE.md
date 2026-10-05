@@ -8719,3 +8719,34 @@ say exactly which, future-us will want the receipts.*
     jog path needs no planner mode of its own, only the same conversion
     with the jog ceilings, which is how the scrub overshoot (Phosphor
     ph-ffsk, Nucleus val-1bf) closes by construction rather than by tuning.
+  - 2026-10-05, a deviation to rule on: promise 2 says an AUTHORED junction
+    under C1 leaves the acceleration free to step. The solver renders every
+    moving junction with CONTINUOUS acceleration (the centered difference of
+    the junction velocities); only the HARD stop renders the corner, as the
+    brake tail. A true acceleration step is infinite jerk, so "free to step"
+    can only mean a jerk-limited transition of length delta_a / jmax across
+    the knot, which costs a composite piece at every C1 knot for a corner no
+    author can feel at a moving knot. Proposed wording: the family selects
+    the stop rendering (HARD) and nothing else; a C1 corner at a moving knot
+    is a pinned velocity with continuous acceleration. OPEN until the
+    operator rules.
+  - 2026-10-05, the property suite (kin-vcr): 800 random windows of free,
+    authored and hard knots under random ceilings and both policies, every
+    one sampled at 1 ms, started at 1645 ceiling or window violations and
+    ended at zero. What it took, each a promise-3 rule: (q) a stretch adds
+    to earlier stretches, never resets to the sender's time; (r) Blend at
+    its floor falls through to Stretch, because the ceilings outrank the
+    deadline; (s) an authored velocity is bounded by the stopping distance
+    to the rail on both sides, the curve arrives from the side it leaves;
+    (t) a knot no spend can reach is DROPPED, reported PlanFailed and
+    removed from the timeline, never rendered past a ceiling: the one place
+    a knot loses to the ceilings outright; (u) when a knot cannot be
+    reached from the state the previous junction left, that junction's
+    acceleration, and a free knot's velocity, are relaxed to zero if the
+    previous piece stays legal (the last ACCEPTED knot, never a dropped
+    neighbor); (v) a knot whose successors were all dropped is the end of
+    the timeline and is solved again at rest, so the hold never steps.
+    Oracle (Kinetic 1 with Ruckig, softeners off): the brake is exactly
+    Ruckig's time; the rest-to-rest quintic park is 1.20 to 1.23x the
+    time-optimal profile, which makes the park-profile option worth about
+    20% on a jog and is the first candidate for the options list.
