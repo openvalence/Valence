@@ -344,10 +344,25 @@ def run_registry_check():
     return []
 
 
+def run_rfc_queue_check():
+    # spec/RFC-QUEUE.md is a generated view of the Valence board (tools/rfc_queue.py).
+    gen = ROOT / "tools" / "rfc_queue.py"
+    try:
+        r = subprocess.run([sys.executable, str(gen), "check"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=300)
+    except Exception as e:
+        return [("rfc-queue-check", "tools/rfc_queue.py", 0, str(e)[:60],
+                 "could not run the RFC queue check (bd on PATH?)")]
+    if r.returncode != 0:
+        return [("rfc-queue-drift", "spec/RFC-QUEUE.md", 0, "",
+                 "RFC-QUEUE.md out of sync with the board -- python tools/rfc_queue.py export, never hand-edit")]
+    return []
+
+
 def main(argv):
     findings = run_grep_checks() + run_frozen_check() + run_codespell_check() + run_camelcase_check()
     if "--no-gen" not in argv:
-        findings += run_registry_check()
+        findings += run_registry_check() + run_rfc_queue_check()
 
     if not findings:
         print("valence_lint: clean (0 findings)")

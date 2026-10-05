@@ -16,7 +16,7 @@ Full scope, non-goals, and design philosophy: [`spec/SPEC.md`](spec/SPEC.md)
 
 | Path | What |
 |---|---|
-| `spec/` | The protocol specification: `SPEC.md` (normative), `RENDERING.md` (UI/rendering constitution), `CHANNEL-GRID.md` (the 0xCDSS channel-space convention), `RFC-QUEUE.md` (change history), `registry/registry.yaml` (single source of truth for every wire number), `schema/`, `vectors/`, `examples/`, `reviews/` |
+| `spec/` | The protocol specification: `SPEC.md` (normative), `RENDERING.md` (UI/rendering constitution), `CHANNEL-GRID.md` (the 0xCDSS channel-space convention), `RFC-QUEUE.md` (the RFC queue: a generated view of the board's `rfc` beads, see `tools/rfc_queue.py`), `registry/registry.yaml` (single source of truth for every wire number), `schema/`, `vectors/`, `examples/`, `reviews/` |
 | `lib/valence/` | The reference C++20 implementation: header-only, hardware-free, zero external dependencies |
 | `clients/js/` | The JavaScript reference client |
 | `clients/mfp/` | Valence Connect, the Multi Function Player (MFP) reference client plugin |
