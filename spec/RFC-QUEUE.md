@@ -8728,8 +8728,15 @@ say exactly which, future-us will want the receipts.*
     the knot, which costs a composite piece at every C1 knot for a corner no
     author can feel at a moving knot. Proposed wording: the family selects
     the stop rendering (HARD) and nothing else; a C1 corner at a moving knot
-    is a pinned velocity with continuous acceleration. OPEN until the
-    operator rules.
+    is a pinned velocity with continuous acceleration. RULED (operator
+    2026-10-05): BOTH, as a planner option, until the tuner proves which
+    earns its place. `corner` in `planner_options`: `continuous` (the
+    junction acceleration is smoothed through) or `cubic` (each side keeps
+    the acceleration the author's C1 cubic has there, joined by a
+    jerk-limited ramp of |delta a| / jmax centered on the knot, the knot
+    still hit at its time with its velocity). Default `continuous` until
+    the bench says otherwise. This is the first option added under the
+    rule in item 6, and the tuner's first A/B.
   - 2026-10-05, the property suite (kin-vcr): 800 random windows of free,
     authored and hard knots under random ceilings and both policies, every
     one sampled at 1 ms, started at 1645 ceiling or window violations and
