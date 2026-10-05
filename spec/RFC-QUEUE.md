@@ -8757,3 +8757,11 @@ say exactly which, future-us will want the receipts.*
     Ruckig's time; the rest-to-rest quintic park is 1.20 to 1.23x the
     time-optimal profile, which makes the park-profile option worth about
     20% on a jog and is the first candidate for the options list.
+  - 2026-10-05, the corner option (kin-jub): built. (w) The author's
+    acceleration on each side of a C1 knot is the cubic's own second
+    derivative there, computable from the neighboring knots alone, so the
+    "step" is a number the script defines, not a planner guess; the ramp
+    that renders it is |da| / jmax long, centered on the knot, and the knot
+    is still hit at its time with its velocity by walking the mid state
+    back to the ramp's start. Under the default (continuous) the rendered
+    bits are unchanged, which the fingerprint test proves.
