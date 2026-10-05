@@ -3,10 +3,11 @@
 One icon family, derived from the Valence mark
 (`docs-site/docs/assets/icon.svg`: the nucleus with three electrons in the
 ring). Every variant is the same flat silhouette: a thick violet ring around
-a large cyan core, broken into three round-capped arcs, with a cyan electron
-dot sitting in each gap. The dots are as thick as the ring (diameter equals
-the stroke width) and the gap on either side of a dot is about a quarter of
-the dot. No glow, no gradients. The mono and avatar variants keep the ring
+a cyan core, broken into three round-capped arcs, with a cyan electron dot
+sitting in each gap. Weights are perceptual, not equal: on the 1024 canvas the
+ring stroke is 80, the dot radius 54 and the core radius 136 (ruled
+2026-10-04 from a side-by-side), and the gap between a cap and a dot is 28
+along the arc. No glow, no gradients. The mono and avatar variants keep the ring
 whole, with no dots. These SVGs are the sources; every PNG, ICO and ICNS is
 generated.
 
