@@ -8408,3 +8408,266 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.** Whether `protocol_version` in identity should carry
   MAJOR.MINOR only (the patch is noise on the wire), and whether a client
   must warn when its MINOR exceeds the hub's rather than silently hiding.
+
+## RFC-103 -- Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second
+
+- **Status:** DRAFT (operator ruling 2026-10-05). Companion to the reference
+  hub's segment-rate work (Nucleus val-4ix): the stream ceiling becomes the
+  planner's measured number, and this RFC gives rapid motion a cheaper path.
+- **Origin.** Scripts carry sections that oscillate at 30 to 50 Hz. Streamed
+  as segments (0x2101 on the reference hub) that is 60 to 100 planned
+  trajectories a second for motion that is one periodic function, and every
+  hub caps segment ingress (SPEC §10.5) somewhere below that. The motor can
+  vibrate; the protocol has no word for it.
+- **Problem.** SPEC §9 has strokes, jogs, samples and segments. None of them
+  says "oscillate at f Hz with amplitude A until told otherwise", so a client
+  that wants vibration must synthesize it segment by segment, pay the rate
+  budget, and lose amplitude per segment to the accel and jerk ceilings with
+  no view of the whole waveform.
+- **Proposal.** A hub-side oscillator, additive on the commanded position of
+  whatever source owns the rail (a stroke, a jog, a stream, or rest), bounded
+  by the travel window and the ceilings exactly as every other motion is.
+  - One INTENT, registry role family `osc.*`, schema keys in order:
+    `enabled` (bool), `frequency` (f32 Hz, 0 .. `osc_max_hz`, a limit the hub
+    declares in WELCOME `limits` from its own measurement), `amplitude` (f32,
+    norm of the travel window, 0 .. 1), `shape` (new table `osc_shapes`:
+    0 `sine`, 1 `square`, 2 `saw`, 3 `saw_reverse`), `dwell_crest` and
+    `dwell_trough` (f32, share of one period held at that extreme, two
+    decimals, as RFC-095's dwells hold a stroke; a square with dwells is a
+    pulse-width control, a saw with a dwell is a ramp and hold).
+  - **Driven parameters.** `frequency` and `amplitude` each carry a drive:
+    `drive` (new table `osc_drives`: 0 `fixed`, 1 `speed`, 2 `position`,
+    3 `axis`) and four map bounds `in_min, in_max, out_min, out_max`
+    (SPEC §8.11's linear map, same clamp rule), so amplitude can follow the
+    rail's speed or position, or an external axis. `axis` is a `samples`-kind
+    c2h STREAM channel `osc-drive` (two f32 norms, `amplitude` and
+    `frequency`, each mapped through its own bounds) a client publishes under
+    the ordinary grant rules. **Scripts drive it as sine only** (operator
+    ruling 2026-10-05): the Valence script standard reserves funscript axes
+    V8 (oscillation amplitude) and V9 (oscillation frequency), and a player
+    publishes those two axes as this stream with `shape` fixed at `sine`. It
+    is safe by construction: a script is open-loop data, the stream has the
+    token bucket, the deadman and quiet release of every stream, and the
+    oscillator is bounded by the window and the ceilings.
+  - **Telemetry.** `osc.active` (bool) and `osc.amplitude_effective` (f32):
+    the amplitude the ceilings left after shaping, so the client can show
+    what the machine is actually doing. The plan's `clamped` flag (RFC-100)
+    is set when shaping cut it.
+  - **Safety.** The oscillator is zeroed by PAUSE and ESTOP (§11.3), never
+    leaves the window (override does not lift it: an oscillation outside the
+    window is never wanted), and is disabled by a deadman like any intent. It
+    owns nothing: it rides whichever source owns the rail and stops when the
+    rail goes idle, unless `enabled` while idle, in which case it oscillates
+    about the rest position and holds `control-owner` as a jog does.
+- **Pros.** One frame replaces a hundred a second; the hub shapes one
+  waveform against its ceilings instead of a hundred fragments; a script's
+  vibrate axis maps onto something real; the modulators of RFC-066 can ride
+  `osc.frequency` and `osc.amplitude` for free.
+- **Cons.** A second motion generator on the hub beside the planner: its sum
+  with a planned curve must stay inside the ceilings. **Ruled** (operator
+  2026-10-05): the oscillator yields first. The planned motion keeps its
+  amplitude and the oscillation is shed, down to nothing at a full-speed
+  stroke, so the sum is bound to the accel and jerk ceilings by
+  construction; `amplitude_effective` reports what survived.
+- **Cost.** Registry: the `osc.*` roles, `osc_shapes`, `osc_drives`,
+  `osc_max_hz` in limits, the `osc-drive` stream role. SPEC: a §9 subsection.
+  Reference hub: the oscillator in the motion task after the planner output,
+  summed before the window clamp; `osc_max_hz` from the Kinetic bench.
+  Reference client: a modulator card in the advanced generator and the
+  funscript player's axis routing (Phosphor ph-6dr6).
+- **Wire impact.** Additive: one new INTENT schema, one optional STREAM
+  channel, two STATE fields. A client that ignores them loses nothing.
+- **Open questions.** Whether the oscillator sums with a running stream or
+  only with strokes, jogs and rest (summing with a 50 Hz script section and a
+  50 Hz oscillator is the double-count the RFC exists to avoid). Whether
+  `amplitude` is norm of the window or millimeters (norm keeps it portable;
+  the client shows mm). The phase of `saw` relative to the drive.
+
+## RFC-104 -- Hub programs: op chains on the hub under a declared budget, machine targets, and user variables
+
+- **Status:** DRAFT (operator direction 2026-10-05; the budget ceiling is
+  measured before this is accepted).
+- **Origin.** SPEC §8.11 lets the hub evaluate exactly one map between one
+  source field and one accessory target. The reference client's node graph
+  (Phosphor docs/GRAPH.md) runs everything else, op chains and machine-field
+  targets, on the client at 20 Hz under §11.6, where it dies with the client
+  and rides WiFi. The operator wants the graph to be a small program the hub
+  runs, with machine fields as legal targets, inside a budget the hub states.
+- **Problem.** Three limits of §8.11 are policy, not physics: one map per
+  relationship, accessory-only targets, and no client-authored state. A chain
+  like "threshold the position, slew it, gate it on a user switch, drive the
+  pattern speed" is cheap on an MCU and useless at 20 Hz over the air.
+- **Proposal.**
+  1. **Programs.** A relationship item MAY carry `program` instead of `map`:
+     a registered bytecode (new table `program_ops`, the op set of
+     GRAPH.md: Math with its operations, Clamp, Map range, Threshold with
+     hysteresis, Gate, Slew, Low-pass, Select, Compare, Logic), a flat list
+     of ops over a small register file, with up to `program_inputs_max`
+     source fields and one target. The hub evaluates it as it evaluates a
+     map today (§8.11 Evaluation: on source update, stepped at the target's
+     `max_rate_hz` while converging). The client lowers its graph to this
+     bytecode; the client's own evaluator stays for buttplug ends and for a
+     hub that lacks the capability.
+     **No feedback loops, found algorithmically** (operator ruling
+     2026-10-05): the hub keeps the directed graph of every stored
+     relationship and program, source fields to target field, user
+     variables as nodes like any field, and refuses a save that closes a
+     cycle in it (`INVALID_VALUE`, detail naming the two items). The check
+     is a reachability walk from the new item's target back to any of its
+     sources, over the stored items plus the new one. Loops through the
+     machine itself (a program reading `telemetry.position` and writing a
+     motion field) are not in that graph: they are control loops, and
+     whether to allow them bounded (slew and rate limits mandatory) or refuse
+     them is an open question below.
+  2. **Budget.** The hub declares `program_budget` in WELCOME `limits`: ops
+     per second it will evaluate across all programs, measured on its own
+     silicon with margin, and `program_ops_max` per item. A save that would
+     exceed either is refused `INVALID_VALUE` with the detail naming the
+     number. The budget is the cap's reason, as the token bucket is for
+     streams (§10.5): the limit is stated and measured, never a habit.
+  3. **Machine targets.** A program's target MAY be any writable field,
+     machine fields included, under the existing rules unchanged: ownership
+     (§8.11, `SOURCE_CONFLICT` to a competing writer), the interlock (ESTOP or
+     PAUSE disarms, `armed` false at every boot), the feedback-loop refusal,
+     and the target's own ceilings and `safe` value. A safety intent is never
+     a target.
+  4. **User variables.** A `configure` session MAY declare up to
+     `user_vars_max` named variables, each one user-space STATE channel
+     (f32, bounds and a `safe` value the declarer sets; §8.6 catalog growth,
+     etag moves, every client already handles it). Any session reads and
+     subscribes; any `control` session writes it as an INTENT; programs read
+     and write them. They are the live glue between a script, a plugin, a
+     hub program and a dashboard control, persisted with the relationships.
+- **Pros.** The graph survives the client; latency is the motion task's, not
+  WiFi's; the ceiling is honest and per hub; the same bytecode runs in the
+  reference simulator and in firmware, so the client's preview is the truth.
+- **Cons.** A bytecode is a contract forever (ops append, never renumber);
+  float determinism between the wasm simulator and the firmware must be
+  verified op by op; a program that writes a machine field is a motion
+  source and gets every bit of the scrutiny a stream gets.
+- **Cost.** Registry: `program_ops`, the three limits, the `user-vars`
+  channel family and its declare INTENT. SPEC: §8.11 grows a Programs
+  subsection and a User variables subsection. Reference hub: an evaluator
+  of a few hundred lines, the bench that sets the budget. Reference client:
+  the graph lowering, the capability check, user variables in the add menu.
+- **Wire impact.** Additive. A hub without programs omits the limits and a
+  client keeps evaluating on its side, as today.
+     **Loops through the plant are ruled** (operator 2026-10-05): a program
+     whose inputs include any telemetry field MAY NOT target a motion
+     command (a jog, stream or segment target, `input.*`); it MAY target
+     generator inputs (the pattern and advanced generator knobs, the
+     RFC-103 oscillator's parameters, accessory fields), because a
+     generator renders its knobs under its own ceilings and the hub's
+     shaping, so the loop closes through a bounded stage rather than
+     through the planner. The reachability check carries a `telemetry`
+     taint from such inputs and refuses the save `INVALID_VALUE` when the
+     target is a motion command.
+- **Open questions.** Stack machine versus register list for the bytecode;
+  whether the budget is ops per second or microseconds per tick; whether a
+  program may target a STREAM channel (probably not: streams are schedules).
+  The ceiling itself: what the P4 evaluates per millisecond is measured
+  first, and that number decides how much of this is worth building.
+
+## RFC-105 -- Kinetic²: what a hub promises about timed knots, and the planner options a client may tune
+
+- **Status:** DRAFT (operator 2026-10-05). The reference planner is being
+  rewritten as Kinetic² (Nucleus epic val-7p2, code in the Kinetic repo).
+  This RFC states only the wire-visible promises of a hub that plans the
+  way Kinetic² plans; the kernel itself is the Kinetic repo's design doc.
+  **This draft is a working document:** the "Anticipated workflow" section
+  at its end grows while the kernel is built, one entry per thing met on
+  the way, and the proposal above it is corrected from those entries before
+  acceptance.
+- **Origin.** The reference planner plans one trajectory per command at
+  arrival with one segment of lookahead, and chases bare samples at zero
+  latency with prediction. SPEC §5.4 already defines `schedule_latency_us`
+  on a samples grant as the chase-planning budget, and §9's curve family
+  text already says a C1 corner is authored on purpose; neither promise is
+  stated as a planner contract a client can rely on.
+- **Problem.** A client cannot know, from the spec, whether its samples are
+  interpolated or predicted, whether its hard stops survive, when the hub
+  will trade amplitude for a deadline, or which of the hub's planner
+  settings are safe to expose to a user. The reference client's preview
+  (a wasm build of the same planner) is only the truth if these are
+  promises, not habits.
+- **Proposal.**
+  1. **One sample behind.** On a `samples`-kind grant the hub treats each
+     sample as a knot at `arrival + schedule_latency_us`, and the commanded
+     curve passes through the knots, interpolating between the two it knows,
+     never extrapolating past the newest. The declared latency is therefore
+     exact, not a budget, and a client leads its media by it (§5.4).
+  2. **Junction kinds.** At every knot the hub renders one of three
+     junctions, chosen by the grant's effective `curve_family` and the
+     segment's `end_vel`: SMOOTH (no end velocity, C2: velocity and
+     acceleration free, the smoothest curve through), AUTHORED (end velocity
+     given: pinned; acceleration continuous under C2, free to step under C1),
+     HARD (end velocity 0 under C1, or a C1 corner: acceleration changes as
+     fast as the jerk ceiling allows and a stop is the fastest legal brake
+     landing at the knot time). No new wire: the two keys already exist.
+  3. **Shaping and its report.** A knot the ceilings cannot honor is spent
+     under the hub's declared policy (Blend keeps the deadline and trims
+     amplitude down to its floor; Stretch keeps the stroke and moves the
+     knot), decided over the hub's whole lookahead window, and reported on
+     `plan.flags` (RFC-100) and the anomaly channel naming the axis spent.
+     Ceilings are never exceeded in the rendered motion: that is a
+     promise, verifiable by sampling the hub's own `plan.*` telemetry.
+  4. **The oscillator yields** (RFC-103): planned motion keeps its amplitude
+     and the oscillation is shed first.
+  5. **Declared ceilings.** WELCOME `limits` carries `segment_rate_max_hz`
+     (the planner's measured sustainable segment rate; the catalog
+     `max_rate_hz` of the segment stream is at most this and defaults to
+     half of it) and `osc_max_hz` (RFC-103).
+  6. **Planner options are catalog settings.** Every option Kinetic² exposes
+     is a setup-category field (RFC-079), one of a registered table
+     `planner_options` that names its semantic so a client can present it
+     and a tuner can score it: the latency (the grant key, read-only here),
+     the lookahead window, the infeasible policy, the amplitude floor, the
+     smoothness bias (tracking error against jerk), the hard-stop rendering
+     (brake tail or spline), the sample interpolation kind (monotone cubic
+     or quintic), the settle behavior, and the quiet-release window. The
+     rule for adding one (operator 2026-10-05): the kernel is built for the
+     optimal behavior; where one choice is more accurate in one place and
+     less in another, it becomes an option rather than a compromise.
+  7. **The tuner is a client page over those fields** (Phosphor ph-mdqo's
+     sibling bead): it replays a script through the client's wasm build of
+     the same kernel under candidate option sets, scores them (RMS tracking
+     error at the declared latency, overshoot count, amplitude retention,
+     ceiling violations, which must be 0), overlays planned against actual
+     from `plan.*` telemetry, writes the chosen set to the hub, and saves
+     presets through the ordinary store. It needs nothing the catalog does
+     not already carry.
+- **Pros.** A client's preview is the truth by contract; the hard stop an
+  author wrote survives by contract; every knob is a field, so the tuner,
+  the dashboard and the search all see it for free.
+- **Cons.** Promise 3 makes the ceilings a conformance test the hub can fail
+  in public. That is the point.
+- **Cost.** Registry: `planner_options`, two limits. SPEC: §5.4 one
+  paragraph, §9 a Junctions subsection, §10.1 the limits. Reference hub:
+  Kinetic². Reference client: the tuner page, the preview on the wasm build.
+- **Wire impact.** Additive. The two limits and the fields are new; the
+  junction keys exist.
+- **Open questions.** Whether SMOOTH under C1 should exist (a C1 stream with
+  no end velocities: free velocity, stepping acceleration). Whether the
+  lookahead window should be a client wish. The exact list of
+  `planner_options`, which the build decides.
+- **Anticipated workflow.** (Appended as the kernel is built; newest last.)
+  - 2026-10-05: draft opened with the rulings of the day: one sample behind,
+    the three junction kinds, the oscillator yields, no Ruckig in firmware
+    (Kinetic 1 stays as the native test oracle), measured rate ceiling with
+    the default at half.
+  - 2026-10-05, kernel skeleton (kin-nb9): the one entry is a knot; the
+    engine never sees a wire format, so segment, sample and stroke
+    conversion is the hub's (and the wasm shim's) business, which keeps
+    promise 1 testable at the conversion rather than inside the planner.
+    Met on the way: (a) a knot with a nonzero velocity and nothing after it
+    is a starved stream, and the only honest rendering is the brake
+    profile landing at rest, so starvation is the brake, not a coast; the
+    SettleEngaged anomaly keeps its Kinetic 1 number. (b) A successor
+    arriving changes the junction of the knot before it (free velocity
+    becomes a chord), so the piece toward a knot is built lazily at first
+    sample, never at submit: the promise is about the rendered curve, and
+    it stays continuous in p and v by construction. (c) A knot at or before
+    the newest, or at or before now, is refused and counted
+    (KnotRefused, new kind 11): one sample behind means a sender never
+    needs to go backwards. (d) Float-first forbids absolute time as float:
+    deltas inside a piece only, which the test for bit-exactness covers.
