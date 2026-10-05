@@ -8351,3 +8351,60 @@ say exactly which, future-us will want the receipts.*
   NACK a failure, and with which code (a new `HOMING_FAILED`, or
   `INTERLOCK` with a detail)? This draft keeps the start-ECHO because no
   reference library can defer today.
+
+## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
+
+- **Status:** DRAFT (operator ruling 2026-10-04, ahead of the first Store
+  and Flathub releases of the reference client). Phosphor builds against
+  the rule below from its `base/0.1` tag; acceptance writes it into SPEC §1
+  (document conventions) and the registry's `version` fields.
+- **Origin.** The reference client reached its first package submissions
+  (Microsoft Store, Flathub) and every store wants a strictly increasing
+  version on every upload. The operator ruled what the three numbers
+  promise, so that a version is a compatibility statement and not a date.
+- **Problem.** SPEC carries `v1.0-draft` and the hub reports `fw_version`
+  and `protocol_version` in identity, but nothing says what a client may
+  conclude from two numbers side by side: whether a 1.3 client may drive a
+  1.1 hub, or what a changed patch means. Each repo bumped on its own habit
+  (the firmware per flash, the client never).
+- **Proposal.** SemVer with these meanings, binding on the spec, every hub
+  and every client:
+  - **MAJOR is the compatibility line, shared across the stack.** Every
+    1.x.y hub, client and library interoperate. A break between two 1.x
+    parties is a bug in one of them: either the older behavior was wrong, or
+    the newer one is, and the fix ships as a patch. A major bump is the only
+    place a wire or semantic break may land, and it comes with an RFC that
+    names the break.
+  - **MINOR adds.** A feature introduced in x.2 may not work against an x.1
+    peer (the peer does not know it), and that is allowed; nothing outside
+    that feature may break. A client that meets an older hub hides the
+    feature, a hub that meets an older client refuses the verb with the
+    existing NACK, neither side degrades anything else.
+  - **PATCH is free and moves on every build**, not only on releases or
+    submissions. Two builds with different bits never share a patch; a
+    patch carries no compatibility meaning at all.
+  - The spec's MAJOR is the line everyone implements: SPEC is at 1 today
+    (`v1.0-draft`) and stays there, since the number drives the protocol
+    itself. Implementations below 1.0 (today's 0.y.z client and hub) are
+    pre-release builds against protocol major 1 and make no promise among
+    themselves; each party's promise starts at its own 1.0.0, a one-way door
+    because stores refuse to count backwards.
+  - Each repo computes its own patch (the reference client counts commits
+    since its `base/MAJOR.MINOR` tag; the reference hub stamps per flash).
+    MAJOR and MINOR are edited by hand, once, in the one file each repo
+    names as its source.
+- **Pros.** A version pair answers "will these two work" without a table.
+  Store and Flathub constraints (monotonic, numeric) are met by construction.
+  No release commits that only bump a number.
+- **Cons.** Patch numbers grow fast and mean nothing to a reader; the
+  client's commit count can pass 999 within a minor, which Android's
+  versionCode formula (major*1e6 + minor*1e3 + patch) cannot carry, so a
+  minor bump is forced before that.
+- **Cost.** SPEC §1 a paragraph; identity's `protocol_version` gains the
+  MAJOR.MINOR reading in §4. Reference client: `tools/version.mjs`,
+  `npm run check` enforcing the committed base, CI stamping before the
+  bundle (landed with this draft). Reference hub: none until 1.0.
+- **Wire impact.** None.
+- **Open questions.** Whether `protocol_version` in identity should carry
+  MAJOR.MINOR only (the patch is noise on the wire), and whether a client
+  must warn when its MINOR exceeds the hub's rather than silently hiding.
