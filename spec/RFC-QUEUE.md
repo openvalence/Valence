@@ -8671,3 +8671,51 @@ say exactly which, future-us will want the receipts.*
     (KnotRefused, new kind 11): one sample behind means a sender never
     needs to go backwards. (d) Float-first forbids absolute time as float:
     deltas inside a piece only, which the test for bit-exactness covers.
+  - 2026-10-05, the solver (kin-ahl, first cut): junction velocities are
+    authored or monotone (Fritsch-Butland) so a free knot sequence never
+    overshoots between knots; junction acceleration is the centered
+    difference of the junction velocities; the referee walks every extremum
+    of p, v, a, j (Kinetic 1's method, float). Met on the way: (e) jerk is
+    the binding ceiling on short strokes: a rest-to-rest quintic starts at
+    j = 60 d / T^3, so a stroke that looks gentle by speed is often illegal
+    by jerk, and the tuner must show WHICH ceiling bound a spend (the
+    anomaly detail needs an axis code: planned). (f) An authored velocity
+    pointing out of the window at a rail cannot be fixed by any spend on
+    position; it is clamped to 0 and reported EndVelClamped, promise 3's
+    "never exceeded" needs that clamp. (g) An axis at rest starts its first
+    piece at the submit time, not at the hold's start. (h) Stretch's search
+    range comes from the analytic minimum times under each ceiling
+    (1.875 d / vmax, sqrt(5.77 d / amax), cbrt(60 d / jmax)), doubled for
+    moving ends, so the bisection never runs out of room. (i) Busy means
+    the SOLVED timeline has motion left: Stretch may have moved the last
+    knot past the time the sender asked for. (j) Blend cannot render a
+    brake: trimming a stop toward where you are, with the same entry
+    velocity, makes the stop more violent, so the brake is its own profile
+    (kin-4gd) and the HARD junction's tail waits for it.
+  - 2026-10-05, the brake and the HARD tail (kin-4gd): the brake is two to
+    four phases of constant jerk from any entry state, closed form, at rest
+    exactly by construction; the one entry that needs the fourth phase is
+    an acceleration already too large to stop in time, which ramps to zero
+    first and then stops from the reversed state. Met on the way: (k) PARK
+    needs no profile of its own: a point-to-point move is a knot at the
+    analytic minimum time under the ceilings, rendered by the same solver;
+    a quintic is some 1.5x slower than a bang-bang S-curve at the velocity
+    ceiling, which the Kinetic 1 oracle will quantify, and if it matters it
+    becomes a planner option (park profile: quintic or S-curve), never a
+    second kernel. (l) The HARD junction is literal: the head is a plain
+    piece into the brake's start state and the cruise speed is the largest
+    the head can legally reach (bisection), so the stop is the fastest legal
+    one landing on the knot, and it reaches the decel ceiling where a
+    smooth stop need not. (m) A brake wins over the timeline: every pending
+    knot is dropped and the origin moves to the brake's end, at rest, so a
+    knot submitted meanwhile chains from there and one dated before it is
+    refused as past; the hub's e-stop and pause semantics (§11.3) sit on
+    exactly this.
+  - 2026-10-05, sources (kin-ob3): the sample and segment conversions are
+    one small header, and promise 1 is a test on it: a 60 Hz sample stream
+    racing across the window and then parked renders one latency behind
+    and never passes the last sample, because between two known knots the
+    monotone junction cannot overshoot. (n) A jog is a sample: the hub's
+    jog path needs no planner mode of its own, only the same conversion
+    with the jog ceilings, which is how the scrub overshoot (Phosphor
+    ph-ffsk, Nucleus val-1bf) closes by construction rather than by tuning.
