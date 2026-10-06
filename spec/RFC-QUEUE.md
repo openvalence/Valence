@@ -9394,5 +9394,11 @@ say exactly which, future-us will want the receipts.*
     velocity times a tick, nothing refused or dropped. Through the arbiter:
     the climb in flight hands off at 25.8 mm moving 206 mm/s, the plan
     follows the new bundle, census refused 0 and failures 0.
+    (uu) The solver's banded system is storage the engine owns per axis
+    (jerk::Workspace), never static and never thread_local: the first
+    Kinetic²-only image on the P4 carried 10 KB of thread-local data, and
+    ESP-IDF carves a task's thread-local block from that task's own stack,
+    so the IPC task could not be created and the board boot-looped before
+    app_main (Kinetic kin-6tz).
 
 ---
