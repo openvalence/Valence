@@ -8905,7 +8905,12 @@ say exactly which, future-us will want the receipts.*
     0 `sine`, 1 `square`, 2 `saw`, 3 `saw_reverse`), `dwell_crest` and
     `dwell_trough` (f32, share of one period held at that extreme, two
     decimals, as RFC-095's dwells hold a stroke; a square with dwells is a
-    pulse-width control, a saw with a dwell is a ramp and hold).
+    pulse-width control). A saw arrives at its extremes moving, so the saw
+    shapes have no rest to hold: they ignore the dwells (kernel finding
+    2026-10-06). Every shape is band-limited by construction: square edges
+    and saw flybacks are jerk-limited quintic ramps, and a dwelled sine
+    renders its halves as quintics so a hold is reached at rest in
+    acceleration.
   - **Driven parameters.** `frequency` and `amplitude` each carry a drive:
     `drive` (new table `osc_drives`: 0 `fixed`, 1 `speed`, 2 `position`,
     3 `axis`) and four map bounds `in_min, in_max, out_min, out_max`
@@ -9244,5 +9249,22 @@ say exactly which, future-us will want the receipts.*
     is still hit at its time with its velocity by walking the mid state
     back to the ramp's start. Under the default (continuous) the rendered
     bits are unchanged, which the fingerprint test proves.
+  - 2026-10-06, the oscillator stage (kin-b5g, RFC-103 in the kernel):
+    additive on the planned state, the amplitude rendered each instant is
+    the largest that keeps the sum under every ceiling, measured from the
+    shape's own peak demands. Met on the way: (x) a shape with a held
+    extreme must reach it at rest in acceleration, and a sine never does,
+    so a dwelled sine renders as quintic halves; a saw arrives at its crest
+    moving, so the saw shapes ignore dwells (RFC-103 says so now, as a
+    constraint of the shape, not an option). (y) Every shape is
+    band-limited by construction: square edges and saw flybacks are quintic
+    ramps of a fixed share of the cycle, the flyback keeping the ramp's
+    slope at both ends; at 4 Hz on a 30000 jerk ceiling a square keeps
+    about a sixth of a sine's amplitude, which is the honest cost of edges.
+    (z) The yield is per sample from the planned state's velocity and
+    acceleration headroom; the planned jerk is not in the sampled state, so
+    the stage keeps its own jerk under jmax and the sum's jerk is verified
+    in the suite, not promised by the bound: an open item for the hub
+    (publish the planned jerk, or budget it).
 
 ---
