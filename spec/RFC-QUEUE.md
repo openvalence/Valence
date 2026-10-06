@@ -9362,5 +9362,21 @@ say exactly which, future-us will want the receipts.*
     ceiling of 500 still crawls (Kinetic kin-gt1): a piece's jerk at that
     cadence is about three hundred thousand times its speed mismatch, so the
     ceiling, not the model, binds there; 1000 tracks.
+    (qq) A trailing sample's prior time follows the replay rule again when
+    it trails the rule by a whole cadence: a stream that began far from a
+    resting carriage had its first samples stretched one by one, and those
+    times, kept, spaced samples authored 10 ms apart at 112, 71, 33 and 28
+    ms; the spline wiggled, the monotone band zeroed a junction inside a
+    moving stream, and every later sample was unreachable. The window's
+    first sample still keeps its time. With this the 60 Hz sine tracks at a
+    jerk ceiling of 500 as well. (rr) A junction accelerating toward vmax is
+    clamped so jmax can shed the acceleration before the velocity reaches
+    the ceiling, as the rail clamp does for position: any knot may turn out
+    to be the last. (ss) Ruling 2026-10-06: Kinetic² is the hub's planner in
+    every build; the kernel switch, Kinetic 1 and Ruckig leave Nucleus, and
+    the bench A/B no longer gates it. The factory input jerk ceiling is
+    5,000,000 mm/s^3 (2,000,000 was kinematically limiting; 5 to 10 million
+    is the machine). Open: a sample stream at the velocity ceiling from far
+    away still collapses on the bare kernel (Kinetic kin-brr).
 
 ---
