@@ -4,7 +4,6 @@ description: >-
   Valence clause 6: identity, HELLO and WELCOME, the readiness gate, the
   network probe, liveness, mid-session subscription management, reconnect and
   teardown.
-register: IEEE
 generated: true
 ---
 

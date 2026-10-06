@@ -3,7 +3,6 @@ title: Transports and relays
 description: >-
   Valence clauses 13-14: the binding contract and its matrix, the WebSocket,
   ESP-NOW, BLE, serial and in-process bindings, discovery, and the relay role.
-register: IEEE
 generated: true
 ---
 

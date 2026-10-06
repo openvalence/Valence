@@ -1,7 +1,6 @@
 ---
 title: NACK codes
 description: Generated table of every Valence NACK and GOODBYE reason code, grouped by range.
-register: IEEE
 generated: true
 ---
 

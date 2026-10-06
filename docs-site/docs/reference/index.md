@@ -2,33 +2,35 @@
 title: Reference
 description: >-
   Lookup material: the Valence Dictionary, the generated registry tables, and the channel catalog reference.
-register: STE
 ---
 
 # Reference
 
-Material you look things up in.
+This section holds the Dictionary, the generated registry tables, the channel catalog reference and the channel grid.
 
 | Page | Contains |
 |---|---|
-| [The Dictionary](dictionary.md) | Every term, exactly one definition each |
+| [The Dictionary](dictionary.md) | Defined terms and their definitions |
 | [Registry reference](registry/index.md) | Every wire number, generated from `registry.yaml` |
 | [Channel catalog](channel-catalog.md) | What a real device's catalog looks like, entry by entry |
+| [Channel grid](channel-grid.md) | The 0xCDSS channel numbering convention: class, domain, family, and member |
 
-## Two things worth knowing
+## Generated registry pages
 
-**The registry pages are generated.** No number on this site is typed by a
-human. If a generated table and any prose disagree, the table wins, and the
-prose is a bug. A stale table fails the build.
+The registry pages are generated from `registry.yaml` by `gen_docs_tables.py`.
+Where a generated table and prose disagree, the table is correct and the prose
+has a defect. CI fails the build when a generated table is out of date.
 
-**The Dictionary auto-links itself.** A term defined there shows its
-definition on hover wherever it appears on this site. The tooltips and the
-Dictionary page come from one source, so a term cannot acquire a second
-meaning.
+## Dictionary tooltips
+
+A term defined in the Dictionary shows its definition on hover wherever it
+appears on this site. The tooltips and the Dictionary page are both
+generated from `dictionary.yaml`. The generator refuses two definitions for one
+written form.
 
 ## Quick lookups
 
-- [Frame types](registry/frames.md): what is this `type` byte?
-- [NACK codes](registry/errors.md): why was my frame refused?
-- [Limits and defaults](registry/limits.md): how big, how fast, how long?
-- [CBOR keys](registry/cbor-keys.md): what is key 24?
+- [Frame types](registry/frames.md): every `type` byte
+- [NACK codes](registry/errors.md): every refusal reason
+- [Limits and defaults](registry/limits.md): sizes, rates and timeouts
+- [CBOR keys](registry/cbor-keys.md): every integer key

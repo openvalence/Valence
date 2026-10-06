@@ -1,7 +1,6 @@
 ---
 title: Catalog vocabulary
 description: Generated tables of packed field types, field roles, setting categories, setting flags and procedure phases.
-register: IEEE
 generated: true
 ---
 

@@ -2,7 +2,6 @@
 title: JavaScript client guide
 description: >-
   How to write a Valence client in JavaScript.
-register: STE
 status: stub
 ---
 
@@ -10,27 +9,24 @@ status: stub
 
 !!! warning "This page is not written yet"
 
-    It is a stub. It names what belongs here and where the source
-    material is. It does not fake content.
+    This page is a stub. It lists what it will cover and the source material.
 
-    Content follows the v1.0 tag on purpose: the normative section must
-    describe what shipped, not what was planned.
+    Content is written after the v1.0 tag.
 
 ## What belongs on this page
 
-The browser client. Cover `WebSocket` binary frames, the subprotocol, CBOR in the browser, and why optimistic interface state is prohibited.
+The browser client. Cover `WebSocket` binary frames, the subprotocol, CBOR in the browser, and the prohibition on optimistic interface state.
 
 Source material: `clients/js/`, this repo's own v1.0 reference
 implementation (see the [Quickstart](../quickstart.md#javascript) for a
 worked example), and `tools/valence_probe.py` for wire parity.
 
-> DEMO-CANDIDATE: a live connect-and-subscribe walkthrough in the browser —
+> DEMO-CANDIDATE: a live connect-and-subscribe walkthrough in the browser,
 > HELLO to rendered STATE, one frame at a time.
 
-## Every client guide covers the same seven things
+## Common outline
 
-Keep the order identical across languages, so a reader who knows one guide can
-skim another.
+Every client guide covers these seven steps in this order.
 
 1. Open the transport and complete the handshake.
 2. Handle the catalog: fetch, cache by
@@ -45,6 +41,6 @@ skim another.
 
 ## Where to go next
 
-- [Quickstart](../quickstart.md) — the same seven steps, worked end to end.
-- [Plugin guide](../plugins.md) — wiring a client into a host application.
-- [CLI guide](../cli.md) — watch what your client did to the motion.
+- [Quickstart](../quickstart.md): a worked example, end to end.
+- [Plugin guide](../plugins.md): wiring a client into a host application.
+- [CLI guide](../cli.md): graph the motion your client produced.

@@ -4,7 +4,6 @@ description: >-
   Valence clause 5: the 8-byte frame header, the deterministic CBOR profile,
   packed data-plane layouts, the ESTOP frame, fragmentation, and parser
   totality.
-register: IEEE
 generated: true
 ---
 

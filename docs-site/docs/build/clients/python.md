@@ -2,7 +2,6 @@
 title: Python client guide
 description: >-
   How to write a Valence client in Python.
-register: STE
 status: stub
 ---
 
@@ -10,15 +9,14 @@ status: stub
 
 !!! warning "This page is not written yet"
 
-    It is a stub. It names what belongs here and where the source
-    material is. It does not fake content.
+    This page is a stub. It lists the planned content and the source
+    material.
 
-    Content follows the v1.0 tag on purpose: the normative section must
-    describe what shipped, not what was planned.
+    Content is written after the v1.0 tag.
 
-## What belongs on this page
+## Planned content
 
-The tooling and test client. Cover a minimal session, and reading generated constants rather than typing numbers.
+The tooling and test client: a minimal session, and using generated constants instead of numeric literals.
 
 Source material: `tools/valence_probe.py`, the reference verifier.
 
@@ -26,10 +24,9 @@ Source material: `tools/valence_probe.py`, the reference verifier.
 > [Quickstart](../quickstart.md#python)) run live, one decoded frame printed
 > per line.
 
-## Every client guide covers the same seven things
+## Common outline
 
-Keep the order identical across languages, so a reader who knows one guide can
-skim another.
+Every client guide covers these seven steps in this order.
 
 1. Open the transport and complete the handshake.
 2. Handle the catalog: fetch, cache by
@@ -44,7 +41,7 @@ skim another.
 
 ## Where to go next
 
-- [Quickstart](../quickstart.md) — the same seven steps, worked end to end.
-- [CLI guide](../cli.md) — the probe and Valence Trace, in depth.
-- [Local testing](../local-testing.md) — run this against the simulator
-  before you run it against hardware.
+- [Quickstart](../quickstart.md): a worked example, end to end.
+- [CLI guide](../cli.md): the probe and Valence Trace, in depth.
+- [Local testing](../local-testing.md): run the client against the simulator
+  before running it against hardware.

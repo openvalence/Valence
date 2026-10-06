@@ -1,7 +1,6 @@
 ---
 title: The Valence Dictionary
 description: Every Valence term with exactly one definition: hub, client, session, channel, catalog, etag, grant, shadow, deadman, intent, echo, and the rest.
-register: STE
 generated: true
 ---
 

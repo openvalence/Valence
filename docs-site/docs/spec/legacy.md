@@ -3,7 +3,6 @@ title: Legacy interop
 description: >-
   Valence clause 15: legacy text-protocol edges as synthetic sessions, and the
   predecessor-protocol migration map.
-register: IEEE
 generated: true
 ---
 

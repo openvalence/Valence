@@ -1,26 +1,25 @@
 ---
 title: Quickstart
 description: >-
-  Connect a Valence client, adopt live machine state, and send one intent — with the readiness gate that every client written against the old draft gets wrong.
-register: STE
+  Connect a Valence client, adopt live machine state, pass the ready gate and send one intent.
 ---
 
 # Quickstart
 
-This page gets you one connected client. It reads live machine state and sends
-one command.
+This page builds one connected client that reads live machine state and sends
+one intent.
 
-Develop against [the simulator](local-testing.md#the-simulator). It embeds the
-real hub, the real motion engine and the real catalog, so a client that works
-there works on hardware. Nobody's machine has to be in the room.
+Develop against [Nucleus's `valencesim`](local-testing.md#a-real-devices-own-simulator).
+It embeds that device's hub, motion engine and catalog behind the same wire
+protocol.
 
 ```bash
 valencesim machine --homed --headless --duration 120
 ```
 
-## The session, in seven steps
+## Session sequence
 
-Every Valence client does this, in this order.
+A Valence client performs these steps in this order.
 
 ```mermaid
 sequenceDiagram
@@ -39,14 +38,14 @@ sequenceDiagram
 ```
 
 Steps 1 to 3 identify both parties. Step 4 is the
-[ready gate](#the-ready-gate), and it is the one people miss. Steps 5 to 7 are
+[ready gate](#the-ready-gate). Steps 5 to 7 are
 the working session.
 
 ## Python
 
 The [probe](cli.md#the-probe) is import-safe: everything with a side effect
-lives under its `main()`. So the shortest honest client imports it as the wire
-library and writes only the session.
+lives under its `main()`. The example imports it as the wire library and writes
+only the session.
 
 ```python
 import os, sys, time, websocket
@@ -80,7 +79,7 @@ etag = w[ss.K["catalog_etag"]]
 print("WELCOME  session=%d  etag=%s  deadman=%dms"
       % (w[ss.K["session_id"]], etag.hex(), w[ss.K["deadman_ms"]]))
 
-# 2. CATALOG_READY: declare the catalog you decode against. Nothing flows before this.
+# 2. CATALOG_READY: declare the catalog you decode against. The hub sends no STATE and refuses intents until this frame.
 ss.send_frame(ws, ss.FRAME["CATALOG_READY"], 0, etag)
 print("CATALOG_READY sent")
 
@@ -90,7 +89,7 @@ ss.send_frame(ws, ss.FRAME["SUBSCRIBE"], 0, ss.build_subscribe([
     (ss.CH_MOTION, 20.0, ss.PRIORITY["elevated"]),
 ]))
 
-# 4. Retained STATE arrives immediately: adopt it, never assume a default.
+# 4. Retained STATE arrives immediately: adopt it; do not assume a default.
 hdr, payload = wait_for(ss.FRAME["STATE"])
 while hdr["channel"] != ss.CH_MOTION:
     hdr, payload = wait_for(ss.FRAME["STATE"])
@@ -122,9 +121,9 @@ STATE    motion pos=0.00mm
 ECHO     asked 5.00mm -> applied {1: 5.0, 2: False}
 ```
 
-The last line is the whole point. `5.0` is what the hub **applied**, after its
-own [clamp](../reference/dictionary.md#clamp). Render that number, never the
-one you sent.
+`5.0` is what the hub **applied**, after its
+own [clamp](../reference/dictionary.md#clamp). Render the applied value, not the
+value you sent.
 
 > DEMO-CANDIDATE: run this exact script live against an in-browser simulator,
 > and highlight each line of output as its frame arrives.
@@ -132,7 +131,7 @@ one you sent.
 ## JavaScript
 
 `clients/js/` is the browser client, and it is a v1.0 reference
-implementation. It hides the handshake, including the ready gate, and hands you
+implementation. It performs the handshake, including the ready gate, and emits
 events.
 
 ```javascript
@@ -159,19 +158,19 @@ s.connect();
 ```
 
 Field names come from the catalog verbatim, already scaled to millimeters.
-Writing is the same shape, and it also resolves on the applied value:
+Write calls resolve with the applied value:
 
 ```javascript
 const { applied } = await s.sendConfigSet({ 1: windowMinMm, 2: windowMaxMm });
-// applied[1] / applied[2] are the DEVICE's clamped values — render those.
+// applied[1] / applied[2] are the DEVICE's clamped values; render those.
 await s.sendMove(targetMm);
 ```
 
-Motion input is not an intent. It is a c2h STREAM you publish: find the
+Motion input is a c2h STREAM that the client publishes, not an intent: find the
 channel in the catalog, ask the hub for a grant, then send samples keyed by the
 layout's own field names. Every refusal (not granted, over the granted rate,
 a malformed bundle, a segment scheduled too far ahead) throws a `PublishError`
-with a `PUBLISH_ERROR` code; nothing is dropped silently.
+with a `PUBLISH_ERROR` code; the client raises an error for every refused sample.
 
 ```javascript
 import { CHANNEL_CLASS, STREAM_KIND } from './clients/js/index.js';
@@ -185,24 +184,22 @@ s.publishSegment(segmentChannelId,           // a segments-kind channel
   { anchor: s.hubNowUs() + 60000 });         // execution start, in hub time
 ```
 
-Prove your build against a real hub before you trust it, running the full
-read-only session **twice back to back** -- the
+Test your build against a hub by running the full read-only session twice back
+to back. This is the
 [mandatory pattern](local-testing.md#the-pattern-that-is-mandatory) for
 anything touching session lifecycle. `clients/js/test/valence-wire.test.mjs`
-in this repo proves the wire codec byte-for-byte; a live two-connection
-session walkthrough against a real hub is a small script away using the same
-`clients/js/` primitives, or reach for `tools/valence_probe.py`.
+in this repo proves the wire codec byte-for-byte. For a live check, run
+`tools/valence_probe.py` twice against the same hub.
 
 ## The ready gate
 
-!!! danger "Send CATALOG_READY, or nothing works and the reason is invisible"
+!!! danger "Send CATALOG_READY before anything else"
 
     The hub gates **both** planes until your session declares which catalog it
     operates against. Before that declaration you get no STATE, no stream, and
     every intent is refused `NOT_READY`.
 
-This is the single thing a client written against an older draft gets wrong.
-Here is the same script with one line removed:
+Output of the same script with the CATALOG_READY line removed:
 
 ```text
 WELCOME  session=2929602731  etag=0458eec408a43692  deadman=600ms
@@ -211,47 +208,43 @@ STATE    nothing arrived in 2.0s
 NACK     NOT_READY
 ```
 
-No error at connect. No error at subscribe. Just silence, and then a refusal
-with a name you have to know to interpret.
+Connect and subscribe succeed without error, no STATE arrives, and the intent
+is refused `NOT_READY`.
 
-The rule exists for safety, not for bookkeeping. A client that has not adopted
-the retained [safety latch](../reference/dictionary.md#latch) must not be able
-to act. Gating the control plane on the same declaration makes that
-impossible rather than merely unlikely.
+The gate is a safety rule. A client that has not adopted
+the retained [safety latch](../reference/dictionary.md#latch) must not act, and
+the hub enforces this by gating the control plane on the same declaration.
 
 **What to declare.** Send the [etag](../reference/dictionary.md#etag) of the
-catalog you actually decode against.
+catalog you decode against.
 
 - If you fetched the catalog, verify its bytes hash to the etag WELCOME
   advertised, then declare that etag.
 - If you already had that etag cached, skip the fetch and declare it.
 - If you hardcode layouts, like the probe does, declare the hub's etag only
-  because it matches what you compiled against. Anything else is a lie the hub
-  will believe.
+  because it matches what you compiled against. The hub cannot detect a false
+  declaration.
 
-## The rules that come with it
+## Client rules
 
-**Adopt, never assume.** Retained STATE arrives on grant. Your first render
-comes from the machine. A client that paints defaults on page load, then
-corrects itself, has already lied once.
+**Adopt retained STATE.** Retained STATE arrives on grant. Do not render
+defaults before it arrives.
 
-**Render the echo, not the request.** The ECHO carries applied, post-clamp
+**Render the echo.** The ECHO carries applied, post-clamp
 values. See [ground truth](../reference/dictionary.md#ground-truth).
 
-**Keep talking.** [Liveness](../reference/dictionary.md#liveness-ping) is silence-based, and it is measured on what you
-**send**. A pure subscriber is the trap: telemetry pours in, your receive path
-never idles, and the hub reaps you for silence anyway. Send PING on your own
+**Send PING.** [Liveness](../reference/dictionary.md#liveness-ping) is silence-based, and it is measured on what you
+**send**. Received frames do not count, so a subscriber that only receives counts as silent. Send PING on your own
 clock, well inside the advertised `deadman_ms`.
 
-**Expect a NACK to be normal.** `NOT_HOMED` on an unhomed machine is the
-system working. Show it; do not retry it in a loop.
+**Treat a NACK as a normal response.** `NOT_HOMED` on an unhomed machine is expected
+behavior. Show it; do not retry it in a loop.
 
 ## Where to go next
 
-- [Client guides](clients/python.md) — the same session, per language, in
+- [Client guides](clients/python.md): the same session, per language, in
   depth.
-- [CLI guide](cli.md) — watch what your client actually did to the motion.
-- [How it works](../understand/how-it-works.md) — the mental model, if the
-  above felt like magic.
-- [§6 Session layer](../spec/session.md#s6) — the normative rules for
+- [CLI guide](cli.md): graph the motion your client produced.
+- [How it works](../understand/how-it-works.md): the protocol model.
+- [§6 Session layer](../spec/session.md#s6): the normative rules for
   everything on this page.

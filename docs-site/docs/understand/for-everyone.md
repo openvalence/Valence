@@ -1,134 +1,118 @@
 ---
 title: For everyone
 description: >-
-  What Valence means if you simply own a machine: your apps and your machine agree, the stop control always works, and nothing leaves your home.
-register: STE
+  What Valence changes for a machine owner: apps show the values the machine applied, any device on the network can send a stop, and the machine needs no internet connection.
 ---
 
 # For everyone
 
-This page is for people who own a machine and do not write software. There is
-no code on it and nothing to configure.
+This page covers what Valence changes for a machine owner: apps that agree with
+the machine, firmware updates, the stop control, pairing and privacy.
 
-**Valence is a shared language between a machine and the apps you use with
-it.** The machine explains itself. The app listens. That is the whole idea,
-and everything below is a consequence of it.
+Valence is a protocol between a machine and the apps you use with it. The
+machine sends a description of its settings and readings, and the app builds
+its screens from that description.
 
-## Your app and your machine agree
+## App and machine agreement
 
 If your app shows a number, that is the number the machine is using.
 
-Apps used to guess. You moved a slider, the app drew the new value, and the
-machine quietly did something slightly different — because it has limits, and
-the app did not know them. The two disagreed, and you had no way to tell which
-one was right.
+A machine has limits. When a request exceeds a limit, the machine applies the
+nearest allowed value and reports it, and every app shows the reported value.
 
-Now the machine answers with what it actually did, and every app shows that
-answer. If you ask for more than the machine allows, you see the value it
-used, not the value you asked for.
-
-## Your apps keep working after a machine update
+## Firmware updates and existing apps
 
 When your machine gets new firmware, it describes itself again. Your apps read
-the new description and carry on.
+the new description and keep working without an app update.
 
-You do not have to wait for every app you use to be updated first. You do not
-have to keep an old firmware version because one app has not caught up.
+Apps do not need an update before you install new firmware, and you do not
+need to hold back firmware for an app that has not been updated.
 
-## New features show up without an app update
+## New settings without an app update
 
 If a machine update adds a setting, that setting appears in the apps you
-already have, with its correct name, its correct units and its correct safe
-range.
+already have, with the name, units and safe range the machine declares.
 
-There is nothing magic here. The app builds its screen from what the machine
-says it has, so a new control is simply a new thing to show.
+The app builds its screen from what the machine says it has.
 
-## One app can talk to different machines
+## Machines from different makers
 
-An app written for this language is not written for one brand of machine. It
-asks whatever machine it finds what that machine can do, and shows exactly
-that.
+An app written for Valence asks each machine what it can do and shows that,
+whatever the brand.
 
-A machine without a temperature sensor does not claim one. A machine with a
-longer travel says so. The app adjusts on its own.
+The app shows only the readings a machine declares, and uses the travel length
+the machine reports.
 
-## The stop control always works
+## The stop control
 
 **Any device that can reach the machine can stop it.** That includes a device
-that is not allowed to control anything else — a spare phone, a tablet showing
+that is not allowed to control anything else: a spare phone, a tablet showing
 a status page, a small remote you never paired.
 
-Stopping is deliberately the one thing that never asks for permission.
-Starting is not.
+Stopping needs no permission; starting needs a paired device with control
+permission.
 
 The machine also confirms that it stopped. The device that pressed stop keeps
-asking until it sees the machine agree, so a poor connection does not turn a
-stop into a maybe.
+asking until it sees the machine agree, so a lost message does not cancel a
+stop.
 
 Every machine that has a physical emergency stop still relies on it first.
-This is an extra path, not a replacement for the switch you can hit with your
-hand.
+The network stop is an additional path alongside the physical switch.
 
-## If your phone dies, the machine settles
+## Loss of the controlling device
 
-When an app is driving the machine directly and it goes quiet — the phone
-dies, the app crashes, the WiFi drops — the machine does not keep executing
-a stream whose sender is gone. It simply stops receiving new instructions, so
-it runs out of fresh commands and settles on its own. Nothing on the machine
+When an app is driving the machine directly and it goes quiet, for example the
+phone dies, the app crashes or the WiFi drops, the machine does not keep
+executing a stream whose sender is gone. It stops receiving new instructions,
+so motion ends when the last command has been executed. Nothing on the machine
 broadcasts an emergency stop on your behalf; the hardware and software stop
 controls covered above are still there if you need them right now.
 
-There is one deliberate exception, and it is the behavior you want. If you
-started a pattern that the *machine itself* is running, your screen locking
-does not interrupt it. The machine was never depending on your phone; your
-phone only pressed start.
+If you started a pattern that the *machine itself* is running, your screen
+locking does not interrupt it.
 
-## New devices join by an approval you perform
+## Pairing new devices
 
 When a new device asks to control your machine, you approve it on hardware you
-already hold — your phone, or a page on the machine itself.
+already hold: your phone, or a page on the machine itself.
 
-You see what is asking before you say yes. Nothing is granted quietly in the
-background, and you can take that permission away later from the same place.
+You see what is asking before you say yes. Nothing is granted without that
+approval, and you can take that permission away later from the same place.
 
-A brand-new machine, out of the box, trusts the first device that asks. If you
-just unboxed it and powered it on, you are the person holding it, and that is
-the point.
+A brand-new machine, out of the box, trusts the first device that asks.
+Powering on a factory-fresh machine is the proof of possession, and the first
+device to ask is paired.
 
-## Nothing leaves your home
+## Local-only operation
 
-Your machine talks to your apps over your own network. There is no account to
-create, no service to sign into, and no company in the middle.
+Your machine talks to your apps over your own network. Valence uses no account and no online service, and no third party relays your
+traffic.
 
-Concretely: no usage data is collected, nothing is uploaded, and the machine
-works exactly the same with your internet connection unplugged. If your router
-goes down, your machine and your phone still talk to each other.
+The machine collects and uploads no usage data and works the same without an
+internet connection. If your router goes down, your machine
+and your phone still talk to each other.
 
-The one thing worth knowing: this is designed for your home network, and it is
-not built to be reachable from the internet. That is deliberate, and it is
-part of why there is nothing to leak.
+It is designed for a home network and is not built to be reachable from the
+internet.
 
-## What to expect when your machine updates
+## Machine restarts after an update
 
 Your machine restarts, which takes a few seconds. Your apps reconnect on their
-own and pick up wherever the machine actually is.
+own and adopt the machine's current state.
 
-Nothing resumes by itself. If the machine was moving before the update, it
-does not start moving again because an app came back. Starting is always
-something you do.
+Motion does not resume after a restart, even when an app reconnects; a person
+has to start it again.
 
-## What this does not do
+## Out of scope
 
-- It does not decide how your machine moves. That is your machine's job, and
-  it stays that way.
-- It does not replace the app or the interface you already like.
+- It does not decide how your machine moves. It does not plan motion; the machine's
+  firmware does.
+- It does not replace your existing app or interface.
 - It is not a security product. It keeps a stranger's device from casually
-  taking over on your network. It is not designed to stop somebody who is
-  already inside that network with the right tools and the intent to use them.
+  taking over on your network. It is not designed to stop an attacker on the same
+  network who can capture and inject traffic.
 
-## If you want to know more
+## Related pages
 
-- [How it works](how-it-works.md) — the same ideas, in pictures.
-- [Security model](security.md) — what is protected and what is not, stated
-  plainly.
+- [How it works](how-it-works.md): the mental model, with diagrams.
+- [Security model](security.md): what is protected and what is not.

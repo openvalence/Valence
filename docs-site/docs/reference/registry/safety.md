@@ -1,7 +1,6 @@
 ---
 title: Safety codes
 description: Generated tables of Valence safety intent operations and safety cause codes.
-register: IEEE
 generated: true
 ---
 

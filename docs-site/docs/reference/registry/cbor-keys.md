@@ -1,7 +1,6 @@
 ---
 title: CBOR keys
 description: Generated table of the Valence control-plane CBOR integer key space and every scoped sub-map key space.
-register: IEEE
 generated: true
 ---
 

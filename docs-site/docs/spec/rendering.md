@@ -4,7 +4,6 @@ description: >-
   Valence clause 19: the rendering constitution, the three-tier channel
   taxonomy, and capability interfaces — establishing RENDERING.md as the
   normative client-rendering companion.
-register: IEEE
 generated: true
 ---
 

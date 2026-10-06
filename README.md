@@ -1,13 +1,13 @@
 # Valence - Pre-Release
 
-Valence is a hub-and-spoke **device-shadow protocol** for intimate hardware:
-one hub (a machine's main controller) holds the single canonical machine
-state; any number of clients — browser UIs, hardware remotes, mobile apps,
-bridges, simulators, streaming-application plugins — connect over
-heterogeneous transports, announce who they are and what they can do, and
-thereafter stay in continuous, truthful sync with that state. Clients submit
-**intents**; the hub applies, clamps, and echoes what was *actually applied*;
-every subscriber observes the same reality.
+Valence is a hub-and-spoke **device-shadow protocol** for intimate hardware.
+One hub (a machine's main controller) holds the single canonical machine
+state. Any number of clients connect over heterogeneous transports: browser
+UIs, hardware remotes, mobile apps, bridges, simulators and
+streaming-application plugins. Each client announces who it is and what it
+can do, then stays in continuous sync with that state. Clients submit
+**intents**. The hub applies and clamps each intent, then sends the applied
+value to every subscriber.
 
 Full scope, non-goals, and design philosophy: [`spec/SPEC.md`](spec/SPEC.md)
 §1.
@@ -31,31 +31,28 @@ Full scope, non-goals, and design philosophy: [`spec/SPEC.md`](spec/SPEC.md)
   (`cd docs-site && pip install -r requirements.txt && mkdocs serve`).
 - Point a probe at a running hub: `python tools/valence_probe.py --ip <ip> --port <port>`.
 - Stand up a hub with no hardware: `hub/bench/` (see its `README.md`).
-- Embed the library: `lib/valence/` is header-only C++20 — drop it in, no
-  build system integration required beyond an include path.
+- Embed the library: `lib/valence/` is header-only C++20 and needs only an
+  include path.
 
 ## License
 
 - Code (`lib/`, `clients/`, `hub/`, `tools/`, `test/`, `docs-site/` tooling):
-  **MIT** — see [`LICENSE`](LICENSE).
-- Specification documents (`spec/`): **CC-BY 4.0** — see
+  **MIT**. See [`LICENSE`](LICENSE).
+- Specification documents (`spec/`): **CC-BY 4.0**. See
   [`LICENSE-SPEC`](LICENSE-SPEC).
-- The name "Valence" is reserved for conformant implementations — see
+- The name "Valence" is reserved for conformant implementations. See
   [`NOTICE`](NOTICE).
 
 ## Provenance
 
-Valence started life as the sync protocol of the machine firmware that
-preceded Nucleus and was pulled out into its own repository to be the
-first-class source of truth once it stood on its own. Fresh git history — no
-filter-repo surgery. That predecessor is frozen: no file here names or cites
-it (Nucleus `.claude/rules/governance.md` §6, amendment 2026-10-03).
+This repository has its own git history. No file here names or cites the
+predecessor firmware (Nucleus `.claude/rules/governance.md` §6, amendment
+2026-10-03).
 
 ## Relationship to Nucleus
 
-Nucleus is the reference *hub* implementation: a real motion machine
-that consumes Valence (this repo, pinned to a version) rather than defining
-it. Nucleus also owns the device-specific channel allocations for its
-own hardware — Valence defines the channel-space *convention*
+Nucleus is a *hub* implementation: motion-machine firmware that consumes
+Valence, pinned by commit in its `valence.pin`. Nucleus also owns the device-specific channel allocations for its
+own hardware. Valence defines the channel-space *convention*
 (`spec/CHANNEL-GRID.md`) that any hub, including Nucleus, allocates its
 own device channels within.

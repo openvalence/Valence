@@ -1,7 +1,6 @@
 ---
 title: Rendering vocabulary
 description: Generated tables of the RFC-048 rendering vocabulary: categories, ranks, value axes, units, action tags, archetypes, regions, renderer classes and widget patterns.
-register: IEEE
 generated: true
 ---
 

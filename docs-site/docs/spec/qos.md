@@ -4,7 +4,6 @@ description: >-
   Valence clause 10: priorities and the never-shed set, the grant model,
   per-binding congestion signals, the normative shedding table, and ingress
   limits.
-register: IEEE
 generated: true
 ---
 

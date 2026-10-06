@@ -2,29 +2,29 @@
 title: Community
 description: >-
   How Valence is governed, how to contribute, and how protocol changes are proposed and decided.
-register: STE
 ---
 
 # Community
 
+This section covers how Valence is governed, how to contribute to the documentation, and how protocol changes are proposed and decided.
+
 | Page | Covers |
 |---|---|
-| [Governance](governance.md) | Valence favors no firmware, no vendor and no product |
-| [Contributing](contributing.md) | Building the site, the two writing registers, and why no wire number is typed by hand |
+| [Governance](governance.md) | Neutrality rules, number allocation, and the authority of the specification and registry |
+| [Contributing to the documentation](contributing.md) | Building the site, the rule that wire numbers are generated and never typed, generated pages, and stubs |
 | [RFC process](rfc-process.md) | How a protocol change is proposed, argued and decided |
 
-## The short version
+## Principles
 
-Valence is provided to the community as a tool. [The specification](../spec/index.md)
-is the product; the library is its reference implementation. The registry is
-the single source of truth for every number, and it is enforced by generation
-rather than by discipline.
+[The Specification](../spec/index.md) defines Valence. The C++ library is its
+reference implementation.
 
-Numbers released in a tagged version are permanent. They are never reused and
-never renumbered.
+The registry is the single source of truth for every wire number. Every table
+and C++ constant is generated from it.
+
+A number released in a tagged version is never reused or renumbered.
 
 ## Where discussion happens
 
-Protocol change happens in pull requests against the registry and the
-specification, in the open. If a proposal is refused, the refusal is recorded
-with its reasoning, so the next person to have the same idea can read why.
+Protocol changes are made in public pull requests against the registry and the
+specification. A refused proposal is recorded with its reasoning.

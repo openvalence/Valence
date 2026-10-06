@@ -1,11 +1,8 @@
 # Valence documentation site
 
-Material for MkDocs → GitHub Pages, versioned with `mike`.
+This directory holds the Valence documentation site. It is built with Material for MkDocs, versioned with `mike` and deployed to GitHub Pages.
 
-This directory is **self-contained**. It builds, tests and deploys on its own.
-It was designed to be lifted out of the Nucleus firmware repository into
-Valence's own repository — this repository is that move, already done. See
-[Extraction history](#extraction-history) for how it actually happened.
+This directory is **self-contained**. It builds, tests and deploys without files from the rest of the repository except the registry (see External path).
 
 ---
 
@@ -25,11 +22,10 @@ python -m venv .venv
 
 **Run `mkdocs` from this directory.** The glossary include resolves against the
 working directory. `check_paths: true` in `mkdocs.yml` turns a wrong directory
-into a loud failure rather than a site that silently loses every tooltip.
+into a build failure instead of a site that loses every tooltip.
 
 `--strict` promotes every warning to an error: a dead link, a missing anchor, a
-page left out of the nav. Use it. Implementers follow the links in a protocol
-specification, and a dead one is a defect.
+page left out of the nav.
 
 ---
 
@@ -38,7 +34,7 @@ specification, and a dead one is a defect.
 ```
 docs-site/
 ├── mkdocs.yml            site config and nav; points nowhere outside this dir
-├── site.config.yml       THE ONE outside path: where registry.yaml lives
+├── site.config.yml       the outside path: where registry.yaml lives
 ├── requirements.txt      documentation dependencies, floored not pinned
 ├── dictionary.yaml       source of truth for every defined term
 ├── VENDORED.md           provenance of the one third-party asset
@@ -50,12 +46,12 @@ docs-site/
 ├── hooks/
 │   └── spec_no_glossary.py   strips tooltips from the normative tier only
 ├── overrides/
-│   └── main.html             renders the front-matter register badge
+│   └── main.html             renders the generated / stub badges
 └── docs/
     ├── index.md
-    ├── understand/           STE register — the "why" tier
-    ├── build/                STE register — the "how" tier
-    ├── spec/                 IEEE register — GENERATED from SPEC.md
+    ├── understand/           the "why" tier
+    ├── build/                the "how" tier
+    ├── spec/                 GENERATED from SPEC.md
     ├── reference/
     │   ├── dictionary.md     GENERATED from dictionary.yaml
     │   └── registry/         GENERATED from registry.yaml
@@ -65,39 +61,37 @@ docs-site/
         └── javascripts/mermaid.min.js   VENDORED, byte-identical upstream
 ```
 
-### Two deliberate deviations from a stock Material site
+### Differences from a stock Material site
 
-**Mermaid is vendored, not fetched.** Material loads `mermaid.min.js` from a
-CDN by default. A LAN-first, offline-first protocol must not phone a CDN to
-draw its own diagrams, and a blocked network turns every figure into raw text.
-The asset is in `docs/assets/javascripts/`, its provenance is in
-`VENDORED.md`, and nothing on this site requests anything from the network.
+**Mermaid is vendored.** Material loads `mermaid.min.js` from a
+CDN by default. The site makes no network requests. With the CDN copy, a reader
+without internet access would see each diagram as raw Mermaid source. The asset
+is in `docs/assets/javascripts/` and its provenance is in `VENDORED.md`.
 
-**Tooltips stop at the Specification.** Guides get the glossary; `spec/**`
-does not. In a normative document every word is normative or visibly marked
-otherwise, so a hover definition over "hub" inside a MUST clause is a second,
-invisible source of meaning. `hooks/spec_no_glossary.py` removes them, and
-warns if Material's markup ever changes underneath it.
+**No tooltips in the Specification.** Pages under `spec/**` carry no glossary
+tooltips, because a hover definition inside a normative clause would add meaning
+the clause text does not show. `hooks/spec_no_glossary.py` removes them and
+warns if Material's markup changes.
 
-### Why `docs-site/` and not `spec/site/`
+### Directory boundary
 
-Three reasons, all still true post-extraction:
+The site lives in `docs-site/`, not `spec/site/`, for three reasons:
 
-1. **A directory should contain everything it needs and nothing it doesn't.**
-   `docs-site/` is that. Nesting the site under `spec/` would put it inside a
-   directory that also holds the working specification, the registry and the
-   RFC queue — which are *source material* for the site, not part of it.
-2. **The site must not own the registry.** The registry is also read directly
+1. `docs-site/` holds everything the site build needs. Nesting the site under
+   `spec/` would put it inside a directory that also holds the working
+   specification, the registry and the RFC queue, which are *source material*
+   for the site, not part of it.
+2. **The registry stays outside the site.** The registry is also read directly
    by the C++ code generator (`tools/gen_registry_header.py`) and every
    language client, not just the docs build. If the site sat under `spec/`,
    "inside the site" and "outside the site" would be a judgment call rather
    than a directory boundary.
-3. **A top-level name says what it is.** Someone cloning this repository can
-   tell in one `ls` that `spec/` is documents and `docs-site/` is a website.
+3. The top-level names separate documents (`spec/`) from the website
+   (`docs-site/`).
 
 ---
 
-## The one path that reaches outside
+## External path
 
 Exactly one thing in this directory refers to anything above it: the location
 of the protocol registry.
@@ -115,16 +109,16 @@ precedence first:
 2. `VALENCE_REGISTRY=PATH`
 3. `registry_path` in `site.config.yml`
 
-Nothing else — not `mkdocs.yml`, not a page, not a script — refers to anything
-outside `docs-site/`. There are no absolute paths anywhere, and nothing assumes
+No other file in `docs-site/`, including `mkdocs.yml`, the pages and the
+scripts, refers to a path outside it. There are no absolute paths anywhere, and nothing assumes
 what the parent repository is called.
 
 ---
 
 ## Generated files
 
-**Never edit these by hand.** The next generator run overwrites them, and CI
-fails before that happens.
+Do not edit these files. The generator overwrites them, and CI fails on a
+hand-edited copy.
 
 | File | Generated from | Generator |
 |---|---|---|
@@ -146,28 +140,26 @@ python tools/gen_spec_pages.py --nav       # print the mkdocs.yml nav block
 
 Both `--check`s run in CI. A stale page fails the docs build.
 
-Why the gate exists: this project has shipped the same hand-copied-constant
-drift bug four separate times. A wrong NACK code in documentation is worse
-than a wrong NACK code in source, because implementers trust documentation and
-nothing compiles it — and a stale copy of the **specification** is the worst
-instance of that, because an implementer trusts a specification absolutely.
+The gate exists because this project has shipped the same hand-copied-constant
+drift bug four separate times. A wrong NACK code in documentation does more
+harm than one in source: implementers trust documentation and nothing compiles
+it, and a stale copy of the specification is the most trusted instance.
 
 Each generator also refuses to run on an unclaimed source: `registry.yaml`
 growing a section no page documents, or `SPEC.md` growing a clause no page
-publishes. Silence is the failure mode both gates exist to prevent.
+publishes.
 
 Editing the Dictionary means editing `dictionary.yaml`. One source produces
-both the Dictionary page and the site-wide hover definitions, so a term cannot
-acquire a second definition.
+both the Dictionary page and the site-wide hover definitions.
 
 ### The Specification tier
 
 `docs/spec/**` is a **build product**. The editable source is `spec/SPEC.md`
 in this repository, and normative text is copied into the site verbatim.
-What the generator adds is structure, not words:
+The generator adds the following:
 
-- **the split.** 1544 lines become one page per concern. Clause numbering is
-  untouched — §6.4 is §6.4 wherever it is published.
+- **the split.** The 1991 lines of SPEC.md become one page per concern. Clause
+  numbering is untouched, so §6.4 is §6.4 on every page that publishes it.
 - **number-derived anchors.** `§n` → `#sn`, `§n.m` → `#sn-m`, Appendix X →
   `#appendix-x`, trace En → `#en`. Nothing is slugified from heading text, so
   rewording a heading cannot break an inbound citation.
@@ -177,7 +169,7 @@ What the generator adds is structure, not words:
   `mkdocs build --strict`.
 - **companion links.** Repo-relative links in SPEC.md resolve through the
   generator's `SOURCE_LINKS` table. An unlisted target is a hard error, so a
-  new companion artifact cannot silently ship as a 404.
+  new companion artifact cannot be published as a dead link.
 
 Appendices A, B and G reproduce registry tables as frozen at the v1.0 tag. They
 are kept verbatim, so the specification still reads standalone, and each gains
@@ -196,15 +188,15 @@ mike set-default --push latest
 ```
 
 `mike` publishes each tagged specification version as its own tree, plus a
-`latest` alias, and adds the version selector to the header. Readers of a
-protocol specification must be able to pin to the version they implemented.
+`latest` alias, and adds the version selector to the header. A reader can
+link to the exact version they implemented.
 
-### `site_url` and why it matters
+### `site_url`
 
 `mkdocs.yml` reads `site_url` from `$VALENCE_SITE_URL`, defaulting to
 `https://valence.invalid/`. `.invalid` is the reserved placeholder TLD
-(RFC 2606): if you ever see it in a deployed sitemap, the deploy forgot to set
-the variable.
+(RFC 2606): if it appears in a deployed sitemap, the deploy did not set the
+variable.
 
 CI computes the correct GitHub Pages origin from the repository context, so it
 needs no configuration. Set the repository variable `VALENCE_SITE_URL` to
@@ -212,68 +204,57 @@ override it with a custom domain.
 
 ---
 
+## Channel-grid page
+
+`docs/reference/channel-grid.md` is a static summary of `spec/CHANNEL-GRID.md`.
+An interactive grid is a planned addition. It would read a hub-agnostic
+catalog, such as one from Valence Bench, instead of one machine's.
+
+The page was previously generated by `docs-site/tools/gen_channel_grid_page.py`.
+That script imports the repository-root generators `tools/gen_channel_map.py`
+and `tools/gen_channel_grid.py`, which parse a live device's catalog. Those
+generators stay in Nucleus, because the device-channel allocations belong to
+that machine and not to the protocol. Neither the script nor its generated page
+exists in this repository.
+
 ## Extraction history
 
-This directory was designed for exactly the move that produced this
-repository. What actually happened, for the record (operator ruling,
-"Valence repo split"): a plain file copy into a fresh-history repository
-(`git subtree split`/filter-repo surgery was explicitly ruled out — see the
-top-level README's provenance line), not the `git subtree split` procedure
-this section used to describe step-by-step. The three-line
-`site.config.yml` change and the workflow move (below) are exactly what this
-directory's own design anticipated; both landed as planned.
+This directory was extracted from the Nucleus repository by a plain file copy
+into a fresh-history repository. `git subtree split` and filter-repo were ruled
+out. The extraction needed a three-line `site.config.yml` change and a workflow
+move: `.github/workflows/docs.yml` was copied in, and its
+`working-directory: docs-site` block and `docs-site/`-prefixed `paths` entries
+were deleted.
 
-One thing this directory's own design did NOT fully anticipate: the docs
-site's **channel-grid page** (`docs/reference/channel-grid.md`) used to be
-generated by `docs-site/tools/gen_channel_grid_page.py`, which imports two
-repository-root generators (`tools/gen_channel_map.py`, `tools/gen_channel_grid.py`)
-that parse a live device's catalog — those stay in Nucleus by design
-(the device-channel allocations are that machine's, not the protocol's). This
-generator and its huge generated page were NOT brought over; the page is now
-a small static reference derived from `spec/CHANNEL-GRID.md`. Rebuilding an
-interactive grid visualization on the protocol side (reading a
-hub-agnostic catalog, e.g. from Valence Bench, instead of one machine's) is a
-parked work item, not done in this pass.
+---
 
-### The workflow
+## Custom domain
 
-`.github/workflows/docs.yml` did not live under this prefix in Nucleus,
-so `git subtree split` alone would not have brought it along — moot here,
-since the actual extraction was a plain copy: the file was copied in and had
-its `working-directory: docs-site` block and `docs-site/`-prefixed `paths`
-entries deleted (it is marked with a comment at each spot, same idea, past
-tense now).
+Set up the custom domain before the first public deploy.
 
-### Keep the URLs alive — use a custom domain
-
-**Do this before the first public deploy, not after.**
-
-Publishing straight to `https://<org>.github.io/<repo>/` welds every URL on the
+Publishing straight to `https://<org>.github.io/<repo>/` ties every URL on the
 site to an organization name and a repository name. Renaming either one after
 people have linked to the site, cited a clause, or pinned a specification
-version breaks every one of those links. A protocol specification is exactly
-the kind of document people deep-link and cite, so link rot is a real cost, not
-a hypothetical one.
+version breaks every one of those links.
 
-Serve it from a custom domain from day one:
+Serve the site from a custom domain from the first deploy:
 
 1. Register a domain and point a `CNAME` record at `<org>.github.io`. For an
    apex domain, use the `A`/`AAAA` records GitHub publishes instead.
-2. Put the bare hostname in `docs/CNAME` — one line, no scheme, no trailing
+2. Put the bare hostname in `docs/CNAME`: one line, no scheme, no trailing
    slash. `mkdocs build` copies anything in `docs/` into the site, so the file
    survives every deploy. With `mike`, confirm it lands at the root of the
    `gh-pages` branch and not inside a version directory.
 3. Set `VALENCE_SITE_URL` to the same origin, so canonical links and
-   `sitemap.xml` agree with reality.
+   `sitemap.xml` match the served origin.
 4. Enable **Enforce HTTPS** in the repository's Pages settings.
 
-Then, if the repository ever moves, only the DNS record changes. Every
-published URL keeps working, including the version trees.
+If the repository moves, only the DNS record changes, and every published URL,
+including the version trees, keeps working.
 
 ---
 
 ## See also
 
-- `docs/community/contributing.md` — the two writing registers, and the rules
-  for stubs and generated pages.
-- `docs/community/governance.md` — the stance.
+- `docs/community/contributing.md`: the writing rules, stubs and generated pages.
+- `docs/community/governance.md`: the governance policy.

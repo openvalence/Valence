@@ -3,7 +3,6 @@ title: Worked session traces
 description: >-
   Five annotated end-to-end Valence session traces, each step citing the
   normative rule it exercises.
-register: IEEE
 generated: true
 ---
 

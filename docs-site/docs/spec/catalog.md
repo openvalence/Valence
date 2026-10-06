@@ -4,7 +4,6 @@ description: >-
   Valence clause 8: the channel entry, the schema language, etag computation,
   blob transfer, the static-client profile, stores, and the settings
   metamodel.
-register: IEEE
 generated: true
 ---
 

@@ -3,7 +3,6 @@ title: Channel classes
 description: >-
   Valence clause 9: STATE, STREAM, INTENT/ECHO, EVENT and STORE semantics, and
   the closed motion input surface.
-register: IEEE
 generated: true
 ---
 

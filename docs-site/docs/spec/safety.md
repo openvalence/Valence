@@ -3,7 +3,6 @@ title: Safety
 description: >-
   Valence clause 11: the stop taxonomy and safety snapshot, ESTOP end to end,
   the deadman, control arbitration, and the invariants under partial failure.
-register: IEEE
 generated: true
 ---
 

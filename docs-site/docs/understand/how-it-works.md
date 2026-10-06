@@ -1,26 +1,24 @@
 ---
 title: How it works
 description: >-
-  The Valence mental model in seven diagrams: the catalog as a datasheet, the channel classes, connecting, ground truth, where data lives, safety, and a settings screen that builds itself.
-register: STE
+  The Valence mental model in seven diagrams: the catalog, the channel classes, connecting, ground truth, where data lives, safety, and settings rendering.
 ---
 
 # How it works
 
 A Valence machine describes itself. A client reads that description and builds
-its interface from it. Everything on this page follows from those two
-sentences.
+its interface from it.
 
-This page is mostly pictures. Read them in order. You need no prior knowledge
-of this protocol, of CBOR, or of motion control.
+This page covers the catalog, the five channel classes, connecting, ground
+truth, where data lives, safety, and settings rendering.
 
-## How to read these diagrams
+## Diagram legend
 
-Every diagram on this site uses one visual language. Learn it once here.
+Every diagram on this site uses one visual language.
 
 <div class="ss-keys">
-<span class="ss-key ss-key--reality"><b>reality</b>Measured truth. What the machine actually did, applied, or is reporting now.</span>
-<span class="ss-key ss-key--intent"><b>intent</b>A wish. What somebody asked for, before the machine confirms anything.</span>
+<span class="ss-key ss-key--reality"><b>reality</b>Measured truth. What the machine did, applied, or is reporting now.</span>
+<span class="ss-key ss-key--intent"><b>intent</b>A request. What somebody asked for, before the machine confirms anything.</span>
 <span class="ss-key ss-key--safety"><b>safety</b>Stops and latches. This color never carries a second meaning.</span>
 <span class="ss-key"><b>rectangle</b>A party or a step: a hub, a client, a decision.</span>
 <span class="ss-key"><b>cylinder</b>Something that persists somewhere.</span>
@@ -28,28 +26,23 @@ Every diagram on this site uses one visual language. Learn it once here.
 <span class="ss-key"><b>▶ START</b>Where a flowchart begins. Every flowchart on this site marks it.</span>
 </div>
 
-The two colors are not decoration. They are the two colors the Nucleus
-machine paints on its own screen: blue for what the machine measured or
-applied, purple for what a person asked for. They mean the same thing in a
-diagram, in a table and on the machine. Amber and red are safety, in the
-documentation and on the machine alike, and neither may restyle them.
+Blue and purple are the colors Nucleus paints on its own screen: blue marks measured or
+applied values, purple marks requests. They mean the same in a diagram, a table and on the
+machine. Amber and red mark safety in the documentation and on the machine, and a theme must not restyle them.
 
-The distinction those two colors carry is the whole product. Hold on to it and
-the rest of this page is straightforward.
+## 1. The catalog
 
-## 1. The machine hands you its datasheet
-
-<p class="ss-cap" markdown>A client that knows nothing connects, reads the machine's self-description, and from that alone knows everything it may read, everything it may send, and everything it may not touch.</p>
+<p class="ss-cap" markdown>A new client connects, reads the catalog, and learns which channels it may read, which commands it may send, and the access level of each.</p>
 
 ```mermaid
 flowchart LR
     C["▶ START<br/>A new client<br/>knows nothing<br/>about this machine"]:::party
-    H["The hub<br/>one machine,<br/>one authority"]:::hub
+    H["The hub<br/>the authority for<br/>this machine"]:::hub
     CAT[("Catalog<br/>the machine's own datasheet")]:::store
     R["Values it may read<br/>name · type · unit · limits"]:::truth
     W["Commands it may send<br/>name · fields · limits"]:::wish
-    A["Doors it may not open<br/>an access level per channel"]:::party
-    UI["A screen built from<br/>the machine, not from<br/>a driver"]:::party
+    A["Access level<br/>per channel"]:::party
+    UI["A screen built<br/>from the catalog"]:::party
 
     C -->|"1 · connects and asks"| H
     H -->|"2 · answers with its<br/>self-description"| CAT
@@ -67,20 +60,20 @@ flowchart LR
     classDef party fill:none,stroke:#8a8f98
 ```
 
-<p class="ss-point" markdown>**The point.** There is no device driver. The client is not compiled against this machine, and the machine is not compiled against this client. A control added in firmware appears on every client at its next connection, with the label, the unit and the limits supplied by the machine.</p>
+<p class="ss-point" markdown>**The point.** A client carries no per-machine driver. Neither the client nor the firmware is compiled against the other. A control added in firmware appears on every client at its next connection, with the label, the unit and the limits supplied by the machine.</p>
 
 A [catalog](../reference/dictionary.md#catalog) entry describes one
 **channel**. Each entry carries an id, a name, a class, a direction, an access
 level, a maximum rate, and a field-by-field description of its payload. The
 whole catalog is hashed into an [etag](../reference/dictionary.md#etag), which
-names exactly which catalog a hub exposes. A client that already holds that
-etag has nothing to download.
+identifies the catalog a hub exposes. A client that already holds that
+etag does not download the catalog again.
 
-## 2. Five channel classes, chosen by one question
+## 2. Channel classes
 
-Ask what breaks if a single frame never arrives. The answer picks the class.
+The five classes differ in what a lost frame costs.
 
-<p class="ss-cap" markdown>The loss question, and the five answers that are the five channel classes.</p>
+<p class="ss-cap" markdown>What a lost frame costs in each of the five channel classes.</p>
 
 ```mermaid
 flowchart TD
@@ -88,7 +81,7 @@ flowchart TD
 
     Q -->|"Nothing. The next one<br/>replaces it whole"| S["STATE<br/>full snapshots of a group of values"]:::truth
     Q -->|"Almost nothing. It was one<br/>timestamped sample of many"| ST["STREAM<br/>bundles of samples, at rate"]:::truth
-    Q -->|"The change never happens,<br/>and the sender must find out"| I["INTENT<br/>the only way anything changes"]:::wish
+    Q -->|"The change never happens,<br/>and the sender must find out"| I["INTENT<br/>one absolute command, the only way<br/>a client changes anything"]:::wish
     Q -->|"A moment is missed"| E["EVENT<br/>edges, not levels"]:::truth
     Q -->|"Nothing. The document<br/>is fetched again"| B["STORE<br/>numbered slots holding documents"]:::store
 
@@ -100,31 +93,31 @@ flowchart TD
     classDef party fill:none,stroke:#8a8f98
 ```
 
-<p class="ss-point" markdown>**The point.** Loss tolerance is designed in per class, not bolted on afterwards. Only intents demand an end-to-end confirmation, and only intents get one.</p>
+<p class="ss-point" markdown>**The point.** Loss tolerance is designed in per class. Only INTENT has end-to-end confirmation: the hub answers each intent with an ECHO or an error.</p>
 
 | Class | Carries | If a frame is lost |
 |---|---|---|
-| [STATE](../reference/dictionary.md#state) | A full snapshot of a group of values | Harmless. The next snapshot supersedes it. There are no deltas, ever. |
+| [STATE](../reference/dictionary.md#state) | A full snapshot of a group of values | Harmless. The next snapshot supersedes it. There are no deltas. |
 | [STREAM](../reference/dictionary.md#stream) | Timestamped [bundles](../reference/dictionary.md#bundle) of samples | Recoverable. Samples carry time, so a consumer interpolates across the hole. |
 | [INTENT](../reference/dictionary.md#intent) | One absolute command | The change does not happen. The hub answers every intent with an [ECHO](../reference/dictionary.md#echo) or an error, so the sender finds out. |
 | [EVENT](../reference/dictionary.md#event) | One occurrence, at one moment | A moment is missed. Events are never replayed, so no safety behavior may depend on one. |
 | [STORE](../reference/dictionary.md#store) | Numbered slots holding opaque documents | Harmless. The client asks for the document again. |
 
-Two rules follow from that table, and both are load-bearing.
+Two rules follow from the table.
 
 **Every STATE frame is a full snapshot.** A delta would make one lost frame
 corrupt everything after it. Full snapshots are also what make
 [conflation](../reference/dictionary.md#conflation) safe: when a link is slow
-the hub replaces the queued snapshot with the newer one, so a subscriber sees
-the freshest truth its link can carry and never a backlog.
+the hub replaces the queued snapshot with the newer one, so a subscriber on a
+slow link receives the newest snapshot instead of a queue of old ones.
 
-**Every event that matters has a STATE twin.** The event says *this just
-happened*. The state says *this is still true*. A client that arrives after the
+**Every event that matters has a STATE twin.** The event marks the moment of a
+change; the STATE channel holds the condition for as long as it lasts. A client that arrives after the
 event adopts the state and needs no history.
 
-## 3. Connecting: two paths, one gate
+## 3. Connecting and the ready gate
 
-<p class="ss-cap" markdown>A cold client fetches the catalog; a returning client whose cached etag matches skips straight through. Both reach the same gate.</p>
+<p class="ss-cap" markdown>A cold client fetches the catalog; a returning client whose cached etag matches skips the transfer; both then wait at the ready gate.</p>
 
 ```mermaid
 %%{init: {"themeVariables": {"actorLineColor": "#8a8f98"}} }%%
@@ -133,38 +126,37 @@ sequenceDiagram
     participant C as Client
     participant H as Hub
 
-    C->>H: HELLO — who I am, what I want,<br/>and which catalog I already hold
-    H->>C: WELCOME — session, roles, grants,<br/>the hub's catalog etag
+    C->>H: HELLO: who I am, what I want,<br/>and which catalog I already hold
+    H->>C: WELCOME: session, roles, grants,<br/>the hub's catalog etag
 
     alt Cached etag matches the hub's
         Note over C,H: Holding the etag proves the client holds the catalog.<br/>Nothing is transferred.
     else No etag, or a different one
-        C->>H: BLOB_REQ — send me the catalog
+        C->>H: BLOB_REQ: send me the catalog
         H-->>C: BLOB_CHUNK, repeated
         Note over C,H: The client hashes what it assembled.<br/>The etag verifies the transfer by itself.
-        C->>H: CATALOG_READY — I now operate against this etag
+        C->>H: CATALOG_READY: I now operate against this etag
     end
 
     H->>C: retained STATE, for every granted channel
     Note over C,H: LIVE. Only now may the client act on user input.
 ```
 
-<p class="ss-point" markdown>**The point.** The hub sends no state at all until the client has confirmed which catalog it decodes against. This is the [ready gate](../reference/dictionary.md#ready-gate). Without it a client would receive packed bytes it cannot interpret, and the only way to read them anyway would be a hardcoded copy of this machine's layouts — the exact coupling a catalog exists to remove.</p>
+<p class="ss-point" markdown>**The point.** The hub sends no state at all until the client has confirmed which catalog it decodes against. This is the [ready gate](../reference/dictionary.md#ready-gate). Without it a client would receive packed bytes it cannot interpret, and the only way to read them anyway would be a hardcoded copy of this machine's layouts, which would tie the client to one firmware.</p>
 
-Two other things happen in that handshake, and both matter later.
+The handshake also sets two rules.
 
-**Grants are truth; requests are wishes.** A client asks to receive a channel
-at some rate. The hub answers with the rate it will actually deliver, and that
-answer is a [grant](../reference/dictionary.md#grant). An interface showing a
-rate it was never granted is lying about itself.
+**A client displays the granted rate.** A client asks to receive a channel
+at some rate. The hub answers with the rate it will deliver, and that
+answer is a [grant](../reference/dictionary.md#grant). A client displays the granted
+rate, never the requested one.
 
 **A client stays visibly unready until it is LIVE.** The specification requires
-the difference to be visible. Stale data displayed as fresh is the failure this
-whole design exists to prevent.
+the difference to be visible. A client never displays stale data as fresh.
 
-## 4. Ground truth: 420 goes in, 400 comes out everywhere
+## 4. Ground truth
 
-<p class="ss-cap" markdown>A remote asks for a value above the machine's ceiling. Watch which number every screen ends up showing.</p>
+<p class="ss-cap" markdown>A remote asks for a value above the machine's ceiling. Every screen shows the applied value.</p>
 
 ```mermaid
 %%{init: {"themeVariables": {"actorLineColor": "#8a8f98"}} }%%
@@ -174,26 +166,25 @@ sequenceDiagram
     participant H as Hub
     participant B as Browser
 
-    R->>H: INTENT — set speed to 420
+    R->>H: INTENT: set speed to 420
     Note right of H: The ceiling is 400.<br/>The hub applies 400.
-    H->>R: ECHO — applied 400
-    H->>R: STATE — speed 400
-    H->>B: STATE — speed 400
-    Note over R,B: Every screen shows 400.<br/>Nobody shows 420, including the remote that asked.
+    H->>R: ECHO: applied 400
+    H->>R: STATE: speed 400
+    H->>B: STATE: speed 400
+    Note over R,B: Every screen, including the remote that asked, shows 400.
 ```
 
-<p class="ss-point" markdown>**The point.** The echo reports what the machine applied, never what the client requested. A client's [shadow](../reference/dictionary.md#shadow) updates from the hub's answer, never from its own request. This is why optimistic interface state is prohibited rather than discouraged: on a machine that moves, a screen that lies about state is a safety defect.</p>
+<p class="ss-point" markdown>**The point.** The echo reports what the machine applied, never what the client requested. A client's [shadow](../reference/dictionary.md#shadow) updates from the hub's answer, never from its own request. This is why optimistic interface state is prohibited rather than discouraged: on a motion machine, a display that shows a value the machine did not apply is a safety defect.</p>
 
 A control therefore does not jump to 420 while it waits. It shows the request
-as **pending** and adopts the applied value when the echo arrives. Limits are
-ceilings, never targets, and a [clamp](../reference/dictionary.md#clamp) is not
-an error: 400 is simply the answer.
+as **pending** and adopts the applied value when the echo arrives. A limit is a ceiling. A [clamp](../reference/dictionary.md#clamp) is a
+successful result, and the echo carries 400.
 
 > DEMO-CANDIDATE: a live slider that lets a reader ask a real simulated hub
 > for a value past its ceiling, and watch pending, echo and clamp happen in
 > real time.
 
-Two more rules let this survive a bad network.
+Two rules cover unreliable links.
 
 **Intents are absolute, never relative.** "Set speed to 405" survives a
 reconnect, because a client can compare it against the snapshot it adopts. "Add
@@ -205,7 +196,7 @@ applying it twice.
 
 ## 5. Where the data lives
 
-<p class="ss-cap" markdown>The hub owns the only copy that counts. What a client holds is a shadow of it, and a shadow never survives a reconnect.</p>
+<p class="ss-cap" markdown>The hub holds the authoritative value. A client holds a shadow copy and discards it when the link drops.</p>
 
 ```mermaid
 flowchart TD
@@ -217,7 +208,7 @@ flowchart TD
     S1 --> V1["Screens read<br/>the shadow"]:::party
     S2 --> V2["Screens read<br/>the shadow"]:::party
 
-    V1 -.->|"a wish, never a write"| I(["INTENT"]):::wish
+    V1 -.->|"a request, not a write"| I(["INTENT"]):::wish
     I -.-> H
 
     S1 ==>|"link drops"| X["The shadow is<br/>discarded whole"]:::party
@@ -228,27 +219,27 @@ flowchart TD
     classDef party fill:none,stroke:#8a8f98
 ```
 
-<p class="ss-point" markdown>**The point.** No client state survives a reconnect on its own authority. The hub keeps the [retained value](../reference/dictionary.md#retained-value) of every STATE channel and pushes it the moment a client is granted the channel, so re-adoption is the ordinary connect path rather than a special recovery path.</p>
+<p class="ss-point" markdown>**The point.** No client state survives a reconnect on its own authority. The hub keeps the [retained value](../reference/dictionary.md#retained-value) of every STATE channel and pushes it the moment a client is granted the channel, so re-adoption uses the ordinary connect path.</p>
 
-A reconnecting client re-sends nothing blindly. It compares what it still wants
+A reconnecting client does not re-send intents automatically. It compares what it still wants
 against the snapshot it just adopted, and issues an intent only if the two
 still differ.
 
-**Reconnecting is not re-taking control.** Subscriptions come back freely. If
+**Reconnecting does not restore control.** Subscriptions come back freely. If
 the disconnection stopped motion, the returning session must ask for control
-again with a fresh intent. Motion never restarts because a socket reopened.
+again with a fresh intent. Reopening a connection does not restart motion.
 
-## 6. Safety: the latch is the truth
+## 6. Safety and the latch
 
-<p class="ss-cap" markdown>An emergency stop from any endpoint, and why the latched state — not the event — is what every client obeys.</p>
+<p class="ss-cap" markdown>An emergency stop from any endpoint; clients act on the latched safety STATE; the EVENT is informational.</p>
 
 ```mermaid
 flowchart TD
-    A["▶ START<br/>Any endpoint.<br/>Any role. Even with no session."]:::safety
+    A["▶ START<br/>Any endpoint, any role,<br/>with or without a session"]:::safety
     A -->|"ESTOP frame"| Q["Every queue on the path<br/>admits it at the front"]:::plumb
     Q --> H["The hub stops motion FIRST,<br/>then does protocol bookkeeping"]:::safety
-    H --> L[("safety STATE — the latch.<br/>Stays true until it is cleared.")]:::safety
-    H --> E(["EVENT — the edge.<br/>A toast. A log line."]):::party
+    H --> L[("safety STATE: the latch.<br/>Stays true until it is cleared.")]:::safety
+    H --> E(["EVENT: the edge.<br/>A toast. A log line."]):::party
     L -->|"retained: pushed to every client,<br/>including one that arrives later"| N["Every screen agrees<br/>the machine is stopped"]:::party
     E -.->|"never replayed"| N
     N -.->|"repeat until the latch<br/>is observed"| A
@@ -258,42 +249,38 @@ flowchart TD
     classDef plumb fill:none,stroke:#8a8f98,stroke-dasharray:3 3
 ```
 
-<p class="ss-point" markdown>**The point.** There is no acknowledgment frame for an emergency stop. The initiator repeats the frame until it observes the [latch](../reference/dictionary.md#latch) in state. An observable latch is the only acknowledgment worth anything, because it is the same latch every other client is reading.</p>
+<p class="ss-point" markdown>**The point.** There is no acknowledgment frame for an emergency stop. The initiator repeats the frame until it observes the [latch](../reference/dictionary.md#latch) in state. An observable latch is the only acknowledgment, because it is the same latch every other client is reading.</p>
 
-Safety outranks authorization by design. Anyone may stop the machine; not
-everyone may start it. Clearing the latch needs the `control` tier, needs the
+`pause` and `estop` need no role. Clearing the latch needs the `control` tier, needs the
 cause to be resolved, and re-arms motion rather than resuming it.
 
-A machine also notices when nobody is watching it.
 [Deadman](../reference/dictionary.md#deadman) binds to the source currently
 driving motion. If that source goes silent for its window, the hub releases
-its ownership — bookkeeping, not a command. Nothing broadcasts a forced stop:
-a vanished streaming client was already the reason no fresh commands were
-arriving, so motion settles by physics rather than by a safety action. A
-pattern running on the hub keeps running by default, because a locked phone
-screen was never what drove it; whether a given source keeps going or stops
-when its owner disappears is that source's own declared policy, not a
-universal deadman reflex.
+its ownership. Releasing ownership sends no command. Nothing broadcasts a forced
+stop: a vanished streaming client was already the reason no fresh commands
+were arriving, so motion settles to rest.
+A pattern running on the hub keeps running by default. Whether a given source
+keeps going or stops when its owner disappears is that source's own declared
+policy.
 
-## 7. A settings screen that builds itself
+## 7. Settings rendering
 
-This is the payoff of everything above. A machine describes not only its values
-but what they mean, so a client renders a complete settings surface it was
-never written for.
+A machine describes its values and what they mean, so a client can render the
+settings of a machine it was not written for.
 
-<p class="ss-cap" markdown>One annotated catalog field becomes one control, and the loop from edit back to displayed value never shortcuts through the client's own guess.</p>
+<p class="ss-cap" markdown>One annotated catalog field becomes one control, and the control shows the echoed value, not the value that was typed.</p>
 
 ```mermaid
 flowchart TD
     CAT[("▶ START<br/>Catalog field<br/>unit · min · max · default · options<br/>role · category · setting_key")]:::store
     CAT --> Q{"Does it carry<br/>a setting_key?"}:::party
-    Q -->|"no — it is a reading"| RO["Read-only display,<br/>with its unit"]:::truth
-    Q -->|"yes — it is a setting"| WID["A control, chosen from<br/>the type and the constraints"]:::truth
+    Q -->|"no: a reading"| RO["Read-only display,<br/>with its unit"]:::truth
+    Q -->|"yes: a setting"| WID["A control, chosen from<br/>the type and the constraints"]:::truth
     WID --> U["Somebody edits it"]:::wish
     U --> I(["INTENT on the paired channel"]):::wish
-    I --> EC(["ECHO — the applied value"]):::truth
+    I --> EC(["ECHO: the applied value"]):::truth
     EC -->|"the control adopts<br/>what was applied"| WID
-    EC --> ST(["STATE — to everyone else"]):::truth
+    EC --> ST(["STATE: to everyone else"]):::truth
     ST --> OTH["Every other client shows<br/>the same value"]:::truth
 
     classDef store fill:none,stroke:#8a8f98
@@ -302,34 +289,33 @@ flowchart TD
     classDef wish fill:#8158d82e,stroke:#8158d8
 ```
 
-<p class="ss-point" markdown>**The point.** A field with a [setting_key](../reference/dictionary.md#setting_key) is a setting, and the key names the command that writes it. A field without one is a reading. That single annotation replaces the hand-written table every client used to keep, pairing each display to its control — the table that goes stale the day the firmware changes.</p>
+<p class="ss-point" markdown>**The point.** A field with a [setting_key](../reference/dictionary.md#setting_key) is a setting, and the key names the command that writes it. A field without one is a reading. A client needs no hand-written table pairing displays to controls.</p>
 
-The catalog says what a value **is**. It never says how a value should
-**look**. There is no widget field, deliberately. A phone renders a range as a
-slider, a small remote as a click wheel, a desktop plugin as a numeric box:
-same bytes, three honest interfaces.
+The catalog describes a value's meaning and constraints and has no widget
+field; each client chooses its own control. A phone renders a range as a
+slider, a small remote as a click wheel, a desktop plugin as a numeric box.
 
 | The annotation | What a client does with it |
 |---|---|
-| [`setting_key`](../reference/dictionary.md#setting_key) | Writable, and here is the command key that writes it. Absent means read-only. |
+| [`setting_key`](../reference/dictionary.md#setting_key) | Marks the field writable and names the command key that writes it. Absent means read-only. |
 | `min`, `max`, `step`, `unit`, `default` | Choose and bound the control. The hub still validates; these are for display. |
 | `options` | Name the choices of a single-select, instead of showing raw numbers. |
-| [`role`](../reference/dictionary.md#field-role) | Say what the value *is* semantically, so a client that recognizes it **may** upgrade to a purpose-built control. Fallback is mandatory; upgrades are optional. |
+| [`role`](../reference/dictionary.md#field-role) | Say what the value *is* semantically, so a client that recognizes it **may** upgrade to a purpose-built control. A client must support the generic control and may use a purpose-built one. |
 | [`category`](../reference/dictionary.md#setting-category) | Which tab it belongs in, from a registered list, so placement stays consistent across different machines. |
-| `flags` | `advanced` hides it behind an affordance, never removes it. `secret` means the value never appears in state at all — only whether it is set. |
+| `flags` | `advanced` hides it behind an affordance, never removes it. `secret` means the value never appears in state at all. Only whether it is set appears. |
 
-A setting the machine cannot accept right now is grayed, never hidden. The
-machine says so in its own state, and every client grays from that one truth.
+A client grays out a setting the machine's state reports as unavailable, and
+does not hide it.
 
-The registered vocabularies — every category, role, flag and field type — are
+The registered vocabularies (every category, role, flag and field type) are
 in the [catalog vocabulary reference](../reference/registry/catalog-vocabulary.md),
 generated from the registry.
 
 ## Where to go next
 
-- [Anatomy of a frame](anatomy.md) — the eight bytes every frame starts with,
+- [Anatomy of a frame](anatomy.md): the eight bytes every frame starts with,
   and why there are two payload encodings.
-- [Capabilities and custom hardware](capabilities.md) — what your device must
+- [Capabilities and custom hardware](capabilities.md): what your device must
   provide to be a hub.
-- [The Dictionary](../reference/dictionary.md) — every term on this page, with
-  exactly one definition each.
+- [The Dictionary](../reference/dictionary.md): every term on this page, each
+  with one definition.

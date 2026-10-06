@@ -1,7 +1,6 @@
 ---
 title: Limits and defaults
 description: Generated table of Valence well-known limits, timeouts, caps and defaults.
-register: IEEE
 generated: true
 ---
 

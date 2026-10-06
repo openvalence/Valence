@@ -1,7 +1,6 @@
 ---
 title: Frame types
 description: Generated table of every Valence frame type byte and header flag.
-register: IEEE
 generated: true
 ---
 

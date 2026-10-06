@@ -2,7 +2,6 @@
 title: C++ client guide
 description: >-
   How to write a Valence client in C++.
-register: STE
 status: stub
 ---
 
@@ -10,25 +9,24 @@ status: stub
 
 !!! warning "This page is not written yet"
 
-    It is a stub. It names what belongs here and where the source
-    material is. It does not fake content.
+    This page is a stub. It lists the planned contents and the source
+    material.
 
-    Content follows the v1.0 tag on purpose: the normative section must
-    describe what shipped, not what was planned.
+    Content is written after the v1.0 tag, when the normative section
+    describes the shipped protocol.
 
-## What belongs on this page
+## Planned contents
 
-The embedded and native client. Cover the header-only library, the injected clock and randomness, and the transport interface a caller implements.
+The embedded and native client: the header-only library, the injected clock and randomness, and the transport interface a caller implements.
 
-Source material: `lib/valence/README.md` (the vendorable front door), `lib/valence/include/valence/client.hpp`, and `examples/valence_demo/demo.cpp`.
+Source material: `lib/valence/README.md` (how to vendor the library), `lib/valence/include/valence/client.hpp`, and `examples/valence_demo/demo.cpp`.
 
 > DEMO-CANDIDATE: `examples/valence_demo/demo.cpp` walked step by step as a
 > live connect-and-print session.
 
-## Every client guide covers the same seven things
+## Common outline
 
-Keep the order identical across languages, so a reader who knows one guide can
-skim another.
+Every client guide covers these seven steps in this order.
 
 1. Open the transport and complete the handshake.
 2. Handle the catalog: fetch, cache by
@@ -43,7 +41,7 @@ skim another.
 
 ## Where to go next
 
-- [Quickstart](../quickstart.md) — the same seven steps, worked end to end.
-- [Hub implementer guide](../hub.md) — the other side of this library: making
-  firmware a conforming hub instead of a client.
-- [CLI guide](../cli.md) — watch what your client did to the motion.
+- [Quickstart](../quickstart.md): a worked example, end to end.
+- [Hub implementer guide](../hub.md): using the same library to build a hub,
+  making firmware a conforming hub instead of a client.
+- [CLI guide](../cli.md): graph the motion your client produced.

@@ -4,7 +4,6 @@ description: >-
   The normative CDDL definition of the Valence channel catalog: channel
   entries, packed layouts, CBOR schemas, the settings metamodel and store
   descriptors. Appendix C, in full.
-register: IEEE
 generated: true
 ---
 

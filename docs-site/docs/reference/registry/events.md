@@ -1,7 +1,6 @@
 ---
 title: Event kinds
 description: Generated tables of event kind values for the spec-core EVENT channels, plus log severity levels.
-register: IEEE
 generated: true
 ---
 

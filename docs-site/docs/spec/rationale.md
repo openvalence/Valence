@@ -3,7 +3,6 @@ title: Rationale and history
 description: >-
   Valence appendices H-J: design rationale and rejected alternatives, the
   design-review gap-closure map, and what changed since the v1 draft.
-register: IEEE
 generated: true
 ---
 

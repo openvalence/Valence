@@ -1,7 +1,6 @@
 ---
 title: Registry reference
 description: Generated index of the Valence protocol registry: frame types, CBOR keys, channels, error codes, limits.
-register: IEEE
 generated: true
 ---
 

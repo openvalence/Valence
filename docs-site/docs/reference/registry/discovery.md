@@ -1,7 +1,6 @@
 ---
 title: Discovery
 description: Generated tables of the Valence BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).
-register: IEEE
 generated: true
 ---
 

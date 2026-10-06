@@ -3,7 +3,6 @@ title: Known limitations
 description: >-
   Valence clause 18: every known limitation of v1.0, stated so that nobody
   rediscovers one as a surprise.
-register: IEEE
 generated: true
 ---
 

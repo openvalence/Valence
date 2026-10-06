@@ -3,7 +3,6 @@ title: Conformance
 description: >-
   Valence clause 17: conformance profiles, golden vectors and the fixture
   freeze, behavioral checklists, and the fuzzing totality gate.
-register: IEEE
 generated: true
 ---
 

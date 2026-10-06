@@ -1,8 +1,7 @@
 ---
 title: Anatomy of a frame
 description: >-
-  What a Valence frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.
-register: STE
+  What a Valence frame is made of: the four layers, the eight-byte header field by field, and the two payload encodings and when each is used.
 ---
 
 # Anatomy of a frame
@@ -10,14 +9,12 @@ register: STE
 Everything Valence sends is a [frame](../reference/dictionary.md#frame). A
 frame is an eight-byte header followed by a payload.
 
-This is the only page in this section that shows bytes. Read
-[How it works](how-it-works.md) first; this page explains the envelope that
-carries everything on it. The same colors apply: blue is measured truth,
-purple is a request, amber and red are safety.
+Blue marks what the machine measured or applied, purple what a person asked
+for, and amber and red safety.
 
-## 1. Four layers, four jobs
+## 1. Protocol layers
 
-<p class="ss-cap" markdown>What each layer is responsible for, and what it deliberately knows nothing about.</p>
+<p class="ss-cap" markdown>What each layer is responsible for, and what it does not depend on.</p>
 
 ```mermaid
 flowchart TD
@@ -38,20 +35,19 @@ flowchart TD
     classDef plumb fill:none,stroke:#8a8f98,stroke-dasharray:3 3
 ```
 
-<p class="ss-point" markdown>**The point.** Everything above the binding line is transport-blind. A binding is four operations plus an honest declaration of what it can do, so adding a transport never changes the protocol above it.</p>
+<p class="ss-point" markdown>**The point.** Everything above the binding line is transport-blind. A binding is four operations plus a declaration of its size limit, ordering and reliability, so adding a transport never changes the protocol above it.</p>
 
-| Layer | Owns | Knows nothing about |
+| Layer | Owns | Does not depend on |
 |---|---|---|
 | Session | Who this client is, what it may do, what it was granted, how silence is detected | How bytes travel |
 | Channel | What a class promises: a snapshot supersedes, a sample is one instant, a command is confirmed | Which transport carries it |
 | Framing | Where a frame starts and ends, which channel it belongs to, its sequence number | What the payload means |
 | Transport binding | Moving one frame, and declaring its own size limit, ordering and reliability | Anything about sessions or channels |
 
-**The weakest transport writes the rules.** Every guarantee is stated against
-unordered, lossy, 242-byte datagrams. Anything correct there is correct
-everywhere, and a reliable transport simply gets stronger behavior for free.
+**Guarantees and the weakest transport.** Every guarantee is stated against
+unordered, lossy, 242-byte datagrams, so it also holds on a reliable transport.
 
-## 2. Every frame starts the same way
+## 2. Frame header
 
 <p class="ss-cap" markdown>The eight-byte header, byte by byte, and the payload that follows it.</p>
 
@@ -69,7 +65,7 @@ everywhere, and a reliable transport simply gets stronger behavior for free.
 </div>
 </div>
 
-<p class="ss-point" markdown>**The point.** The header is the same eight bytes on every transport and for every frame type. A receiver can therefore skip a frame it does not understand instead of disconnecting, because the length is always in a place it can read.</p>
+<p class="ss-point" markdown>**The point.** The header is the same eight bytes on every transport and for every frame type. A receiver can skip a frame it does not understand instead of disconnecting, because the length is always in a place it can read.</p>
 
 | Field | Size | Its job |
 |---|---|---|
@@ -79,28 +75,27 @@ everywhere, and a reliable transport simply gets stronger behavior for free.
 | `seq` | 2 bytes | The [sequence number](../reference/dictionary.md#sequence-number), per channel and per direction. Classes that do not need it send zero. |
 | `len` | 2 bytes | Payload length. This is what makes a frame self-delimiting on a transport that is a byte pipe rather than a message queue. |
 
-> DEMO-CANDIDATE: a live frame trace — capture real bytes off a running hub
+> DEMO-CANDIDATE: a live frame trace: capture real bytes off a running hub
 > and highlight this eight-byte header, field by field, against the table
 > above.
 
-Three rules hang off this header, and together they are why an old client keeps
-working against a new machine.
+Three rules keep an old client working against a new machine.
 
-**Unknown means ignore.** An unknown frame type, an unknown channel, an unknown
-key: skip it and carry on. No endpoint may disconnect or flood a log over
-novelty. The sender of something new carries the burden of making it ignorable.
+**Unknown content is skipped.** An endpoint skips an unknown frame type, channel
+or key. No endpoint may disconnect or flood a log over
+unknown content. Anything new must be designed so that an older receiver can skip it.
 
 **One frame is one message** wherever the transport allows it. Fragmentation
 exists only for large control frames on small-datagram transports. Data frames
 never fragment.
 
-**Emergency stop is deliberately different.** The stop frame is twelve bytes,
+**The ESTOP frame has its own layout.** It is twelve bytes,
 starts with a four-byte magic pattern, and carries a CRC. A receiver can
 recognize it in a raw byte stream without decoding anything, which is what lets
 every queue on the path admit it at the front. Its bytes are specified in
 [the safety codes reference](../reference/registry/safety.md).
 
-## 3. Two encodings, and why there are two
+## 3. Payload encodings
 
 The header never changes. The payload is encoded one of two ways, and the
 choice follows how often the frame is sent.
@@ -108,8 +103,8 @@ choice follows how often the frame is sent.
 <p class="ss-cap" markdown>The same two numbers, encoded for the data plane and for the control plane.</p>
 
 **Packed, on the [data plane](../reference/dictionary.md#data-plane).** One
-motion sample: a target position and a velocity. No keys, no type tags, nothing
-but values in the order the catalog declared.
+motion sample: a target position and a velocity. The payload holds only the values,
+in catalog order, with no keys or type tags.
 
 <div class="ss-bytemap">
 <div class="ss-bytemap__scale" style="--cols:4" aria-hidden="true">
@@ -138,18 +133,17 @@ value carries its own type.
 </div>
 </div>
 
-<p class="ss-point" markdown>**The point.** Self-description costs bytes. A frame sent hundreds of times a second does not pay that cost, and a frame sent when somebody presses a button gladly does. Same numbers here: four bytes packed, eight as a map.</p>
+<p class="ss-point" markdown>**The point.** Self-description costs bytes, so high-rate frames use packed layouts and occasional frames use CBOR. In this example the two values take four bytes packed and eight bytes as a CBOR map.</p>
 
 | | Packed layout | CBOR map |
 |---|---|---|
-| Used by | STATE and STREAM — the data plane | Everything that negotiates, commands or confirms |
+| Used by | STATE and STREAM: the data plane | Everything that negotiates, commands or confirms |
 | Sent | Continuously, up to hundreds of times a second | Occasionally |
 | Self-describing | No. The catalog's [layout](../reference/dictionary.md#layout) is the only reader | Yes. Every value carries its type, every key means one thing everywhere |
 | Decoding cost | A field read at a known offset | A small parser, or a canned template on a device too small for one |
 | Evolution | Append at the tail only. Old readers parse the prefix they know | Add a key. Old readers ignore what they do not recognize |
 
-Both halves of that last row are the same promise made twice, which is the
-reason for the split.
+Both encodings evolve by addition only.
 
 **A layout may only grow at the tail.** Fields are never reordered, resized or
 removed. A client compiled a year ago still reads every field it knows from a
@@ -160,7 +154,7 @@ channel and retiring the old one, which keeps its number forever.
 the pair. This is the same tolerance rule as the header's, applied one level
 down.
 
-One more restriction earns its keep. Valence uses a deterministic
+Valence uses a deterministic
 [CBOR](../reference/dictionary.md#cbor) profile: definite lengths,
 shortest-form integers, sorted keys, no tags. Any message therefore has exactly
 one valid encoding. That is what lets test vectors compare byte for byte, and
@@ -169,8 +163,8 @@ values into it, knowing the bytes are what a real encoder would have produced.
 
 ## Where to go next
 
-- [How it works](how-it-works.md) — the mental model these frames serve.
-- [Frame types](../reference/registry/frames.md) — every type, generated from
+- [How it works](how-it-works.md): the mental model these frames serve.
+- [Frame types](../reference/registry/frames.md): every type, generated from
   the registry.
-- [CBOR keys](../reference/registry/cbor-keys.md) — every key, generated from
+- [CBOR keys](../reference/registry/cbor-keys.md): every key, generated from
   the registry.

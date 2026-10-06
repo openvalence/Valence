@@ -2,25 +2,23 @@
 title: Channel grid
 description: >-
   The 0xCDSS channel numbering convention: class, domain, family, and member.
-register: STE
 status: stub
 ---
 
 # Channel grid
 
-!!! warning "This page is a static summary, not the interactive grid"
+!!! warning "Static summary"
 
-    An earlier interactive version of this page read a live device catalog.
-    That generator (`docs-site/tools/gen_channel_grid_page.py`) stayed in
-    Nucleus, the machine repo, because it parses that machine's own
-    device catalog. Rebuilding an interactive grid on the protocol side
-    (reading a hub-agnostic catalog instead of one machine's) is a parked
-    work item.
+    This page summarizes `spec/CHANNEL-GRID.md`, which holds the full detail.
+    An earlier interactive version read a live device catalog. Its generator,
+    `docs-site/tools/gen_channel_grid_page.py`, stayed in Nucleus, the machine
+    repo, because it parses that machine's device catalog. An interactive grid
+    that reads a hub-agnostic catalog is a parked work item.
 
-    Full detail lives in `spec/CHANNEL-GRID.md`, alongside this directory
-    in this repository. This page is a summary of it.
+Valence recommends a numbering convention for device-defined channel ids.
+This page summarizes it.
 
-## The convention
+## Channel id digits
 
 A device-defined channel id (`0x0080`-`0x7FFF`) reads as four hex digits:
 class, domain, family, member.
@@ -36,16 +34,15 @@ class, domain, family, member.
 
 ## The mirror rule
 
-A STATE channel and its INTENT writer share domain, family, and member.
-Only the class digit differs. `0x1120` and `0x3120` are the same
-domain/family/member pair, read and write.
+A STATE channel and its INTENT writer differ only in the class digit.
+`0x1120` is the STATE channel and `0x3120` is its INTENT writer.
 
 ## Family and member
 
 Member 0 is the family's own STATE or roster channel, or its one INTENT
 verb. Every other member is a related channel: a tuning card, a modifier
-lane, a preset slot. Every family reserves 15 unused members. Every domain
-reserves unused families.
+lane, a preset slot. Each family leaves 15 member slots unused, and each domain
+leaves families unused, for later additions.
 
 ## Family 0xF
 
@@ -54,17 +51,18 @@ holds that domain's clear fault, save, and scan operations.
 
 ## Reserved domains
 
-Domains 3, 4, and 5 wait for future subsystem categories. Domains 8 through
-F wait for a future multi-axis convention. Range `0x7000`-`0x7FFF` is
-experimental and vendor space. A shipped catalog must never use it.
+Domains 3, 4, and 5 are reserved for future subsystem categories. Domains 8
+through F are reserved for a future multi-axis convention. Range
+`0x7000`-`0x7FFF` is experimental and vendor space, and a shipped catalog
+must not use it.
 
-## Core channels
+## Spec-core channels
 
 `0x0001` through `0x000E` are fixed and spec-governed. No hub allocates
-them. See [Channels](registry/channels.md) for the generated, authoritative list.
+them. [Channels](registry/channels.md) is the generated, authoritative list.
 
 ## Worked example
 
-This repository holds no single hub's device map. Each hub publishes its
-own. Nucleus's `CHANNEL-MAP.md`, in its own repository, is the worked
+Each hub documents its own device-range allocations; this repository holds
+none. Nucleus's `CHANNEL-MAP.md`, in its own repository, is the worked
 example.

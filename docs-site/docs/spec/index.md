@@ -3,7 +3,6 @@ title: Specification
 description: >-
   The normative Valence v1.0 protocol specification: reading guide, clause
   map, and the generated clause pages.
-register: IEEE
 generated: true
 ---
 
@@ -103,17 +102,10 @@ pages are:
 | `vectors/manifest.yaml` — Appendix F, golden-vector coverage | source repository |
 | `RFC-QUEUE.md`, `V1-READINESS.md` — change history and rationale | source repository |
 
-## The register {#register}
+## Conventions {#conventions}
 
-This tier is written in the IEEE and RFC normative register. Numbered
-clauses. RFC 2119 keywords. Exact cross-references. It is permitted to be
-dense: implementers need exactness more than approachability.
-
-Glossary tooltips are stripped from every page in this tier. In a
-normative document every word is normative or visibly marked otherwise,
-so a hover definition over a term inside a MUST clause would be a second,
-invisible source of meaning. [The Dictionary](../reference/dictionary.md)
-stays one click away.
-
-Everything outside this tier is written in the STE register. See
-[Contributing](../community/contributing.md).
+The specification uses numbered clauses, RFC 2119 keywords and exact
+cross-references. Glossary tooltips are not rendered in this section:
+every word in a normative clause carries its specified meaning, and a
+hover definition would be a second source of it. Terms are defined in
+[the Dictionary](../reference/dictionary.md).

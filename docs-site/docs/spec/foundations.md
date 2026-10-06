@@ -4,7 +4,6 @@ description: >-
   Valence clauses 1-4: purpose and non-goals, design philosophy, RFC 2119
   conventions, the honesty clauses, terminology, roles, architecture, and the
   versioning and compatibility model.
-register: IEEE
 generated: true
 ---
 

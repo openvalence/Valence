@@ -48,7 +48,7 @@ WHAT THIS SCRIPT IS ALLOWED TO CHANGE
     4. front matter, the DO-NOT-EDIT banner, page titles, and clearly-marked
        site notes are added around the text.
 
-    No word of the normative register is rewritten, summarized or reordered.
+    No word of the normative text is rewritten, summarized or reordered.
 """
 from __future__ import annotations
 
@@ -628,7 +628,6 @@ def front_matter(p, *, title: str, description: str) -> None:
     p("description: >-\n")
     for chunk in wrap(description, 76):
         p(f"  {chunk}\n")
-    p("register: IEEE\n")
     p("generated: true\n")
     p("---\n\n")
 
@@ -750,17 +749,12 @@ def build_index(page: Page, blocks: dict[str, Block], homes: dict[str, str],
       "source repository |\n")
     p("\n")
 
-    p("## The register {#register}\n\n")
-    p("This tier is written in the IEEE and RFC normative register. Numbered\n")
-    p("clauses. RFC 2119 keywords. Exact cross-references. It is permitted to be\n")
-    p("dense: implementers need exactness more than approachability.\n\n")
-    p("Glossary tooltips are stripped from every page in this tier. In a\n")
-    p("normative document every word is normative or visibly marked otherwise,\n")
-    p("so a hover definition over a term inside a MUST clause would be a second,\n")
-    p("invisible source of meaning. [The Dictionary](../reference/dictionary.md)\n")
-    p("stays one click away.\n\n")
-    p("Everything outside this tier is written in the STE register. See\n")
-    p("[Contributing](../community/contributing.md).\n")
+    p("## Conventions {#conventions}\n\n")
+    p("The specification uses numbered clauses, RFC 2119 keywords and exact\n")
+    p("cross-references. Glossary tooltips are not rendered in this section:\n")
+    p("every word in a normative clause carries its specified meaning, and a\n")
+    p("hover definition would be a second source of it. Terms are defined in\n")
+    p("[the Dictionary](../reference/dictionary.md).\n")
     return w.getvalue()
 
 

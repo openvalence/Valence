@@ -198,11 +198,10 @@ def hexcode(value: int, width: int) -> str:
     return f"0x{value:0{width}X}"
 
 
-def front_matter(p, *, title: str, description: str, register: str) -> None:
+def front_matter(p, *, title: str, description: str) -> None:
     p("---\n")
     p(f"title: {title}\n")
     p(f"description: {description}\n")
-    p(f"register: {register}\n")
     p("generated: true\n")
     p("---\n\n")
 
@@ -289,7 +288,6 @@ def page_index(reg: dict, reg_display: str) -> str:
             "Generated index of the Valence protocol registry: frame types, "
             "CBOR keys, channels, error codes, limits."
         ),
-        register="IEEE",
     )
     banner(p, reg_display)
     m = reg["meta"]
@@ -341,8 +339,7 @@ def page_frames(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Frame types",
-                 description="Generated table of every Valence frame type byte and header flag.",
-                 register="IEEE")
+                 description="Generated table of every Valence frame type byte and header flag.")
     banner(p, reg_display)
     p("# Frame types\n\n")
     p("The `type` byte is the first discriminator in the 8-byte header.\n\n")
@@ -382,8 +379,7 @@ def page_channels(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Channels",
-                 description="Generated tables of channel classes, stream kinds, access levels, priority classes, channel id ranges and the spec-core channels.",
-                 register="IEEE")
+                 description="Generated tables of channel classes, stream kinds, access levels, priority classes, channel id ranges and the spec-core channels.")
     banner(p, reg_display)
     p("# Channels\n\n")
     p("A channel is a named, numbered, typed data flow declared in the catalog.\n")
@@ -442,8 +438,7 @@ def page_cbor_keys(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="CBOR keys",
-                 description="Generated table of the Valence control-plane CBOR integer key space and every scoped sub-map key space.",
-                 register="IEEE")
+                 description="Generated table of the Valence control-plane CBOR integer key space and every scoped sub-map key space.")
     banner(p, reg_display)
     p("# CBOR keys\n\n")
     p("Control-plane payloads are CBOR maps with integer keys. The key space is\n")
@@ -497,8 +492,7 @@ def page_catalog_vocabulary(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Catalog vocabulary",
-                 description="Generated tables of packed field types, field roles, setting categories, setting flags and procedure phases.",
-                 register="IEEE")
+                 description="Generated tables of packed field types, field roles, setting categories, setting flags and procedure phases.")
     banner(p, reg_display)
     p("# Catalog vocabulary\n\n")
     p("The catalog describes what a hub's channels **are**. These are the\n")
@@ -574,8 +568,7 @@ def page_events(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Event kinds",
-                 description="Generated tables of event kind values for the spec-core EVENT channels, plus log severity levels.",
-                 register="IEEE")
+                 description="Generated tables of event kind values for the spec-core EVENT channels, plus log severity levels.")
     banner(p, reg_display)
     p("# Event kinds\n\n")
     p("An EVENT reports an edge: something happened. A device-authored EVENT\n")
@@ -616,8 +609,7 @@ def page_safety(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Safety codes",
-                 description="Generated tables of Valence safety intent operations and safety cause codes.",
-                 register="IEEE")
+                 description="Generated tables of Valence safety intent operations and safety cause codes.")
     banner(p, reg_display)
     p("# Safety codes\n\n")
 
@@ -654,8 +646,7 @@ def page_pairing(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Pairing modes",
-                 description="Generated table of the Valence pairing mode bitmask advertised in WELCOME.",
-                 register="IEEE")
+                 description="Generated table of the Valence pairing mode bitmask advertised in WELCOME.")
     banner(p, reg_display)
     p("# Pairing modes\n\n")
     p("A hub advertises the modes it currently offers as a bitmask in the\n")
@@ -733,8 +724,7 @@ def page_discovery(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Discovery",
-                 description="Generated tables of the Valence BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).",
-                 register="IEEE")
+                 description="Generated tables of the Valence BLE GATT identity, its advertising flags, and the UDP discovery probe/reply (RFC-046).")
     banner(p, reg_display)
     p("# Discovery\n\n")
     p("A client finds a hub two ways before it has a session. One is a pinned\n")
@@ -797,8 +787,7 @@ def page_rendering(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Rendering vocabulary",
-                 description="Generated tables of the RFC-048 rendering vocabulary: categories, ranks, value axes, units, action tags, archetypes, regions, renderer classes and widget patterns.",
-                 register="IEEE")
+                 description="Generated tables of the RFC-048 rendering vocabulary: categories, ranks, value axes, units, action tags, archetypes, regions, renderer classes and widget patterns.")
     banner(p, reg_display)
     p("# Rendering vocabulary\n\n")
     p("These are the numbers behind [RENDERING.md](../../spec/rendering.md), the "
@@ -925,8 +914,7 @@ def page_errors(reg: dict, reg_display: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="NACK codes",
-                 description="Generated table of every Valence NACK and GOODBYE reason code, grouped by range.",
-                 register="IEEE")
+                 description="Generated table of every Valence NACK and GOODBYE reason code, grouped by range.")
     banner(p, reg_display)
     p("# NACK and GOODBYE codes\n\n")
     p("There is **one** code space, not two. A GOODBYE `code` is drawn from this\n")
@@ -962,8 +950,7 @@ def page_limits(reg: dict, reg_display: str, raw: str) -> str:
     w = io.StringIO()
     p = w.write
     front_matter(p, title="Limits and defaults",
-                 description="Generated table of Valence well-known limits, timeouts, caps and defaults.",
-                 register="IEEE")
+                 description="Generated table of Valence well-known limits, timeouts, caps and defaults.")
     banner(p, reg_display)
     p("# Limits and defaults\n\n")
     p("Some of these are hard protocol constants. Others are recommended\n")
@@ -1024,7 +1011,6 @@ def build_dictionary(d: dict) -> tuple[str, str, int]:
             "Every Valence term with exactly one definition: hub, client, session, "
             "channel, catalog, etag, grant, shadow, deadman, intent, echo, and the rest."
         ),
-        register="STE",
     )
     p("<!-- ==========================================================\n")
     p("     GENERATED FILE. DO NOT EDIT.\n")

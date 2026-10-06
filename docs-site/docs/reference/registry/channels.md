@@ -1,7 +1,6 @@
 ---
 title: Channels
 description: Generated tables of channel classes, stream kinds, access levels, priority classes, channel id ranges and the spec-core channels.
-register: IEEE
 generated: true
 ---
 

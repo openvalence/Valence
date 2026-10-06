@@ -4,7 +4,6 @@ description: >-
   Valence clause 12: threat model, access tiers, pairing ceremonies, token
   presentation, hub authenticity, the trust ledger, and the administration
   surface.
-register: IEEE
 generated: true
 ---
 

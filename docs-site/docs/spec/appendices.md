@@ -4,7 +4,6 @@ description: >-
   Valence appendices A-G: frame types, CBOR keys, the catalog schema, a worked
   catalog sketch, the trace and golden-vector indexes, and limits and
   defaults.
-register: IEEE
 generated: true
 ---
 

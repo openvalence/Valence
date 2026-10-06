@@ -1,38 +1,35 @@
 ---
 title: CLI guide
 description: >-
-  Valence Trace, the motion-pipeline oscilloscope, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.
-register: STE
+  Valence Trace, which records and graphs motion-pipeline telemetry, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.
 ---
 
 # CLI guide
 
-Two command-line tools ship with Valence. They answer different questions.
+Valence ships three command-line tools: Valence Trace, the probe, and the generators.
 
 | Tool | Answers |
 |---|---|
 | [Valence Trace](#valence-trace) | Did the machine do what the app asked, and if not, where did the difference come from? |
 | [The probe](#the-probe) | Does this hub answer a full scripted session correctly? |
-| [The generators](#the-generators) | Are the published numbers still the registry's numbers? |
+| [The generators](#the-generators) | Do the generated files match the registry and the specification? |
 
-Both tools are Python. Both need the `websocket-client` package. Both run
-against [the simulator](local-testing.md#the-simulator) exactly as they run
-against hardware.
+Valence Trace and the probe are Python and need the `websocket-client`
+package. Both run against [the simulator](local-testing.md#the-simulator) as
+they run against hardware.
 
 ## Valence Trace
 
-`tools/valence_trace.py` is an oscilloscope for the motion pipeline.
+`tools/valence_trace.py` records and graphs motion-pipeline telemetry.
 
-### The question it answers
+### Purpose
 
-A machine feels wrong. The app is a good app, the script is a good script, and
-the motion is still not what the author intended. Nothing in a log answers
-this, because every layer reports itself as healthy.
+Valence Trace graphs commanded motion against achieved motion to show where they diverge.
 
 Valence Trace graphs the raw commanded input as it arrives over Valence, scaled
 into the [stroke window](../reference/dictionary.md#stroke-window), against
-what the planner actually did with it. Quintic shaping, chase lag, guard
-fallbacks and handoff bounding stop being feelings and become lines.
+what the planner did with it. Quintic shaping, chase lag, guard
+fallbacks and handoff bounding appear as separate lines.
 
 ### Three lines
 
@@ -42,35 +39,30 @@ Every graph carries the same three position series, all in millimeters.
 |---|---|
 | [Asked](../reference/dictionary.md#asked) | The demand as it landed, before planning |
 | [Planned](../reference/dictionary.md#planned) | Where the motion core is driving to right now |
-| [Achieved](../reference/dictionary.md#achieved) | Where the carriage actually is |
+| [Achieved](../reference/dictionary.md#achieved) | Measured carriage position |
 
-Read the two gaps separately. They mean different things.
+The two gaps measure different things.
 
-**Planned minus achieved is tracking.** The plan is the machine's own promise.
-A gap here is the actuator falling behind its own plan.
+**Planned minus achieved** is tracking error: a gap here is the actuator falling behind its plan.
 
-**Asked minus planned is shaping.** The planner does not chase a demand
-instantly, and it should not. In [waveform](../reference/dictionary.md#waveform)
-mode this gap is simply the travel still to come inside the commanded
+**Asked minus planned** is shaping: the planner does not chase a demand
+instantly. In [waveform](../reference/dictionary.md#waveform)
+mode this gap is the travel still to come inside the commanded
 duration, so a large number is normal. In
-[chase](../reference/dictionary.md#chase) mode the same gap is lag, and it is
-worth reading.
+[chase](../reference/dictionary.md#chase) mode the same gap is lag.
 
 A third layer sits underneath: the plan envelope, drawn from the planner's own
 current segment, plus the velocity plane and the engine's
 [anomaly](../reference/dictionary.md#motion-anomaly) events marked on the time
 axis.
 
-### It cannot move the machine
+### Read-only access
 
 Valence Trace connects at the [watch](../reference/dictionary.md#watch) tier. It
-subscribes and nothing else. It sends no
+only subscribes: it sends no
 [intent](../reference/dictionary.md#intent), publishes no
-[stream](../reference/dictionary.md#stream), and carries no `publishes` wish in
-its HELLO. There is no intent builder in the file at all.
-
-This is structural, not a flag you can forget. Drive the machine with something
-else and watch it here.
+[stream](../reference/dictionary.md#stream), carries no `publishes` wish in
+its HELLO, and has no intent builder. This is fixed in the code and cannot be configured. Use another client to drive the machine.
 
 ### record
 
@@ -91,7 +83,7 @@ python tools/valence_trace.py record --ip 127.0.0.1 --port 82 \
 | `--theme`, `--palette` | Passed to the renderer. See [color](#color) |
 | `--window MIN:MAX` | Escape hatch for a hub whose catalog declares no window role. Recorded as an operator override, never as machine truth |
 
-It prints how it found every channel, which is worth reading once:
+It prints how it found every channel:
 
 ```text
 [valence_trace] connected ws://127.0.0.1:82/ (subprotocol valence.v1)
@@ -107,10 +99,10 @@ It prints how it found every channel, which is worth reading once:
 [valence_trace] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -> run.jsonl
 ```
 
-Nothing there is a hardcoded channel number. Positions and the window come from
+The tool hardcodes no channel numbers. Positions and the window come from
 [field roles](../reference/registry/catalog-vocabulary.md#field-roles); the rest
-comes from the catalog's own names and layouts. A hub that numbers its channels
-differently still graphs.
+comes from the catalog's own names and layouts. It therefore works with a hub that numbers its channels
+differently.
 
 ### live
 
@@ -155,31 +147,28 @@ want to compare two runs, or keep the evidence.
 python tools/valence_trace.py render run.jsonl --out run.html --theme light --palette cvd
 ```
 
-The page inlines its own data, its own SVG and its own script. It fetches
-nothing. It opens on a bench laptop with no internet, months later, and it
-zooms. `render` needs no network and no `websocket-client`: it is a pure
-function of the trace file, so anyone you send a trace to can render it.
+The page inlines its data, SVG and script, makes no network requests, works offline and supports zoom. `render` needs no network and no `websocket-client`: its output depends only on the trace file, so anyone with the file can render it.
 
 The page carries a toolbar: each series on or off, the plan envelope, the
 anomaly marks, palette, theme and reset-zoom. Under the graph are three
-collapsed tables — trace metadata, the anomaly log, and a series summary. Every
-value on the graph is reachable in those tables without seeing a single color.
+collapsed tables: trace metadata, the anomaly log, and a series summary.
+Every value on the graph is reachable in those tables without relying on color.
 
 ### The trace format
 
 A trace is JSONL. One header record, then one record per frame, then a footer
 that repeats the header with the final window, limits and record counts.
 
-The header is the reason the format is worth explaining. It carries:
+The header carries:
 
 - the hub identity: session id, boot id, `cfg_gen`, `deadman_ms`;
 - the catalog [etag](../reference/dictionary.md#etag), the catalog size, and
-  whether the etag was verified against the bytes actually received;
+  whether the etag was verified against the bytes received;
 - the firmware version and whether the target was simulated;
 - the [stroke window](../reference/dictionary.md#stroke-window) and the whole
   [limit set](../reference/dictionary.md#limit-set);
 - the CLOCK offset and round-trip time;
-- the full layout of every recorded channel — every field's name, type, unit,
+- the full layout of every recorded channel: every field's name, type, unit,
   scale, role, description, bit names and option labels;
 - a `resolution` block saying **how** each thing was found.
 
@@ -191,32 +180,26 @@ The header is the reason the format is worth explaining. It carries:
  "series":{"planned":{"channel":128,"field":"tgt_10um","unit":"mm"}}}
 ```
 
-Two properties follow from that, and both matter.
+Each value keeps its name, unit and scale, so a trace stays readable after the firmware layout changes, without the tool
+version that wrote it.
 
-**A trace stays interpretable.** Open one in a year, against a firmware that
-has since changed its layout, and every number still has a name, a unit and a
-scale attached to it. You never need the tool version that recorded it, and you
-never need to guess which field was which.
+`render` needs no network, and re-rendering an old trace with a newer Valence Trace gives the same graph.
 
-**`render` is offline and total.** The graph is a pure function of the trace.
-Re-rendering an old trace with a newer Valence Trace gives the same picture, so a
-trace attached to a bug report is evidence rather than an anecdote.
-
-Frame records are short on purpose: `r` names the kind (`m` motion, `p` plan
+Frame record keys: `r` names the kind (`m` motion, `p` plan
 strip, `c` machine config, `d` diagnostics, `a` anomaly, `s` safety), `t` is
 seconds since capture start, `th` is the hub-clock estimate, and `v` is the
 decoded sample with catalog field names as keys.
 
 ### A worked example: segments against chase {#worked-example}
 
-Here is one capture read end to end. Both runs are against the simulator, on
-one unrestarted instance, with the probe as the driver.
+This example compares two captures on one unrestarted simulator instance,
+driven by the probe.
 
 ```bash
 # terminal 1 — the machine
 valencesim machine --homed --headless --duration 150
 
-# terminal 2 — the scope
+# terminal 2 — the recorder
 python tools/valence_trace.py record --ip 127.0.0.1 --port 82 --seconds 26 --out seg.jsonl
 
 # terminal 3 — the driver: timed segments, one per second
@@ -231,60 +214,52 @@ capture holds about 1200 motion samples in the mode of interest.
 
 | Measured over the capture | Segments (waveform) | Points (chase) |
 |---|---|---|
-| Mean \|planned − achieved\| | **7.2 mm** | **31.1 mm** |
+| Mean \|planned − achieved\| | 7.2 mm | 31.1 mm |
 | Median \|planned − achieved\| | 1.3 mm | 37.9 mm |
 | 95th percentile | 10.0 mm | 48.9 mm |
 | Mean speed | 173 mm/s | 399 mm/s |
-| Samples at the speed ceiling | 0% | **61%** |
+| Samples at the speed ceiling | 0% | 61% |
 | Anomalies counted | 3 | 669 |
 | Samples dropped on ingress | 0 | 0 |
 
-Now read it.
-
-**The segment run tracks its plan.** Half the samples are inside 1.3 mm on a
-500 mm stroke. Each funscript action arrives as one timed segment, becomes one
+In the segment run, the median tracking error is 1.3 mm on a 500 mm stroke window. Each funscript action arrives as one timed segment, becomes one
 [quintic](../reference/dictionary.md#quintic) over exactly the commanded
 duration, and the machine follows it. Peak speed stayed at 517 mm/s, under the
 550 ceiling, so the demand fitted inside the machine's envelope. The three
 anomalies are the first handoff at the start of the run.
 
-**The chase run does not, and the trace says why.** The driver streams
-`0.5 + 0.35·sin(2π·0.8·t)`, which on a 500 mm window peaks at **880 mm/s** of
-source velocity. The machine's input ceiling is 550 mm/s. The demand is
-physically impossible on this machine, so speed pins at the ceiling for 61% of
-the capture and the position falls behind. 566 of the anomalies are
+In the chase run, achieved position falls behind the plan. The driver streams
+`0.5 + 0.35·sin(2π·0.8·t)`, which on a 500 mm window peaks at 880 mm/s of
+source velocity. The demand exceeds the machine's 550 mm/s input ceiling, and speed stays at the ceiling for 61% of
+the capture. 566 of the anomalies are
 `endvel_clamped`: the engine refusing an end velocity that the window could not
 absorb.
 
-That is the whole skill. **The gap alone means nothing; the gap beside the
-speed line means everything.** A gap with speed headroom left is a tracking or
-tuning question. A gap with speed pinned at the ceiling is a demand the machine
-was never able to serve, and the fix belongs in the app, in the script, or in
-the limits — not in the planner.
+Read the gap together with the speed line. A gap with speed headroom left is a tracking or
+tuning question. A gap while speed is at the ceiling means the demand exceeds the machine's limits. Fix it in the app, the script or the limits, not in the planner.
 
 ### Color {#color}
 
-The colors are the product's own, so a graph reads like the WebUI and like
-these docs.
+The colors match the WebUI and these docs.
 
 | Series | Meaning |
 |---|---|
-| Purple | Intent: commanded, not yet confirmed. **Asked** |
-| Deep blue | Reality's side, accepted: the hub's own target. **Planned** |
-| Blue | Reality: measured. **Achieved** |
+| Purple | Commanded, not yet confirmed. **Asked** |
+| Deep blue | The hub's accepted target. **Planned** |
+| Blue | Measured position. **Achieved** |
 | Amber, red | Safety only. Never a data series |
 
 Planned is drawn as a deeper step of the reality blue rather than a fourth hue.
 The planner's target has already passed arbitration, clamping and the window,
-so it belongs to the reality family; the lightness step says "accepted, not yet
-executed".
+so it belongs to the reality family; the darker step marks it as accepted but not yet
+executed.
 
 !!! warning "Two of these lines are not distinguishable by color"
 
-    Measured, not assumed: the reality and intent pair is **ΔE 1.1** under
+    The reality and intent pair is ΔE 1.1 under
     deuteranopia, against 11.4 under normal vision.
 
-    So color is never the only encoding. Every series also carries its own
+    Color is therefore not the only encoding. Every series also carries its own
     dash pattern, a legend key drawn in that pattern, a direct end-label on the
     line, and a named readout under the crosshair. The series-summary table
     gives every value in text.
@@ -293,29 +268,27 @@ executed".
     `cvd` palette re-steps the same semantic families to a set that passes.
     `--palette cvd` makes it the default for a rendered file.
 
-### Honest limits
+### Limits
 
 **The simulator's actuator is an ideal follower.** It runs the real motion
-engine, the real hub and the real catalog, so *asked* and *planned* are exactly
-what the device would produce. *Achieved* is optimistic: there is no step
+engine, the real hub and the real catalog, so *asked* and *planned* match
+the device. *Achieved* is closer to the plan than hardware achieves: there is no step
 quantization, no current limit, no encoder lag and no mechanical compliance.
-Trust the simulator for protocol, planning and shaping questions. Confirm
+Use the simulator for protocol, planning and shaping questions. Confirm
 tracking numbers on hardware.
 
 **`plan_us_*` is always zero on a host build.** Plan time is measured where it
-runs, on the device. A host number would be a different CPU answering a
-question nobody asked.
+runs, on the device. A host measurement would not reflect the device.
 
-**A trace is one workload.** Every number in the worked example above is a
-property of that machine, that limit set and that driver. Capture your own.
+The worked-example numbers apply only to that machine, limit set and driver. Capture your own traces for comparison.
 
 ## The probe
 
 `tools/valence_probe.py` is the reference verifier. It runs a scripted session
-against a live hub and prints a narrated pass-or-fail transcript.
+against a live hub and prints a pass-or-fail transcript per stage.
 
 It hand-rolls its own encoder against the registry instead of importing the
-library, so a hub that passes the probe has agreed with an independent
+library. A hub that passes the probe therefore agrees with an independent
 implementation. It is also a complete, readable v1.0 client, which is why the
 [Quickstart](quickstart.md) is built from it.
 
@@ -344,8 +317,7 @@ python tools/valence_probe.py --ip 127.0.0.1 --port 82 --segments 20
   46 passed, 0 failed, 3 skipped
 ```
 
-A failure names its stage. The stage names are the protocol's own steps, so the
-failing stage tells you which clause to read.
+A failure names its stage. Stage names match the protocol's steps, which identifies the clause to read.
 
 | Flag | What it does |
 |---|---|
@@ -356,29 +328,26 @@ failing stage tells you which clause to read.
 | `--bench-home` | Exercise the bench homing operations |
 | `--no-motion`, `--listen-only` | Skip every step that commands motion |
 
-Two of these change the machine's state and say so. `--estop` really latches
+Two flags change the machine's state. `--estop` latches
 the machine and leaves it unhomed. `--bench-home` asserts a stroke window
-nothing measured, and is for motorless rigs. Neither is a default.
+nothing measured, and is for motorless rigs. Neither is on by default.
 
 Motion steps are dropped by the hub's homed gate on an unhomed machine. That is
-correct behavior, and the wire path is still fully exercised, so an unhomed
-run is the safe way to prove a hub.
+correct behavior, and the wire path is still fully exercised. An unhomed
+run therefore tests the wire path without moving the machine.
 
-### Run it twice
+### Back-to-back runs
 
 !!! danger "Two runs, back to back, with nothing restarted between them"
 
     Run the probe. Then run it **again**, against the same hub, without
     rebooting, reflashing or restarting anything.
 
-    A departed session's [source ownership](../reference/dictionary.md#source-ownership)
-    once leaked forever, silently refusing every later client as a conflict.
-    The bug hid for months, because every deployment rebooted the device
-    between test runs and the reboot cleared the leak.
+    A hub can leak [source ownership](../reference/dictionary.md#source-ownership)
+    after a session ends, refusing every later client as a conflict. A reboot
+    between runs clears the leak and hides it. Detecting it requires two consecutive runs without a restart.
 
-    One run cannot find that class of bug. Two can.
-
-The full reasoning, and the other three patterns worth keeping, are on
+The full reasoning, and three related patterns, are on
 [Local testing](local-testing.md#the-pattern-that-is-mandatory).
 
 ## The generators
@@ -398,10 +367,10 @@ Run the plain form to regenerate, then commit the source and the output
 together. Never hand-edit a generated file: the banner at the top of each one
 says so, and `--check` enforces it.
 
-## Where to go next
+## Related pages
 
-- [Local testing](local-testing.md) — the simulator, the fuzz harnesses, and
+- [Local testing](local-testing.md): the simulator, the fuzz harnesses, and
   the regression patterns.
-- [Quickstart](quickstart.md) — the shortest correct session, built from the
+- [Quickstart](quickstart.md): a minimal session, built from the
   probe.
-- [The Dictionary](../reference/dictionary.md) — every term used here.
+- [The Dictionary](../reference/dictionary.md): every term used here.
