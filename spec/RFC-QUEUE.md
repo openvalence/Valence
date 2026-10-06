@@ -9378,5 +9378,21 @@ say exactly which, future-us will want the receipts.*
     5,000,000 mm/s^3 (2,000,000 was kinematically limiting; 5 to 10 million
     is the machine). Open: a sample stream at the velocity ceiling from far
     away still collapses on the bare kernel (Kinetic kin-brr).
+    (tt) The segments flush (RFC-087 supersede; Kinetic kin-0f2, Nucleus
+    val-dz9): Engine::truncateAfter(t) drops every pending knot authored at
+    or after t. The curve through the reaction horizon is committed first
+    and never moves ((bb)); when t lies past the horizon, a knot at t
+    carries the dropped plan's p and v there, so the motion in flight runs
+    to t and hands off as it would to any successor (SPEC 9.6), and the
+    next knot after t chains from it. A t within a tick of the horizon, or
+    before it, drops the whole window and the hand-off is the horizon. No
+    anomaly is recorded: a flush is the sender's intent. Nucleus applies it
+    on the first segment of each segments bundle; samples never flush.
+    Measured: 250 ms of 50 ms segments, a flush 40 ms out and a 300 ms
+    segment back down: at t the curve is where the queued plan was, p and v
+    equal to the printed precision under both policies, no step beyond
+    velocity times a tick, nothing refused or dropped. Through the arbiter:
+    the climb in flight hands off at 25.8 mm moving 206 mm/s, the plan
+    follows the new bundle, census refused 0 and failures 0.
 
 ---
