@@ -43,6 +43,7 @@ FROZEN_SHA256 = {
 
 VENDORED_PREFIXES = (
     "docs-site/docs/assets/javascripts/",  # vendored mermaid bundle
+    ".beads/",  # the board's export: bead text is its own record, not spec prose
 )
 BINARY_SUFFIXES = (".bin", ".png", ".jpg", ".webp", ".ico", ".pdf",
                    ".woff", ".woff2", ".idx", ".gz", ".lock")
