@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Connect a Valence client, adopt live machine state, and send one intent — with the readiness gate that every client written against the old draft gets wrong.">
+        <meta name="description" content="Connect a Valence client, adopt live machine state, pass the ready gate and send one intent.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -845,10 +845,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-session-in-seven-steps" class="md-nav__link">
+  <a href="#session-sequence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The session, in seven steps
+        Session sequence
       
     </span>
   </a>
@@ -889,10 +889,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-rules-that-come-with-it" class="md-nav__link">
+  <a href="#client-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The rules that come with it
+        Client rules
       
     </span>
   </a>
@@ -2722,10 +2722,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-session-in-seven-steps" class="md-nav__link">
+  <a href="#session-sequence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The session, in seven steps
+        Session sequence
       
     </span>
   </a>
@@ -2766,10 +2766,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-rules-that-come-with-it" class="md-nav__link">
+  <a href="#client-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The rules that come with it
+        Client rules
       
     </span>
   </a>
@@ -2802,16 +2802,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2819,15 +2809,15 @@
 
 
 <h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Link to this section">#</a></h1>
-<p>This page gets you one connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. It reads live machine state and sends
-one command.</p>
-<p>Develop against <a href="../local-testing/#the-simulator">the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr></a>. It embeds the
-real <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, the real motion engine and the real <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, so a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that works
-there works on hardware. Nobody's machine has to be in the room.</p>
+<p>This page builds one connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that reads live machine state and sends
+one <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>.</p>
+<p>Develop against <a href="../local-testing/#a-real-devices-own-simulator">Nucleus's <code>valencesim</code></a>.
+It embeds that device's <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, motion engine and <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> behind the same wire
+protocol.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>valencesim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">120</span>
 </span></code></pre></div>
-<h2 id="the-session-in-seven-steps">The <abbr title="The stateful association between one client and the hub.">session</abbr>, in seven steps<a class="headerlink" href="#the-session-in-seven-steps" title="Link to this section">#</a></h2>
-<p>Every Valence <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> does this, in this order.</p>
+<h2 id="session-sequence"><abbr title="The stateful association between one client and the hub.">Session</abbr> sequence<a class="headerlink" href="#session-sequence" title="Link to this section">#</a></h2>
+<p>A Valence <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> performs these steps in this order.</p>
 <pre class="mermaid"><code>sequenceDiagram
     autonumber
     participant C as Client
@@ -2842,12 +2832,12 @@ there works on hardware. Nobody's machine has to be in the room.</p>
     C-&gt;&gt;H: INTENT
     H-&gt;&gt;C: ECHO (applied, post-clamp)</code></pre>
 <p>Steps 1 to 3 identify both parties. Step 4 is the
-<a href="#the-ready-gate"><abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">ready gate</abbr></a>, and it is the one people miss. Steps 5 to 7 are
+<a href="#the-ready-gate"><abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">ready gate</abbr></a>. Steps 5 to 7 are
 the working <abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
 <h2 id="python">Python<a class="headerlink" href="#python" title="Link to this section">#</a></h2>
 <p>The <a href="../cli/#the-probe">probe</a> is import-safe: everything with a side effect
-lives under its <code>main()</code>. So the shortest honest <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> imports it as the wire
-library and writes only the <abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
+lives under its <code>main()</code>. The example imports it as the wire library and writes
+only the <abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">websocket</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"tools"</span><span class="p">)</span>            <span class="c1"># the probe is import-safe: use it as the wire library</span>
@@ -2879,7 +2869,7 @@ library and writes only the <abbr title="The stateful association between one cl
 </span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"WELCOME  session=</span><span class="si">%d</span><span class="s2">  etag=</span><span class="si">%s</span><span class="s2">  deadman=</span><span class="si">%d</span><span class="s2">ms"</span>
 </span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>      <span class="o">%</span> <span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">ss</span><span class="o">.</span><span class="n">K</span><span class="p">[</span><span class="s2">"session_id"</span><span class="p">]],</span> <span class="n">etag</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="n">w</span><span class="p">[</span><span class="n">ss</span><span class="o">.</span><span class="n">K</span><span class="p">[</span><span class="s2">"deadman_ms"</span><span class="p">]]))</span>
 </span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
-</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="c1"># 2. CATALOG_READY: declare the catalog you decode against. Nothing flows before this.</span>
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="c1"># 2. CATALOG_READY: declare the catalog you decode against. The hub sends no STATE and refuses intents until this frame.</span>
 </span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="n">ss</span><span class="o">.</span><span class="n">send_frame</span><span class="p">(</span><span class="n">ws</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">FRAME</span><span class="p">[</span><span class="s2">"CATALOG_READY"</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">etag</span><span class="p">)</span>
 </span><span id="__span-1-34"><a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"CATALOG_READY sent"</span><span class="p">)</span>
 </span><span id="__span-1-35"><a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
@@ -2889,7 +2879,7 @@ library and writes only the <abbr title="The stateful association between one cl
 </span><span id="__span-1-39"><a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a>    <span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">CH_MOTION</span><span class="p">,</span> <span class="mf">20.0</span><span class="p">,</span> <span class="n">ss</span><span class="o">.</span><span class="n">PRIORITY</span><span class="p">[</span><span class="s2">"elevated"</span><span class="p">]),</span>
 </span><span id="__span-1-40"><a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a><span class="p">]))</span>
 </span><span id="__span-1-41"><a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>
-</span><span id="__span-1-42"><a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="c1"># 4. Retained STATE arrives immediately: adopt it, never assume a default.</span>
+</span><span id="__span-1-42"><a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a><span class="c1"># 4. Retained STATE arrives immediately: adopt it; do not assume a default.</span>
 </span><span id="__span-1-43"><a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a><span class="n">hdr</span><span class="p">,</span> <span class="n">payload</span> <span class="o">=</span> <span class="n">wait_for</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">FRAME</span><span class="p">[</span><span class="s2">"STATE"</span><span class="p">])</span>
 </span><span id="__span-1-44"><a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a><span class="k">while</span> <span class="n">hdr</span><span class="p">[</span><span class="s2">"channel"</span><span class="p">]</span> <span class="o">!=</span> <span class="n">ss</span><span class="o">.</span><span class="n">CH_MOTION</span><span class="p">:</span>
 </span><span id="__span-1-45"><a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>    <span class="n">hdr</span><span class="p">,</span> <span class="n">payload</span> <span class="o">=</span> <span class="n">wait_for</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">FRAME</span><span class="p">[</span><span class="s2">"STATE"</span><span class="p">])</span>
@@ -2917,16 +2907,16 @@ library and writes only the <abbr title="The stateful association between one cl
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>STATE    motion pos=0.00mm
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>ECHO     asked 5.00mm -&gt; applied {1: 5.0, 2: False}
 </span></code></pre></div>
-<p>The last line is the whole point. <code>5.0</code> is what the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> <strong>applied</strong>, after its
-own <a href="../../reference/dictionary/#clamp"><abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamp</abbr></a>. Render that number, never the
-one you sent.</p>
+<p><code>5.0</code> is what the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> <strong>applied</strong>, after its
+own <a href="../../reference/dictionary/#clamp"><abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamp</abbr></a>. Render the applied value, not the
+value you sent.</p>
 <blockquote>
 <p>DEMO-CANDIDATE: run this exact script live against an in-browser <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>,
 and highlight each line of output as its frame arrives.</p>
 </blockquote>
 <h2 id="javascript">JavaScript<a class="headerlink" href="#javascript" title="Link to this section">#</a></h2>
 <p><code>clients/js/</code> is the browser <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, and it is a v1.0 reference
-implementation. It hides the handshake, including the <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">ready gate</abbr>, and hands you
+implementation. It performs the handshake, including the <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">ready gate</abbr>, and emits
 events.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createSession</span><span class="p">,</span><span class="w"> </span><span class="nx">CH</span><span class="p">,</span><span class="w"> </span><span class="nx">PRIORITY</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'./clients/js/index.js'</span><span class="p">;</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
@@ -2950,16 +2940,16 @@ events.</p>
 </span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="nx">s</span><span class="p">.</span><span class="nx">connect</span><span class="p">();</span>
 </span></code></pre></div>
 <p>Field names come from the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> verbatim, already scaled to millimeters.
-Writing is the same shape, and it also resolves on the applied value:</p>
+Write calls resolve with the applied value:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">applied</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">sendConfigSet</span><span class="p">({</span><span class="w"> </span><span class="mf">1</span><span class="o">:</span><span class="w"> </span><span class="nx">windowMinMm</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="o">:</span><span class="w"> </span><span class="nx">windowMaxMm</span><span class="w"> </span><span class="p">});</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// applied[1] / applied[2] are the DEVICE's clamped values — render those.</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1">// applied[1] / applied[2] are the DEVICE's clamped values; render those.</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">await</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">sendMove</span><span class="p">(</span><span class="nx">targetMm</span><span class="p">);</span>
 </span></code></pre></div>
-<p>Motion input is not an <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>. It is a c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> you publish: find the
+<p>Motion input is a c2h <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> that the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr>, not an <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>: find the
 <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, ask the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> for a <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>, then send samples keyed by the
 layout's own field names. Every refusal (not granted, over the granted rate,
 a malformed <abbr title="One STREAM frame carrying a base timestamp and up to 32 samples.">bundle</abbr>, a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> scheduled too far ahead) throws a <code>PublishError</code>
-with a <code>PUBLISH_ERROR</code> code; nothing is dropped silently.</p>
+with a <code>PUBLISH_ERROR</code> code; the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> raises an error for every refused sample.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CHANNEL_CLASS</span><span class="p">,</span><span class="w"> </span><span class="nx">STREAM_KIND</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'./clients/js/index.js'</span><span class="p">;</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kd">const</span><span class="w"> </span><span class="nx">input</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">catalog</span><span class="p">.</span><span class="nx">find</span><span class="p">((</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">cls</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="nx">CHANNEL_CLASS</span><span class="p">.</span><span class="nx">STREAM</span><span class="w"> </span><span class="o">&amp;&amp;</span>
@@ -2970,63 +2960,57 @@ with a <code>PUBLISH_ERROR</code> code; nothing is dropped silently.</p>
 </span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">target_norm</span><span class="o">:</span><span class="w"> </span><span class="mf">0.8</span><span class="p">,</span><span class="w"> </span><span class="nx">duration_ms</span><span class="o">:</span><span class="w"> </span><span class="mf">120</span><span class="p">,</span><span class="w"> </span><span class="nx">end_vel_norm</span><span class="o">:</span><span class="w"> </span><span class="mf">0</span><span class="w"> </span><span class="p">},</span>
 </span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">anchor</span><span class="o">:</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">hubNowUs</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">60000</span><span class="w"> </span><span class="p">});</span><span class="w">         </span><span class="c1">// execution start, in hub time</span>
 </span></code></pre></div>
-<p>Prove your build against a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> before you trust it, running the full
-read-only <abbr title="The stateful association between one client and the hub.">session</abbr> <strong>twice back to back</strong> -- the
+<p>Test your build against a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> by running the full read-only <abbr title="The stateful association between one client and the hub.">session</abbr> twice back
+to back. This is the
 <a href="../local-testing/#the-pattern-that-is-mandatory">mandatory pattern</a> for
 anything touching <abbr title="The stateful association between one client and the hub.">session</abbr> lifecycle. <code>clients/js/test/valence-wire.test.mjs</code>
-in this repo proves the wire codec byte-for-byte; a live two-connection
-<abbr title="The stateful association between one client and the hub.">session</abbr> walkthrough against a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is a small script away using the same
-<code>clients/js/</code> primitives, or reach for <code>tools/valence_probe.py</code>.</p>
+in this repo proves the wire codec byte-for-byte. For a live check, run
+<code>tools/valence_probe.py</code> twice against the same <abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
 <h2 id="the-ready-gate">The <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">ready gate</abbr><a class="headerlink" href="#the-ready-gate" title="Link to this section">#</a></h2>
 <div class="admonition danger">
-<p class="admonition-title">Send <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">CATALOG_READY</abbr>, or nothing works and the reason is invisible</p>
+<p class="admonition-title">Send <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">CATALOG_READY</abbr> before anything else</p>
 <p>The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> gates <strong>both</strong> planes until your <abbr title="The stateful association between one client and the hub.">session</abbr> declares which <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> it
 operates against. Before that declaration you get no <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>, no stream, and
 every <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> is refused <code>NOT_READY</code>.</p>
 </div>
-<p>This is the single thing a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> written against an older draft gets wrong.
-Here is the same script with one line removed:</p>
+<p>Output of the same script with the <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">CATALOG_READY</abbr> line removed:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>WELCOME  session=2929602731  etag=0458eec408a43692  deadman=600ms
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>CATALOG_READY deliberately NOT sent
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>STATE    nothing arrived in 2.0s
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>NACK     NOT_READY
 </span></code></pre></div>
-<p>No error at connect. No error at subscribe. Just silence, and then a refusal
-with a name you have to know to interpret.</p>
-<p>The rule exists for safety, not for bookkeeping. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that has not adopted
-the <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <a href="../../reference/dictionary/#latch">safety <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr></a> must not be able
-to act. Gating the <abbr title="The frames that negotiate, command and confirm, carrying CBOR map payloads.">control plane</abbr> on the same declaration makes that
-impossible rather than merely unlikely.</p>
+<p>Connect and subscribe succeed without error, no <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> arrives, and the <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>
+is refused <code>NOT_READY</code>.</p>
+<p>The gate is a safety rule. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that has not adopted
+the <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <a href="../../reference/dictionary/#latch">safety <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr></a> must not act, and
+the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> enforces this by gating the <abbr title="The frames that negotiate, command and confirm, carrying CBOR map payloads.">control plane</abbr> on the same declaration.</p>
 <p><strong>What to declare.</strong> Send the <a href="../../reference/dictionary/#etag"><abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr></a> of the
-<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> you actually decode against.</p>
+<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> you decode against.</p>
 <ul>
 <li>If you fetched the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, verify its bytes hash to the <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> WELCOME
   advertised, then declare that <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>.</li>
 <li>If you already had that <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> cached, skip the fetch and declare it.</li>
 <li>If you hardcode layouts, like the probe does, declare the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> only
-  because it matches what you compiled against. Anything else is a lie the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
-  will believe.</li>
+  because it matches what you compiled against. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> cannot detect a false
+  declaration.</li>
 </ul>
-<h2 id="the-rules-that-come-with-it">The rules that come with it<a class="headerlink" href="#the-rules-that-come-with-it" title="Link to this section">#</a></h2>
-<p><strong>Adopt, never assume.</strong> Retained <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> arrives on <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>. Your first render
-comes from the machine. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that paints defaults on page load, then
-corrects itself, has already lied once.</p>
-<p><strong>Render the echo, not the request.</strong> The <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> carries applied, <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">post-clamp</abbr>
+<h2 id="client-rules"><abbr title="Any endpoint that establishes a session with the hub.">Client</abbr> rules<a class="headerlink" href="#client-rules" title="Link to this section">#</a></h2>
+<p><strong>Adopt <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>.</strong> Retained <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> arrives on <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>. Do not render
+defaults before it arrives.</p>
+<p><strong>Render the echo.</strong> The <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> carries applied, <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">post-clamp</abbr>
 values. See <a href="../../reference/dictionary/#ground-truth"><abbr title="The doctrine that a client never displays machine state that differs from the device's, in either direction.">ground truth</abbr></a>.</p>
-<p><strong>Keep talking.</strong> <a href="../../reference/dictionary/#liveness-ping">Liveness</a> is silence-based, and it is measured on what you
-<strong>send</strong>. A pure subscriber is the trap: telemetry pours in, your receive path
-never idles, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> reaps you for silence anyway. Send PING on your own
+<p><strong>Send PING.</strong> <a href="../../reference/dictionary/#liveness-ping">Liveness</a> is silence-based, and it is measured on what you
+<strong>send</strong>. Received frames do not count, so a subscriber that only receives counts as silent. Send PING on your own
 clock, well inside the advertised <code>deadman_ms</code>.</p>
-<p><strong>Expect a NACK to be normal.</strong> <code>NOT_HOMED</code> on an unhomed machine is the
-system working. Show it; do not retry it in a loop.</p>
+<p><strong>Treat a NACK as a normal response.</strong> <code>NOT_HOMED</code> on an unhomed machine is expected
+behavior. Show it; do not retry it in a loop.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../clients/python/"><abbr title="Any endpoint that establishes a session with the hub.">Client</abbr> guides</a> — the same <abbr title="The stateful association between one client and the hub.">session</abbr>, per language, in
+<li><a href="../clients/python/"><abbr title="Any endpoint that establishes a session with the hub.">Client</abbr> guides</a>: the same <abbr title="The stateful association between one client and the hub.">session</abbr>, per language, in
   depth.</li>
-<li><a href="../cli/">CLI guide</a> — watch what your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> actually did to the motion.</li>
-<li><a href="../../understand/how-it-works/">How it works</a> — the mental model, if the
-  above felt like magic.</li>
-<li><a href="../../spec/session/#s6">§6 <abbr title="The stateful association between one client and the hub.">Session</abbr> layer</a> — the normative rules for
+<li><a href="../cli/">CLI guide</a>: graph the motion your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> produced.</li>
+<li><a href="../../understand/how-it-works/">How it works</a>: the protocol model.</li>
+<li><a href="../../spec/session/#s6">§6 <abbr title="The stateful association between one client and the hub.">Session</abbr> layer</a>: the normative rules for
   everything on this page.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

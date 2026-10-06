@@ -1146,10 +1146,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#traps-this-project-paid-for" class="md-nav__link">
+  <a href="#known-traps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Traps this project paid for
+        Known traps
       
     </span>
   </a>
@@ -2718,10 +2718,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#traps-this-project-paid-for" class="md-nav__link">
+  <a href="#known-traps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Traps this project paid for
+        Known traps
       
     </span>
   </a>
@@ -2767,11 +2767,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2786,62 +2781,58 @@
 <h1 id="hub-implementer-guide"><abbr title="The single authoritative endpoint of one machine.">Hub</abbr> implementer guide<a class="headerlink" href="#hub-implementer-guide" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page is a stub. It lists the intended content and the source
+material.</p>
+<p>Content follows the v1.0 tag.</p>
 </div>
 <h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>The guide a firmware author reads before deciding whether to adopt Valence.
-It must be honest about cost, or it is useless.</p>
+<p>What a firmware author needs to adopt Valence, and how much work each part takes.</p>
 <ul>
-<li><strong>Author your <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</strong> This is most of the work and most of the value.
+<li><strong>Author your <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</strong> <abbr title="The hub's machine-readable description of every channel it exposes.">Catalog</abbr> authoring is the largest part of the work.
   Cover the 242-byte snapshot budget, the per-entry size cap, and splitting a
   state group across <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> when it does not fit.</li>
 <li><strong>Wire the delegate.</strong> Apply <a href="../../reference/dictionary/#intent"><abbr title="A channel class, and the only way a client changes anything.">intents</abbr></a>
-  through your existing arbitration and safety gates. <strong>Never bypass them.</strong>
-  The protocol is a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> of your motion authority, not a second one.</li>
+  through your existing arbitration and safety gates. Do not bypass them.
+  The protocol passes <abbr title="A channel class, and the only way a client changes anything.">intents</abbr> to your existing motion authority and does not
+  replace it.</li>
 <li><strong><a href="../../reference/dictionary/#echo">Echo</a> applied values.</strong>
-  Post-<a href="../../reference/dictionary/#clamp"><abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamp</abbr></a>, from the driver. Not the
-  request.</li>
+  Echo the post-<a href="../../reference/dictionary/#clamp"><abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamp</abbr></a> values read back
+  from the driver, not the requested values.</li>
 <li><strong>Retain and seed.</strong> Keep the latest snapshot of every <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, and
   seed the safety snapshot at construction. A fresh boot that <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> nothing
   hands a connecting <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> an empty <a href="../../reference/dictionary/#latch"><abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr></a>.</li>
 <li><strong>One <a href="../../reference/dictionary/#teardown"><abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr></a> path.</strong> Every way a
-  <abbr title="The stateful association between one client and the hub.">session</abbr> can end runs the same loss policy. This is where the hard bugs live.</li>
+  <abbr title="The stateful association between one client and the hub.">session</abbr> can end runs the same loss policy.</li>
 <li><strong>Implement a transport</strong> by writing an adapter, outside the library.</li>
 </ul>
-<h2 id="traps-this-project-paid-for">Traps this project paid for<a class="headerlink" href="#traps-this-project-paid-for" title="Link to this section">#</a></h2>
-<p>These belong on the page as a named section, because every one of them cost
-real debugging time:</p>
+<h2 id="known-traps">Known traps<a class="headerlink" href="#known-traps" title="Link to this section">#</a></h2>
+<p>The page will cover these failure modes:</p>
 <ul>
-<li>A <code>reset()</code> written as whole-object assignment built a nine-kilobyte stack
-  temporary and blew the task stack on every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> connect. Host tests never
-  see it: host stacks are megabytes.</li>
-<li>A large service placed in static memory starved the internal heap and killed
-  the network stack, while looking fine in the linker report.</li>
-<li>Ownership release that hangs off a liveness pump alone leaks ownership on
-  every other exit path, and stays invisible while your deploys reboot the
-  device between tests.</li>
+<li>Do not implement <code>reset()</code> as whole-object assignment: it builds a
+  nine-kilobyte stack temporary and overflows the task stack on every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
+  connect. Host tests do not catch it because host thread stacks are megabytes in size.</li>
+<li>Do not place a large service in static memory: it starves the internal heap
+  and leaves the network stack without memory, and the linker report does not show it.</li>
+<li>Do not release ownership only from the liveness pump: every other exit path
+  leaks ownership. The leak stays hidden while each deploy reboots the device
+  between tests.</li>
 </ul>
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
-<li><code>spec/SPEC.md</code> §13.1 — the binding contract every transport must satisfy.</li>
-<li><code>lib/valence/README.md</code> — the vendorable front door and the layering rules.</li>
-<li><code>hub/bench/</code> (this repo) — a working, machine-agnostic composition
+<li><code>spec/SPEC.md</code> §13.1: the binding contract every transport must satisfy.</li>
+<li><code>lib/valence/README.md</code>: how to vendor the library, and the layering rules.</li>
+<li><code>hub/bench/</code> (this repo): a working, machine-agnostic composition
   root and WebSocket transport adapter, config-file-driven rather than
   wired to real hardware.</li>
 <li>Nucleus's <code>src/comms/ValenceHubService.*</code> and <code>ValenceWsTransport.*</code>
-  (machine repo) — a working composition root and transport adapter wired
+  (machine repo): a working composition root and transport adapter wired
   to real hardware.</li>
 </ul>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../cli/">CLI guide</a> — verify a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>, before you
-  trust it.</li>
-<li><a href="../local-testing/">Local testing</a> — the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, the <abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr>, and
-  the back-to-back-<abbr title="The stateful association between one client and the hub.">sessions</abbr> pattern that finds <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr> bugs like the ones
-  above.</li>
+<li><a href="../cli/">CLI guide</a>: verify a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>.</li>
+<li><a href="../local-testing/">Local testing</a>: the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, the <abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr>, and
+  the back-to-back-<abbr title="The stateful association between one client and the hub.">sessions</abbr> pattern that finds <abbr title="The single code path every session end runs, whatever killed the session.">teardown</abbr> bugs.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

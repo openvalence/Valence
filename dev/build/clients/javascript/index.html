@@ -965,10 +965,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#every-client-guide-covers-the-same-seven-things" class="md-nav__link">
+  <a href="#common-outline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Every client guide covers the same seven things
+        Common outline
       
     </span>
   </a>
@@ -2709,10 +2709,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#every-client-guide-covers-the-same-seven-things" class="md-nav__link">
+  <a href="#common-outline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Every client guide covers the same seven things
+        Common outline
       
     </span>
   </a>
@@ -2747,11 +2747,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2766,23 +2761,20 @@
 <h1 id="javascript-client-guide">JavaScript <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide<a class="headerlink" href="#javascript-client-guide" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page is a stub. It lists what it will cover and the source material.</p>
+<p>Content is written after the v1.0 tag.</p>
 </div>
 <h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>The browser <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. Cover <code>WebSocket</code> binary frames, the subprotocol, <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> in the browser, and why optimistic interface state is prohibited.</p>
+<p>The browser <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. Cover <code>WebSocket</code> binary frames, the subprotocol, <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> in the browser, and the prohibition on optimistic interface state.</p>
 <p>Source material: <code>clients/js/</code>, this repo's own v1.0 reference
 implementation (see the <a href="../../quickstart/#javascript">Quickstart</a> for a
 worked example), and <code>tools/valence_probe.py</code> for wire parity.</p>
 <blockquote>
-<p>DEMO-CANDIDATE: a live connect-and-subscribe walkthrough in the browser —
+<p>DEMO-CANDIDATE: a live connect-and-subscribe walkthrough in the browser,
 HELLO to rendered <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr>, one frame at a time.</p>
 </blockquote>
-<h2 id="every-client-guide-covers-the-same-seven-things">Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide covers the same seven things<a class="headerlink" href="#every-client-guide-covers-the-same-seven-things" title="Link to this section">#</a></h2>
-<p>Keep the order identical across languages, so a reader who knows one guide can
-skim another.</p>
+<h2 id="common-outline">Common outline<a class="headerlink" href="#common-outline" title="Link to this section">#</a></h2>
+<p>Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide covers these seven steps in this order.</p>
 <ol>
 <li>Open the transport and complete the handshake.</li>
 <li>Handle the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>: fetch, cache by
@@ -2797,9 +2789,9 @@ skim another.</p>
 </ol>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../../quickstart/">Quickstart</a> — the same seven steps, worked end to end.</li>
-<li><a href="../../plugins/">Plugin guide</a> — wiring a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> into a host application.</li>
-<li><a href="../../cli/">CLI guide</a> — watch what your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> did to the motion.</li>
+<li><a href="../../quickstart/">Quickstart</a>: a worked example, end to end.</li>
+<li><a href="../../plugins/">Plugin guide</a>: wiring a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> into a host application.</li>
+<li><a href="../../cli/">CLI guide</a>: graph the motion your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> produced.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

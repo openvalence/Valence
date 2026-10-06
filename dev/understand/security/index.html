@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The Valence threat model in plain language: what is defended, what is not, the honest ceilings, and what the pre-release fuzz campaign found.">
+        <meta name="description" content="The Valence threat model: what is defended, what is not, the known ceilings, and what the pre-release fuzz campaign found.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -703,10 +703,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-threat-model-in-one-paragraph" class="md-nav__link">
+  <a href="#threat-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The threat model, in one paragraph
+        Threat model
       
     </span>
   </a>
@@ -737,10 +737,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-honest-ceilings" class="md-nav__link">
+  <a href="#known-ceilings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The honest ceilings
+        Known ceilings
       
     </span>
   </a>
@@ -748,10 +748,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deployment-rules-that-follow" class="md-nav__link">
+  <a href="#deployment-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deployment rules that follow
+        Deployment rules
       
     </span>
   </a>
@@ -787,10 +787,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#two-authorization-gaps-found-while-building-the-trust-ledger" class="md-nav__link">
+  <a href="#authorization-gaps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Two authorization gaps, found while building the trust ledger
+        Authorization gaps
       
     </span>
   </a>
@@ -814,10 +814,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to go next
+        Related pages
       
     </span>
   </a>
@@ -2775,10 +2775,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-threat-model-in-one-paragraph" class="md-nav__link">
+  <a href="#threat-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The threat model, in one paragraph
+        Threat model
       
     </span>
   </a>
@@ -2809,10 +2809,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-honest-ceilings" class="md-nav__link">
+  <a href="#known-ceilings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The honest ceilings
+        Known ceilings
       
     </span>
   </a>
@@ -2820,10 +2820,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#deployment-rules-that-follow" class="md-nav__link">
+  <a href="#deployment-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Deployment rules that follow
+        Deployment rules
       
     </span>
   </a>
@@ -2859,10 +2859,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#two-authorization-gaps-found-while-building-the-trust-ledger" class="md-nav__link">
+  <a href="#authorization-gaps" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Two authorization gaps, found while building the trust ledger
+        Authorization gaps
       
     </span>
   </a>
@@ -2886,10 +2886,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to go next
+        Related pages
       
     </span>
   </a>
@@ -2911,16 +2911,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2928,17 +2918,15 @@
 
 
 <h1 id="security-model-and-the-audit">Security model and the audit<a class="headerlink" href="#security-model-and-the-audit" title="Link to this section">#</a></h1>
-<h2 id="the-threat-model-in-one-paragraph">The threat model, in one paragraph<a class="headerlink" href="#the-threat-model-in-one-paragraph" title="Link to this section">#</a></h2>
+<p>This page states the v1 threat model, the deployment rules that follow from it, and the results of the pre-release fuzz campaign and review.</p>
+<h2 id="threat-model">Threat model<a class="headerlink" href="#threat-model" title="Link to this section">#</a></h2>
 <p><strong>The v1 model is casual and drive-by prevention on a trusted local network.</strong>
 It stops a device on your network from controlling your machine by accident or
-on a whim. It does not pretend to stop a determined attacker who is already
-inside that network with capture and injection tooling.</p>
-<p>That sentence is the whole scope. Everything below either supports it or says
-plainly where it stops.</p>
-<p>The reason to be exact about it: on this product category, <strong>unauthorized
-control is a physical-safety issue</strong>, not a privacy inconvenience. A model
-that overstates itself is worse than a modest one, because people deploy
-against what the documentation claims.</p>
+on a whim. It does not stop a determined attacker who is already inside that
+network with capture and injection tooling.</p>
+<p>Unauthorized control of a motion machine is a physical-safety issue. This page
+states the model's limits exactly, because people deploy against what the
+documentation claims.</p>
 <h2 id="what-is-defended">What is defended<a class="headerlink" href="#what-is-defended" title="Link to this section">#</a></h2>
 <table>
 <thead>
@@ -2966,7 +2954,7 @@ against what the documentation claims.</p>
 </tr>
 <tr>
 <td><strong>A device you no longer trust</strong></td>
-<td>Revocation is protocol, from any <code>configure</code> <abbr title="The stateful association between one client and the hub.">session</abbr>, and bites at that device's next handshake</td>
+<td>Revocation is protocol, from any <code>configure</code> <abbr title="The stateful association between one client and the hub.">session</abbr>, and takes effect at that device's next handshake</td>
 </tr>
 <tr>
 <td><strong>Invisible presence</strong></td>
@@ -2990,25 +2978,22 @@ against what the documentation claims.</p>
 </tr>
 <tr>
 <td><strong>Losing the stop control</strong></td>
-<td><code>stop</code> and <code>estop</code> are role-exempt. Authorization can never take the stop away from the person in the room</td>
+<td><code>stop</code> and <code>estop</code> are role-exempt. No authorization state blocks a stop</td>
 </tr>
 <tr>
 <td><strong>An evil twin machine</strong></td>
-<td>An optional <abbr title="The single authoritative endpoint of one machine.">hub</abbr> signature over <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-supplied entropy. A clone copies every string and fails the signature</td>
+<td>An optional <abbr title="The single authoritative endpoint of one machine.">hub</abbr> signature over <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-supplied entropy. A clone can copy every identifying string but cannot produce the signature</td>
 </tr>
 </tbody>
 </table>
-<p>Two of those deserve their reasoning stated, because they look like
-inconsistencies until you see it.</p>
-<p><strong>Safety outranks authorization.</strong> Anybody may stop the machine; not everybody
-may start it. A stop that required a credential would fail exactly when it
-matters, which is the moment the person in the room needs it and has no
-<abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
+<p>Two rules need their rationale.</p>
+<p><strong>Role-exempt stop.</strong> Any <abbr title="The stateful association between one client and the hub.">session</abbr>, or none, may send <code>stop</code> or <code>estop</code>; starting
+motion needs the <code>control</code> tier. A credential requirement would block a stop
+from a person who has no <abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
 <p><strong>Watching is open by default.</strong> Locking the view would push people toward
 sharing one control credential, which is worse. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> may still require a
 token for viewing where the deployment calls for it.</p>
 <h2 id="what-is-not-defended">What is not defended<a class="headerlink" href="#what-is-not-defended" title="Link to this section">#</a></h2>
-<p>Stated without hedging.</p>
 <ul>
 <li><strong>An active attacker on your LAN.</strong> Someone running capture and injection
   tooling on the same network is outside the model. They can observe, replay
@@ -3019,60 +3004,61 @@ token for viewing where the deployment calls for it.</p>
   the mechanism loses nothing to it and is capped at <code>control</code> anyway.</li>
 <li><strong>A passive sniffer on the wire.</strong> v1 transports are cleartext. A bearer
   token in a handshake is readable by anyone watching the network. Proof
-  presentation plugs the <em>credential theft</em> — a sniffer captures a one-time
-  proof and never the secret — and it does not encrypt anything else.</li>
-<li><strong>Physical access.</strong> Possession is root, deliberately. A factory-fresh <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
+  presentation prevents credential theft: a sniffer captures a one-time proof,
+  never the token. It does not encrypt anything else.</li>
+<li><strong>Physical access.</strong> Physical access <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grants</abbr> full control by design. A factory-fresh <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
   boots claimable, and the power-cycle gesture re-opens <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>. That is a
-  usability decision made in the open, and it is why factory reset must be a
+  deliberate usability decision, and it is why factory reset must be a
   harder gesture than opening <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>.</li>
 <li><strong>Denial of service.</strong> Someone in radio range can jam the radio. No protocol
-  text changes that.</li>
+  can prevent radio jamming.</li>
 <li><strong>A malicious update to a paired <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</strong> See the tripwire clause below.</li>
 </ul>
-<h3 id="the-honest-ceilings">The honest ceilings<a class="headerlink" href="#the-honest-ceilings" title="Link to this section">#</a></h3>
+<h3 id="known-ceilings">Known ceilings<a class="headerlink" href="#known-ceilings" title="Link to this section">#</a></h3>
 <p><strong>The PIN proof is offline-brute-forceable, by design.</strong> Four digits is ten
 thousand HMACs. A passive observer of a <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> exchange can compute all of
 them.</p>
 <p>This is acceptable for the stated threat model, and
-<a href="../../spec/">the specification</a> states it plainly rather than implying
-it away. It is also one reason
+<a href="../../spec/">the specification</a> states it as an honesty clause. It is
+also one reason
 <a href="../../reference/dictionary/#knock-and-approve"><abbr title="The primary pairing mode, a client knocks with no proof, and any configure session approves it.">knock-and-approve</abbr></a> is the
 recommended ceremony: its approval surface shows the knocker's identity on
 hardware the attacker does not control. A password-authenticated key exchange
 is the reserved upgrade. It is not in v1 because browsers have no such
-primitive, and mandating one would exile the browser <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</p>
-<p><strong>The version tripwire is a tripwire, not attestation.</strong> The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> version is
+primitive, and mandating one would exclude browser <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr>.</p>
+<p><strong>The version tripwire is not attestation.</strong> The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> version is
 self-reported. It catches an honest update and asks you to re-approve it. A
 deliberately malicious update reports whatever version it likes and keeps its
-token. What actually bounds a hostile <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is role scoping, immediate
-revocation, trust-ledger visibility, and the fact that safety operations are
-role-exempt for everyone.</p>
+token. What bounds a hostile <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is role scoping, immediate revocation,
+trust-ledger visibility, and the fact that safety operations are role-exempt
+for everyone.</p>
 <p><strong>The protocol's <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is not the hardware path.</strong> It is fast, role-exempt,
-<abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> and repeated until observed. It is still software on a network. The
-hardware emergency-stop path remains the guarantee of last resort.</p>
+<abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> and repeated until observed, but it runs in software over a network, and
+the hardware emergency-stop path remains the guarantee of last resort.</p>
 <p><strong>Firmware update is outside this model entirely.</strong> Update rights are never
 derivable from any access tier, so a <code>configure</code> compromise cannot flash the
 machine.</p>
-<h3 id="deployment-rules-that-follow">Deployment rules that follow<a class="headerlink" href="#deployment-rules-that-follow" title="Link to this section">#</a></h3>
+<h3 id="deployment-rules">Deployment rules<a class="headerlink" href="#deployment-rules" title="Link to this section">#</a></h3>
 <ol>
-<li><strong>Never expose the Valence port to the wider internet.</strong> LAN-first is a
-   security property, not a limitation.</li>
+<li><strong>Never expose the Valence port to the wider internet.</strong> The protocol is
+   designed for a local network only.</li>
 <li><strong>Prefer <abbr title="The primary pairing mode, a client knocks with no proof, and any configure session approves it.">knock-and-approve</abbr>.</strong> It needs no PIN and no display, and it shows
    you who is asking.</li>
 <li><strong>Use proof presentation if your <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> can compute an HMAC.</strong> Browsers,
    desktop apps and every ESP32 can. It costs one round trip.</li>
 <li><strong>Keep <code>configure</code> rare.</strong> It is the tier that approves other devices.</li>
-<li><strong>Revoke devices you no longer use.</strong> The <abbr title="The hub's stored list of paired devices, their roles, and how each one presents its token.">trust ledger</abbr> exists so that this
-   is a thing you can actually do.</li>
+<li><strong>Revoke devices you no longer use.</strong> The <abbr title="The hub's stored list of paired devices, their roles, and how each one presents its token.">trust ledger</abbr> lists every paired
+   device for revocation.</li>
 </ol>
 <h2 id="the-audit">The audit<a class="headerlink" href="#the-audit" title="Link to this section">#</a></h2>
-<p>None of what follows shipped. That is the point of doing it before the tag.</p>
+<p>All defects below were found and fixed before the release tag.</p>
 <h3 id="the-fuzz-campaign">The fuzz campaign<a class="headerlink" href="#the-fuzz-campaign" title="Link to this section">#</a></h3>
 <p>Every Valence parser must map <em>any</em> byte string to accept-or-reject. Golden
-vectors prove correctness; fuzzing proves totality. Both directions are in
-scope, because a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that auto-connects to a discovered machine is one
-malicious <abbr title="The single authoritative endpoint of one machine.">hub</abbr> away from parsing hostile bytes, and the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is the fattest
-<abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-side surface in the protocol.</p>
+vectors check that valid input decodes correctly; fuzzing checks that every
+input is accepted or rejected without a fault. Both directions are in scope,
+because a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that auto-connects to a discovered machine can parse bytes
+from an untrusted <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, and the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is the largest <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-side parser
+surface in the protocol.</p>
 <div class="ss-facts">
 <table>
 <thead>
@@ -3088,7 +3074,7 @@ malicious <abbr title="The single authoritative endpoint of one machine.">hub</a
 </tr>
 <tr>
 <td><strong>Executions</strong></td>
-<td>2,291,021,252 in the first campaign — 600 s per target, single worker each, so the counts compare</td>
+<td>2,291,021,252 in the first campaign, 600 s per target, single worker each, so the counts compare</td>
 </tr>
 <tr>
 <td><strong>Instrumentation</strong></td>
@@ -3100,7 +3086,7 @@ malicious <abbr title="The single authoritative endpoint of one machine.">hub</a
 </tr>
 <tr>
 <td><strong>Seeds</strong></td>
-<td>Generated by the library's own encoders, so the mutator starts inside the accepting region rather than bouncing off first-byte rejects</td>
+<td>Generated by the library's own encoders, so the mutator starts inside the accepting region instead of being rejected at the first byte</td>
 </tr>
 </tbody>
 </table>
@@ -3118,70 +3104,66 @@ malicious <abbr title="The single authoritative endpoint of one machine.">hub</a
 <tr>
 <td>1</td>
 <td>The <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> reader's string handling</td>
-<td>A length check computed <code>start + len</code>, which <strong>overflows</strong>. A header claiming 2⁶⁴−1 bytes wrapped the sum past the check and returned a view of that claimed length into a nine-byte buffer. Reachable from <strong>every</strong> message decoder, and from the skip-unknown-key path, which is an attacker's preferred entry point. This was the CVE-shaped one</td>
+<td>A length check computed <code>start + len</code>, which <strong>overflows</strong>. A header claiming 2⁶⁴−1 bytes wrapped the sum past the check and returned a view of that claimed length into a nine-byte buffer. Reachable from <strong>every</strong> message decoder, and from the skip-unknown-key path</td>
 </tr>
 <tr>
 <td>2</td>
 <td>The <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> chunk reassembler</td>
-<td>A transfer correctly <strong>refused</strong> for exceeding capacity still stored the attacker's numbers, and two later calls used them without checking whether the transfer was active. Refusing a transfer must refuse its numbers too, or the guard only moves the bug one call to the right</td>
+<td>A transfer correctly <strong>refused</strong> for exceeding capacity still stored the attacker's numbers, and two later calls used them without checking whether the transfer was active. The fix discards a refused transfer's parameters</td>
 </tr>
 <tr>
 <td>3</td>
 <td>The fragment reassembler</td>
-<td>One unbounded copy into a fixed buffer — the single write in the class that did not go through the bounds-checking path</td>
+<td>One unbounded copy into a fixed buffer: the single write in the class that did not go through the bounds-checking path</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The trap worth publishing:</strong> finding 3 survived a 7.8-million-execution fuzz
+<p><strong>Intra-object overflow.</strong> Finding 3 survived a 7.8-million-execution fuzz
 run and was then found by hand. Its overflow lands in the very next member of
 the same structure, and an intra-object overflow is invisible to
 AddressSanitizer. Only a write long enough to leave the whole enclosing object
-reports. Never conclude "the fuzzer would have caught it" for a bug between
-two arrays of one struct.</p>
-<h3 id="two-authorization-gaps-found-while-building-the-trust-ledger">Two authorization gaps, found while building the <abbr title="The hub's stored list of paired devices, their roles, and how each one presents its token.">trust ledger</abbr><a class="headerlink" href="#two-authorization-gaps-found-while-building-the-trust-ledger" title="Link to this section">#</a></h3>
-<p>Neither was reachable in a released build. Both were found by asking, during
-implementation, who is allowed to do this.</p>
-<p><strong>The <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> transfer verb had no role check at all.</strong> That was survivable while
-the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> was the only thing it could fetch. The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-invariant
-and deliberately readable by anyone who can connect.</p>
-<p>It stopped being survivable the moment a store could hold something that is
-not public. The <a href="../../reference/dictionary/#trust-ledger"><abbr title="The hub's stored list of paired devices, their roles, and how each one presents its token.">trust ledger</abbr></a> is
-<code>configure</code> access, and without a gate a <code>watch</code> <abbr title="The stateful association between one client and the hub.">session</abbr> could have enumerated
-every paired device on the machine. The fix is the rule subscription already
-uses: the declaring <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry's access level is the floor. Every future
-store inherits it. A store nobody declared answers "unavailable" rather than
-"denied", so refusing tells an attacker nothing either way.</p>
+reports. An overflow between two members of one struct needs review by hand;
+AddressSanitizer-instrumented fuzzing does not detect it.</p>
+<h3 id="authorization-gaps">Authorization gaps<a class="headerlink" href="#authorization-gaps" title="Link to this section">#</a></h3>
+<p>Neither gap was reachable in a released build.</p>
+<p><strong>The <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> transfer verb had no role check.</strong> The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-invariant
+and deliberately readable by anyone who can connect. The
+<a href="../../reference/dictionary/#trust-ledger"><abbr title="The hub's stored list of paired devices, their roles, and how each one presents its token.">trust ledger</abbr></a> requires <code>configure</code>
+access; without a gate, a <code>watch</code> <abbr title="The stateful association between one client and the hub.">session</abbr> could enumerate every paired device
+on the machine. The fix is the rule subscription already uses: the declaring
+<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> entry's access level is the floor. Every future store inherits it. A
+store nobody declared answers "unavailable" rather than "denied", so a refusal
+does not reveal whether a store exists.</p>
 <p><strong>A <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> knock could be filed under somebody else's identity.</strong> Approval is
 by <abbr title="Eight bytes a client generates once and persists, saying who it durably is.">instance id</abbr>. A connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> could therefore queue a knock in another
 device's name, and trick an operator into authorizing a stranger under a
 familiar label. The fix is one comparison: a <abbr title="The stateful association between one client and the hub.">session</abbr> may only knock for its
 own <abbr title="Eight bytes a client generates once and persists, saying who it durably is.">instance id</abbr>.</p>
-<p class="ss-point"><strong>The point.</strong> Publishing found-and-fixed defects is a credibility asset, not a confession. A protocol claiming a clean history is either very young or not telling you something. These were found before release, which is the entire reason to run the gate before the tag rather than after it.</p>
 <h3 id="what-the-gate-does-not-cover">What the gate does not cover<a class="headerlink" href="#what-the-gate-does-not-cover" title="Link to this section">#</a></h3>
-<p>Stated plainly, so nobody reads a green run as more than it is.</p>
+<p>A passing fuzz run does not cover:</p>
 <ul>
 <li><strong>Stateful protocol sequences.</strong> The targets fuzz decoders and the two
   stateful reassemblers. They do not drive a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> through <abbr title="The stateful association between one client and the hub.">session</abbr>
   lifecycles, so <abbr title="The stateful association between one client and the hub.">session</abbr>-lifecycle bugs are out of reach here. That class is
-  covered by a manual pattern — see
+  covered by a manual pattern. See
   <a href="../../build/local-testing/">Local testing</a>.</li>
 <li><strong>Firmware transports.</strong> The library boundary is where fuzzing stops.
   Whatever a transport adapter does to a buffer before it calls in is unproven
   by this gate.</li>
-<li><strong>Concurrency.</strong> Single-threaded by construction.</li>
+<li><strong>Concurrency.</strong> The harnesses are single-threaded and do not exercise
+  concurrency.</li>
 <li><strong>Timing, rate limits and <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> policy.</strong> Reachable in principle through a
   stateful harness; not attempted.</li>
 <li><strong>Semantic correctness.</strong> Fuzzing says nothing about whether a decoded value
-  is the <em>right</em> value. That is the <abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr>' job. The two are
-  complements, not substitutes.</li>
+  is the <em>right</em> value. That is the <abbr title="A byte-exact recorded frame that every implementation must encode and decode identically.">golden vectors</abbr>' job.</li>
 </ul>
-<h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../capabilities/">Capabilities and custom hardware</a> — <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> on hardware
+<li><a href="../capabilities/">Capabilities and custom hardware</a>: <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> on hardware
   with no screen, no LED and no buttons.</li>
-<li><a href="../../build/local-testing/">Local testing</a> — run the harnesses, and the
+<li><a href="../../build/local-testing/">Local testing</a>: run the harnesses, and the
   regression pattern that catches what fuzzing cannot.</li>
-<li><a href="../../reference/registry/pairing/"><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> modes</a> — the generated table,
+<li><a href="../../reference/registry/pairing/"><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> modes</a>: the generated table,
   including token presentation modes and trust states.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

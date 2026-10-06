@@ -296,7 +296,7 @@ body,
   color: var(--ss-accent);
 }
 
-/* Section labels in the sidebar read as register headings. */
+/* Section labels in the sidebar read as group headings. */
 .md-nav__item--section > .md-nav__link {
   font-family: var(--ss-mono);
   font-size: 0.66rem;
@@ -346,9 +346,8 @@ body,
   text-decoration: none;
 }
 
-/* ====================================================== register badges === */
-/* Rendered by overrides/main.html from each page's front matter. The register
-   tells a contributor which writing rules bind the page they are editing. */
+/* ============================================================= badges === */
+/* Rendered by overrides/main.html from each page's front matter. */
 
 .ss-pagemeta {
   display: flex;
@@ -374,16 +373,6 @@ body,
   color: var(--ss-ink-muted);
   background-color: var(--ss-surface);
   white-space: nowrap;
-}
-
-.ss-badge--ieee {
-  color: var(--ss-accent);
-  border-color: var(--ss-accent);
-  background-color: var(--ss-accent-wash);
-}
-
-.ss-badge--ste {
-  color: var(--ss-ink-muted);
 }
 
 .ss-badge--generated {

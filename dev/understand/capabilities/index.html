@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What a Valence hub must provide, what is optional, and why a board with no screen, no LED and no buttons still supports the whole protocol, pairing included.">
+        <meta name="description" content="What a Valence hub must provide, what is optional, and how a hub without a screen, LED or buttons pairs devices.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -619,10 +619,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-a-feature-exists-if-its-channels-exist" class="md-nav__link">
+  <a href="#1-capability-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. A feature exists if its channels exist
+        1. Capability discovery
       
     </span>
   </a>
@@ -653,10 +653,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-is-genuinely-optional-and-what-each-one-costs" class="md-nav__link">
+  <a href="#optional-features" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is genuinely optional, and what each one costs
+        Optional features
       
     </span>
   </a>
@@ -680,10 +680,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-pairing-with-no-screen-no-led-and-no-buttons" class="md-nav__link">
+  <a href="#4-pairing-on-minimal-hardware" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Pairing with no screen, no LED and no buttons
+        4. Pairing on minimal hardware
       
     </span>
   </a>
@@ -691,10 +691,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-a-worked-example-a-two-button-remote" class="md-nav__link">
+  <a href="#5-example-a-two-button-remote" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. A worked example: a two-button remote
+        5. Example: a two-button remote
       
     </span>
   </a>
@@ -702,10 +702,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-what-the-floor-deliberately-leaves-out" class="md-nav__link">
+  <a href="#6-exclusions-from-the-floor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. What the floor deliberately leaves out
+        6. Exclusions from the floor
       
     </span>
   </a>
@@ -2758,10 +2758,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-a-feature-exists-if-its-channels-exist" class="md-nav__link">
+  <a href="#1-capability-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. A feature exists if its channels exist
+        1. Capability discovery
       
     </span>
   </a>
@@ -2792,10 +2792,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-is-genuinely-optional-and-what-each-one-costs" class="md-nav__link">
+  <a href="#optional-features" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is genuinely optional, and what each one costs
+        Optional features
       
     </span>
   </a>
@@ -2819,10 +2819,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-pairing-with-no-screen-no-led-and-no-buttons" class="md-nav__link">
+  <a href="#4-pairing-on-minimal-hardware" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Pairing with no screen, no LED and no buttons
+        4. Pairing on minimal hardware
       
     </span>
   </a>
@@ -2830,10 +2830,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-a-worked-example-a-two-button-remote" class="md-nav__link">
+  <a href="#5-example-a-two-button-remote" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. A worked example: a two-button remote
+        5. Example: a two-button remote
       
     </span>
   </a>
@@ -2841,10 +2841,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-what-the-floor-deliberately-leaves-out" class="md-nav__link">
+  <a href="#6-exclusions-from-the-floor" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. What the floor deliberately leaves out
+        6. Exclusions from the floor
       
     </span>
   </a>
@@ -2877,16 +2877,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2894,26 +2884,22 @@
 
 
 <h1 id="capabilities-and-what-they-mean-for-custom-hardware">Capabilities and what they mean for custom hardware<a class="headerlink" href="#capabilities-and-what-they-mean-for-custom-hardware" title="Link to this section">#</a></h1>
-<p>"Can my board do this?" is the first question a builder asks. This page
-answers it with a checklist rather than a promise.</p>
-<p>The floor is low on purpose. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no screen, no LED and no buttons
-supports the full protocol, including <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>. The rest of this page says what
-that costs.</p>
-<h2 id="1-a-feature-exists-if-its-channels-exist">1. A feature exists if its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> exist<a class="headerlink" href="#1-a-feature-exists-if-its-channels-exist" title="Link to this section">#</a></h2>
-<p>Valence has no feature list. It has a
-<a href="../../reference/dictionary/#catalog"><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a>, and
-<a href="../../reference/dictionary/#capability-discovery"><abbr title="Learning what a machine can do by reading its catalog, rather than from a separate feature list.">capability discovery</abbr></a> is
-reading it.</p>
+<p>This page lists what a Valence <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> must provide, what is optional,
+and how a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> without a screen, LED or buttons pairs devices.</p>
+<h2 id="1-capability-discovery">1. Capability discovery<a class="headerlink" href="#1-capability-discovery" title="Link to this section">#</a></h2>
+<p>Valence has no separate feature list;
+<a href="../../reference/dictionary/#capability-discovery"><abbr title="Learning what a machine can do by reading its catalog, rather than from a separate feature list.">capability discovery</abbr></a> means
+reading the <a href="../../reference/dictionary/#catalog"><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a>.</p>
 <p>A machine with a current sensor declares a power <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>. A machine without
-one does not, and that absence <strong>is</strong> the answer to "does it measure
-current?". A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> finds out by looking, never by asking.</p>
-<p class="ss-point"><strong>The point.</strong> A second list is a second truth, and a second truth drifts from the first one. Your firmware already declares what it has, once, in the place <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> already read. Adding a capability is adding its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>.</p>
+one does not, and that absence means the machine does not measure
+current. There is no capability query; a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</p>
+<p class="ss-point"><strong>The point.</strong> A separate feature list would drift from the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>. Adding a capability means adding its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> to the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</p>
 <p>The same rule covers ceilings and units. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that needs your speed limit
 does not hardcode a number for your board. It finds the field carrying the
 <a href="../../reference/dictionary/#field-role"><abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr></a> it wants, and reads the
 limit your <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> declares.</p>
 <blockquote>
-<p>DEMO-CANDIDATE: a live <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> browse — point it at a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> (or the
+<p>DEMO-CANDIDATE: a live <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> browse: point it at a real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> (or the
 <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>) and watch <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>, units and limits populate from nothing but
 the connection, no driver installed.</p>
 </blockquote>
@@ -2923,7 +2909,7 @@ the connection, no driver installed.</p>
     H["▶ START&lt;br/&gt;Your firmware&lt;br/&gt;answers HELLO"]:::party
     H --&gt; C[("Catalog&lt;br/&gt;every channel you have,&lt;br/&gt;hashed into an etag")]:::truth
     C --&gt; S["Retained STATE,&lt;br/&gt;pushed the moment&lt;br/&gt;a channel is granted"]:::truth
-    S --&gt; I["INTENT applied,&lt;br/&gt;then ECHOed with the&lt;br/&gt;value you actually used"]:::truth
+    S --&gt; I["INTENT applied,&lt;br/&gt;then ECHOed with the&lt;br/&gt;value used"]:::truth
     I --&gt; A["Access checked at&lt;br/&gt;subscribe time and&lt;br/&gt;at intent time"]:::truth
     A --&gt; SAFE["Safety, complete:&lt;br/&gt;ESTOP latch · deadman ·&lt;br/&gt;source ownership"]:::safety
     SAFE --&gt; P["One pairing mode&lt;br/&gt;your hardware can perform"]:::truth
@@ -2938,7 +2924,7 @@ the connection, no driver installed.</p>
     classDef safety fill:#d8434f2e,stroke:#d8434f,stroke-width:2px
     classDef party fill:none,stroke:#8a8f98
     classDef plumb fill:none,stroke:#8a8f98,stroke-dasharray:3 3</code></pre>
-<p class="ss-point"><strong>The point.</strong> Every mandatory item is something your firmware already does internally. The protocol asks you to expose it honestly. It does not ask you to invent new machinery.</p>
+<p class="ss-point"><strong>The point.</strong> Every mandatory item is something your firmware already does internally. Conformance means exposing that existing behavior through the protocol.</p>
 <h3 id="the-checklist">The checklist<a class="headerlink" href="#the-checklist" title="Link to this section">#</a></h3>
 <table>
 <thead>
@@ -2954,11 +2940,11 @@ the connection, no driver installed.</p>
 </tr>
 <tr>
 <td>Declares every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> it has, with type, unit, limits and access level</td>
-<td>This is the whole self-description. Nothing else advertises a feature</td>
+<td>This is the self-description. Nothing else advertises a feature</td>
 </tr>
 <tr>
 <td>Keeps the <a href="../../reference/dictionary/#retained-value"><abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained value</abbr></a> of every <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> and pushes it on <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr></td>
-<td>This is the device-<abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr> primitive. "Page load adopts device state" compiles to this</td>
+<td>This is the device-<abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr> primitive. A connecting <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> adopts this value</td>
 </tr>
 <tr>
 <td>Sends full snapshots, never deltas, and fits each one in a single frame</td>
@@ -2970,11 +2956,11 @@ the connection, no driver installed.</p>
 </tr>
 <tr>
 <td>Enforces access when a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> subscribes and when it sends</td>
-<td>The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is the same for everyone. The gate is at use</td>
+<td>Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> receives the same <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, so access is checked when a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> is used</td>
 </tr>
 <tr>
 <td>Implements safety completely: the stop levels, the <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> <a href="../../reference/dictionary/#latch"><abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr></a>, the <a href="../../reference/dictionary/#deadman"><abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr></a>, <a href="../../reference/dictionary/#source-ownership"><abbr title="The rule that each arbiter source has at most one owning session at a time.">source ownership</abbr></a></td>
-<td>There is no unmonitored path to motion</td>
+<td>Every path to motion is monitored by the safety layer</td>
 </tr>
 <tr>
 <td>Accepts <code>stop</code> and <code>estop</code> from any <abbr title="The stateful association between one client and the hub.">session</abbr>, including a <code>watch</code> one</td>
@@ -2982,15 +2968,15 @@ the connection, no driver installed.</p>
 </tr>
 <tr>
 <td>Serves at least four concurrent <abbr title="The stateful association between one client and the hub.">sessions</abbr></td>
-<td>Below that, a phone plus a web page plus a bridge already fails</td>
+<td>A phone, a web page and a bridge together already use three <abbr title="The stateful association between one client and the hub.">sessions</abbr></td>
 </tr>
 <tr>
 <td>Offers at least one <a href="../../reference/dictionary/#pairing"><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr></a> mode</td>
-<td>Otherwise <code>control</code> means nothing</td>
+<td>Without one, no <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> can obtain the <code>control</code> tier</td>
 </tr>
 <tr>
 <td>Meets <a href="../../reference/dictionary/#parser-totality"><abbr title="The requirement that every parser maps any byte string to accept or reject, with no crash in between.">parser totality</abbr></a></td>
-<td>Your <abbr title="The single authoritative endpoint of one machine.">hub</abbr> parses bytes sent by strangers</td>
+<td>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> parses bytes from unauthenticated senders</td>
 </tr>
 </tbody>
 </table>
@@ -2998,7 +2984,7 @@ the connection, no driver installed.</p>
 <a href="../../reference/registry/limits/">limits table</a>. The named
 <a href="../../reference/dictionary/#conformance-profile">conformance profiles</a> live in
 <a href="../../spec/">the specification</a>.</p>
-<h3 id="what-is-genuinely-optional-and-what-each-one-costs">What is genuinely optional, and what each one costs<a class="headerlink" href="#what-is-genuinely-optional-and-what-each-one-costs" title="Link to this section">#</a></h3>
+<h3 id="optional-features">Optional features<a class="headerlink" href="#optional-features" title="Link to this section">#</a></h3>
 <table>
 <thead>
 <tr>
@@ -3055,12 +3041,11 @@ the connection, no driver installed.</p>
 </tr>
 </tbody>
 </table>
-<p>Skipping an optional feature is not a degraded mode. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that does not
-declare a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> simply does not have it, and <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> learn that the same way
-they learn everything else.</p>
+<p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that skips an optional feature is still conforming. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that does not
+declare a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> does not have it, and <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> learn that from the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>.</p>
 <h2 id="3-the-client-floor">3. The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor<a class="headerlink" href="#3-the-client-floor" title="Link to this section">#</a></h2>
-<p>The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor is smaller than the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> floor on purpose. Clients are where
-the tiny hardware lives.</p>
+<p>The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor is smaller than the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> floor, so small hardware can be a
+<abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</p>
 <div class="ss-facts">
 <table>
 <thead>
@@ -3101,17 +3086,14 @@ the tiny hardware lives.</p>
 further and ships no <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> parser at all. It compiles in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> it was
 built against. It ships canned message templates and patches values into them
 at runtime. The deterministic encoding is what makes that safe: those bytes
-are exactly what a real encoder would have produced.</p>
-<p>That profile carries one obligation, and it is the interesting one. The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
+are what a real encoder would have produced.</p>
+<p>The constrained-<abbr title="Any endpoint that establishes a session with the hub.">client</abbr> profile carries one obligation. The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
 sends its compiled-in <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> in the handshake. If the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> differs, the
 <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> must take a declared behavior. It may run degraded, with every control
 function it cannot re-verify suppressed. It may refuse, and show an "update
 me" indication. Silent full operation on a mismatched <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> is non-conformant.</p>
-<p class="ss-point"><strong>The point.</strong> The append-only layout rule means a mismatched <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> rarely breaks <em>parsing</em> — the known prefix of every layout still reads. So the <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> check decides <strong>policy</strong>, not parseability. An old remote keeps showing what it understands, and stops offering what it can no longer verify.</p>
-<h2 id="4-pairing-with-no-screen-no-led-and-no-buttons">4. <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> with no screen, no LED and no buttons<a class="headerlink" href="#4-pairing-with-no-screen-no-led-and-no-buttons" title="Link to this section">#</a></h2>
-<p><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> is usually where low-capability hardware gets excluded. A ceremony
-needing a keypad on the joiner and a display on the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> rules out most devices
-in this ecosystem.</p>
+<p class="ss-point"><strong>The point.</strong> The append-only layout rule means a mismatched <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> rarely breaks <em>parsing</em>. The known prefix of every layout still reads. The <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> check therefore decides which controls a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> offers. An old remote keeps displaying the fields it knows and suppresses controls it cannot re-verify.</p>
+<h2 id="4-pairing-on-minimal-hardware">4. <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> on minimal hardware<a class="headerlink" href="#4-pairing-on-minimal-hardware" title="Link to this section">#</a></h2>
 <p>Valence has one ceremony and three association modes. All three end in the
 same <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>. The role is an attribute of the <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr>, never of the ceremony, and
 a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> has zero or one PIN rather than one secret per tier.</p>
@@ -3141,68 +3123,64 @@ a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> has
 </tr>
 </tbody>
 </table>
-<p>Read the first and third rows again. <strong>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no display, no LED and no
-button still pairs devices.</strong> The trusted surface is any <code>configure</code> <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>,
-and the presence proof is the power cord.</p>
-<p>On a bare board it goes like this:</p>
+<p><strong><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> needs no display, LED or button on the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>:</strong> any <code>configure</code> <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
+approves requests, and the power-cycle gesture proves physical presence.</p>
+<p><abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">Pairing</abbr> on a bare board:</p>
 <ol>
 <li>A factory-fresh <abbr title="The single authoritative endpoint of one machine.">hub</abbr> holds no <code>configure</code> token, so it boots claimable.</li>
-<li>The first <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that knocks is granted <code>configure</code>. Whoever unboxed the
-   machine and powered it possesses it.</li>
+<li>The first <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that knocks is granted <code>configure</code>. Powering on a
+   factory-fresh <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is the proof of possession.</li>
 <li>To re-open <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> later, power-cycle three times. Each of those boots
    lasts under about ten seconds. The next boot opens a short window that
    <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grants</abbr> once.</li>
 <li>That <code>configure</code> <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> now approves everyone else. It renders the pending
    list, because the pending list is ordinary protocol state.</li>
 </ol>
-<p>The window is visible in band, which matters when there is no lamp to look at.
-Any <code>watch</code> <abbr title="The stateful association between one client and the hub.">session</abbr> sees that <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> is open, in state and in events, while
+<p>The window is visible in band. Any <code>watch</code> <abbr title="The stateful association between one client and the hub.">session</abbr> sees that <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> is open, in state and in events, while
 being trusted with nothing.</p>
 <p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with a real button may bind it as the <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> control. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with
-addressable lighting should show a <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> state. Both are usability upgrades.
-Neither is required, and neither is what makes the ceremony work.</p>
-<p class="ss-point"><strong>The point.</strong> Factory reset must be a deliberately harder gesture than opening <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>. If wiping the token store were the same gesture, the safest recovery path would also be the cheapest attack.</p>
-<h2 id="5-a-worked-example-a-two-button-remote">5. A worked example: a two-button remote<a class="headerlink" href="#5-a-worked-example-a-two-button-remote" title="Link to this section">#</a></h2>
-<p>Take a battery remote with two buttons, a small radio and no display. Walk it
-from nothing to conforming.</p>
+addressable lighting should show a <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> state. Both are optional usability features; the
+ceremony works without them.</p>
+<p class="ss-point"><strong>The point.</strong> Factory reset must be a deliberately harder gesture than opening <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>. If both used the same gesture, anyone who could open <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> could also wipe the token store.</p>
+<h2 id="5-example-a-two-button-remote">5. Example: a two-button remote<a class="headerlink" href="#5-example-a-two-button-remote" title="Link to this section">#</a></h2>
+<p>Take a battery remote with two buttons, a small radio and no display.</p>
 <p><strong>It is a constrained <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</strong> It compiles in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> of the machine it
 ships beside, plus that <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>'s <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>. It carries canned templates for the
 three messages it sends.</p>
-<p><strong>It stores 24 bytes.</strong> Its <abbr title="Eight bytes a client generates once and persists, saying who it durably is.">instance id</abbr>, generated once, and its token after
-<abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>.</p>
+<p><strong>It stores 24 bytes:</strong> its <abbr title="Eight bytes a client generates once and persists, saying who it durably is.">instance id</abbr>, generated once, and the token it
+receives at <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>.</p>
 <p><strong>It pairs by knocking.</strong> One press of both buttons sends a bare <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>
-request. The owner approves it from a phone or a web page. Or the remote is
-the very first <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, and the machine is factory-fresh.</p>
+request. The owner approves it from a phone or a web page. On a factory-fresh
+machine, the remote's knock is granted as the first <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</p>
 <p><strong>It subscribes to two <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr></strong> and renders them: a position stream and the
-safety word. It shows itself as unready until its first snapshots arrive,
-because showing stale data as fresh is the failure this whole design prevents.</p>
+safety word. It shows itself as unready until its first snapshots arrive.</p>
 <p><strong>It sends one <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> per press</strong>, absolute and never relative. It renders
 what the echo reports, not what it asked for.</p>
 <p><strong>It stops the machine</strong> with a role-exempt safety operation, and repeats
-until it observes the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr>. It needs no permission for that. The
-repeat-until-<abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> rule is what makes a lossy radio acceptable here.</p>
-<p>That is a conforming controller <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. Nothing on that list needs a
-filesystem, a heap, a clock or a cryptographic library.</p>
-<h2 id="6-what-the-floor-deliberately-leaves-out">6. What the floor deliberately leaves out<a class="headerlink" href="#6-what-the-floor-deliberately-leaves-out" title="Link to this section">#</a></h2>
+until it observes the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr>. It needs no permission for that. Repeating
+until the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latch</abbr> is observed keeps a lossy radio acceptable.</p>
+<p>This remote is a conforming controller <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> and needs no filesystem, heap,
+clock or cryptographic library.</p>
+<h2 id="6-exclusions-from-the-floor">6. Exclusions from the floor<a class="headerlink" href="#6-exclusions-from-the-floor" title="Link to this section">#</a></h2>
 <ul>
 <li><strong>No required cryptography.</strong> It is recommended and never mandatory,
-  because mandating it exiles the smallest hardware.</li>
-<li><strong>No wall clock.</strong> The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is the timebase, so a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> without a real-time
-  clock loses nothing.</li>
+  because a mandate would exclude the smallest hardware.</li>
+<li><strong>No wall clock.</strong> The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is the timebase, so a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> needs no real-time
+  clock.</li>
 <li><strong>No allocator in steady state.</strong> Sizes are known up front, which is what
   makes a fixed-capacity implementation possible.</li>
-<li><strong>No required transport.</strong> A binding is four operations plus an honest
+<li><strong>No required transport.</strong> A binding is four operations plus a
   declaration of what it can do.</li>
-<li><strong>No mandated interface.</strong> The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> says what a value <strong>is</strong>. It never
-  says how a value should look.</li>
+<li><strong>No mandated interface.</strong> The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> says what a value <strong>is</strong> and does not
+  say how it looks.</li>
 </ul>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../how-it-works/">How it works</a> — the mental model behind this checklist.</li>
-<li><a href="../anatomy/">Anatomy of a frame</a> — what your binding actually moves.</li>
-<li><a href="../../build/local-testing/">Local testing</a> — prove your <abbr title="The single authoritative endpoint of one machine.">hub</abbr> against the
+<li><a href="../how-it-works/">How it works</a>: the mental model behind this checklist.</li>
+<li><a href="../anatomy/">Anatomy of a frame</a>: what your binding moves.</li>
+<li><a href="../../build/local-testing/">Local testing</a>: prove your <abbr title="The single authoritative endpoint of one machine.">hub</abbr> against the
   probe and the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> before you trust it.</li>
-<li><a href="../../reference/registry/limits/">Limits and defaults</a> — every number quoted
+<li><a href="../../reference/registry/limits/">Limits and defaults</a>: every number quoted
   here, generated from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

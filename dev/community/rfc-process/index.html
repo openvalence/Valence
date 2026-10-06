@@ -2740,11 +2740,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2759,50 +2754,43 @@
 <h1 id="rfc-process"><abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr><a class="headerlink" href="#rfc-process" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page is a stub. It lists what belongs here and where the source
+material is.</p>
+<p>Content follows the v1.0 tag and describes what shipped.</p>
 </div>
 <h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>The process is already being run; this page has to write it down.</p>
+<p>This page will document the <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr> as it runs today.</p>
 <ul>
-<li><strong>What needs an RFC.</strong> Any new <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr>. Any change to normative
-  behavior. Any change to the <a href="../governance/">governance stance</a>.</li>
-<li><strong>What does not.</strong> Authoring a new device <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> needs no specification
-  change at all. That is the point of a
-  <a href="../../reference/dictionary/#catalog">self-describing <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a>, and this page
-  should say so loudly, because it is the single biggest misconception a new
-  implementer arrives with.</li>
-<li><strong>The lifecycle.</strong> Proposed, argued, amended, bound into a base pass, or
-  refused with recorded reasoning.</li>
-<li><strong>The spec-gap ritual.</strong> When an implementation needs a number
-  <a href="../../spec/">the specification</a> lacks: fix the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the
-  specification <strong>first</strong>, regenerate, then write code against the generated
-  constant. Never invent a code-local magic number for anything wire-visible.
-  This happened eleven times while the protocol was being built, and it will
-  happen to the next implementer too.</li>
-<li><strong>The allocation policy.</strong> Additions by pull request. Released numbers are
-  never reused and never renumbered.</li>
-<li><strong>The alarm.</strong> After the base pass, RFCs should be rare, small and
-  flip-a-flag. If a proposal requires rethinking core structure, the base pass
-  failed. Treat that as the alarm it is, rather than quietly absorbing it.</li>
+<li><strong>Changes that need an RFC:</strong> a new <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr>, a change to normative
+  behavior, or a change to the <a href="../governance/">governance policy</a>.</li>
+<li><strong>Changes that need no RFC:</strong> a new device <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, because the
+  <a href="../../reference/dictionary/#catalog"><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a> describes it.</li>
+<li><strong>Lifecycle:</strong> a proposal is drafted, reviewed and amended, then either
+  bound into a base pass or refused with its reasoning recorded.</li>
+<li><strong>Spec-gap procedure.</strong> When an implementation needs a number
+  <a href="../../spec/">the specification</a> lacks, fix the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the
+  specification <strong>first</strong>, regenerate, and then write code against the
+  generated constant. Code does not define a local magic number for anything
+  wire-visible. This occurred eleven times during protocol development.</li>
+<li><strong>Allocation policy:</strong> numbers are added by pull request. A released number
+  is never reused or renumbered.</li>
+<li><strong>Scope after the base pass.</strong> RFCs after the base pass are expected to be
+  rare, small additions, such as a new flag. A proposal that changes core structure
+  indicates a gap in the base pass and is not folded into it.</li>
 </ul>
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
-<li><code>spec/RFC-QUEUE.md</code> — twenty-nine worked RFCs and a feasibility
-  pass. This is the process, already executed; the page is mostly a
-  description of what is visibly there.</li>
-<li><code>spec/V1-READINESS.md</code> — the readiness ledger and its dispositions,
-  which is what "argued to a decision" looks like in practice.</li>
-<li><code>spec/SPEC.md</code> §4.4 and §5.7 — evolution policy, reserved ranges,
-  and <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> governance.</li>
+<li><code>spec/RFC-QUEUE.md</code>: twenty-nine worked RFCs and a feasibility pass.</li>
+<li><code>spec/V1-READINESS.md</code>: the readiness ledger and its dispositions, which
+  record how a proposal is argued to a decision.</li>
+<li><code>spec/SPEC.md</code> §4.4 and §5.7: evolution policy, reserved ranges, and
+  <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> governance.</li>
 </ul>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../../spec/errata/">Errata</a> — for corrections that are not protocol changes.</li>
+<li><a href="../../spec/errata/">Errata</a>: corrections that are not protocol changes.</li>
 <li><a href="../governance/">Governance</a>.</li>
-<li><a href="../contributing/">Contributing</a> — building this site, if the RFC needs new
+<li><a href="../contributing/">Contributing</a>: building this site, if the RFC needs new
   pages.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

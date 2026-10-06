@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Valence favors no firmware, no vendor and no product. It is provided to the community as a tool.">
+        <meta name="description" content="The rules that govern Valence: implementations, number allocation, feature scope, and the authority of the specification and registry.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -2548,10 +2548,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-stance" class="md-nav__link">
+  <a href="#principles" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The stance
+        Principles
       
     </span>
   </a>
@@ -2559,21 +2559,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-that-means-in-practice" class="md-nav__link">
+  <a href="#exclusions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What that means in practice
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-valence-will-not-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Valence will not do
+        Exclusions
       
     </span>
   </a>
@@ -2708,10 +2697,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-stance" class="md-nav__link">
+  <a href="#principles" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The stance
+        Principles
       
     </span>
   </a>
@@ -2719,21 +2708,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-that-means-in-practice" class="md-nav__link">
+  <a href="#exclusions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What that means in practice
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-valence-will-not-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What Valence will not do
+        Exclusions
       
     </span>
   </a>
@@ -2777,16 +2755,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2794,58 +2762,53 @@
 
 
 <h1 id="governance">Governance<a class="headerlink" href="#governance" title="Link to this section">#</a></h1>
-<h2 id="the-stance">The stance<a class="headerlink" href="#the-stance" title="Link to this section">#</a></h2>
-<p><strong>Valence favors no firmware, no vendor and no product. It is provided to
-the community as a tool.</strong></p>
-<p>That sentence is the whole stance. Everything below is what it means in
-practice.</p>
-<h2 id="what-that-means-in-practice">What that means in practice<a class="headerlink" href="#what-that-means-in-practice" title="Link to this section">#</a></h2>
-<p><strong>No firmware is the reference firmware.</strong> Nucleus happens to be where
-Valence was written and where it is proven on hardware. That makes it the
-first implementation. It does not make it the privileged one. A conforming <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
-is a conforming <abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
-<p><strong>No vendor gets a reserved number.</strong> The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> allocates by pull request,
-in the open, on technical merit. There is no vendor block, no paid range and
-no private extension space that anyone else cannot read. Device-defined ranges
-exist and are open to every device equally.</p>
-<p><strong>No product is designed for.</strong> A feature lands because the protocol needs it,
-not because one machine wants it. When a proposal is really "make my product
-easier", it is refused, and the refusal is recorded with its reasoning.</p>
-<p><strong><a href="../../spec/">The specification</a> is the product.</strong> The
-C++ library is its reference implementation, not its definition. If the
-library and the specification disagree, the specification wins and the
-library has a bug.</p>
+<p>This page states the rules that govern Valence implementations, number
+allocation, feature scope, and the authority of the specification and the
+<abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</p>
+<h2 id="principles">Principles<a class="headerlink" href="#principles" title="Link to this section">#</a></h2>
+<p><strong>Implementations.</strong> Nucleus is the first implementation: Valence was written
+there and is tested on its hardware. It has no special status under the
+specification; every conforming <abbr title="The single authoritative endpoint of one machine.">hub</abbr> has the same standing.</p>
+<p><strong>Number allocation.</strong> The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> allocates numbers through public pull
+requests, judged on technical grounds. It has no vendor-reserved ranges, no
+paid ranges and no private extension space. The device-defined ranges are open
+to every device.</p>
+<p><strong>Feature scope.</strong> A feature is accepted when the protocol needs it in
+general. A proposal that benefits only one product is refused, and the refusal
+is recorded with its reasoning.</p>
+<p><strong>Specification and library.</strong> <a href="../../spec/">The specification</a> defines
+Valence. The C++ library is its reference implementation. Where they disagree,
+the library has a defect.</p>
 <p><strong>The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> is the single source of truth.</strong> Where any document, any
-library and any table disagree about a number, the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> wins. That rule is
-mechanically enforced: the C++ constants and every table on this site are
-generated from it, and a stale copy fails CI.</p>
-<p><strong>Released numbers are never reused and never renumbered.</strong> Not for tidiness,
-not for a better name, not for a nicer grouping. A number burned by a retired
-feature stays burned, so a stale peer meets an unknown value and fails loudly
-instead of misreading a live one.</p>
-<p><strong>Honest defects are published.</strong> The fuzz campaign found three memory-safety
-bugs before release, and they are documented rather than quietly patched.
-Publishing found-and-fixed bugs is a credibility asset. A protocol that claims
-a clean history is either very young or not telling you something.</p>
-<h2 id="what-valence-will-not-do">What Valence will not do<a class="headerlink" href="#what-valence-will-not-do" title="Link to this section">#</a></h2>
+library and any table disagree about a number, the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> is correct. CI
+enforces this: the C++ constants and every table on this site are generated
+from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>, and a stale copy fails CI.</p>
+<p><strong>Released numbers are never reused and never renumbered.</strong> Tidiness,
+renaming and regrouping are not grounds for renumbering. A number retired with
+its feature is never reallocated. A peer built against an older version then
+fails visibly on an unknown value, instead of misreading a reused
+value.</p>
+<p><strong>Published defects.</strong> The <abbr title="The continuous-integration job that feeds mutated input to every parser and fails on any memory-safety error.">fuzz gate</abbr>'s first campaign found three
+memory-safety bugs before release; each is documented, with its regression
+test, in <a href="../../understand/security/">Security</a>.</p>
+<h2 id="exclusions">Exclusions<a class="headerlink" href="#exclusions" title="Link to this section">#</a></h2>
 <ul>
-<li>It will not require a specific motor driver, motion planner, transport or
-  cloud service.</li>
-<li>It will not gate any part of the wire protocol behind registration,
+<li>Valence does not require a specific motor driver, motion planner, transport
+  or cloud service.</li>
+<li>Valence does not gate any part of the wire protocol behind registration,
   certification or a fee.</li>
-<li>It will not add a capability that only one machine can implement, unless the
-  capability is optional and its absence is discoverable.</li>
-<li>It will not describe how a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> should <em>look</em>. It describes what things
-  <strong>are</strong>. There is no widget field in the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, deliberately.</li>
+<li>Valence does not add a capability that only one machine can implement,
+  unless the capability is optional and its absence is discoverable.</li>
+<li>Valence does not describe how a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> should look; the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> has no
+  widget field.</li>
 </ul>
 <h2 id="changing-this-page">Changing this page<a class="headerlink" href="#changing-this-page" title="Link to this section">#</a></h2>
-<p>This page states a stance, so it changes only by explicit decision, never as a
-side effect of an unrelated edit. A change here is an RFC like any other. See
+<p>A change to this page is an RFC like any other. See
 <a href="../rfc-process/">the <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../../understand/ecosystem/">Ecosystem and compatibility</a> — where this
-  stance is either honored or broken in practice.</li>
+<li><a href="../../understand/ecosystem/">Ecosystem and compatibility</a>: how existing
+  firmware and <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> relate to these rules.</li>
 <li><a href="../contributing/">Contributing</a>.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

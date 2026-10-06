@@ -1100,10 +1100,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-belongs-on-this-page" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What belongs on this page
+        Scope
       
     </span>
   </a>
@@ -2696,10 +2696,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-belongs-on-this-page" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What belongs on this page
+        Scope
       
     </span>
   </a>
@@ -2745,11 +2745,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2764,17 +2759,16 @@
 <h1 id="plugin-guide">Plugin guide<a class="headerlink" href="#plugin-guide" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page is a stub. It lists the topics that belong here and where the
+source material is.</p>
+<p>Content follows the v1.0 tag.</p>
 </div>
-<h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>A worked example, start to finish, from a plugin that actually shipped.</p>
-<p>Topics the example already exercises, all worth writing up:</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Link to this section">#</a></h2>
+<p>This page will walk through a shipped plugin, <code>clients/mfp/</code>, from start to finish.</p>
+<p>Topics the example covers:</p>
 <ul>
-<li><a href="../../reference/registry/discovery/">Discovery</a>, and why a manual address
-  must always still work.</li>
+<li><a href="../../reference/registry/discovery/">Discovery</a>, and the requirement that a
+  manual address still works.</li>
 <li>Choosing between dense
   <a href="../../reference/dictionary/#sample">samples</a> and sparse
   <a href="../../reference/dictionary/#segment"><abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr></a>, and what each costs.</li>
@@ -2783,30 +2777,26 @@ describe what shipped, not what was planned.</p>
   <a href="../../reference/dictionary/#liveness-ping">liveness pings</a> continue, and the
   machine settles instead of tripping its
   <a href="../../reference/dictionary/#deadman"><abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr></a>.</li>
-<li>A divergence watchdog that <strong>warns and never silently switches</strong> when the
-  host app bends the axis underneath you.</li>
-<li>Byte-for-byte wire parity with <a href="../cli/#the-probe">the reference verifier</a>,
-  checked by a test rather than by reading.</li>
+<li>A divergence watchdog that warns, without switching modes, when the host
+  app's output for the axis differs from the script's prediction.</li>
+<li>Byte-for-byte wire parity with the <a href="../cli/#the-probe">probe (the reference verifier)</a>,
+  checked by a test.</li>
 <li>Running the same <abbr title="The stateful association between one client and the hub.">session</abbr> twice back to back <strong>without rebooting the device</strong>.
-  That pattern is what caught a real ownership-release bug, and it is
-  mandatory for <a href="../local-testing/#the-pattern-that-is-mandatory">anything touching <abbr title="The stateful association between one client and the hub.">session</abbr> lifecycle</a>.</li>
+  This pattern is mandatory for <a href="../local-testing/#the-pattern-that-is-mandatory">anything touching <abbr title="The stateful association between one client and the hub.">session</abbr> lifecycle</a>.</li>
 </ul>
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
-<li><code>clients/mfp/</code> — the shipped plugin. Note which files actually
-  ship and which are development-only; a guide that tells people to copy the
-  development files is a bug report waiting to happen.</li>
-<li><code>spec/V1-READINESS.md</code> §2.5 — the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> work items, including the
-  honest account of what the host application's own extension surface does and
-  does not allow.</li>
+<li><code>clients/mfp/</code>: the shipped plugin. The guide must separate shipped files
+  from development-only files.</li>
+<li><code>spec/V1-READINESS.md</code> §2.5: the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> work items, including the limits of
+  the host application's extension surface.</li>
 </ul>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../quickstart/">Quickstart</a> — the seven-step <abbr title="The stateful association between one client and the hub.">session</abbr> this guide's example
+<li><a href="../quickstart/">Quickstart</a>: the seven-step <abbr title="The stateful association between one client and the hub.">session</abbr> this guide's example
   builds on.</li>
-<li><a href="../cli/">CLI guide</a> — verify wire parity with the probe before you trust it.</li>
-<li><a href="../local-testing/">Local testing</a> — the back-to-back-<abbr title="The stateful association between one client and the hub.">sessions</abbr> pattern that
-  caught the ownership-release bug mentioned above.</li>
+<li><a href="../cli/">CLI guide</a>: verify wire parity with the probe.</li>
+<li><a href="../local-testing/">Local testing</a>: the back-to-back-<abbr title="The stateful association between one client and the hub.">sessions</abbr> pattern.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

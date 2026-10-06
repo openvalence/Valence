@@ -2609,10 +2609,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#two-things-worth-knowing" class="md-nav__link">
+  <a href="#generated-registry-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Two things worth knowing
+        Generated registry pages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dictionary-tooltips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dictionary tooltips
       
     </span>
   </a>
@@ -2645,16 +2656,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2662,7 +2663,7 @@
 
 
 <h1 id="reference">Reference<a class="headerlink" href="#reference" title="Link to this section">#</a></h1>
-<p>Material you look things up in.</p>
+<p>This section holds the Dictionary, the generated <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> tables, the <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> reference and the <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> grid.</p>
 <table>
 <thead>
 <tr>
@@ -2673,7 +2674,7 @@
 <tbody>
 <tr>
 <td><a href="dictionary/">The Dictionary</a></td>
-<td>Every term, exactly one definition each</td>
+<td>Defined terms and their definitions</td>
 </tr>
 <tr>
 <td><a href="registry/"><abbr title="The single machine-readable file that decides every number Valence puts on the wire.">Registry</abbr> reference</a></td>
@@ -2683,22 +2684,27 @@
 <td><a href="channel-catalog/"><abbr title="A named, numbered, typed data flow declared in the catalog.">Channel</abbr> <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></a></td>
 <td>What a real device's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> looks like, entry by entry</td>
 </tr>
+<tr>
+<td><a href="channel-grid/"><abbr title="A named, numbered, typed data flow declared in the catalog.">Channel</abbr> grid</a></td>
+<td>The 0xCDSS <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> numbering convention: class, domain, family, and member</td>
+</tr>
 </tbody>
 </table>
-<h2 id="two-things-worth-knowing">Two things worth knowing<a class="headerlink" href="#two-things-worth-knowing" title="Link to this section">#</a></h2>
-<p><strong>The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> pages are generated.</strong> No number on this site is typed by a
-human. If a generated table and any prose disagree, the table wins, and the
-prose is a bug. A stale table fails the build.</p>
-<p><strong>The Dictionary auto-links itself.</strong> A term defined there shows its
-definition on hover wherever it appears on this site. The tooltips and the
-Dictionary page come from one source, so a term cannot acquire a second
-meaning.</p>
+<h2 id="generated-registry-pages">Generated <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> pages<a class="headerlink" href="#generated-registry-pages" title="Link to this section">#</a></h2>
+<p>The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> pages are generated from <code>registry.yaml</code> by <code>gen_docs_tables.py</code>.
+Where a generated table and prose disagree, the table is correct and the prose
+has a defect. CI fails the build when a generated table is out of date.</p>
+<h2 id="dictionary-tooltips">Dictionary tooltips<a class="headerlink" href="#dictionary-tooltips" title="Link to this section">#</a></h2>
+<p>A term defined in the Dictionary shows its definition on hover wherever it
+appears on this site. The tooltips and the Dictionary page are both
+generated from <code>dictionary.yaml</code>. The generator refuses two definitions for one
+written form.</p>
 <h2 id="quick-lookups">Quick lookups<a class="headerlink" href="#quick-lookups" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="registry/frames/">Frame types</a>: what is this <code>type</code> byte?</li>
-<li><a href="registry/errors/">NACK codes</a>: why was my frame refused?</li>
-<li><a href="registry/limits/">Limits and defaults</a>: how big, how fast, how long?</li>
-<li><a href="registry/cbor-keys/"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> keys</a>: what is key 24?</li>
+<li><a href="registry/frames/">Frame types</a>: every <code>type</code> byte</li>
+<li><a href="registry/errors/">NACK codes</a>: every refusal reason</li>
+<li><a href="registry/limits/">Limits and defaults</a>: sizes, rates and timeouts</li>
+<li><a href="registry/cbor-keys/"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> keys</a>: every integer key</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

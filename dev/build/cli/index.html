@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Valence Trace, the motion-pipeline oscilloscope, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.">
+        <meta name="description" content="Valence Trace, which records and graphs motion-pipeline telemetry, and valence_probe.py, the reference verifier: what each one proves, how to run it, and how to read what it prints.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -1168,10 +1168,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-question-it-answers" class="md-nav__link">
+  <a href="#purpose" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The question it answers
+        Purpose
       
     </span>
   </a>
@@ -1190,10 +1190,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#it-cannot-move-the-machine" class="md-nav__link">
+  <a href="#read-only-access" class="md-nav__link">
     <span class="md-ellipsis">
       
-        It cannot move the machine
+        Read-only access
       
     </span>
   </a>
@@ -1267,10 +1267,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#honest-limits" class="md-nav__link">
+  <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Honest limits
+        Limits
       
     </span>
   </a>
@@ -1306,10 +1306,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#run-it-twice" class="md-nav__link">
+  <a href="#back-to-back-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run it twice
+        Back-to-back runs
       
     </span>
   </a>
@@ -1333,10 +1333,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to go next
+        Related pages
       
     </span>
   </a>
@@ -2856,10 +2856,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-question-it-answers" class="md-nav__link">
+  <a href="#purpose" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The question it answers
+        Purpose
       
     </span>
   </a>
@@ -2878,10 +2878,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#it-cannot-move-the-machine" class="md-nav__link">
+  <a href="#read-only-access" class="md-nav__link">
     <span class="md-ellipsis">
       
-        It cannot move the machine
+        Read-only access
       
     </span>
   </a>
@@ -2955,10 +2955,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#honest-limits" class="md-nav__link">
+  <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Honest limits
+        Limits
       
     </span>
   </a>
@@ -2994,10 +2994,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#run-it-twice" class="md-nav__link">
+  <a href="#back-to-back-runs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Run it twice
+        Back-to-back runs
       
     </span>
   </a>
@@ -3021,10 +3021,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where to go next
+        Related pages
       
     </span>
   </a>
@@ -3046,16 +3046,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -3063,7 +3053,7 @@
 
 
 <h1 id="cli-guide">CLI guide<a class="headerlink" href="#cli-guide" title="Link to this section">#</a></h1>
-<p>Two command-line tools ship with Valence. They answer different questions.</p>
+<p>Valence ships three command-line tools: <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>, the probe, and the generators.</p>
 <table>
 <thead>
 <tr>
@@ -3082,23 +3072,21 @@
 </tr>
 <tr>
 <td><a href="#the-generators">The generators</a></td>
-<td>Are the published numbers still the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>'s numbers?</td>
+<td>Do the generated files match the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the specification?</td>
 </tr>
 </tbody>
 </table>
-<p>Both tools are Python. Both need the <code>websocket-client</code> package. Both run
-against <a href="../local-testing/#the-simulator">the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr></a> exactly as they run
-against hardware.</p>
+<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> and the probe are Python and need the <code>websocket-client</code>
+package. Both run against <a href="../local-testing/#the-simulator">the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr></a> as
+they run against hardware.</p>
 <h2 id="valence-trace"><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr><a class="headerlink" href="#valence-trace" title="Link to this section">#</a></h2>
-<p><code>tools/valence_trace.py</code> is an oscilloscope for the motion pipeline.</p>
-<h3 id="the-question-it-answers">The question it answers<a class="headerlink" href="#the-question-it-answers" title="Link to this section">#</a></h3>
-<p>A machine feels wrong. The app is a good app, the script is a good script, and
-the motion is still not what the author intended. Nothing in a log answers
-this, because every layer reports itself as healthy.</p>
+<p><code>tools/valence_trace.py</code> records and graphs motion-pipeline telemetry.</p>
+<h3 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Link to this section">#</a></h3>
+<p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> graphs commanded motion against achieved motion to show where they diverge.</p>
 <p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> graphs the raw commanded input as it arrives over Valence, scaled
 into the <a href="../../reference/dictionary/#stroke-window"><abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr></a>, against
-what the planner actually did with it. <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">Quintic</abbr> shaping, <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> lag, guard
-fallbacks and handoff bounding stop being feelings and become lines.</p>
+what the planner did with it. <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">Quintic</abbr> shaping, <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> lag, guard
+fallbacks and handoff bounding appear as separate lines.</p>
 <h3 id="three-lines">Three lines<a class="headerlink" href="#three-lines" title="Link to this section">#</a></h3>
 <p>Every graph carries the same three position series, all in millimeters.</p>
 <table>
@@ -3119,31 +3107,27 @@ fallbacks and handoff bounding stop being feelings and become lines.</p>
 </tr>
 <tr>
 <td><a href="../../reference/dictionary/#achieved">Achieved</a></td>
-<td>Where the carriage actually is</td>
+<td>Measured carriage position</td>
 </tr>
 </tbody>
 </table>
-<p>Read the two gaps separately. They mean different things.</p>
-<p><strong>Planned minus achieved is tracking.</strong> The plan is the machine's own promise.
-A gap here is the actuator falling behind its own plan.</p>
-<p><strong>Asked minus planned is shaping.</strong> The planner does not <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> a demand
-instantly, and it should not. In <a href="../../reference/dictionary/#waveform"><abbr title="The planner mode that turns one timed segment into one quintic over exactly the commanded duration.">waveform</abbr></a>
-mode this gap is simply the travel still to come inside the commanded
+<p>The two gaps measure different things.</p>
+<p><strong>Planned minus achieved</strong> is tracking error: a gap here is the actuator falling behind its plan.</p>
+<p><strong>Asked minus planned</strong> is shaping: the planner does not <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> a demand
+instantly. In <a href="../../reference/dictionary/#waveform"><abbr title="The planner mode that turns one timed segment into one quintic over exactly the commanded duration.">waveform</abbr></a>
+mode this gap is the travel still to come inside the commanded
 duration, so a large number is normal. In
-<a href="../../reference/dictionary/#chase"><abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr></a> mode the same gap is lag, and it is
-worth reading.</p>
+<a href="../../reference/dictionary/#chase"><abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr></a> mode the same gap is lag.</p>
 <p>A third layer sits underneath: the plan envelope, drawn from the planner's own
 current <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>, plus the velocity plane and the engine's
 <a href="../../reference/dictionary/#motion-anomaly">anomaly</a> events marked on the time
 axis.</p>
-<h3 id="it-cannot-move-the-machine">It cannot move the machine<a class="headerlink" href="#it-cannot-move-the-machine" title="Link to this section">#</a></h3>
+<h3 id="read-only-access">Read-only access<a class="headerlink" href="#read-only-access" title="Link to this section">#</a></h3>
 <p><abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> connects at the <a href="../../reference/dictionary/#watch">watch</a> tier. It
-subscribes and nothing else. It sends no
+only subscribes: it sends no
 <a href="../../reference/dictionary/#intent"><abbr title="A channel class, and the only way a client changes anything.">intent</abbr></a>, <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> no
-<a href="../../reference/dictionary/#stream">stream</a>, and carries no <code>publishes</code> wish in
-its HELLO. There is no <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> builder in the file at all.</p>
-<p>This is structural, not a flag you can forget. Drive the machine with something
-else and watch it here.</p>
+<a href="../../reference/dictionary/#stream">stream</a>, carries no <code>publishes</code> wish in
+its HELLO, and has no <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> builder. This is fixed in the code and cannot be configured. Use another <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> to drive the machine.</p>
 <h3 id="record">record<a class="headerlink" href="#record" title="Link to this section">#</a></h3>
 <p><code>record</code> captures a trace, and can render it in the same run.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span><span class="se">\</span>
@@ -3187,7 +3171,7 @@ else and watch it here.</p>
 </tr>
 </tbody>
 </table>
-<p>It prints how it found every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, which is worth reading once:</p>
+<p>It prints how it found every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>:</p>
 <div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>[valence_trace] connected ws://127.0.0.1:82/ (subprotocol valence.v1)
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>[valence_trace] WELCOME session=1200999484 roles=1 (watch tier is all this tool needs)
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>[valence_trace] catalog 10617 B, 26 entries, etag VERIFIED
@@ -3200,10 +3184,10 @@ else and watch it here.</p>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>            plan-strip=45.0Hz, kinetic-diag=1.0Hz, motion-anomaly=on-change
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>[valence_trace] captured 26.0s: 1305 motion, 724 plan, 27 diag, 3 anomaly -&gt; run.jsonl
 </span></code></pre></div>
-<p>Nothing there is a hardcoded <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> number. Positions and the window come from
+<p>The tool hardcodes no <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> numbers. Positions and the window come from
 <a href="../../reference/registry/catalog-vocabulary/#field-roles"><abbr title="A text tag on a catalog field that says what the value semantically is.">field roles</abbr></a>; the rest
-comes from the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>'s own names and layouts. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that numbers its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>
-differently still graphs.</p>
+comes from the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>'s own names and layouts. It therefore works with a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that numbers its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>
+differently.</p>
 <h3 id="live">live<a class="headerlink" href="#live" title="Link to this section">#</a></h3>
 <p><code>live</code> prints a terminal dashboard while it captures. Add <code>--out</code> to record at
 the same time.</p>
@@ -3236,27 +3220,24 @@ want to compare two runs, or keep the evidence.</p>
 <p><code>render</code> turns a trace into one self-contained HTML file.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>render<span class="w"> </span>run.jsonl<span class="w"> </span>--out<span class="w"> </span>run.html<span class="w"> </span>--theme<span class="w"> </span>light<span class="w"> </span>--palette<span class="w"> </span>cvd
 </span></code></pre></div>
-<p>The page inlines its own data, its own SVG and its own script. It fetches
-nothing. It opens on a bench laptop with no internet, months later, and it
-zooms. <code>render</code> needs no network and no <code>websocket-client</code>: it is a pure
-function of the trace file, so anyone you send a trace to can render it.</p>
+<p>The page inlines its data, SVG and script, makes no network requests, works offline and supports zoom. <code>render</code> needs no network and no <code>websocket-client</code>: its output depends only on the trace file, so anyone with the file can render it.</p>
 <p>The page carries a toolbar: each series on or off, the plan envelope, the
 anomaly marks, palette, theme and reset-zoom. Under the graph are three
-collapsed tables — trace metadata, the anomaly log, and a series summary. Every
-value on the graph is reachable in those tables without seeing a single color.</p>
+collapsed tables: trace metadata, the anomaly log, and a series summary.
+Every value on the graph is reachable in those tables without relying on color.</p>
 <h3 id="the-trace-format">The trace format<a class="headerlink" href="#the-trace-format" title="Link to this section">#</a></h3>
 <p>A trace is JSONL. One header record, then one record per frame, then a footer
 that repeats the header with the final window, limits and record counts.</p>
-<p>The header is the reason the format is worth explaining. It carries:</p>
+<p>The header carries:</p>
 <ul>
 <li>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> identity: <abbr title="The stateful association between one client and the hub.">session</abbr> id, boot id, <code>cfg_gen</code>, <code>deadman_ms</code>;</li>
 <li>the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> <a href="../../reference/dictionary/#etag"><abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr></a>, the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> size, and
-  whether the <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> was verified against the bytes actually received;</li>
+  whether the <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> was verified against the bytes received;</li>
 <li>the firmware version and whether the target was simulated;</li>
 <li>the <a href="../../reference/dictionary/#stroke-window"><abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr></a> and the whole
   <a href="../../reference/dictionary/#limit-set"><abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr></a>;</li>
 <li>the CLOCK offset and round-trip time;</li>
-<li>the full layout of every recorded <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> — every field's name, type, unit,
+<li>the full layout of every recorded <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>: every field's name, type, unit,
   scale, role, description, bit names and option labels;</li>
 <li>a <code>resolution</code> block saying <strong>how</strong> each thing was found.</li>
 </ul>
@@ -3266,25 +3247,20 @@ that repeats the header with the final window, limits and record counts.</p>
 </span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w"> </span><span class="nt">"limits"</span><span class="p">:{</span><span class="nt">"limit.input.speed"</span><span class="p">:</span><span class="mf">550.0</span><span class="p">,</span><span class="nt">"limit.input.accel"</span><span class="p">:</span><span class="mf">8000.0</span><span class="p">,</span><span class="nt">"limit.user.speed"</span><span class="p">:</span><span class="mf">50.0</span><span class="p">},</span>
 </span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w"> </span><span class="nt">"series"</span><span class="p">:{</span><span class="nt">"planned"</span><span class="p">:{</span><span class="nt">"channel"</span><span class="p">:</span><span class="mi">128</span><span class="p">,</span><span class="nt">"field"</span><span class="p">:</span><span class="s2">"tgt_10um"</span><span class="p">,</span><span class="nt">"unit"</span><span class="p">:</span><span class="s2">"mm"</span><span class="p">}}}</span>
 </span></code></pre></div>
-<p>Two properties follow from that, and both matter.</p>
-<p><strong>A trace stays interpretable.</strong> Open one in a year, against a firmware that
-has since changed its layout, and every number still has a name, a unit and a
-scale attached to it. You never need the tool version that recorded it, and you
-never need to guess which field was which.</p>
-<p><strong><code>render</code> is offline and total.</strong> The graph is a pure function of the trace.
-Re-rendering an old trace with a newer <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> gives the same picture, so a
-trace attached to a bug report is evidence rather than an anecdote.</p>
-<p>Frame records are short on purpose: <code>r</code> names the kind (<code>m</code> motion, <code>p</code> plan
+<p>Each value keeps its name, unit and scale, so a trace stays readable after the firmware layout changes, without the tool
+version that wrote it.</p>
+<p><code>render</code> needs no network, and re-rendering an old trace with a newer <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr> gives the same graph.</p>
+<p>Frame record keys: <code>r</code> names the kind (<code>m</code> motion, <code>p</code> plan
 strip, <code>c</code> machine config, <code>d</code> diagnostics, <code>a</code> anomaly, <code>s</code> safety), <code>t</code> is
 seconds since capture start, <code>th</code> is the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-clock estimate, and <code>v</code> is the
 decoded sample with <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> field names as keys.</p>
 <h3 id="worked-example">A worked example: <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segments</abbr> against <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr><a class="headerlink" href="#worked-example" title="Link to this section">#</a></h3>
-<p>Here is one capture read end to end. Both runs are against the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, on
-one unrestarted instance, with the probe as the driver.</p>
+<p>This example compares two captures on one unrestarted <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> instance,
+driven by the probe.</p>
 <div class="highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># terminal 1 — the machine</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>valencesim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">150</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># terminal 2 — the scope</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># terminal 2 — the recorder</span>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>python<span class="w"> </span>tools/valence_trace.py<span class="w"> </span>record<span class="w"> </span>--ip<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>--port<span class="w"> </span><span class="m">82</span><span class="w"> </span>--seconds<span class="w"> </span><span class="m">26</span><span class="w"> </span>--out<span class="w"> </span>seg.jsonl
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="c1"># terminal 3 — the driver: timed segments, one per second</span>
@@ -3305,8 +3281,8 @@ capture holds about 1200 motion samples in the mode of interest.</p>
 <tbody>
 <tr>
 <td>Mean |planned − achieved|</td>
-<td><strong>7.2 mm</strong></td>
-<td><strong>31.1 mm</strong></td>
+<td>7.2 mm</td>
+<td>31.1 mm</td>
 </tr>
 <tr>
 <td>Median |planned − achieved|</td>
@@ -3326,7 +3302,7 @@ capture holds about 1200 motion samples in the mode of interest.</p>
 <tr>
 <td>Samples at the speed ceiling</td>
 <td>0%</td>
-<td><strong>61%</strong></td>
+<td>61%</td>
 </tr>
 <tr>
 <td>Anomalies counted</td>
@@ -3340,28 +3316,21 @@ capture holds about 1200 motion samples in the mode of interest.</p>
 </tr>
 </tbody>
 </table>
-<p>Now read it.</p>
-<p><strong>The <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> run tracks its plan.</strong> Half the samples are inside 1.3 mm on a
-500 mm stroke. Each funscript action arrives as one timed <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>, becomes one
+<p>In the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> run, the median tracking error is 1.3 mm on a 500 mm <abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr>. Each funscript action arrives as one timed <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr>, becomes one
 <a href="../../reference/dictionary/#quintic"><abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr></a> over exactly the commanded
 duration, and the machine follows it. Peak speed stayed at 517 mm/s, under the
 550 ceiling, so the demand fitted inside the machine's envelope. The three
 anomalies are the first handoff at the start of the run.</p>
-<p><strong>The <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> run does not, and the trace says why.</strong> The driver streams
-<code>0.5 + 0.35·sin(2π·0.8·t)</code>, which on a 500 mm window peaks at <strong>880 mm/s</strong> of
-source velocity. The machine's input ceiling is 550 mm/s. The demand is
-physically impossible on this machine, so speed pins at the ceiling for 61% of
-the capture and the position falls behind. 566 of the anomalies are
+<p>In the <abbr title="The planner mode that replans to each newly arrived point from the machine's own sampled state.">chase</abbr> run, achieved position falls behind the plan. The driver streams
+<code>0.5 + 0.35·sin(2π·0.8·t)</code>, which on a 500 mm window peaks at 880 mm/s of
+source velocity. The demand exceeds the machine's 550 mm/s input ceiling, and speed stays at the ceiling for 61% of
+the capture. 566 of the anomalies are
 <code>endvel_clamped</code>: the engine refusing an end velocity that the window could not
 absorb.</p>
-<p>That is the whole skill. <strong>The gap alone means nothing; the gap beside the
-speed line means everything.</strong> A gap with speed headroom left is a tracking or
-tuning question. A gap with speed pinned at the ceiling is a demand the machine
-was never able to serve, and the fix belongs in the app, in the script, or in
-the limits — not in the planner.</p>
+<p>Read the gap together with the speed line. A gap with speed headroom left is a tracking or
+tuning question. A gap while speed is at the ceiling means the demand exceeds the machine's limits. Fix it in the app, the script or the limits, not in the planner.</p>
 <h3 id="color">Color<a class="headerlink" href="#color" title="Link to this section">#</a></h3>
-<p>The colors are the product's own, so a graph reads like the WebUI and like
-these docs.</p>
+<p>The colors match the WebUI and these docs.</p>
 <table>
 <thead>
 <tr>
@@ -3372,15 +3341,15 @@ these docs.</p>
 <tbody>
 <tr>
 <td>Purple</td>
-<td>Intent: commanded, not yet confirmed. <strong>Asked</strong></td>
+<td>Commanded, not yet confirmed. <strong>Asked</strong></td>
 </tr>
 <tr>
 <td>Deep blue</td>
-<td>Reality's side, accepted: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own target. <strong>Planned</strong></td>
+<td>The <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s accepted target. <strong>Planned</strong></td>
 </tr>
 <tr>
 <td>Blue</td>
-<td>Reality: measured. <strong>Achieved</strong></td>
+<td>Measured position. <strong>Achieved</strong></td>
 </tr>
 <tr>
 <td>Amber, red</td>
@@ -3390,13 +3359,13 @@ these docs.</p>
 </table>
 <p>Planned is drawn as a deeper step of the reality blue rather than a fourth hue.
 The planner's target has already passed arbitration, <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr> and the window,
-so it belongs to the reality family; the lightness step says "accepted, not yet
-executed".</p>
+so it belongs to the reality family; the darker step marks it as accepted but not yet
+executed.</p>
 <div class="admonition warning">
 <p class="admonition-title">Two of these lines are not distinguishable by color</p>
-<p>Measured, not assumed: the reality and <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> pair is <strong>ΔE 1.1</strong> under
+<p>The reality and <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> pair is ΔE 1.1 under
 deuteranopia, against 11.4 under normal vision.</p>
-<p>So color is never the only encoding. Every series also carries its own
+<p>Color is therefore not the only encoding. Every series also carries its own
 dash pattern, a legend key drawn in that pattern, a direct end-label on the
 line, and a named readout under the crosshair. The series-summary table
 gives every value in text.</p>
@@ -3404,23 +3373,21 @@ gives every value in text.</p>
 <code>cvd</code> palette re-steps the same semantic families to a set that passes.
 <code>--palette cvd</code> makes it the default for a rendered file.</p>
 </div>
-<h3 id="honest-limits">Honest limits<a class="headerlink" href="#honest-limits" title="Link to this section">#</a></h3>
+<h3 id="limits">Limits<a class="headerlink" href="#limits" title="Link to this section">#</a></h3>
 <p><strong>The <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>'s actuator is an ideal follower.</strong> It runs the real motion
-engine, the real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and the real <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, so <em>asked</em> and <em>planned</em> are exactly
-what the device would produce. <em>Achieved</em> is optimistic: there is no step
+engine, the real <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and the real <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, so <em>asked</em> and <em>planned</em> match
+the device. <em>Achieved</em> is closer to the plan than hardware achieves: there is no step
 quantization, no current limit, no encoder lag and no mechanical compliance.
-Trust the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> for protocol, planning and shaping questions. Confirm
+Use the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr> for protocol, planning and shaping questions. Confirm
 tracking numbers on hardware.</p>
 <p><strong><code>plan_us_*</code> is always zero on a host build.</strong> Plan time is measured where it
-runs, on the device. A host number would be a different CPU answering a
-question nobody asked.</p>
-<p><strong>A trace is one workload.</strong> Every number in the worked example above is a
-property of that machine, that <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr> and that driver. Capture your own.</p>
+runs, on the device. A host measurement would not reflect the device.</p>
+<p>The worked-example numbers apply only to that machine, <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr> and driver. Capture your own traces for comparison.</p>
 <h2 id="the-probe">The probe<a class="headerlink" href="#the-probe" title="Link to this section">#</a></h2>
 <p><code>tools/valence_probe.py</code> is the reference verifier. It runs a scripted <abbr title="The stateful association between one client and the hub.">session</abbr>
-against a live <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and prints a narrated pass-or-fail transcript.</p>
+against a live <abbr title="The single authoritative endpoint of one machine.">hub</abbr> and prints a pass-or-fail transcript per stage.</p>
 <p>It hand-rolls its own encoder against the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> instead of importing the
-library, so a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that passes the probe has agreed with an independent
+library. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> that passes the probe therefore agrees with an independent
 implementation. It is also a complete, readable v1.0 <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, which is why the
 <a href="../quickstart/">Quickstart</a> is built from it.</p>
 <h3 id="what-it-verifies">What it verifies<a class="headerlink" href="#what-it-verifies" title="Link to this section">#</a></h3>
@@ -3442,8 +3409,7 @@ and <abbr title="One STREAM data point that commands a time extent, carrying its
 </span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>
 </span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>  46 passed, 0 failed, 3 skipped
 </span></code></pre></div>
-<p>A failure names its stage. The stage names are the protocol's own steps, so the
-failing stage tells you which clause to read.</p>
+<p>A failure names its stage. Stage names match the protocol's steps, which identifies the clause to read.</p>
 <table>
 <thead>
 <tr>
@@ -3478,24 +3444,22 @@ failing stage tells you which clause to read.</p>
 </tr>
 </tbody>
 </table>
-<p>Two of these change the machine's state and say so. <code>--estop</code> really latches
+<p>Two flags change the machine's state. <code>--estop</code> latches
 the machine and leaves it unhomed. <code>--bench-home</code> asserts a <abbr title="The operator-set lower and upper position bounds that motion stays inside.">stroke window</abbr>
-nothing measured, and is for motorless rigs. Neither is a default.</p>
+nothing measured, and is for motorless rigs. Neither is on by default.</p>
 <p>Motion steps are dropped by the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s homed gate on an unhomed machine. That is
-correct behavior, and the wire path is still fully exercised, so an unhomed
-run is the safe way to prove a <abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
-<h3 id="run-it-twice">Run it twice<a class="headerlink" href="#run-it-twice" title="Link to this section">#</a></h3>
+correct behavior, and the wire path is still fully exercised. An unhomed
+run therefore tests the wire path without moving the machine.</p>
+<h3 id="back-to-back-runs">Back-to-back runs<a class="headerlink" href="#back-to-back-runs" title="Link to this section">#</a></h3>
 <div class="admonition danger">
 <p class="admonition-title">Two runs, back to back, with nothing restarted between them</p>
 <p>Run the probe. Then run it <strong>again</strong>, against the same <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, without
 rebooting, reflashing or restarting anything.</p>
-<p>A departed <abbr title="The stateful association between one client and the hub.">session</abbr>'s <a href="../../reference/dictionary/#source-ownership"><abbr title="The rule that each arbiter source has at most one owning session at a time.">source ownership</abbr></a>
-once leaked forever, silently refusing every later <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> as a conflict.
-The bug hid for months, because every deployment rebooted the device
-between test runs and the reboot cleared the leak.</p>
-<p>One run cannot find that class of bug. Two can.</p>
+<p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can leak <a href="../../reference/dictionary/#source-ownership"><abbr title="The rule that each arbiter source has at most one owning session at a time.">source ownership</abbr></a>
+after a <abbr title="The stateful association between one client and the hub.">session</abbr> ends, refusing every later <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> as a conflict. A reboot
+between runs clears the leak and hides it. Detecting it requires two consecutive runs without a restart.</p>
 </div>
-<p>The full reasoning, and the other three patterns worth keeping, are on
+<p>The full reasoning, and three related patterns, are on
 <a href="../local-testing/#the-pattern-that-is-mandatory">Local testing</a>.</p>
 <h2 id="the-generators">The generators<a class="headerlink" href="#the-generators" title="Link to this section">#</a></h2>
 <p>Every number this site <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> is generated from the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> or the
@@ -3509,13 +3473,13 @@ generated file no longer matches its source.</p>
 <p>Run the plain form to regenerate, then commit the source and the output
 together. Never hand-edit a generated file: the banner at the top of each one
 says so, and <code>--check</code> enforces it.</p>
-<h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../local-testing/">Local testing</a> — the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, the fuzz harnesses, and
+<li><a href="../local-testing/">Local testing</a>: the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, the fuzz harnesses, and
   the regression patterns.</li>
-<li><a href="../quickstart/">Quickstart</a> — the shortest correct <abbr title="The stateful association between one client and the hub.">session</abbr>, built from the
+<li><a href="../quickstart/">Quickstart</a>: a minimal <abbr title="The stateful association between one client and the hub.">session</abbr>, built from the
   probe.</li>
-<li><a href="../../reference/dictionary/">The Dictionary</a> — every term used here.</li>
+<li><a href="../../reference/dictionary/">The Dictionary</a>: every term used here.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

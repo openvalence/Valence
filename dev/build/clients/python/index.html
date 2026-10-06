@@ -1059,10 +1059,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-belongs-on-this-page" class="md-nav__link">
+  <a href="#planned-content" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What belongs on this page
+        Planned content
       
     </span>
   </a>
@@ -1070,10 +1070,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#every-client-guide-covers-the-same-seven-things" class="md-nav__link">
+  <a href="#common-outline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Every client guide covers the same seven things
+        Common outline
       
     </span>
   </a>
@@ -2698,10 +2698,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-belongs-on-this-page" class="md-nav__link">
+  <a href="#planned-content" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What belongs on this page
+        Planned content
       
     </span>
   </a>
@@ -2709,10 +2709,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#every-client-guide-covers-the-same-seven-things" class="md-nav__link">
+  <a href="#common-outline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Every client guide covers the same seven things
+        Common outline
       
     </span>
   </a>
@@ -2747,11 +2747,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2766,22 +2761,20 @@
 <h1 id="python-client-guide">Python <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide<a class="headerlink" href="#python-client-guide" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page is a stub. It lists the planned content and the source
+material.</p>
+<p>Content is written after the v1.0 tag.</p>
 </div>
-<h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
-<p>The tooling and test <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>. Cover a minimal <abbr title="The stateful association between one client and the hub.">session</abbr>, and reading generated constants rather than typing numbers.</p>
+<h2 id="planned-content">Planned content<a class="headerlink" href="#planned-content" title="Link to this section">#</a></h2>
+<p>The tooling and test <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>: a minimal <abbr title="The stateful association between one client and the hub.">session</abbr>, and using generated constants instead of numeric literals.</p>
 <p>Source material: <code>tools/valence_probe.py</code>, the reference verifier.</p>
 <blockquote>
 <p>DEMO-CANDIDATE: the probe's own minimal <abbr title="The stateful association between one client and the hub.">session</abbr> (see the
 <a href="../../quickstart/#python">Quickstart</a>) run live, one decoded frame printed
 per line.</p>
 </blockquote>
-<h2 id="every-client-guide-covers-the-same-seven-things">Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide covers the same seven things<a class="headerlink" href="#every-client-guide-covers-the-same-seven-things" title="Link to this section">#</a></h2>
-<p>Keep the order identical across languages, so a reader who knows one guide can
-skim another.</p>
+<h2 id="common-outline">Common outline<a class="headerlink" href="#common-outline" title="Link to this section">#</a></h2>
+<p>Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> guide covers these seven steps in this order.</p>
 <ol>
 <li>Open the transport and complete the handshake.</li>
 <li>Handle the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>: fetch, cache by
@@ -2796,10 +2789,10 @@ skim another.</p>
 </ol>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../../quickstart/">Quickstart</a> — the same seven steps, worked end to end.</li>
-<li><a href="../../cli/">CLI guide</a> — the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>, in depth.</li>
-<li><a href="../../local-testing/">Local testing</a> — run this against the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>
-  before you run it against hardware.</li>
+<li><a href="../../quickstart/">Quickstart</a>: a worked example, end to end.</li>
+<li><a href="../../cli/">CLI guide</a>: the probe and <abbr title="The motion-pipeline oscilloscope, which graphs asked against planned against achieved.">Valence Trace</abbr>, in depth.</li>
+<li><a href="../../local-testing/">Local testing</a>: run the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> against the <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>
+  before running it against hardware.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

@@ -2723,11 +2723,6 @@
     
       <p class="ss-pagemeta">
         
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
         
           <span class="ss-badge ss-badge--stub" title="This page is deliberately unwritten. It names what belongs here and where the source material is.">stub</span>
         
@@ -2742,43 +2737,42 @@
 <h1 id="channel-catalog-reference"><abbr title="A named, numbered, typed data flow declared in the catalog.">Channel</abbr> <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> reference<a class="headerlink" href="#channel-catalog-reference" title="Link to this section">#</a></h1>
 <div class="admonition warning">
 <p class="admonition-title">This page is not written yet</p>
-<p>It is a stub. It names what belongs here and where the source
-material is. It does not fake content.</p>
-<p>Content follows the v1.0 tag on purpose: the normative section must
-describe what shipped, not what was planned.</p>
+<p>This page lists what it will cover and the source material for it.</p>
+<p>This page is written after the v1.0 tag and describes the v1.0 release.</p>
 </div>
 <h2 id="what-belongs-on-this-page">What belongs on this page<a class="headerlink" href="#what-belongs-on-this-page" title="Link to this section">#</a></h2>
 <p>The <a href="../registry/channels/#spec-core-channels">spec-core <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr></a> are already
-generated and authoritative. This page is the other half: a <strong>real device
+generated and authoritative. This page documents one <strong>real device
 <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></strong>, entry by entry, as a worked example of <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> authoring.</p>
 <p>For each entry: its class, its access level, its layout or schema field by
-field, the units and scales, and why it is one <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> rather than two.</p>
-<p>It should also cover the authoring rules that are easy to get wrong:</p>
+field, the units and scales, and the reason its fields share one <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>.</p>
+<p>It also covers these authoring rules:</p>
 <ul>
 <li>A <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> payload must fit 242 bytes unfragmented. A group that does not fit
-  is split at authoring time, not at runtime.</li>
+  is split into separate <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> when the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is authored; the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> does
+  not split it at runtime.</li>
 <li>Layouts evolve append-only. A changed or removed field means a new <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>
   id.</li>
-<li>A category spans <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>, which is how a settings tab outgrows one
-  snapshot.</li>
-<li><a href="../registry/catalog-vocabulary/#field-roles">Field roles</a> are opportunities,
-  never requirements. Generic rendering must always work.</li>
+<li>A <abbr title="The tab a settings field belongs in, chosen from a registered list so placement is consistent across hubs.">setting category</abbr> spans <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>, so a settings tab can exceed what one
+  snapshot holds.</li>
+<li><a href="../registry/catalog-vocabulary/#field-roles">Field roles</a>: a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> may use a <abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr>
+  to pick a better control, and may ignore it. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that ignores every
+  <abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr> still renders every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>.</li>
 </ul>
 <h2 id="source-material">Source material<a class="headerlink" href="#source-material" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../../spec/appendices/#appendix-d">Appendix D</a> of <code>spec/SPEC.md</code>: the initial device <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> sketch.</li>
+<li><a href="../../spec/appendices/#appendix-d">Appendix D</a> of <code>spec/SPEC.md</code>: the worked <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> sketch.</li>
 <li>Nucleus's <code>include/comms/ValenceCatalog.h</code> (machine repo): the
-  <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> a real device actually <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr>. Prefer this over the appendix
-  where they differ. It is what ships.</li>
+  <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> a real device <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr>. Where it differs from Appendix D, this
+  header is correct, because it is the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> the firmware <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr>.</li>
 <li><a href="../../spec/schema/"><abbr title="The hub's machine-readable description of every channel it exposes.">Catalog</abbr> schema (CDDL)</a>: the normative <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> encoding,
   published from <code>spec/schema/catalog.cddl</code>.</li>
 <li><code>lib/valence/include/valence/conformance/catalog_check.hpp</code>: the rules a
-  <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is mechanically checked against. Every check there is a rule this
-  page should explain.</li>
+  <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is mechanically checked against. This page explains each check in it.</li>
 </ul>
 <blockquote>
-<p>DEMO-CANDIDATE: fetch a live device's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> over the wire and render it
-entry by entry next to this page's worked example, field for field.</p>
+<p>Planned: fetch a live device's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> over the wire and render it
+entry by entry next to this page's worked example.</p>
 </blockquote>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a

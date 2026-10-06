@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="An honest account of what Valence takes over and what it deliberately leaves alone, including TCode's continued role as compatibility ingest.">
+        <meta name="description" content="What Valence takes over and what it leaves alone, including TCode's role as compatibility ingest.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -647,10 +647,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#start-here-if-you-use-tcode" class="md-nav__link">
+  <a href="#tcode-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Start here if you use TCode
+        TCode compatibility
       
     </span>
   </a>
@@ -752,10 +752,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-valence-deliberately-is-not" class="md-nav__link">
+  <a href="#non-goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Valence deliberately is not
+        Non-goals
       
     </span>
   </a>
@@ -763,10 +763,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-migration-deletes-honestly" class="md-nav__link">
+  <a href="#migration-audit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What migration deletes, honestly
+        Migration audit
       
     </span>
   </a>
@@ -2791,10 +2791,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#start-here-if-you-use-tcode" class="md-nav__link">
+  <a href="#tcode-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Start here if you use TCode
+        TCode compatibility
       
     </span>
   </a>
@@ -2896,10 +2896,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-valence-deliberately-is-not" class="md-nav__link">
+  <a href="#non-goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Valence deliberately is not
+        Non-goals
       
     </span>
   </a>
@@ -2907,10 +2907,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-migration-deletes-honestly" class="md-nav__link">
+  <a href="#migration-audit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What migration deletes, honestly
+        Migration audit
       
     </span>
   </a>
@@ -2943,16 +2943,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2960,41 +2950,37 @@
 
 
 <h1 id="what-it-replaces-and-what-it-does-not">What it replaces, and what it does not<a class="headerlink" href="#what-it-replaces-and-what-it-does-not" title="Link to this section">#</a></h1>
-<p>Both columns on this page are honest. The second one is longer, and it is the
-one that matters more.</p>
-<h2 id="start-here-if-you-use-tcode">Start here if you use TCode<a class="headerlink" href="#start-here-if-you-use-tcode" title="Link to this section">#</a></h2>
-<p><strong>Your setup keeps working.</strong> Valence does not deprecate TCode, and there is
-no flag day.</p>
+<p>This page covers the surfaces Valence replaces, the surfaces it leaves alone, and its non-goals.</p>
+<h2 id="tcode-compatibility">TCode compatibility<a class="headerlink" href="#tcode-compatibility" title="Link to this section">#</a></h2>
+<p>Valence does not deprecate TCode, and there is no cutover date; existing
+TCode setups keep working.</p>
 <p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> keeps its TCode edges as <strong>compatibility ingest</strong>. It wraps each active
 edge in a <a href="../../reference/dictionary/#synthetic-session"><abbr title="A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.">synthetic session</abbr></a>:
 an internal <abbr title="The stateful association between one client and the hub.">session</abbr> object that appears in the roster, owns its <abbr title="The single component that commands the motor driver for positioning.">arbiter</abbr>
 source, and carries a <a href="../../reference/dictionary/#deadman"><abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr></a> equal to
 that edge's existing quiet timeout. A TCode sender receives no Valence
 frames. The wrapping is entirely <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-side bookkeeping.</p>
-<p>That is a safety rule, not a courtesy. There is no unmonitored path to motion.
-A legacy transport that could move the machine outside the safety machinery
-would be a hole in it.</p>
-<p>Valence-native motion streaming is the <strong>upgrade path</strong>, not a deadline. A
+<p>This is a safety rule: there is no unmonitored path to motion.</p>
+<p>Native Valence motion streaming is the optional <strong>upgrade path</strong>. A
 native stream carries timestamps, a rate
 <a href="../../reference/dictionary/#grant"><abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grant</abbr></a>,
 <a href="../../reference/dictionary/#source-ownership"><abbr title="The rule that each arbiter source has at most one owning session at a time.">source ownership</abbr></a> and the
-<abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> as protocol, rather than as conventions each firmware reimplements.
-Move when that is worth something to you.</p>
+<abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> as protocol, rather than as conventions each firmware reimplements.</p>
 <h2 id="what-it-replaces">What it replaces<a class="headerlink" href="#what-it-replaces" title="Link to this section">#</a></h2>
-<p>Every row here is something projects in this space build again from scratch.</p>
+<p>Surfaces Valence replaces:</p>
 <table>
 <thead>
 <tr>
 <th>Replaced</th>
 <th>With</th>
-<th>What that buys</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>A bespoke HTTP or WebSocket API per device</td>
 <td>One <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, one frame grammar</td>
-<td>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> stops being written against one firmware</td>
+<td>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is not tied to one firmware</td>
 </tr>
 <tr>
 <td>Hand-written <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> code per device</td>
@@ -3009,12 +2995,12 @@ Move when that is worth something to you.</p>
 <tr>
 <td>A hand-copied table of command schemas</td>
 <td>The <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> already decodes</td>
-<td>The copy that goes stale silently is gone</td>
+<td>The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> keeps no hand-copied schema table</td>
 </tr>
 <tr>
 <td>Polling an endpoint for status</td>
 <td><abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> with <a href="../../reference/dictionary/#retained-value"><abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> values</a></td>
-<td>Connect and adopt, instead of poll and hope</td>
+<td>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> adopts the <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained value</abbr> on connect instead of polling</td>
 </tr>
 <tr>
 <td>Per-feature chunked transfer machinery</td>
@@ -3028,96 +3014,87 @@ Move when that is worth something to you.</p>
 </tr>
 <tr>
 <td>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> list and a kick endpoint</td>
-<td><abbr title="The stateful association between one client and the hub.">Session</abbr>-events for joins and leaves, plus an admin evict <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> — the roster snapshot itself is specified, not yet built</td>
-<td><abbr title="The stateful association between one client and the hub.">Session</abbr> administration is protocol, not a side door</td>
+<td><abbr title="The stateful association between one client and the hub.">Session</abbr>-events for joins and leaves, plus an admin evict <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>; the roster snapshot itself is specified, not yet built</td>
+<td><abbr title="The stateful association between one client and the hub.">Session</abbr> administration is part of the protocol</td>
 </tr>
 <tr>
 <td>A capabilities endpoint</td>
 <td><a href="../../reference/dictionary/#capability-discovery">Capability discovery</a></td>
-<td>The feature list cannot disagree with reality</td>
+<td>The feature list is the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>, so the two cannot drift</td>
 </tr>
 </tbody>
 </table>
-<p>The pattern in that table is one idea applied repeatedly. <strong>Every surface that
-was a private agreement between one firmware and one <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> becomes a declared
-<abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> that any <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> can read.</strong></p>
-<p class="ss-point"><strong>The point.</strong> None of those replacements is about a nicer encoding. Each one deletes a second source of truth — the hand-written table, the hardcoded layout, the parallel feature list — because the second source is the one that drifts.</p>
+<p>Each of these surfaces becomes a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> that any <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> can read.</p>
+<p class="ss-point"><strong>The point.</strong> Each replacement removes a second copy of information the firmware already declares (the hand-written table, the hardcoded layout, the parallel feature list), so no second copy exists to drift.</p>
 <h2 id="what-it-does-not-replace">What it does not replace<a class="headerlink" href="#what-it-does-not-replace" title="Link to this section">#</a></h2>
 <h3 id="tcode">TCode<a class="headerlink" href="#tcode" title="Link to this section">#</a></h3>
 <p>Covered above. It stays, as compatibility ingest, under the same safety
 obligations as any native <abbr title="The stateful association between one client and the hub.">session</abbr>.</p>
 <h3 id="motion-planning">Motion planning<a class="headerlink" href="#motion-planning" title="Link to this section">#</a></h3>
-<p>The machine owns motion. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> sends <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how to execute
-it safely, with its own planner, its own limits, and its own knowledge of
-where the carriage actually is.</p>
-<p>This is a doctrine, not a gap. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> cannot know the machine's live
-position, its acceleration headroom, or which <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr> applies at this
-instant. A protocol that let <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> plan motion would export a decision to
-the one party that cannot make it correctly.</p>
-<p>The consequence is freeing. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> ships what its author meant, and the
-machine renders it as well as it can. Valence carries <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> honestly and
-refuses to make the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> responsible for feasibility.</p>
+<p>The machine owns motion: a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> sends <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how to
+execute it safely, with its own planner, its own limits, and its own knowledge
+of where the carriage is.</p>
+<p>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> cannot know the machine's live position, its acceleration headroom,
+or which <abbr title="A named group of speed, acceleration and jerk ceilings the arbiter selects per source.">limit set</abbr> applies at this instant, so motion planning stays on the
+<abbr title="The single authoritative endpoint of one machine.">hub</abbr>.</p>
+<p>A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> sends the intended motion, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> executes it within its own
+limits. Valence carries <abbr title="A channel class, and the only way a client changes anything.">intent</abbr> and does not make the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> responsible for
+feasibility.</p>
 <h3 id="firmware-update">Firmware update<a class="headerlink" href="#firmware-update" title="Link to this section">#</a></h3>
 <p>Update transport lives outside the protocol, on its own credential plane.
 Update rights are never derivable from any
 <a href="../../reference/dictionary/#access-level">access level</a>, <code>configure</code> included.</p>
-<p>The reasoning is blunt. Flashing firmware replaces the thing that enforces
-every rule on this site. That capability must not be reachable by escalating
-inside the system it would replace.</p>
+<p>A firmware update replaces the code that enforces these rules, so no access
+tier inside the protocol can authorize one.</p>
 <h3 id="intiface-and-wsdm">Intiface and WSDM<a class="headerlink" href="#intiface-and-wsdm" title="Link to this section">#</a></h3>
-<p>These are a boundary, not a competition. Where a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> dials out to an
-application protocol, that outbound <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is an adapter the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> owns, and it
-materializes as a <abbr title="A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.">synthetic session</abbr> like any other legacy edge. Exposing
-Valence to those stacks directly is out of scope.</p>
+<p>Where a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> dials out to an application protocol, that outbound <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is an
+adapter the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> owns, and it materializes as a <abbr title="A hub-side session object that wraps a legacy text-protocol edge so it obeys the same rules as a native client.">synthetic session</abbr> like any other
+legacy edge. Exposing Valence to those stacks directly is out of scope.</p>
 <h3 id="any-firmwares-own-interface-protocol-or-identity">Any firmware's own interface, protocol or identity<a class="headerlink" href="#any-firmwares-own-interface-protocol-or-identity" title="Link to this section">#</a></h3>
 <p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> can speak Valence <strong>alongside</strong> whatever it already speaks. Nothing
 here asks a project to retire its own control surface, its own app or its own
-name. See <a href="../ecosystem/">Ecosystem and compatibility</a>, whose tone rules apply
-to this section too.</p>
+name. See <a href="../ecosystem/">Ecosystem and compatibility</a>.</p>
 <h3 id="the-hardware-emergency-stop-path">The hardware emergency-stop path<a class="headerlink" href="#the-hardware-emergency-stop-path" title="Link to this section">#</a></h3>
-<p>The protocol's <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is a software convenience layered above the hardware
-path. It is fast, role-exempt and <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr>, and it is still software on a
-network. The hardware path remains the guarantee of last resort.</p>
-<h2 id="what-valence-deliberately-is-not">What Valence deliberately is not<a class="headerlink" href="#what-valence-deliberately-is-not" title="Link to this section">#</a></h2>
-<p>These are non-goals. They were decided, not overlooked.</p>
+<p>The protocol's <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is not the hardware path: it is fast, role-exempt and
+<abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr>, but it runs in software over a network. The hardware emergency-stop
+path remains the guarantee of last resort.</p>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Link to this section">#</a></h2>
 <ul>
 <li><strong>No cloud.</strong> Nothing leaves the site. There is no telemetry, no account
   service, and no remote dependency of any kind.</li>
 <li><strong>No broker.</strong> The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is the only authority. There is no message bus to
   deploy and nothing extra to keep running beside the machine.</li>
-<li><strong>No account system.</strong> Identity is a device, not a person. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is 8
+<li><strong>No account system.</strong> Identity belongs to a device. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is 8
   bytes of durable id plus a token it earned through a physical ceremony.</li>
 <li><strong>No peer-to-peer.</strong> Clients never talk to each other. All truth flows
-  through the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, which is what makes one observable state possible at all.</li>
+  through the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, so every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> observes the same state.</li>
 <li><strong>No wide-area deployment.</strong> The port is a LAN port. Exposing it to the
   internet is not a supported configuration.</li>
 </ul>
-<p class="ss-point"><strong>The point.</strong> Every one of those non-goals removes a component that would otherwise have to be running, trusted, updated or paid for. A machine on a bench with no internet connection is the design center, not a degraded mode.</p>
-<h2 id="what-migration-deletes-honestly">What migration deletes, honestly<a class="headerlink" href="#what-migration-deletes-honestly" title="Link to this section">#</a></h2>
-<p>On the machine where Valence was written, migration did not only move
-surfaces. It deleted some. The reasons are worth publishing, because every
-project has a version of this list.</p>
+<p class="ss-point"><strong>The point.</strong> Each non-goal removes a component that would otherwise need to run, be trusted and be updated. Valence is designed for a machine with no internet connection.</p>
+<h2 id="migration-audit">Migration audit<a class="headerlink" href="#migration-audit" title="Link to this section">#</a></h2>
+<p>On the machine where Valence was written, migration deleted four surfaces:</p>
 <ul>
-<li><strong>A transport-mode selector</strong> that chose between competing ingest paths.
-  Valence replaced the thing it was selecting between.</li>
-<li><strong>An endpoint that always answered "not cleared"</strong> — a stub whose only real
-  behavior was a side effect available elsewhere.</li>
-<li><strong>A control that posted to a route the firmware never had.</strong> It rendered, it
-  did nothing, and nobody noticed until the surfaces were enumerated.</li>
-<li><strong>A panel wired to a data source that had already been superseded.</strong> It
-  showed live-looking gauges fed by a dead producer.</li>
+<li>A transport-mode selector that chose between ingest paths. Valence replaced
+  the paths it selected between.</li>
+<li>An endpoint that always answered "not cleared". Its only real behavior was a
+  side effect available elsewhere.</li>
+<li>A control that posted to a route the firmware never had. It rendered and did
+  nothing.</li>
+<li>A panel fed by a data source that had been superseded. It showed gauges fed
+  by a dead producer.</li>
 </ul>
-<p>A control that renders but drives nothing is a defect. An interface that lies
-about machine state is a safety defect. Those four were found by enumerating
-every surface for migration, which is an argument for doing the enumeration
-even if you migrate nothing.</p>
+<p>All four were found by enumerating every surface for migration. Before
+migrating, list every existing surface and map each to a <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>. A control
+with no <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> behind it is a defect, and a display that shows a value the
+machine did not apply is a safety defect.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../ecosystem/">Ecosystem and compatibility</a> — how this sits beside the
+<li><a href="../ecosystem/">Ecosystem and compatibility</a>: how this sits beside the
   firmwares people already run.</li>
-<li><a href="../capabilities/">Capabilities and custom hardware</a> — what adopting it
-  actually asks of a device.</li>
-<li><a href="../security/">Security model and the audit</a> — what "LAN-first" defends, and
+<li><a href="../capabilities/">Capabilities and custom hardware</a>: what adopting it
+  asks of a device.</li>
+<li><a href="../security/">Security model and the audit</a>: what "LAN-first" defends, and
   what it does not.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

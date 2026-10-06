@@ -2606,10 +2606,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-short-version" class="md-nav__link">
+  <a href="#principles" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The short version
+        Principles
       
     </span>
   </a>
@@ -2642,16 +2642,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2659,6 +2649,7 @@
 
 
 <h1 id="community">Community<a class="headerlink" href="#community" title="Link to this section">#</a></h1>
+<p>This section covers how Valence is governed, how to contribute to the documentation, and how protocol changes are proposed and decided.</p>
 <table>
 <thead>
 <tr>
@@ -2669,11 +2660,11 @@
 <tbody>
 <tr>
 <td><a href="governance/">Governance</a></td>
-<td>Valence favors no firmware, no vendor and no product</td>
+<td>Neutrality rules, number allocation, and the authority of the specification and <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr></td>
 </tr>
 <tr>
-<td><a href="contributing/">Contributing</a></td>
-<td>Building the site, the two writing registers, and why no <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> is typed by hand</td>
+<td><a href="contributing/">Contributing to the documentation</a></td>
+<td>Building the site, the rule that <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire numbers</abbr> are generated and never typed, generated pages, and stubs</td>
 </tr>
 <tr>
 <td><a href="rfc-process/"><abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a></td>
@@ -2681,17 +2672,15 @@
 </tr>
 </tbody>
 </table>
-<h2 id="the-short-version">The short version<a class="headerlink" href="#the-short-version" title="Link to this section">#</a></h2>
-<p>Valence is provided to the community as a tool. <a href="../spec/">The specification</a>
-is the product; the library is its reference implementation. The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> is
-the single source of truth for every number, and it is enforced by generation
-rather than by discipline.</p>
-<p>Numbers released in a tagged version are permanent. They are never reused and
-never renumbered.</p>
+<h2 id="principles">Principles<a class="headerlink" href="#principles" title="Link to this section">#</a></h2>
+<p><a href="../spec/">The Specification</a> defines Valence. The C++ library is its
+reference implementation.</p>
+<p>The <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> is the single source of truth for every <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr>. Every table
+and C++ constant is generated from it.</p>
+<p>A number released in a tagged version is never reused or renumbered.</p>
 <h2 id="where-discussion-happens">Where discussion happens<a class="headerlink" href="#where-discussion-happens" title="Link to this section">#</a></h2>
-<p>Protocol change happens in pull requests against the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the
-specification, in the open. If a proposal is refused, the refusal is recorded
-with its reasoning, so the next person to have the same idea can read why.</p>
+<p>Protocol changes are made in public pull requests against the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the
+specification. A refused proposal is recorded with its reasoning.</p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
      defined term shows its Dictionary definition on hover. -->

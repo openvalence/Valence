@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What a Valence frame is made of: the four layers, the eight-byte header field by field, and why the protocol carries two payload encodings instead of one.">
+        <meta name="description" content="What a Valence frame is made of: the four layers, the eight-byte header field by field, and the two payload encodings and when each is used.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -591,10 +591,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-four-layers-four-jobs" class="md-nav__link">
+  <a href="#1-protocol-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Four layers, four jobs
+        1. Protocol layers
       
     </span>
   </a>
@@ -602,10 +602,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-every-frame-starts-the-same-way" class="md-nav__link">
+  <a href="#2-frame-header" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Every frame starts the same way
+        2. Frame header
       
     </span>
   </a>
@@ -613,10 +613,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-two-encodings-and-why-there-are-two" class="md-nav__link">
+  <a href="#3-payload-encodings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Two encodings, and why there are two
+        3. Payload encodings
       
     </span>
   </a>
@@ -2697,10 +2697,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-four-layers-four-jobs" class="md-nav__link">
+  <a href="#1-protocol-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Four layers, four jobs
+        1. Protocol layers
       
     </span>
   </a>
@@ -2708,10 +2708,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-every-frame-starts-the-same-way" class="md-nav__link">
+  <a href="#2-frame-header" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Every frame starts the same way
+        2. Frame header
       
     </span>
   </a>
@@ -2719,10 +2719,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-two-encodings-and-why-there-are-two" class="md-nav__link">
+  <a href="#3-payload-encodings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Two encodings, and why there are two
+        3. Payload encodings
       
     </span>
   </a>
@@ -2755,16 +2755,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2774,12 +2764,10 @@
 <h1 id="anatomy-of-a-frame">Anatomy of a frame<a class="headerlink" href="#anatomy-of-a-frame" title="Link to this section">#</a></h1>
 <p>Everything Valence sends is a <a href="../../reference/dictionary/#frame">frame</a>. A
 frame is an eight-byte header followed by a payload.</p>
-<p>This is the only page in this section that shows bytes. Read
-<a href="../how-it-works/">How it works</a> first; this page explains the envelope that
-carries everything on it. The same colors apply: blue is measured truth,
-purple is a request, amber and red are safety.</p>
-<h2 id="1-four-layers-four-jobs">1. Four layers, four jobs<a class="headerlink" href="#1-four-layers-four-jobs" title="Link to this section">#</a></h2>
-<p class="ss-cap">What each layer is responsible for, and what it deliberately knows nothing about.</p>
+<p>Blue marks what the machine measured or applied, purple what a person asked
+for, and amber and red safety.</p>
+<h2 id="1-protocol-layers">1. Protocol layers<a class="headerlink" href="#1-protocol-layers" title="Link to this section">#</a></h2>
+<p class="ss-cap">What each layer is responsible for, and what it does not depend on.</p>
 <pre class="mermaid"><code>flowchart TD
     S["▶ START&lt;br/&gt;Session layer&lt;br/&gt;identity · roles · grants · liveness · reconnect"]:::layer
     C["Channel layer&lt;br/&gt;what a class means: snapshot, sample, command, edge, document"]:::layer
@@ -2796,13 +2784,13 @@ purple is a request, amber and red are safety.</p>
 
     classDef layer fill:none,stroke:#8a8f98,stroke-width:1.5px
     classDef plumb fill:none,stroke:#8a8f98,stroke-dasharray:3 3</code></pre>
-<p class="ss-point"><strong>The point.</strong> Everything above the binding line is transport-blind. A binding is four operations plus an honest declaration of what it can do, so adding a transport never changes the protocol above it.</p>
+<p class="ss-point"><strong>The point.</strong> Everything above the binding line is transport-blind. A binding is four operations plus a declaration of its size limit, ordering and reliability, so adding a transport never changes the protocol above it.</p>
 <table>
 <thead>
 <tr>
 <th>Layer</th>
 <th>Owns</th>
-<th>Knows nothing about</th>
+<th>Does not depend on</th>
 </tr>
 </thead>
 <tbody>
@@ -2828,10 +2816,9 @@ purple is a request, amber and red are safety.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>The weakest transport writes the rules.</strong> Every guarantee is stated against
-unordered, lossy, 242-byte datagrams. Anything correct there is correct
-everywhere, and a reliable transport simply gets stronger behavior for free.</p>
-<h2 id="2-every-frame-starts-the-same-way">2. Every frame starts the same way<a class="headerlink" href="#2-every-frame-starts-the-same-way" title="Link to this section">#</a></h2>
+<p><strong>Guarantees and the weakest transport.</strong> Every guarantee is stated against
+unordered, lossy, 242-byte datagrams, so it also holds on a reliable transport.</p>
+<h2 id="2-frame-header">2. Frame header<a class="headerlink" href="#2-frame-header" title="Link to this section">#</a></h2>
 <p class="ss-cap">The eight-byte header, byte by byte, and the payload that follows it.</p>
 <div class="ss-bytemap">
 <div class="ss-bytemap__scale" style="--cols:12" aria-hidden="true">
@@ -2847,7 +2834,7 @@ everywhere, and a reliable transport simply gets stronger behavior for free.</p>
 </div>
 </div>
 
-<p class="ss-point"><strong>The point.</strong> The header is the same eight bytes on every transport and for every frame type. A receiver can therefore skip a frame it does not understand instead of disconnecting, because the length is always in a place it can read.</p>
+<p class="ss-point"><strong>The point.</strong> The header is the same eight bytes on every transport and for every frame type. A receiver can skip a frame it does not understand instead of disconnecting, because the length is always in a place it can read.</p>
 <table>
 <thead>
 <tr>
@@ -2885,30 +2872,29 @@ everywhere, and a reliable transport simply gets stronger behavior for free.</p>
 </tbody>
 </table>
 <blockquote>
-<p>DEMO-CANDIDATE: a live frame trace — capture real bytes off a running <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
+<p>DEMO-CANDIDATE: a live frame trace: capture real bytes off a running <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
 and highlight this eight-byte header, field by field, against the table
 above.</p>
 </blockquote>
-<p>Three rules hang off this header, and together they are why an old <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> keeps
-working against a new machine.</p>
-<p><strong>Unknown means ignore.</strong> An unknown frame type, an unknown <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, an unknown
-key: skip it and carry on. No endpoint may disconnect or flood a log over
-novelty. The sender of something new carries the burden of making it ignorable.</p>
+<p>Three rules keep an old <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> working against a new machine.</p>
+<p><strong>Unknown content is skipped.</strong> An endpoint skips an unknown frame type, <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>
+or key. No endpoint may disconnect or flood a log over
+unknown content. Anything new must be designed so that an older receiver can skip it.</p>
 <p><strong>One frame is one message</strong> wherever the transport allows it. Fragmentation
 exists only for large control frames on small-datagram transports. Data frames
 never fragment.</p>
-<p><strong>Emergency stop is deliberately different.</strong> The stop frame is twelve bytes,
+<p><strong>The <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> frame has its own layout.</strong> It is twelve bytes,
 starts with a four-byte magic pattern, and carries a CRC. A receiver can
 recognize it in a raw byte stream without decoding anything, which is what lets
 every queue on the path admit it at the front. Its bytes are specified in
 <a href="../../reference/registry/safety/">the safety codes reference</a>.</p>
-<h2 id="3-two-encodings-and-why-there-are-two">3. Two encodings, and why there are two<a class="headerlink" href="#3-two-encodings-and-why-there-are-two" title="Link to this section">#</a></h2>
+<h2 id="3-payload-encodings">3. Payload encodings<a class="headerlink" href="#3-payload-encodings" title="Link to this section">#</a></h2>
 <p>The header never changes. The payload is encoded one of two ways, and the
 choice follows how often the frame is sent.</p>
 <p class="ss-cap">The same two numbers, encoded for the <abbr title="The frames that carry machine values at rate, carrying packed struct payloads.">data plane</abbr> and for the <abbr title="The frames that negotiate, command and confirm, carrying CBOR map payloads.">control plane</abbr>.</p>
 <p><strong>Packed, on the <a href="../../reference/dictionary/#data-plane"><abbr title="The frames that carry machine values at rate, carrying packed struct payloads.">data plane</abbr></a>.</strong> One
-motion sample: a target position and a velocity. No keys, no type tags, nothing
-but values in the order the <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> declared.</p>
+motion sample: a target position and a velocity. The payload holds only the values,
+in <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> order, with no keys or type tags.</p>
 <div class="ss-bytemap">
 <div class="ss-bytemap__scale" style="--cols:4" aria-hidden="true">
 <span>0</span><span>1</span><span>2</span><span>3</span>
@@ -2935,7 +2921,7 @@ value carries its own type.</p>
 </div>
 </div>
 
-<p class="ss-point"><strong>The point.</strong> Self-description costs bytes. A frame sent hundreds of times a second does not pay that cost, and a frame sent when somebody presses a button gladly does. Same numbers here: four bytes packed, eight as a map.</p>
+<p class="ss-point"><strong>The point.</strong> Self-description costs bytes, so high-rate frames use packed layouts and occasional frames use <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr>. In this example the two values take four bytes packed and eight bytes as a <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> map.</p>
 <table>
 <thead>
 <tr>
@@ -2947,7 +2933,7 @@ value carries its own type.</p>
 <tbody>
 <tr>
 <td>Used by</td>
-<td><abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> and <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> — the <abbr title="The frames that carry machine values at rate, carrying packed struct payloads.">data plane</abbr></td>
+<td><abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> and <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr>: the <abbr title="The frames that carry machine values at rate, carrying packed struct payloads.">data plane</abbr></td>
 <td>Everything that negotiates, commands or confirms</td>
 </tr>
 <tr>
@@ -2972,8 +2958,7 @@ value carries its own type.</p>
 </tr>
 </tbody>
 </table>
-<p>Both halves of that last row are the same promise made twice, which is the
-reason for the split.</p>
+<p>Both encodings evolve by addition only.</p>
 <p><strong>A layout may only grow at the tail.</strong> Fields are never reordered, resized or
 removed. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> compiled a year ago still reads every field it knows from a
 machine whose <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> has grown since. Changing a field means allocating a new
@@ -2981,7 +2966,7 @@ machine whose <abbr title="The hub's machine-readable description of every chann
 <p><strong>A map may only gain keys.</strong> A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that meets a key it has never seen skips
 the pair. This is the same tolerance rule as the header's, applied one level
 down.</p>
-<p>One more restriction earns its keep. Valence uses a deterministic
+<p>Valence uses a deterministic
 <a href="../../reference/dictionary/#cbor"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr></a> profile: definite lengths,
 shortest-form integers, sorted keys, no tags. Any message therefore has exactly
 one valid encoding. That is what lets test vectors compare byte for byte, and
@@ -2989,10 +2974,10 @@ what lets a <abbr title="Any endpoint that establishes a session with the hub.">
 values into it, knowing the bytes are what a real encoder would have produced.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this section">#</a></h2>
 <ul>
-<li><a href="../how-it-works/">How it works</a> — the mental model these frames serve.</li>
-<li><a href="../../reference/registry/frames/">Frame types</a> — every type, generated from
+<li><a href="../how-it-works/">How it works</a>: the mental model these frames serve.</li>
+<li><a href="../../reference/registry/frames/">Frame types</a>: every type, generated from
   the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
-<li><a href="../../reference/registry/cbor-keys/"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> keys</a> — every key, generated from
+<li><a href="../../reference/registry/cbor-keys/"><abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> keys</a>: every key, generated from
   the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

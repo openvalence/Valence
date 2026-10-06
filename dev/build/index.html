@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The how tier: connect a client, write an app integration, make your firmware a conforming hub, and test all of it locally.">
+        <meta name="description" content="Connect a client, write an app integration, make your firmware a conforming hub, and test all of it locally.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -2620,10 +2620,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-one-rule-that-catches-everyone" class="md-nav__link">
+  <a href="#shadow-and-echo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The one rule that catches everyone
+        Shadow and echo
       
     </span>
   </a>
@@ -2645,16 +2645,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2662,12 +2652,12 @@
 
 
 <h1 id="build-with-valence">Build with Valence<a class="headerlink" href="#build-with-valence" title="Link to this section">#</a></h1>
-<p>This section is task-oriented. Each page gets you to something running.</p>
+<p>These pages cover <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr>, plugins, <abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware, the command-line tools and local testing.</p>
 <table>
 <thead>
 <tr>
 <th>Page</th>
-<th>Gets you</th>
+<th>Contents</th>
 </tr>
 </thead>
 <tbody>
@@ -2693,24 +2683,23 @@
 </tr>
 <tr>
 <td><a href="local-testing/">Local testing</a></td>
-<td>A <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, a probe, the fuzz harnesses, and the regression patterns that matter</td>
+<td>A <abbr title="A desktop binary that behaves like a machine, embedding the real hub, motion engine and catalog behind a real transport.">simulator</abbr>, a probe, the fuzz harnesses, and the regression patterns</td>
 </tr>
 </tbody>
 </table>
 <h2 id="before-you-start">Before you start<a class="headerlink" href="#before-you-start" title="Link to this section">#</a></h2>
-<p>Read <a href="../understand/how-it-works/">How it works</a>. Clients that skip the
-mental model tend to fight the protocol: they build optimistic local state,
-then discover the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> disagrees with them.</p>
-<p>Keep <a href="../reference/dictionary/">the Dictionary</a> open. Every term on this
-site has exactly one meaning, and the guides assume it.</p>
-<h2 id="the-one-rule-that-catches-everyone">The one rule that catches everyone<a class="headerlink" href="#the-one-rule-that-catches-everyone" title="Link to this section">#</a></h2>
-<p><strong>Your <a href="../reference/dictionary/#shadow"><abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr></a> updates from the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>,
-never from your own request.</strong></p>
-<p>You send an <a href="../reference/dictionary/#intent"><abbr title="A channel class, and the only way a client changes anything.">intent</abbr></a>. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
-<a href="../reference/dictionary/#clamp">clamps</a> it. The
-<a href="../reference/dictionary/#echo">echo</a> tells you what was actually
-applied. Render that. If you render what you asked for, your interface is
-lying, and on a machine that moves that is a safety defect.</p>
+<p>Read <a href="../understand/how-it-works/">How it works</a>. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> keeps no
+optimistic local state and renders what the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> reports.</p>
+<p>Keep <a href="../reference/dictionary/">the Dictionary</a> open. It defines each term
+used on this site.</p>
+<h2 id="shadow-and-echo"><abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">Shadow</abbr> and echo<a class="headerlink" href="#shadow-and-echo" title="Link to this section">#</a></h2>
+<p>Your <a href="../reference/dictionary/#shadow"><abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr></a> updates only from <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
+frames, not from your own requests.</p>
+<p>You send an <a href="../reference/dictionary/#intent"><abbr title="A channel class, and the only way a client changes anything.">intent</abbr></a>, the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>
+<a href="../reference/dictionary/#clamp">clamps</a> it, and the
+<a href="../reference/dictionary/#echo">echo</a> reports the applied value. Render the
+echo value. On a moving machine, rendering the request instead of the echo is
+a safety defect.</p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
 <!-- Appended to every page by pymdownx.snippets.auto_append, so a
      defined term shows its Dictionary definition on hover. -->

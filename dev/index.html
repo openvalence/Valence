@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Valence is an open device-shadow and capability-negotiation protocol for motion machines. One app, many firmwares, one truth about what the machine is doing.">
+        <meta name="description" content="Valence is an open device-shadow and capability-negotiation protocol for motion machines. A hub publishes a catalog of its channels, and a client builds its interface from that catalog and shows the values the hub reports.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -492,10 +492,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-it-is-not" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What it is not
+        Scope
       
     </span>
   </a>
@@ -503,10 +503,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#governance-briefly" class="md-nav__link">
+  <a href="#governance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Governance, briefly
+        Governance
       
     </span>
   </a>
@@ -514,10 +514,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-numbers-come-from" class="md-nav__link">
+  <a href="#registry-generated-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where the numbers come from
+        Registry-generated numbers
       
     </span>
   </a>
@@ -2767,10 +2767,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-it-is-not" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What it is not
+        Scope
       
     </span>
   </a>
@@ -2778,10 +2778,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#governance-briefly" class="md-nav__link">
+  <a href="#governance" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Governance, briefly
+        Governance
       
     </span>
   </a>
@@ -2789,10 +2789,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-numbers-come-from" class="md-nav__link">
+  <a href="#registry-generated-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where the numbers come from
+        Registry-generated numbers
       
     </span>
   </a>
@@ -2814,16 +2814,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2831,16 +2821,16 @@
 
 
 <h1 id="valence">Valence<a class="headerlink" href="#valence" title="Link to this section">#</a></h1>
-<p><strong>An open protocol for talking to a motion machine, so one app can work with
-many firmwares and never lie about what the machine is doing.</strong></p>
-<p>A machine running Valence describes itself. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads that description
-and builds its interface from it. Neither side needs to be compiled against
-the other.</p>
+<p>Valence is an open protocol between a motion machine and its <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> apps. One
+<abbr title="Any endpoint that establishes a session with the hub.">client</abbr> works with any firmware that implements it, and it displays the values
+the machine applied.</p>
+<p>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> describing its <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr>, and a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> builds its
+interface from that <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> without being compiled against the firmware.</p>
 <div class="ss-doors">
 <div class="ss-door">
 <h3 id="understand">Understand<a class="headerlink" href="#understand" title="Link to this section">#</a></h3>
-<p>Read the mental model first. What a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is, what the four <abbr title="One of STATE, STREAM, INTENT, EVENT or STORE.">channel classes</abbr>
-do, and why the machine — not the app — owns motion.</p>
+<p>Read the mental model first. What a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> is, what the five <abbr title="One of STATE, STREAM, INTENT, EVENT or STORE.">channel classes</abbr>
+do, and why motion planning stays on the machine.</p>
 <p><a href="understand/">Start here</a></p>
 </div>
 <div class="ss-door">
@@ -2867,45 +2857,42 @@ number in generated tables.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Describes itself</strong></td>
+<td><strong><abbr title="The hub's machine-readable description of every channel it exposes.">Catalog</abbr></strong></td>
 <td>A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> <abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads it and knows every <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr>, type, unit, limit and access level, without a firmware-specific driver.</td>
 </tr>
 <tr>
-<td><strong>Keeps one truth</strong></td>
-<td>State <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> carry full snapshots. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> retains the latest one and pushes it the moment a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> connects. Page load adopts device state.</td>
+<td><strong>Retained state</strong></td>
+<td>State <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> carry full snapshots. The <abbr title="The single authoritative endpoint of one machine.">hub</abbr> retains the latest one and pushes it the moment a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> connects. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> adopts the <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> state when it connects.</td>
 </tr>
 <tr>
-<td><strong>Never lies</strong></td>
-<td>An echo reports the value the machine actually applied, after <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr>. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>'s <abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr> updates from the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, never from its own request.</td>
+<td><strong>Applied-value echo</strong></td>
+<td>An echo reports the value the machine applied, after <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr>. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>'s <abbr title="The client-side replica of subscribed state, maintained exclusively from hub frames.">shadow</abbr> updates from the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, not from its own request.</td>
 </tr>
 <tr>
-<td><strong>Stops safely</strong></td>
-<td><abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is role-exempt, jumps every queue, and latches. A vanished motion source trips its <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> and the machine stops.</td>
+<td><strong>Emergency stop</strong></td>
+<td><abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> is role-exempt, jumps every queue, and latches. A motion source that goes silent trips its <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr>, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> releases its ownership.</td>
 </tr>
 <tr>
-<td><strong>Fits small hardware</strong></td>
-<td>The mandatory <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor is one parser, no crypto and 24 bytes of stored identity. A coin-cell remote is a first-class peer.</td>
+<td><strong><abbr title="Any endpoint that establishes a session with the hub.">Client</abbr> floor</strong></td>
+<td>The mandatory <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor is one parser, no crypto and 24 bytes of stored identity. A coin-cell remote can be a conforming <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>.</td>
 </tr>
 </tbody>
 </table>
 </div>
-<h2 id="what-it-is-not">What it is not<a class="headerlink" href="#what-it-is-not" title="Link to this section">#</a></h2>
-<p>Valence is not a replacement for the firmware you already like. It is a
-compatibility layer those firmwares can adopt, so that one app works across all
-of them. See <a href="understand/ecosystem/">Ecosystem and compatibility</a>.</p>
-<p>Valence is not a motion planner. The machine owns motion processing. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>
-sends <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>; the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how to execute it safely.</p>
-<p>Valence is not a security product. The v1 threat model is casual and drive-by
-prevention on a trusted local network, and the specification says so plainly
-wherever a defense is weak. See <a href="understand/security/">Security model</a>.</p>
-<h2 id="governance-briefly">Governance, briefly<a class="headerlink" href="#governance-briefly" title="Link to this section">#</a></h2>
-<p><strong>Valence favors no firmware, no vendor and no product. It is provided to
-the community as a tool.</strong> The full statement is on its own page:
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Link to this section">#</a></h2>
+<p>Valence does not replace a machine's firmware. A firmware adopts it as a
+compatibility layer so that one <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> works across firmwares. See <a href="understand/ecosystem/">Ecosystem and compatibility</a>.</p>
+<p>Valence does not plan motion. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> sends <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>, and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> decides how
+to execute it.</p>
+<p>The v1 threat model is casual and drive-by prevention on a trusted local network, and the specification marks each weak
+defense with an honesty clause. See <a href="understand/security/">Security model</a>.</p>
+<h2 id="governance">Governance<a class="headerlink" href="#governance" title="Link to this section">#</a></h2>
+<p>Valence does not favor any firmware, vendor or product. The full statement is on its own page:
 <a href="community/governance/">Governance</a>.</p>
-<h2 id="where-the-numbers-come-from">Where the numbers come from<a class="headerlink" href="#where-the-numbers-come-from" title="Link to this section">#</a></h2>
+<h2 id="registry-generated-numbers"><abbr title="The single machine-readable file that decides every number Valence puts on the wire.">Registry</abbr>-generated numbers<a class="headerlink" href="#registry-generated-numbers" title="Link to this section">#</a></h2>
 <p>Every frame type, <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> key, NACK code, <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> id and limit on this site is
-generated from one <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> file. No <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> here is typed by a human, and
-a stale table fails the build.</p>
+generated from one <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> file. Every wire-number table is generated from the
+<abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>, and the docs build fails when a table is out of date.</p>
 <p><a class="md-button" href="reference/registry/"><abbr title="The single machine-readable file that decides every number Valence puts on the wire.">Registry</abbr> reference</a>
 <a class="md-button" href="reference/dictionary/">The Dictionary</a></p>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->

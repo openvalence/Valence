@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How to build the Valence documentation site, which writing register applies to which page, and why no wire number is ever typed by hand.">
+        <meta name="description" content="How to build the Valence documentation site, the writing rules, and the rule that wire numbers are generated, never typed.">
       
       
         <meta name="author" content="The Valence contributors">
@@ -2576,10 +2576,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#build-the-site" class="md-nav__link">
+  <a href="#site-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build the site
+        Site build
       
     </span>
   </a>
@@ -2587,10 +2587,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-two-writing-registers" class="md-nav__link">
+  <a href="#writing-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The two writing registers
+        Writing rules
       
     </span>
   </a>
@@ -2598,10 +2598,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#never-type-a-wire-number" class="md-nav__link">
+  <a href="#generated-wire-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Never type a wire number
+        Generated wire numbers
       
     </span>
   </a>
@@ -2609,10 +2609,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-specification-is-generated-too" class="md-nav__link">
+  <a href="#generated-specification-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Specification is generated too
+        Generated Specification pages
       
     </span>
   </a>
@@ -2620,10 +2620,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-dictionary-is-generated-too" class="md-nav__link">
+  <a href="#generated-dictionary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Dictionary is generated too
+        Generated Dictionary
       
     </span>
   </a>
@@ -2631,10 +2631,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#stubs-are-allowed-fake-content-is-not" class="md-nav__link">
+  <a href="#stub-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stubs are allowed. Fake content is not
+        Stub pages
       
     </span>
   </a>
@@ -2642,10 +2642,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-a-page" class="md-nav__link">
+  <a href="#new-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding a page
+        New pages
       
     </span>
   </a>
@@ -2741,10 +2741,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#build-the-site" class="md-nav__link">
+  <a href="#site-build" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Build the site
+        Site build
       
     </span>
   </a>
@@ -2752,10 +2752,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-two-writing-registers" class="md-nav__link">
+  <a href="#writing-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The two writing registers
+        Writing rules
       
     </span>
   </a>
@@ -2763,10 +2763,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#never-type-a-wire-number" class="md-nav__link">
+  <a href="#generated-wire-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Never type a wire number
+        Generated wire numbers
       
     </span>
   </a>
@@ -2774,10 +2774,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-specification-is-generated-too" class="md-nav__link">
+  <a href="#generated-specification-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Specification is generated too
+        Generated Specification pages
       
     </span>
   </a>
@@ -2785,10 +2785,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-dictionary-is-generated-too" class="md-nav__link">
+  <a href="#generated-dictionary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Dictionary is generated too
+        Generated Dictionary
       
     </span>
   </a>
@@ -2796,10 +2796,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#stubs-are-allowed-fake-content-is-not" class="md-nav__link">
+  <a href="#stub-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Stubs are allowed. Fake content is not
+        Stub pages
       
     </span>
   </a>
@@ -2807,10 +2807,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-a-page" class="md-nav__link">
+  <a href="#new-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding a page
+        New pages
       
     </span>
   </a>
@@ -2843,16 +2843,6 @@
                 
   
     
-      <p class="ss-pagemeta">
-        
-  
-    <span class="ss-badge ss-badge--ste" title="ASD-STE100-influenced register: one idea per sentence, active voice, present tense. Industry terminology is preserved, never simplified away.">STE register</span>
-  
-
-        
-        
-      </p>
-    
   
   
                   
@@ -2862,7 +2852,7 @@
 <h1 id="contributing-to-the-documentation">Contributing to the documentation<a class="headerlink" href="#contributing-to-the-documentation" title="Link to this section">#</a></h1>
 <p>This page covers the documentation site. For protocol changes, see
 <a href="../rfc-process/">the <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a>.</p>
-<h2 id="build-the-site">Build the site<a class="headerlink" href="#build-the-site" title="Link to this section">#</a></h2>
+<h2 id="site-build">Site build<a class="headerlink" href="#site-build" title="Link to this section">#</a></h2>
 <div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">cd</span><span class="w"> </span>docs-site
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>.venv/bin/pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt<span class="w">      </span><span class="c1"># Windows: .venv\Scripts\pip</span>
@@ -2870,22 +2860,10 @@
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict<span class="w">                          </span><span class="c1"># or: mkdocs serve</span>
 </span></code></pre></div>
 <p>Run <code>mkdocs</code> from <code>docs-site/</code>. The glossary include resolves against the
-working directory, and the build fails loudly if you run it from elsewhere.</p>
-<p><code>--strict</code> is not optional in review. It turns a dead cross-reference into a
-build failure. A dead link in a protocol specification is a defect, because
-implementers follow those links.</p>
-<h2 id="the-two-writing-registers">The two writing registers<a class="headerlink" href="#the-two-writing-registers" title="Link to this section">#</a></h2>
-<p>Every page declares its register in front matter. The register tells you which
-rules bind the page you are editing. The theme renders it as a badge at the
-top of the page, so you can see it while you read.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">STE — guides and reference</label><label for="__tabbed_1_2">IEEE — the specification</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nn">---</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">register</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STE</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nn">---</span>
-</span></code></pre></div>
-<p>Influenced by ASD-STE100.</p>
+working directory, and the build fails when run from another directory.</p>
+<p>Review builds use <code>--strict</code>, which fails the build on a dead cross-reference.</p>
+<h2 id="writing-rules">Writing rules<a class="headerlink" href="#writing-rules" title="Link to this section">#</a></h2>
+<p>Guides and reference pages follow rules influenced by ASD-STE100:</p>
 <ul>
 <li>One idea per sentence.</li>
 <li>Active voice. Present tense.</li>
@@ -2893,91 +2871,67 @@ top of the page, so you can see it while you read.</p>
 <li>No noun stack longer than three words.</li>
 <li>One term, one meaning, used consistently.</li>
 </ul>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nn">---</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">register</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IEEE</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nn">---</span>
-</span></code></pre></div>
-<p>Numbered clauses. RFC 2119 keywords: MUST, MUST NOT, SHALL, SHOULD, MAY.
-Exact cross-references. No prose ambiguity.</p>
-<p>This register is permitted to be dense. Implementers need exactness more
-than they need approachability.</p>
-</div>
-</div>
-</div>
+<p>The specification is generated from <code>spec/SPEC.md</code> and uses numbered clauses,
+RFC 2119 keywords (MUST, MUST NOT, SHALL, SHOULD, MAY) and exact
+cross-references.</p>
 <div class="admonition danger">
-<p class="admonition-title">Simplify sentences. Never simplify terminology.</p>
-<p>This is the constraint people get wrong.</p>
+<p class="admonition-title">Technical terms</p>
 <p><em><abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">Quintic</abbr></em>, <em><abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr></em>, <em><abbr title="The ingress rate limiter, a bucket that refills at the granted sample rate and holds one burst's worth of tokens.">token bucket</abbr></em>, <em><abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr></em>, <em><abbr title="The rate of change of acceleration.">jerk</abbr></em>, <em><abbr title="The single component that commands the motor driver for positioning.">arbiter</abbr></em>,
-<em><abbr title="Keeping at most one queued unsent frame per channel and subscriber, so a newer snapshot replaces an older one.">conflation</abbr></em> and <em><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></em> are precise vocabulary. <strong>They stay.</strong> Replacing
-one with a vague plain-language substitute makes the page shorter and the
-reader wronger.</p>
-<p>STE's real rule is "one term, one meaning, used consistently", which
-<em>protects</em> domain words rather than banning them. Define the word in
-<a href="../../reference/dictionary/">the Dictionary</a>, then use it everywhere
-without apology.</p>
+<em><abbr title="Keeping at most one queued unsent frame per channel and subscriber, so a newer snapshot replaces an older one.">conflation</abbr></em> and <em><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr></em> are precise vocabulary. Do not replace them with
+plain-language substitutes.</p>
+<p>The STE rule "one term, one meaning, used consistently" applies to these
+words: define each in <a href="../../reference/dictionary/">the Dictionary</a>, then use
+it everywhere.</p>
 </div>
-<h2 id="never-type-a-wire-number">Never type a <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr><a class="headerlink" href="#never-type-a-wire-number" title="Link to this section">#</a></h2>
+<h2 id="generated-wire-numbers">Generated <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire numbers</abbr><a class="headerlink" href="#generated-wire-numbers" title="Link to this section">#</a></h2>
 <p>Every frame type, <abbr title="A compact binary encoding of maps, arrays and numbers, used here in a deterministic profile.">CBOR</abbr> key, NACK code, <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> id, <abbr title="A text tag on a catalog field that says what the value semantically is.">field role</abbr>, setting
 category, <abbr title="Why a stop or an e-stop is latched, user, deadman, fault, relay, or session loss.">safety cause</abbr>, <abbr title="The catalog property saying whether a STREAM sample reports a value at an instant, or commands a time extent.">stream kind</abbr>, packed field type and limit on this site
 is generated from <code>registry.yaml</code>.</p>
-<p>This is not a preference. This project has shipped the same
-hand-copied-constant drift bug four separate times: a stale JavaScript
-<abbr title="A channel class, and the only way a client changes anything.">intent</abbr>-schema table, a hand-rolled safety-cause enum, a hardcoded interface
-layout table, and a duplicated build caveat. <strong>A wrong NACK code in documentation is worse than a wrong NACK
-code in source, because implementers trust documentation and nothing compiles
-it.</strong></p>
-<p>So:</p>
+<p>The project has shipped the same hand-copied-constant drift bug four separate
+times: a stale JavaScript <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>-schema table, a hand-rolled safety-cause enum,
+a hardcoded interface layout table, and a duplicated build caveat.</p>
+<p>To change a number:</p>
 <ol>
-<li>Change the number in <code>registry.yaml</code>. That is the only place a number is
-   decided.</li>
+<li>Change the number in <code>registry.yaml</code>, the only source of <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire numbers</abbr>.</li>
 <li>Run <code>python tools/gen_docs_tables.py</code>.</li>
 <li>Commit the <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> and the generated output together.</li>
 </ol>
 <p>CI runs <code>python tools/gen_docs_tables.py --check</code> and fails the build when a
-generated file has drifted. Editing a generated page by hand achieves nothing:
-the next run overwrites it, and CI catches it first.</p>
+generated file has drifted. Hand edits to a generated page are overwritten by
+the next run, and CI rejects them.</p>
 <p>A generated page carries a <code>generated: true</code> badge and a DO-NOT-EDIT banner.</p>
-<p><strong>Adding a new <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> section?</strong> The generator refuses to run until you say
-which page documents it. That is deliberate — an undocumented <abbr title="Any value that appears on the wire and must therefore mean the same thing to every implementation.">wire number</abbr> is
-exactly the failure this gate exists to stop.</p>
-<h2 id="the-specification-is-generated-too">The Specification is generated too<a class="headerlink" href="#the-specification-is-generated-too" title="Link to this section">#</a></h2>
+<p>A new <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> section needs a documenting page. The generator refuses to run
+until one is named.</p>
+<h2 id="generated-specification-pages">Generated Specification pages<a class="headerlink" href="#generated-specification-pages" title="Link to this section">#</a></h2>
 <p>Every page under <strong>Specification</strong> except <a href="../../spec/errata/">Errata</a> is
 produced from <code>spec/SPEC.md</code> by <code>tools/gen_spec_pages.py</code>. That file
 is the normative source, and it is the only place to change a clause.</p>
-<p>There is deliberately no second copy of the normative text here. An implementer
-trusts a specification absolutely, so a specification that can drift from its
-source would be the worst instance of the drift bug above — worse than a wrong
-NACK code, because a whole clause can go stale at once.</p>
+<p>The site holds no hand-maintained copy of normative text.</p>
 <p>The generator copies normative text verbatim. It adds the split, the
 clause-derived anchors (<code>§6.4</code> → <code>#s6-4</code>), and the links that make <code>§n.m</code>
 cross-references work across page boundaries. It refuses to run on a clause no
 page claims and on a cross-reference that resolves to nothing.</p>
-<h2 id="the-dictionary-is-generated-too">The Dictionary is generated too<a class="headerlink" href="#the-dictionary-is-generated-too" title="Link to this section">#</a></h2>
+<h2 id="generated-dictionary">Generated Dictionary<a class="headerlink" href="#generated-dictionary" title="Link to this section">#</a></h2>
 <p>Do not edit <code>docs/reference/dictionary.md</code>. Edit <code>dictionary.yaml</code> and
 regenerate.</p>
 <p>One source produces both the Dictionary page and the hover definitions
-appended to every other page, so a term can never acquire a second definition.
-The generator refuses two different definitions for the same written form, and
+appended to every other page. The generator refuses two different definitions for the same written form, and
 refuses a <code>see</code> cross-reference to a term that does not exist.</p>
-<h2 id="stubs-are-allowed-fake-content-is-not">Stubs are allowed. Fake content is not<a class="headerlink" href="#stubs-are-allowed-fake-content-is-not" title="Link to this section">#</a></h2>
-<p>A page whose content is deferred says so. A stub:</p>
+<h2 id="stub-pages">Stub pages<a class="headerlink" href="#stub-pages" title="Link to this section">#</a></h2>
+<p>A page whose content is deferred is marked as a stub. A stub:</p>
 <ul>
 <li>declares <code>status: stub</code> in front matter, which renders a badge;</li>
 <li>states what belongs on the page;</li>
 <li>links to the source material an author should read first.</li>
 </ul>
-<p>A stub never invents plausible-sounding prose to fill space. A reader must be
-able to tell, in one second, that a page is unwritten.</p>
-<p>Content follows the v1.0 tag on purpose. The normative section must describe
-what shipped, not what was planned.</p>
-<h2 id="adding-a-page">Adding a page<a class="headerlink" href="#adding-a-page" title="Link to this section">#</a></h2>
+<p>A stub contains no draft prose for the deferred content. Its badge and warning
+admonition mark it as unwritten.</p>
+<p>Normative content describes what shipped at the v1.0 tag.</p>
+<h2 id="new-pages">New pages<a class="headerlink" href="#new-pages" title="Link to this section">#</a></h2>
 <ol>
 <li>Create the file under <code>docs/</code>.</li>
-<li>Add <code>title</code>, <code>description</code> and <code>register</code> to its front matter. The
-   <code>description</code> becomes the page's meta description; write a real one,
-   because search is how anyone finds this site.</li>
+<li>Add <code>title</code> and <code>description</code> to its front matter. The
+   <code>description</code> becomes the page's meta description and search snippet.</li>
 <li>Add it to <code>nav:</code> in <code>mkdocs.yml</code>. A page outside the nav fails the strict
    build.</li>
 <li>Build with <code>--strict</code>.</li>
@@ -2986,7 +2940,7 @@ what shipped, not what was planned.</p>
 <ul>
 <li><a href="../governance/">Governance</a></li>
 <li><a href="../rfc-process/">The <abbr title="The way a change to Valence is proposed, argued and either bound into the specification or refused.">RFC process</abbr></a></li>
-<li><code>docs-site/README.md</code> — layout, the one outside path, and how to extract
+<li><code>docs-site/README.md</code>: layout, the one outside path, and how to extract
   this directory into its own repository.</li>
 </ul>
 <!-- GENERATED FILE. DO NOT EDIT. Source: docs-site/dictionary.yaml via docs-site/tools/gen_docs_tables.py -->
