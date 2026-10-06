@@ -9297,5 +9297,70 @@ say exactly which, future-us will want the receipts.*
     the one-time bound let a trimmed knot keep a velocity its new position
     could not stop. The 800-window property suite is back to zero
     violations and the fingerprint moved on purpose.
+  - 2026-10-06, the arbiter suite (Nucleus val-log) and the playground
+    (Kinetic kin-22e) measured the same defect from two sides: a sample
+    stream spent anything and the plan jumped, refused, crawled or filled
+    the timeline. Promise 2 held piece by piece and the STREAM model under it
+    did not. The kernel now treats samples as their own kind (Knot::sample,
+    set by knotFromSample): (ff) a sample is never trimmed; Blend is a
+    segment policy. (gg) A sample solved before keeps its time across
+    re-solves (a Prior per knot: time, velocity, acceleration), and the
+    first sample of the window keeps its prior junction too, so the piece
+    from the horizon is the committed curve continued, exactly; re-solving
+    every sample from its authored time each submit put the whole catch-up
+    into the first piece, which bulged (jerk) and was stretched, and every
+    stretch re-derived the next secant lower (the crawl). (hh) A sample
+    solved for the first time sits behind the one before it at the authored
+    spacing compressed by up to a tenth, eased in over ten cadences of lag:
+    a stream that lags is replayed a little faster than sent, so the lag
+    closes at the tail and nothing in flight moves; at 60 Hz a piece's jerk
+    is about three hundred thousand times the mismatch between its mean
+    speed and its end speeds, which is why the rate may change a percent per
+    sample and no more. (ii) Interior samples take minimum-jerk junctions
+    (the chain is a smoothing spline), the newest a free velocity and a
+    resting acceleration; any pinned slope, authored or solved, was a few
+    percent off the sine it sampled and sat every piece at the jerk ceiling.
+    The monotone band still zeroes a plateau (a hold rests) and the repair
+    still guards a piece into or out of a resting sample (a dead stop is
+    never overshot), but a sign change between moving samples is exempt: a
+    densely sampled stream reverses BETWEEN samples. (jj) A lone sample
+    (the only knot) stretched to four times its span lands at rest: the
+    engine cannot know that nothing follows, and the secant it would
+    otherwise arrive at is the fastest legal one. (kk) A segment with no end
+    velocity rests when nothing follows it (Knot::rest_if_last, from
+    knotFromSegment; SPEC 9.6) and is freed by a successor; a sample never
+    sets it. (ll) A hard-stop knot solved from rest holds, launches at the
+    latest legal moment and brakes onto the knot (a quintic given more time
+    than it needs wound up backward to the window edge); Piece::at before
+    its start now holds the start state, where an unsigned wrap returned the
+    end state. (mm) A knot within one tick past the reaction horizon counts
+    as reached. (nn) Anomalies report once per knot and kind. Measured on
+    the arbiter's scrub (a 150 mm/s ramp, a hold, a 1.5 Hz sweep of 60 mm on
+    400 mm, with instant starts and stops): zero jumps, refusals or drops
+    under either policy, and the lag stays between one and six cadences; the
+    800-window property suite stays at zero violations and the canonical
+    fingerprint is unchanged (the canonical run has no samples).
+    (oo) The stretch ladder climbs from a tenth of a tick: under a low
+    acceleration ceiling (the arbiter's 100 mm/s^2 on 400 mm at 58 mm/s) a
+    sample a carriage is already near the speed of has a legal window a
+    fraction of a tick wide, and a climb from one tick stepped over it (a
+    sample arriving during the engine's brake went three seconds out, past
+    the sample and back to rest, with the stream queued behind it). (pp) A
+    sample stretched past three of its spans is solved again jointly with
+    the sample before it: that sample's junction is re-solved with the new
+    one in view and kept when its own piece stays legal and the new one
+    stretches less. The first sample after a brake, solved alone, ended two
+    percent fast; the chain's natural end swings a mismatch at the knot
+    before it by seven eighths, so the next sample was four percent slow,
+    which no spend inside one cadence could take back under that ceiling,
+    and zeroing the junction instead (the backward relaxation) turned the
+    stream into a staircase. Measured: the arbiter's starvation case (a
+    segment ending at speed, the engine's brake, ten samples along the line,
+    silence) follows the line with no stretch and rests after the brake;
+    the scrub, the 60 Hz stream test (worst lag 109 ms, tail lag 18 ms) and
+    the property suite are unchanged or better. A 60 Hz sine at a jerk
+    ceiling of 500 still crawls (Kinetic kin-gt1): a piece's jerk at that
+    cadence is about three hundred thousand times its speed mismatch, so the
+    ceiling, not the model, binds there; 1000 tracks.
 
 ---
