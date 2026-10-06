@@ -9266,5 +9266,36 @@ say exactly which, future-us will want the receipts.*
     the stage keeps its own jerk under jmax and the sum's jerk is verified
     in the suite, not promised by the bound: an open item for the hub
     (publish the planned jerk, or budget it).
+  - 2026-10-06, the arbiter port measured the kernel (Nucleus val-klo): a
+    knot arriving mid-piece moved the curve under the carriage by 67 mm,
+    because the window was re-solved from the piece's START; promise 2's
+    "continuous by construction" held only for a piece that nothing joined
+    in flight. The fix took four rounds, each measured: (bb) re-planning
+    from the instantaneous state keeps the curve continuous but a 60 Hz
+    stream whipped itself into reversals (a 6 ms remainder of a piece
+    cannot bend legally, the spend lags the carriage, the lag spends more);
+    committing the whole piece in flight froze a one-knot guess (the secant
+    toward the newest sample) into every later piece. The kernel now keeps
+    the curve through a REACTION HORIZON (`react_us`, 4 ms, a planner
+    option) or through the next knot when that is nearer, and re-plans from
+    the state there. (cc) The junction values are solved over the window by
+    minimum jerk (a banded linear solve in double; float cannot hold the
+    1 / T^5 spread between a 6 ms and a 600 ms interval), then the free
+    velocities are clamped to the Fritsch-Carlson monotone band and bounded
+    by the rail stop distance, accelerations re-solved, and any piece that
+    turns back between monotone knots has its junction accelerations halved
+    until it does not: the local estimates (monotone slopes with centered
+    accelerations) were unstable under re-planning and unconstrained
+    minimum jerk rang 5 percent at a kink. (dd) A free last knot keeps its
+    secant into it: a stream's newest sample has a successor on the way;
+    reached with nothing after it, the engine brakes from there, and a new
+    knot during that brake re-plans from the braking state while an
+    explicit brake (pause, e-stop) still refuses. A sender that ENDS a
+    stream moving must say so with an authored rest, or the engine brakes
+    past its last knot: a promise-1 corollary for scripts. (ee) The rail
+    bound on a velocity is re-applied whenever a Blend trim moves its knot;
+    the one-time bound let a trimmed knot keep a velocity its new position
+    could not stop. The 800-window property suite is back to zero
+    violations and the fingerprint moved on purpose.
 
 ---
