@@ -9462,5 +9462,21 @@ say exactly which, future-us will want the receipts.*
     jog costs 8 budget units per move and nothing is refused; the sender
     may set a jog's deadline as soon as possible and let the profile time
     it.
+    (yy) A C1 script renders as its author's cubics, 2026-10-07 (Kinetic
+    kin-7jd, 2804e8a). Promise 2 amended: HARD is a C1 SAMPLE at rest (the
+    live jog, (xx)) and nothing else; an authored segment at v = 0 is a
+    reversal or a hold. The planner option `corner` defaults to Cubic
+    (operator ruling 2026-10-07: the machine matches the author's curve),
+    and the corner now applies at v = 0 and at the newest knot (the left
+    cubic's acceleration until the successor arrives, the ramp once it
+    has): a quintic through p, v and a at both ends with the cubic's own
+    accelerations is that cubic. A PCHIP sine sent as C1 renders within
+    0.09 percent of its velocity after the first span (C2, the chain's
+    compromise between two cubics at each knot, 17 percent; the old Hard
+    peaks 44 percent), and a feasible funscript within 0.018 mm mean of the
+    author's curve on a 268 mm rail (C2: 0.67 mm). A span whose cubic
+    breaks a ceiling falls back to the smooth path, where Blend trims it.
+    Open: the first span from rest (the carriage has no acceleration, the
+    first cubic has) still errs by a fifth of the peak velocity.
 
 ---
