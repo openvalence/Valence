@@ -540,9 +540,9 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
-| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Landed | open |
+| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Landed | closed |
 | [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | closed |
-| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Accepted | open |
+| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Landed | open |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
 | [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles | Draft | open |
@@ -8737,7 +8737,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
+- **Status:** LANDED c51ff34 (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
   question stays deferred. Drafted from Nucleus val-dbo, amended for
   val-zsr: the operator ruled the reference hub's homing on 2026-10-03
   ahead of this text, and ruled it two-sided the same day after the first
@@ -8926,7 +8926,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-103 -- Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07) with an amendment and three
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) with an amendment and three
   answers, folded below: the oscillator is an additional feature, it sums
   with every source, amplitude is a share of the travel window, and a saw's
   period starts at the trough, rising; the yields-first ruling stands.

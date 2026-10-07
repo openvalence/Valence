@@ -320,6 +320,7 @@ export const WELCOME_LIMITS_K = {
   max_subscriptions_per_frame: 4,  // RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was ad
   max_sessions: 5,  // RFC-055 (§6.3): concurrent sessions this hub admits. 0 = unknown.
   sessions_in_use: 6,  // RFC-055 (§6.3): sessions occupying a slot, the admitted one included (STALE sessions count). 0 =
+  osc_max_hz: 7,  // RFC-103 (§9.7): float, Hz: the highest frequency this hub's oscillator renders, from the hub's o
 };
 
 // ---- probe_result_keys ---------------------------------------------
@@ -595,6 +596,34 @@ export const CURVE_FAMILY_NAME = {
   1: 'c1_cubic',
   2: 'c2_quintic',
   3: 'step',
+};
+
+// ---- osc_shapes ----------------------------------------------------
+export const OSC_SHAPE = {
+  sine: 0,  // -cos: trough at phase 0, crest at the half cycle. With a dwell, each half is a rest-to-rest quin
+  square: 1,  // a rising quintic edge at phase 0, the crest held, a falling edge at the half cycle, the trough h
+  saw: 2,  // a linear rise over most of the period, then a quintic flyback whose slope matches the ramp at bo
+  saw_reverse: 3,  // saw mirrored in time: the flyback rises, the ramp falls. Ignores the dwells.
+};
+export const OSC_SHAPE_NAME = {
+  0: 'sine',
+  1: 'square',
+  2: 'saw',
+  3: 'saw_reverse',
+};
+
+// ---- osc_drives ----------------------------------------------------
+export const OSC_DRIVE = {
+  fixed: 0,  // the parameter is its own field's value; the bounds are unused
+  speed: 1,  // the magnitude of the commanded speed the oscillator rides, in the unit of the hub's telemetry.ve
+  position: 2,  // the commanded position the oscillator rides, in the unit of the hub's telemetry.target field
+  axis: 3,  // the osc.drive stream's field of the same name (amplitude or frequency), 0 .. 1; 0 once the strea
+};
+export const OSC_DRIVE_NAME = {
+  0: 'fixed',
+  1: 'speed',
+  2: 'position',
+  3: 'axis',
 };
 
 // ---- nack_codes ----------------------------------------------------
@@ -1238,6 +1267,24 @@ export const FIELD_ROLE = {
   mod_rest: 'mod.rest',  // RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds)
   mod_phase: 'mod.phase',  // RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds)
   mod_shape: 'mod.shape',  // RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fal
+  osc_enabled: 'osc.enabled',  // RFC-103: bool, the oscillator runs. Never persisted (false at boot); cleared by the hub when the
+  osc_frequency: 'osc.frequency',  // RFC-103: f32, Hz, 0 .. WELCOME limits osc_max_hz (key 7), clamped. The moving part of one cycle 
+  osc_amplitude: 'osc.amplitude',  // RFC-103: f32, a share of the travel window, 0 .. 1: the PEAK displacement from the planned posit
+  osc_shape: 'osc.shape',  // RFC-103: select over osc_shapes (0 sine, 1 square, 2 saw, 3 saw_reverse); the wire value is the 
+  osc_dwell_crest: 'osc.dwell_crest',  // RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle (1 / frequency) held at t
+  osc_dwell_trough: 'osc.dwell_trough',  // RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle held at the trough, as os
+  osc_frequency_drive: 'osc.frequency.drive',  // RFC-103: select over osc_drives: what sets osc.frequency. fixed = the field's own value (the bou
+  osc_frequency_in_min: 'osc.frequency.in_min',  // RFC-103: f32, the drive's input at which osc.frequency reads out_min (the drive's own unit: tele
+  osc_frequency_in_max: 'osc.frequency.in_max',  // RFC-103: f32, the drive's input at which osc.frequency reads out_max; in_min != in_max
+  osc_frequency_out_min: 'osc.frequency.out_min',  // RFC-103: f32, Hz, the frequency at in_min
+  osc_frequency_out_max: 'osc.frequency.out_max',  // RFC-103: f32, Hz, the frequency at in_max
+  osc_amplitude_drive: 'osc.amplitude.drive',  // RFC-103: select over osc_drives: what sets osc.amplitude, as osc.frequency.drive; axis = the osc
+  osc_amplitude_in_min: 'osc.amplitude.in_min',  // RFC-103: f32, the drive's input at which osc.amplitude reads out_min (the drive's own unit, as o
+  osc_amplitude_in_max: 'osc.amplitude.in_max',  // RFC-103: f32, the drive's input at which osc.amplitude reads out_max; in_min != in_max
+  osc_amplitude_out_min: 'osc.amplitude.out_min',  // RFC-103: f32, window share, the amplitude at in_min
+  osc_amplitude_out_max: 'osc.amplitude.out_max',  // RFC-103: f32, window share, the amplitude at in_max
+  osc_active: 'osc.active',  // RFC-103: STATE bool: the oscillator is enabled and rendering a nonzero amplitude this instant. F
+  osc_amplitude_effective: 'osc.amplitude_effective',  // RFC-103: STATE f32, window share: the amplitude the ceilings and the window left after shaping (
   store_slot: 'store.slot',  // RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename
   store_name: 'store.name',  // RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename
   store_item: 'store.item',  // RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, nam
@@ -1254,6 +1301,7 @@ export const FIELD_ROLE = {
 export const CHANNEL_ROLE = {
   events_anomaly: 'events.anomaly',  // §9.4
   anomaly_summary: 'anomaly.summary',  // §9.4
+  osc_drive: 'osc.drive',  // §9.7
 };
 
 // ---- action_tags (tstr wire values) -------------------------------

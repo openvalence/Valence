@@ -190,6 +190,8 @@ def gen(reg: dict) -> str:
                         ("stream_kinds", "stream_kinds"),
                         ("procedure_phases", "procedure_phases"),
                         ("curve_families", "curve_families"),
+                        ("osc_shapes", "osc_shapes"),
+                        ("osc_drives", "osc_drives"),
                         # ---- RFC-047/048 rendering metamodel (Phase C2) ----
                         # setting_categories is RETIRED (tombstoned in registry.yaml);
                         # ui_categories is its wire-key-10 successor vocabulary.
@@ -304,6 +306,8 @@ JS_CODE_TABLES = (
     ("STREAM_KIND",        "stream_kinds",        True,  0),
     ("PROCEDURE_PHASE",    "procedure_phases",    True,  0),
     ("CURVE_FAMILY",       "curve_families",      True,  0),
+    ("OSC_SHAPE",          "osc_shapes",          True,  0),
+    ("OSC_DRIVE",          "osc_drives",          True,  0),
     ("NACK",               "nack_codes",          True,  4),
     # ---- RFC-047/048 rendering metamodel: the vocabularies a renderer needs --
     ("UI_CATEGORY",        "ui_categories",       True,  0),
