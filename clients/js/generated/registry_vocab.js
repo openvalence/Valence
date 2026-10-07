@@ -1238,6 +1238,9 @@ export const FIELD_ROLE = {
   mod_rest: 'mod.rest',  // RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds)
   mod_phase: 'mod.phase',  // RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds)
   mod_shape: 'mod.shape',  // RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fal
+  store_slot: 'store.slot',  // RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename
+  store_name: 'store.name',  // RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename
+  store_item: 'store.item',  // RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, nam
   color_red: 'color.red',  // RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger 
   color_green: 'color.green',  // RFC-083: writable numeric green channel of one color group
   color_blue: 'color.blue',  // RFC-083: writable numeric blue channel of one color group

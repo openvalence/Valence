@@ -430,7 +430,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
-| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
+| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Landed 3c8cf03 |
 | [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Landed ce16f93 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
@@ -530,12 +530,12 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units: `deg`, `us` and a hub-time stamp unit; display autoranging is a client choice | Accepted | open |
 | [087](#rfc-087) | Segments-kind bundles span the schedule horizon; the horizon is advertised per grant | Accepted | open |
 | [088](#rfc-088) | Flip: a rail-bound direction flip, home swaps ends | Accepted | open |
-| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Accepted | open |
+| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Landed | open |
 | [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Landed | closed |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources, not one generator with a mode | Landed | closed |
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
 | [095](#rfc-095) | Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods | Landed | closed |
-| [096](#rfc-096) | A ` / ` separator in a group string names a section | Landed | open |
+| [096](#rfc-096) | A ` / ` separator in a group string names a section | Landed | closed |
 | [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Landed | closed |
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
@@ -7927,7 +7927,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-089 -- Store writer field roles: find slot, name and item by identity
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
   closed: an import that does not fit the binding's frame is refused
   `FRAME_TOO_LARGE`, acceptable for v1; a full store on `save` is refused
   `INVALID_VALUE` with a detail naming the store full, no new NACK code;
@@ -8365,7 +8365,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-096 -- A ` / ` separator in a group string names a section
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-4ed). Open questions
+- **Status:** LANDED 3c8cf03 (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-4ed). Open questions
   closed: the convention stands, no section field; the separator's
   spelling is pinned as a registry constant so lint and every client share
   it.

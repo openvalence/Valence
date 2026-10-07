@@ -428,7 +428,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
-| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
+| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Landed 3c8cf03 |
 | [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Landed ce16f93 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |

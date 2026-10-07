@@ -179,7 +179,7 @@ core_channels:
   0x0012: { name: accessory-admin,    class: INTENT, status: reserved, note: "RFC-076 (§8.10): `configure`; one op select with role action.accessory over `accessory_admin_ops` (window_open, forget {accessory_id}, rename {accessory_id, name}). Forgetting is host-side only." }
   0x0013: { name: relationships,       class: STORE, status: reserved, note: "RFC-078 (§8.11): the relationship store, kind 'relationship.map', `watch` access, registered item grammar `relationship_keys` (§8.7 carve-out: the hub interprets the item). Capacity at most relationships_max." }
   0x0014: { name: relationships-roster, class: STATE, status: reserved, note: "RFC-078 (§8.11): {generation u16, count u8, capacity u8, armed 2 x bitfield8, faulted 2 x bitfield8} = 8 B, `watch`; bit i = rel_id i. Carries store_id (entry key 17) naming 0x0013." }
-  0x0015: { name: relationships-write,  class: INTENT, status: reserved, note: "RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with `enabled` changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-intents resume (§11.6)." }
+  0x0015: { name: relationships-write,  class: INTENT, status: reserved, note: "RFC-078 (§8.11): `configure`; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with `enabled` changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-intents resume (§11.6). RFC-089: its slot, name and item fields carry the `store.*` roles; the store has no live state to capture, so a save without `store.item` is INVALID_VALUE." }
   0x0016: { name: settings-trial,      class: INTENT, status: active, note: "RFC-099 (§9.3): `control`; one op select (key 1, role action.trial) over `trial_ops`: commit persists every value the sender trial-wrote and clears its trial set, revert restores every pre-trial value and clears it. Acts only on the sender's own set. Hub-handled. Declaring this channel is how a hub says it supports the `trial` key (cbor_keys 51): a client MUST NOT send `trial` to a hub without it, because §4.3 makes such a hub ignore the key and persist the write." }
 
 # ---------------------------------------------------------------------------
@@ -838,6 +838,16 @@ field_roles:
   "mod.rest":            { note: "RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds)" }
   "mod.phase":           { note: "RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds)" }
   "mod.shape":           { note: "RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest)" }
+  # ---- store.* (RFC-089): the arguments of a STORE WRITER, the INTENT entry
+  # carrying an `action.store` op select (SPEC §8.7). The roles bind within
+  # that entry, and its entry-level `store_id` (catalog entry key 17) says
+  # which store they address: one set per writer, told apart by that key,
+  # never resolved catalog-wide (SPEC §8.8 cardinality exemption). Per-verb
+  # set: save = name (slot and item optional); load, delete = slot;
+  # rename = slot + name. A missing required field is NACK INVALID_VALUE.
+  "store.slot":          { note: "RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename; optional on save (absent, the hub picks a free slot and ECHO `applied` carries it; no free slot is INVALID_VALUE with a detail naming the store full). Binds within the entry carrying the action.store op select." }
+  "store.name":          { note: "RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename. Binds within the entry carrying the action.store op select." }
+  "store.item":          { note: "RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, name, kind, payload, optional digest), never the bare payload. Optional on save (absent, the hub captures live state; a store with no live state to capture requires it). Its slot and name MUST equal store.slot and store.name, else INVALID_VALUE. One frame: an item past the binding's max_frame is FRAME_TOO_LARGE. Binds within the entry carrying the action.store op select." }
   # ---- color.* / datetime.* (RFC-083): role triggers for the color and
   # datetime archetypes (RENDERING.md §8.2 rows 16/17); no archetype hint
   # exists. Per-GROUP families: each MUST appear at most once per `group`
