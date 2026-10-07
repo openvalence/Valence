@@ -776,6 +776,7 @@ inline constexpr uint32_t relationships_max = 16;
 inline constexpr uint32_t accessory_declaration_max_bytes = 4096;
 inline constexpr uint32_t spoke_scan_dwell_ms = 150;
 inline constexpr std::string_view ws_subprotocol = "valence.v1";
+inline constexpr std::string_view group_section_separator = " / ";
 }  // namespace limits
 
 }  // namespace valence

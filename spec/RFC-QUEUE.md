@@ -535,13 +535,13 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources, not one generator with a mode | Landed | closed |
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
 | [095](#rfc-095) | Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods | Landed | closed |
-| [096](#rfc-096) | A ` / ` separator in a group string names a section | Accepted | open |
+| [096](#rfc-096) | A ` / ` separator in a group string names a section | Landed | open |
 | [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Landed | closed |
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
 | [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Accepted | open |
-| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | open |
+| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | closed |
 | [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Accepted | open |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
@@ -8365,7 +8365,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-096 -- A ` / ` separator in a group string names a section
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07; rfc-4ed). Open questions
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-4ed). Open questions
   closed: the convention stands, no section field; the separator's
   spelling is pinned as a registry constant so lint and every client share
   it.
@@ -8851,7 +8851,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07). Open questions closed:
+- **Status:** LANDED 6a89df8 (2026-10-07). ACCEPTED (operator, 2026-10-07). Open questions closed:
   identity's `protocol_version` carries MAJOR.MINOR only, and a client
   whose MINOR exceeds the hub's hides what the hub lacks and states the
   hub's version once in its about surface, never a warning dialog. Drafted

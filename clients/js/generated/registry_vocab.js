@@ -1353,4 +1353,5 @@ export const LIMITS = {
   accessory_declaration_max_bytes: 4096,
   spoke_scan_dwell_ms: 150,
   ws_subprotocol: 'valence.v1',
+  group_section_separator: ' / ',
 };

@@ -36,6 +36,7 @@ authoring order, never re-sorted).
 | Two channels sharing one tab | the same `category` on both entries | SPEC §8.8 "Categories" |
 | A vendor tab of your own | `category` in `0x40`–`0x7E` + `category_label` | RENDERING §3 |
 | A named card inside the tab | the same `group` string on each field | SPEC §8.8; RENDERING §11 |
+| A card under a section (a folded category keeps one card per heading) | `<subgroup> / <card>` as the `group` string — the first ` / ` splits (RFC-096), so a card heading that needs a slash writes it unspaced (`In/out`) | RENDERING §3; registry `limits.group_section_separator` |
 | A specific on-page order | declare the fields in that order | SPEC §8.9 rule 4; RENDERING §11 |
 | A setpoint next to its live readout | a `command.*`/`setting_key` field and its `telemetry.*`/live twin — clients co-locate the pair themselves | RENDERING §11 |
 | One range control, not two sliders | tagged min/max pair | RENDERING §11 |

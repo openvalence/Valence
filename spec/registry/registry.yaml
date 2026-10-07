@@ -1467,3 +1467,6 @@ limits:
   ws_subprotocol: "valence.v1"
   # mdns_service ("_valence._tcp") RETIRED pre-tag by RFC-072: no mDNS service
   # record exists (§13.7); discovery is the §13.8 UDP probe and BLE.
+
+  # ---- presentation conventions (RFC-096, RENDERING.md §3) -----------------
+  group_section_separator: " / "    # RFC-096: the first occurrence in a `group` string (SPEC §8.8) separates a section from the card heading; only the first splits, a later one belongs to the heading. One spelling for every hub, client and lint; a renderer MAY draw sections, one that does not draws the whole string.

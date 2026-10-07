@@ -1852,6 +1852,7 @@ The fixture's coverage gaps at v1.0 are stated in §18-7 rather than implied by 
 | `conformance_min_clients` | 4 | §6.3, §17.1 |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | §6.3 |
 | `ws_subprotocol` | `valence.v1` | §13.2 |
+| `group_section_separator` | ` / ` | §8.8 `group`; RENDERING §3 |
 
 ## Appendix H — Design rationale and rejected alternatives *(informative)*
 

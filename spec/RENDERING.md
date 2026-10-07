@@ -109,6 +109,8 @@ A hub SHOULD expose the well-known channel for any capability it has, carrying a
 
 A category MAY carry a free-text `subgroup` beneath it (today's `.group` strings become subgroups, SPEC §8.8). The category tree, in registry order, IS the navigation skeleton every renderer shares.
 
+**Sections inside a category (RFC-096, informative).** The first ` / ` (space, solidus, space; registry `limits.group_section_separator`) in a `group` string separates a **section** from the card heading: `Tuning / Planner` is the card Planner in section Tuning, and a `group` without one is a card with no section. Only the first separator splits; a later one belongs to the card heading. A renderer MAY draw a section's cards together under one section heading, in catalog order within the section (§11), keying each card on the whole string; where a page puts sections among cards with none is the renderer's craft. A renderer that does not draw sections draws the whole string as the card heading, which still reads correctly — that graceful path is why this is a convention and not a field. It states membership, as `group` does, never layout (SPEC §1.2 item 7). The spelling lives in the registry so every hub, client and lint splits on one string; a hub that folds a category into a subgroup writes `<subgroup> / <card>` (AUTHORING.md §2).
+
 **Navigation tiers (RFC-094, MUST).** Above the categories sit three tiers, registry `ui_nav_tiers`, and every `ui_categories` row names its tier:
 
 | Id | Tier | Holds |
