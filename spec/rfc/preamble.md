@@ -423,13 +423,13 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
 | [087](#rfc-087) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088) | Flip: rail-bound direction flip | Landed a7415b0 |
-| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
-| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
+| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Accepted 2026-10-07 (rfc-hen) |
+| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Accepted 2026-10-07 (rfc-0wp) |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
-| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
-| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
+| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
+| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Accepted 2026-10-07 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
 | [100](#rfc-100) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Landed abe752e + 8d67b4b (accepted 2026-10-03, rfc-6qf) |

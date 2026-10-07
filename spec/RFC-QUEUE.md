@@ -425,13 +425,13 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
 | [087](#rfc-087) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088) | Flip: rail-bound direction flip | Landed a7415b0 |
-| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Draft, ruling pending (rfc-hen) |
-| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Draft, ruling pending (rfc-0wp) |
+| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Accepted 2026-10-07 (rfc-hen) |
+| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Accepted 2026-10-07 (rfc-0wp) |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
-| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Draft, ruling pending (rfc-4ed) |
-| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Draft 2026-10-02 |
+| [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
+| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Accepted 2026-10-07 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
 | [100](#rfc-100) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Landed abe752e + 8d67b4b (accepted 2026-10-03, rfc-6qf) |
@@ -530,21 +530,22 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units: `deg`, `us` and a hub-time stamp unit; display autoranging is a client choice | Accepted | open |
 | [087](#rfc-087) | Segments-kind bundles span the schedule horizon; the horizon is advertised per grant | Accepted | open |
 | [088](#rfc-088) | Flip: a rail-bound direction flip, home swaps ends | Accepted | open |
-| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Draft | open |
-| [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Draft | open |
+| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Accepted | open |
+| [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Landed | open |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources, not one generator with a mode | Landed | closed |
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
 | [095](#rfc-095) | Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods | Landed | closed |
-| [096](#rfc-096) | A ` / ` separator in a group string names a section | Draft | open |
-| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Draft | open |
+| [096](#rfc-096) | A ` / ` separator in a group string names a section | Accepted | open |
+| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Accepted | open |
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
-| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Draft | open |
-| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Draft | open |
-| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Draft | open |
+| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Accepted | open |
+| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Accepted | open |
+| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Accepted | open |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
+| [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -7926,7 +7927,11 @@ say exactly which, future-us will want the receipts.*
 ## RFC-089 -- Store writer field roles: find slot, name and item by identity
 
 
-- **Status:** DRAFT (2026-10-02; rfc-hen). Ruling pending.
+- **Status:** ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
+  closed: an import that does not fit the binding's frame is refused
+  `FRAME_TOO_LARGE`, acceptable for v1; a full store on `save` is refused
+  `INVALID_VALUE` with a detail naming the store full, no new NACK code;
+  `store.item` stays optional on `save`.
 - **Origin:** Phosphor ph-e82.13.6, 2026-10-02. Building the relationships
   store writer (`relationships-write` 0x0015,
   [RFC-078](#rfc-078)),
@@ -7964,7 +7969,11 @@ say exactly which, future-us will want the receipts.*
        another unchanged. Carried as a byte string, it adds no CBOR depth
        to the INTENT (§5.3's cap of 4 is untouched), and §8.7's opacity
        holds: the hub reads the document's keys and checks `kind`, size and
-       `digest`, and never decodes `payload`.
+       `digest`, and never decodes `payload`. An INTENT is one frame: an
+       item that does not fit the binding's `max_frame` is refused
+       `FRAME_TOO_LARGE` on that binding (ruled 2026-10-07: acceptable for
+       v1, since relationships and small presets fit; a client-to-hub blob
+       path is its own later RFC).
   2. **Binding scope (§8.8 role cardinality).** The three roles bind within
      the entry that carries the `action.store` op select, and that entry's
      `store_id` ([RFC-070](#rfc-070)) says which
@@ -7986,9 +7995,11 @@ say exactly which, future-us will want the receipts.*
 
      ECHO is key-complete over what was applied (§9.3), so a `save`
      without `store.slot` is echoed with the slot the hub chose; that is
-     how the client learns it. A store with no live state to capture (the
-     relationships store, 0x0013) refuses a `save` without `store.item`
-     with `INVALID_VALUE`.
+     how the client learns it. A `save` with no free slot to pick is
+     refused `INVALID_VALUE` with a `detail` (§16.1) naming the store full
+     (ruled 2026-10-07: no new NACK code). A store with no live state to
+     capture (the relationships store, 0x0013) refuses a `save` without
+     `store.item` with `INVALID_VALUE`.
   4. **One address, never two.** When `store.item` is present, its
      document's `slot` and `name` MUST equal `store.slot` and
      `store.name`; a mismatch is refused `INVALID_VALUE`, never resolved by
@@ -8008,9 +8019,11 @@ say exactly which, future-us will want the receipts.*
 - **Conformance impact.** Hub: `load`, `delete` or `rename` without
   `store.slot`, and `save` or `rename` without `store.name`, NACK
   `INVALID_VALUE`; a `save` without a slot is echoed with the chosen slot;
-  an item whose document slot disagrees with `store.slot` NACKs
-  `INVALID_VALUE`. Client fixture: a writer entry with a second, unroled
-  uint field beside `store.slot` binds the roled field, never the other.
+  a `save` on a full store NACKs `INVALID_VALUE` with a detail naming the
+  store full; an item whose document slot disagrees with `store.slot`
+  NACKs `INVALID_VALUE`. Client fixture: a writer entry with a second,
+  unroled uint field beside `store.slot` binds the roled field, never the
+  other.
 - **Compatibility.** Pre-tag, additive. Reference-hub follow-ups (Nucleus
   board): `pattern-presets-cmd` and the relationships writer (0x0015) tag
   their slot, name and item fields and enforce the per-verb set. Phosphor
@@ -8018,20 +8031,20 @@ say exactly which, future-us will want the receipts.*
 - **Open questions.**
   1. **Item size against the frame.** An INTENT is one frame, and a store
      item may reach `per_item_max` (default 4096, §8.7), far past the
-     242 B `min_transport_payload`. As drafted, an import that does not fit
-     the binding's `max_frame` cannot be sent over that binding
-     (`FRAME_TOO_LARGE`). Is that acceptable for v1 (relationships and
-     small presets fit), or does it need a c2h blob path (BLOB_CHUNK is
-     h2c only today, §8.4)? This draft does not invent one.
-  2. **A full store on `save`.** The draft lets the hub pick the slot when
-     `store.slot` is absent and refuse when no slot is free. Should a full
-     store have its own NACK code rather than `INVALID_VALUE`?
+     242 B `min_transport_payload`, so an import that does not fit the
+     binding's `max_frame` cannot be sent over that binding
+     (`FRAME_TOO_LARGE`). Ruled 2026-10-07: acceptable for v1
+     (relationships and small presets fit); a client-to-hub blob path
+     (BLOB_CHUNK is h2c only today, §8.4) is its own later RFC, and this
+     entry does not invent one.
+  2. **A full store on `save`.** The hub picks the slot when `store.slot`
+     is absent and refuses when no slot is free. Ruled 2026-10-07: refused
+     `INVALID_VALUE` with a detail naming the store full; no new NACK
+     code.
   3. **`store.item` on `save` (operator check).** The bead listed `save`
-     as slot optional + name + item. This draft keeps `store.item`
-     optional because §8.7 makes capture-live-state the default `save`,
-     and requires it only where a store has no live state to capture.
-     Confirm, or make it required everywhere (which retires
-     capture-by-default).
+     as slot optional + name + item. Ruled 2026-10-07: `store.item` stays
+     optional, since §8.7 makes capture-live-state the default `save`; it
+     is required only where a store has no live state to capture.
 
 ---
 
@@ -8039,19 +8052,21 @@ say exactly which, future-us will want the receipts.*
 ## RFC-090 -- SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base`
 
 
-- **Status:** DRAFT (2026-10-02; rfc-0wp). Ruling pending. Editorial and
-  separable: it changes no behavior the operator ruled, and is proposed
-  as landable without a separate ruling on the precedent of
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-0wp). Accepted with one
+  amendment, folded into the proposed change: a bundle whose stamps lie
+  beyond now plus the lead cap moves earlier as a whole, never stamp by
+  stamp. Editorial and separable: it changes no behavior the operator
+  ruled, on the precedent of
   [RFC-063](#rfc-063) item 6
   (a spec-contradiction repair, bead rfc-dmf, carried as its own item with
   no wire, registry or conformance change).
 - **Origin:** Valence val-091.54, 2026-10-02. The library's `handleStream`
   dropped a `segments` bundle whose last start lay beyond the granted
-  horizon, following SPEC §5.4 rule 3 as landed by
+  horizon, following SPEC Â§5.4 rule 3 as landed by
   [RFC-087](#rfc-087)
   (1dbdc3e). Commit 9dd395d moved it to the clamp; this entry brings the
   rule's wording into line.
-- **Problem.** SPEC §5.4 contradicts itself for c2h `segments` bundles:
+- **Problem.** SPEC Â§5.4 contradicts itself for c2h `segments` bundles:
   1. **Rule 3** reads "`t_base + t_off[n-1]` MUST NOT lie further ahead of
      hub time than the horizon", and the paragraph after the rules makes
      any violation **malformed**, rejected **whole**.
@@ -8067,21 +8082,25 @@ say exactly which, future-us will want the receipts.*
   now it lies (a lead, which depends on arrival time and is the lead cap's
   business). A bundle stamped 300 ms ahead with a 50 ms span is well
   formed; only its lead is too long.
-- **Proposed change.** Rule 3 of §5.4's bundle rules becomes:
+- **Proposed change.** Rule 3 of Â§5.4's bundle rules becomes:
 
-  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] ≤
+  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] â‰¤
   >    bundle_max_span_ms` (20 ms); for a c2h `segments`-kind bundle,
-  >    `t_off[n-1] × segment_t_off_unit_us` MUST NOT exceed the grant's
+  >    `t_off[n-1] Ã— segment_t_off_unit_us` MUST NOT exceed the grant's
   >    schedule horizon (RFC-087). The span is measured from `t_base`; how
   >    far the bundle lies ahead of hub time is not a span violation, and a
   >    bundle whose stamps lie beyond now plus the cap is clamped per the
   >    lead-cap paragraph below, never rejected;
 
-  Nothing else in §5.4 changes; the lead-cap and schedule-horizon
-  paragraphs already say the rest.
+  The lead-cap paragraph gains one sentence (ruled 2026-10-07): a c2h
+  bundle whose stamps lie beyond now plus the cap moves earlier as a
+  whole, its `t_base` shifted until the last stamp sits on the cap, every
+  spacing kept, so each segment keeps its duration; stamps are never
+  clamped one by one. Nothing else in Â§5.4 changes; the lead-cap and
+  schedule-horizon paragraphs already say the rest.
 - **Wire impact.** None. The library already behaves this way (9dd395d):
-  the span cap is `t_off[n-1] × 100 µs ≤ horizon`, malformed if over, and
-  the lead beyond hub time is clamped.
+  the span cap is `t_off[n-1] Ã— 100 Âµs â‰¤ horizon`, malformed if over, and
+  the lead beyond hub time is clamped by moving the bundle as a whole.
 - **Registry impact.** None.
 - **Conformance impact.** None new: RFC-087's stated cases (a 240 ms span
   under a 250 ms grant accepted, a bundle stamped 300 ms ahead clamped) now
@@ -8090,15 +8109,14 @@ say exactly which, future-us will want the receipts.*
 - **Compatibility.** Nucleus pins 9dd395d, which carries the clamp; no
   firmware follow-up.
 - **Open questions.**
-  1. **How the clamp lands (separate from this repair).** The lead-cap
-     paragraph clamps "a c2h sample's timestamp"; 9dd395d clamps a bundle
-     by moving its `t_base` earlier until the last stamp sits on the cap,
-     keeping every spacing so each segment keeps its duration. Pinning
-     each late stamp at the cap instead would collapse a `segments` tail
-     onto one instant and break rule 2's strict increase. Should the
-     lead-cap paragraph say the bundle moves earlier as a whole? That is a
-     normative clarification needing its own ruling; this entry does not
-     include it.
+  1. **How the clamp lands.** Ruled 2026-10-07: the bundle moves earlier
+     as a whole. The lead-cap paragraph clamped "a c2h sample's
+     timestamp"; 9dd395d clamps a bundle by moving its `t_base` earlier
+     until the last stamp sits on the cap, keeping every spacing so each
+     segment keeps its duration. Pinning each late stamp at the cap
+     instead would collapse a `segments` tail onto one instant and break
+     rule 2's strict increase. The lead-cap paragraph now says so (folded
+     into the proposed change above); this entry lands it.
 
 ---
 
@@ -8347,7 +8365,10 @@ say exactly which, future-us will want the receipts.*
 ## RFC-096 -- A ` / ` separator in a group string names a section
 
 
-- **Status:** DRAFT (2026-10-02; rfc-4ed). Ruling pending.
+- **Status:** ACCEPTED (operator, 2026-10-07; rfc-4ed). Open questions
+  closed: the convention stands, no section field; the separator's
+  spelling is pinned as a registry constant so lint and every client share
+  it.
 - **Origin:** the RFC-094 landing, 2026-10-02 (Nucleus 312f396, Phosphor
   79896da). Every field folded from `tuning` (9) and `library` (5) took the
   subgroup's name as its `group`, so the eleven former Tuning cards (Active
@@ -8381,30 +8402,36 @@ say exactly which, future-us will want the receipts.*
   3. **Authoring (AUTHORING.md, the card row):** a hub that folds a
      category into a subgroup writes `<subgroup> / <card>`; a card heading
      that needs a slash writes it unspaced (`In/out`).
-- **Pros.** No wire, registry, codec or vector change, and every released
-  client already renders the string. `group` stays the one home of
-  grouping, so a section cannot disagree with its card. It states
-  membership, as `group` already does, never layout (SPEC §1.2 item 7).
+  4. **The separator is a registry constant** (ruled 2026-10-07): the
+     registry pins the spelling ` / ` once, and lint and every client read
+     it from there, so no two parties split on different strings.
+- **Pros.** No wire, codec or vector change, and every released client
+  already renders the string. `group` stays the one home of grouping, so a
+  section cannot disagree with its card. It states membership, as `group`
+  already does, never layout (SPEC §1.2 item 7).
 - **Cons.** Meaning inside free text: a heading that holds ` / ` by
   accident is split. Two levels only. The prefix rides every field: the
   reference catalog grew 829 B (25,471 to 26,300 B) and its etag moved.
   Section names stay hub strings, unlocalized, as every `group` is.
 - **Cost.** Spec: one informative note in RENDERING §3 and one AUTHORING.md
-  line; no registry, codegen or vector change. Nucleus: the `card::` group
-  strings in `ValenceCatalog.h` (sim etag 8e5be2a88c0d69e7). Phosphor: the
-  splitter and the section header row. MFP plugin: untouched (it draws no
-  categories).
+  line; registry: one constant (the separator spelling) and its codegen; no
+  vector change. Nucleus: the `card::` group strings in `ValenceCatalog.h`
+  (sim etag 8e5be2a88c0d69e7). Phosphor: the splitter and the section
+  header row. MFP plugin: untouched (it draws no categories).
 - **Wire impact.** None. An adopting hub's group strings change and its
   etag moves.
-- **Registry impact.** None.
+- **Registry impact.** One constant: the section separator's spelling,
+  shared by lint and every client (ruled 2026-10-07).
 - **Conformance impact.** None required: MAY for renderers.
 - **Open questions.**
-  1. A field instead (a `section` key on the field or the entry)? It is
-     unambiguous and localizable, but costs a registry key and a codec
+  1. A field instead (a `section` key on the field or the entry)? Ruled
+     2026-10-07: no; the convention stands, no section field. A key would
+     be unambiguous and localizable, but costs a registry key and a codec
      change before the tag, and a client that predates it loses the
      section.
   2. Should the separator be a named registry constant, so clients and
-     lint share one spelling?
+     lint share one spelling? Ruled 2026-10-07: yes; folded into the
+     proposed change as item 4.
 
 ---
 
@@ -8412,7 +8439,8 @@ say exactly which, future-us will want the receipts.*
 ## RFC-097 -- The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes)
 
 
-- **Status:** DRAFT (2026-10-02, from the RFC-077 library landing fd36721).
+- **Status:** ACCEPTED (operator, 2026-10-07) as drafted. Drafted
+  2026-10-02, from the RFC-077 library landing fd36721.
 - **Origin:** the reference library now re-announces a grown catalog on the
   `catalog` channel 0x0001 (RFC-077, SPEC §8.6) and the JS client must
   check a background refetch against the announced etag. The registry's
@@ -8709,11 +8737,12 @@ say exactly which, future-us will want the receipts.*
 ## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
 
 
-- **Status:** DRAFT (Nucleus val-dbo, amended for val-zsr). The operator
-  ruled the reference hub's homing on 2026-10-03 ahead of this text, and
-  ruled it two-sided the same day after the first cycle ran on silicon;
-  Nucleus builds against the behavior below, so acceptance amends SPEC to
-  what already runs, or the ruling moves the firmware.
+- **Status:** ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
+  question stays deferred. Drafted from Nucleus val-dbo, amended for
+  val-zsr: the operator ruled the reference hub's homing on 2026-10-03
+  ahead of this text, and ruled it two-sided the same day after the first
+  cycle ran on silicon; Nucleus builds against the behavior below, and
+  acceptance amends SPEC to what already runs.
 - **Origin.** The reference hub gained a real home cycle: home op 1 seeks the
   home end until a stall level from a current-sense board reads HIGH and
   takes that point as 0. Until then op 1 was refused and `force_home`
@@ -8808,12 +8837,13 @@ say exactly which, future-us will want the receipts.*
   Appendix D's 0xEE05 row a clause. Reference hub: none beyond what landed
   (Nucleus val-dbo, val-zsr).
 - **Wire impact.** None.
-- **Open questions.** A deferred answer: once a hub library can answer an
-  intent after its handler returns (Nucleus val-9u0.22, the provisioning
-  desk's need), should `action.home` hold its ECHO until the cycle ends and
-  NACK a failure, and with which code (a new `HOMING_FAILED`, or
-  `INTERLOCK` with a detail)? This draft keeps the start-ECHO because no
-  reference library can defer today.
+- **Open questions.** Deferred (ruled 2026-10-07: stays deferred, since no
+  reference library can defer an answer today): once a hub library can
+  answer an intent after its handler returns (Nucleus val-9u0.22, the
+  provisioning desk's need), should `action.home` hold its ECHO until the
+  cycle ends and NACK a failure, and with which code (a new
+  `HOMING_FAILED`, or `INTERLOCK` with a detail)? This entry keeps the
+  start-ECHO.
 
 ---
 
@@ -8821,9 +8851,13 @@ say exactly which, future-us will want the receipts.*
 ## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
 
 
-- **Status:** DRAFT (operator ruling 2026-10-04, ahead of the first Store
-  and Flathub releases of the reference client). Phosphor builds against
-  the rule below from its `base/0.1` tag; acceptance writes it into SPEC §1
+- **Status:** ACCEPTED (operator, 2026-10-07). Open questions closed:
+  identity's `protocol_version` carries MAJOR.MINOR only, and a client
+  whose MINOR exceeds the hub's hides what the hub lacks and states the
+  hub's version once in its about surface, never a warning dialog. Drafted
+  from the operator ruling of 2026-10-04, ahead of the first Store and
+  Flathub releases of the reference client; Phosphor builds against the
+  rule below from its `base/0.1` tag; acceptance writes it into SPEC §1
   (document conventions) and the registry's `version` fields.
 - **Origin.** The reference client reached its first package submissions
   (Microsoft Store, Flathub) and every store wants a strictly increasing
@@ -8845,11 +8879,16 @@ say exactly which, future-us will want the receipts.*
   - **MINOR adds.** A feature introduced in x.2 may not work against an x.1
     peer (the peer does not know it), and that is allowed; nothing outside
     that feature may break. A client that meets an older hub hides the
-    feature, a hub that meets an older client refuses the verb with the
-    existing NACK, neither side degrades anything else.
+    feature and states the hub's version once in its about surface, never
+    in a warning dialog (ruled 2026-10-07); a hub that meets an older
+    client refuses the verb with the existing NACK; neither side degrades
+    anything else.
   - **PATCH is free and moves on every build**, not only on releases or
     submissions. Two builds with different bits never share a patch; a
     patch carries no compatibility meaning at all.
+  - **Identity carries MAJOR.MINOR only** (ruled 2026-10-07): the
+    `protocol_version` in identity is the pair; the patch never rides the
+    wire.
   - The spec's MAJOR is the line everyone implements: SPEC is at 1 today
     (`v1.0-draft`) and stays there, since the number drives the protocol
     itself. Implementations below 1.0 (today's 0.y.z client and hub) are
@@ -8872,9 +8911,14 @@ say exactly which, future-us will want the receipts.*
   `npm run check` enforcing the committed base, CI stamping before the
   bundle (landed with this draft). Reference hub: none until 1.0.
 - **Wire impact.** None.
-- **Open questions.** Whether `protocol_version` in identity should carry
-  MAJOR.MINOR only (the patch is noise on the wire), and whether a client
-  must warn when its MINOR exceeds the hub's rather than silently hiding.
+- **Open questions.**
+  1. Whether `protocol_version` in identity should carry MAJOR.MINOR only.
+     Ruled 2026-10-07: MAJOR.MINOR only; the patch is noise on the wire and
+     never rides it.
+  2. Whether a client must warn when its MINOR exceeds the hub's rather
+     than silently hiding. Ruled 2026-10-07: it hides the features the hub
+     lacks and states the hub's version once in its about surface, never a
+     warning dialog.
 
 ---
 
@@ -8882,9 +8926,14 @@ say exactly which, future-us will want the receipts.*
 ## RFC-103 -- Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second
 
 
-- **Status:** DRAFT (operator ruling 2026-10-05). Companion to the reference
-  hub's segment-rate work (Nucleus val-4ix): the stream ceiling becomes the
-  planner's measured number, and this RFC gives rapid motion a cheaper path.
+- **Status:** ACCEPTED (operator, 2026-10-07) with an amendment and three
+  answers, folded below: the oscillator is an additional feature, it sums
+  with every source, amplitude is a share of the travel window, and a saw's
+  period starts at the trough, rising; the yields-first ruling stands.
+  Drafted from the operator ruling of 2026-10-05. Companion to the
+  reference hub's segment-rate work (Nucleus val-4ix): the stream ceiling
+  becomes the planner's measured number, and this RFC gives rapid motion a
+  cheaper path.
 - **Origin.** Scripts carry sections that oscillate at 30 to 50 Hz. Streamed
   as segments (0x2101 on the reference hub) that is 60 to 100 planned
   trajectories a second for motion that is one periodic function, and every
@@ -8898,19 +8947,25 @@ say exactly which, future-us will want the receipts.*
 - **Proposal.** A hub-side oscillator, additive on the commanded position of
   whatever source owns the rail (a stroke, a jog, a stream, or rest), bounded
   by the travel window and the ceilings exactly as every other motion is.
+  **The oscillator is an additional feature** (ruled 2026-10-07): a
+  script's rapid motion on the main axis is rendered by the planner as
+  well as it can in any case; nothing routes vibration to the oscillator
+  on the hub's own initiative, and an author who opts into the V8/V9 axes
+  gets the oscillator on top.
   - One INTENT, registry role family `osc.*`, schema keys in order:
     `enabled` (bool), `frequency` (f32 Hz, 0 .. `osc_max_hz`, a limit the hub
     declares in WELCOME `limits` from its own measurement), `amplitude` (f32,
-    norm of the travel window, 0 .. 1), `shape` (new table `osc_shapes`:
-    0 `sine`, 1 `square`, 2 `saw`, 3 `saw_reverse`), `dwell_crest` and
-    `dwell_trough` (f32, share of one period held at that extreme, two
-    decimals, as RFC-095's dwells hold a stroke; a square with dwells is a
-    pulse-width control). A saw arrives at its extremes moving, so the saw
-    shapes have no rest to hold: they ignore the dwells (kernel finding
-    2026-10-06). Every shape is band-limited by construction: square edges
-    and saw flybacks are jerk-limited quintic ramps, and a dwelled sine
-    renders its halves as quintics so a hold is reached at rest in
-    acceleration.
+    a share of the travel window, 0 .. 1; the client shows millimeters),
+    `shape` (new table `osc_shapes`: 0 `sine`, 1 `square`, 2 `saw`,
+    3 `saw_reverse`), `dwell_crest` and `dwell_trough` (f32, share of one
+    period held at that extreme, two decimals, as RFC-095's dwells hold a
+    stroke; a square with dwells is a pulse-width control). A saw arrives
+    at its extremes moving, so the saw shapes have no rest to hold: they
+    ignore the dwells (kernel finding 2026-10-06). A `saw` period starts at
+    the trough, rising (ruled 2026-10-07). Every shape is band-limited by
+    construction: square edges and saw flybacks are jerk-limited quintic
+    ramps, and a dwelled sine renders its halves as quintics so a hold is
+    reached at rest in acceleration.
   - **Driven parameters.** `frequency` and `amplitude` each carry a drive:
     `drive` (new table `osc_drives`: 0 `fixed`, 1 `speed`, 2 `position`,
     3 `axis`) and four map bounds `in_min, in_max, out_min, out_max`
@@ -8932,9 +8987,10 @@ say exactly which, future-us will want the receipts.*
   - **Safety.** The oscillator is zeroed by PAUSE and ESTOP (§11.3), never
     leaves the window (override does not lift it: an oscillation outside the
     window is never wanted), and is disabled by a deadman like any intent. It
-    owns nothing: it rides whichever source owns the rail and stops when the
-    rail goes idle, unless `enabled` while idle, in which case it oscillates
-    about the rest position and holds `control-owner` as a jog does.
+    owns nothing: it rides whichever source owns the rail, a running stream
+    included (ruled 2026-10-07), and stops when the rail goes idle, unless
+    `enabled` while idle, in which case it oscillates about the rest
+    position and holds `control-owner` as a jog does.
 - **Pros.** One frame replaces a hundred a second; the hub shapes one
   waveform against its ceilings instead of a hundred fragments; a script's
   vibrate axis maps onto something real; the modulators of RFC-066 can ride
@@ -8953,11 +9009,17 @@ say exactly which, future-us will want the receipts.*
   funscript player's axis routing (Phosphor ph-6dr6).
 - **Wire impact.** Additive: one new INTENT schema, one optional STREAM
   channel, two STATE fields. A client that ignores them loses nothing.
-- **Open questions.** Whether the oscillator sums with a running stream or
-  only with strokes, jogs and rest (summing with a 50 Hz script section and a
-  50 Hz oscillator is the double-count the RFC exists to avoid). Whether
-  `amplitude` is norm of the window or millimeters (norm keeps it portable;
-  the client shows mm). The phase of `saw` relative to the drive.
+- **Open questions.**
+  1. Whether the oscillator sums with a running stream or only with
+     strokes, jogs and rest. Ruled 2026-10-07: it sums with every source, a
+     running stream included; a 50 Hz script section on the main axis
+     under a 50 Hz oscillator is the author's double count, not the hub's
+     to prevent.
+  2. Whether `amplitude` is norm of the window or millimeters. Ruled
+     2026-10-07: a share of the travel window (norm keeps it portable); the
+     client shows millimeters.
+  3. The phase of `saw` relative to the drive. Ruled 2026-10-07: a saw's
+     period starts at the trough, rising.
 
 ---
 
@@ -9055,17 +9117,17 @@ say exactly which, future-us will want the receipts.*
 
 
 - **Status:** DRAFT (operator 2026-10-05). The reference planner is being
-  rewritten as Kinetic² (Nucleus epic val-7p2, code in the Kinetic repo).
+  rewritten as KineticÂ² (Nucleus epic val-7p2, code in the Kinetic repo).
   This RFC states only the wire-visible promises of a hub that plans the
-  way Kinetic² plans; the kernel itself is the Kinetic repo's design doc.
+  way KineticÂ² plans; the kernel itself is the Kinetic repo's design doc.
   **This draft is a working document:** the "Anticipated workflow" section
   at its end grows while the kernel is built, one entry per thing met on
   the way, and the proposal above it is corrected from those entries before
   acceptance.
 - **Origin.** The reference planner plans one trajectory per command at
   arrival with one segment of lookahead, and chases bare samples at zero
-  latency with prediction. SPEC §5.4 already defines `schedule_latency_us`
-  on a samples grant as the chase-planning budget, and §9's curve family
+  latency with prediction. SPEC Â§5.4 already defines `schedule_latency_us`
+  on a samples grant as the chase-planning budget, and Â§9's curve family
   text already says a C1 corner is authored on purpose; neither promise is
   stated as a planner contract a client can rely on.
 - **Problem.** A client cannot know, from the spec, whether its samples are
@@ -9079,7 +9141,7 @@ say exactly which, future-us will want the receipts.*
      sample as a knot at `arrival + schedule_latency_us`, and the commanded
      curve passes through the knots, interpolating between the two it knows,
      never extrapolating past the newest. The declared latency is therefore
-     exact, not a budget, and a client leads its media by it (§5.4).
+     exact, not a budget, and a client leads its media by it (Â§5.4).
   2. **Junction kinds.** At every knot the hub renders one of three
      junctions, chosen by the grant's effective `curve_family` and the
      segment's `end_vel`: SMOOTH (no end velocity, C2: velocity and
@@ -9101,7 +9163,7 @@ say exactly which, future-us will want the receipts.*
      (the planner's measured sustainable segment rate; the catalog
      `max_rate_hz` of the segment stream is at most this and defaults to
      half of it) and `osc_max_hz` (RFC-103).
-  6. **Planner options are catalog settings.** Every option Kinetic² exposes
+  6. **Planner options are catalog settings.** Every option KineticÂ² exposes
      is a setup-category field (RFC-079), one of a registered table
      `planner_options` that names its semantic so a client can present it
      and a tuner can score it: the latency (the grant key, read-only here),
@@ -9125,9 +9187,9 @@ say exactly which, future-us will want the receipts.*
   the dashboard and the search all see it for free.
 - **Cons.** Promise 3 makes the ceilings a conformance test the hub can fail
   in public. That is the point.
-- **Cost.** Registry: `planner_options`, two limits. SPEC: §5.4 one
-  paragraph, §9 a Junctions subsection, §10.1 the limits. Reference hub:
-  Kinetic². Reference client: the tuner page, the preview on the wasm build.
+- **Cost.** Registry: `planner_options`, two limits. SPEC: Â§5.4 one
+  paragraph, Â§9 a Junctions subsection, Â§10.1 the limits. Reference hub:
+  KineticÂ². Reference client: the tuner page, the preview on the wasm build.
 - **Wire impact.** Additive. The two limits and the fields are new; the
   junction keys exist.
 - **Open questions.** Whether SMOOTH under C1 should exist (a C1 stream with
@@ -9193,7 +9255,7 @@ say exactly which, future-us will want the receipts.*
     smooth stop need not. (m) A brake wins over the timeline: every pending
     knot is dropped and the origin moves to the brake's end, at rest, so a
     knot submitted meanwhile chains from there and one dated before it is
-    refused as past; the hub's e-stop and pause semantics (§11.3) sit on
+    refused as past; the hub's e-stop and pause semantics (Â§11.3) sit on
     exactly this.
   - 2026-10-05, sources (kin-ob3): the sample and segment conversions are
     one small header, and promise 1 is a test on it: a 60 Hz sample stream
@@ -9372,7 +9434,7 @@ say exactly which, future-us will want the receipts.*
     jerk ceiling of 500 as well. (rr) A junction accelerating toward vmax is
     clamped so jmax can shed the acceleration before the velocity reaches
     the ceiling, as the rail clamp does for position: any knot may turn out
-    to be the last. (ss) Ruling 2026-10-06: Kinetic² is the hub's planner in
+    to be the last. (ss) Ruling 2026-10-06: KineticÂ² is the hub's planner in
     every build; the kernel switch, Kinetic 1 and Ruckig leave Nucleus, and
     the bench A/B no longer gates it. The factory input jerk ceiling is
     5,000,000 mm/s^3 (2,000,000 was kinematically limiting; 5 to 10 million
@@ -9396,7 +9458,7 @@ say exactly which, future-us will want the receipts.*
     follows the new bundle, census refused 0 and failures 0.
     (uu) The solver's banded system is storage the engine owns per axis
     (jerk::Workspace), never static and never thread_local: the first
-    Kinetic²-only image on the P4 carried 10 KB of thread-local data, and
+    KineticÂ²-only image on the P4 carried 10 KB of thread-local data, and
     ESP-IDF carves a task's thread-local block from that task's own stack,
     so the IPC task could not be created and the board boot-looped before
     app_main (Kinetic kin-6tz).
@@ -9418,7 +9480,7 @@ say exactly which, future-us will want the receipts.*
     plan, the funscript, jog and 60 Hz stream mixes need 7.1, 1.9 and 2.0
     judges on average (36, 29 and 4.2 before), and the 64-knot bundle 14
     in its first tick (1247 before). On an infeasible PCHIP funscript, 13
-    stretches totalling 0.5 s became 2 totalling 0.02 s and the mean
+    stretches totaling 0.5 s became 2 totaling 0.02 s and the mean
     share kept fell from 0.63 to 0.56. Phosphor sends no curve family, so
     its segments render as C2: Corner::Cubic applies only under a C1
     curve policy, which also turns every PCHIP turnaround (v = 0) into a
@@ -9485,5 +9547,194 @@ say exactly which, future-us will want the receipts.*
     every knot of a C1 script into a C2 junction, one bundle per span, and
     the author's corners were lost on the bench even with the client
     declaring c1_cubic (Kinetic kin-az1).
+    (aaa) The cubic spends (Kinetic kin-g5u, 2026-10-07). An authored C1
+    cubic the ceilings refuse is spent on AS A CUBIC. Falling to the smooth
+    quintic first priced every spend for a curve a quarter faster: a fall
+    96 mm in 125 ms at 15 % over the speed ceiling cost 27 % of its stroke
+    (Blend) or 42 ms (Stretch) where 13 % or 19 ms was due, measured in the
+    KineticÂ² lab on the operator's recording. Now: speed-bound alone, the
+    cubic is SATURATED, its speed clipped at the ceiling with jerk-limited
+    round-offs (Profile::saturate), the knot later by the clipped area (4 ms
+    there, the whole stroke, 1.4 mm rms against the author's curve where the
+    best rescale is 4.7); acceleration- or jerk-bound, the cubic is DILATED
+    by the root of the ratio that binds; the ramp at the knot before leaves
+    with the acceleration of the right cubic as it will render. Under Blend
+    a time spend is bounded by a LATENESS BUDGET (Config::late_budget_us,
+    50 ms: time, never a share of the window, which is the operator's
+    preference) past which the stroke is cut by the ratio (TRIM, sized for
+    the cubic); under Stretch time has no budget. The placement rule: a
+    stretch moves every later segment with it, a new arrival included (the
+    knot retired last carries it), and every span after it catches up as
+    far as its own ceilings allow, never more than a quarter of itself; a
+    hold gives everything back. "Stretch keeps the stroke, moves the knot
+    and everything after it" (RFC-105 (bb) wording) is amended to "and the
+    knots after it catch up where the author left room". Measured on four
+    scripts (lab, same machine): the fall script 2.26 -> 1.59 mm mean, p95
+    18.6 -> 5.9; a 20 s sine 1.8 -> 1.2; Krampus at 300 mm 34 -> 30 (the
+    script asks twice the machine; trims on time, as before); a 30 Hz
+    burst script 2.3 -> 3.0 (its reversals at 33 ms spans need 22 ms jerk
+    ramps each: beyond any cubic rendering; the open item). Promise 3 holds
+    throughout (0 violations in the 800-run property suite).
+    (bbb) The cubic spends, second pass (Kinetic c3af1ed, 2026-10-07), each
+    defect found in the lab on the operator's scripts. The saturated head
+    begins with the ramp the corner would have made (the start state's
+    acceleration to the cubic's own, no higher than the ceiling), rounds
+    off at once when the start is within one round-off of the ceiling (a
+    re-plan from mid-flight), and cruises through a knot whose authored
+    end velocity sits at the ceiling (the hub's clamp), landing it there
+    with no acceleration. A rest knot into a flat span is its ramp's END,
+    not its middle: reached at rest, a hold is a hold (centered, a 96 mm
+    fall's bottom left at 34 mm/s bulged 40 mm over a 5 s hold). A trim
+    scales the junction velocity with the share. The lateness budget is
+    100 ms. Measured: the fall script 1.59 -> 0.48 mm mean; the sawtooth
+    21.6 -> 7.3 (the rise whole at the ceiling, 67 ms late, given back by
+    the fall's third span); Krampus at 200 mm 16.5 -> 3.2.
+    (ccc) The handle model (operator ruling 2026-10-07, "this is K2"). The
+    renderer between knots is a composite cubic BÃ©zier in the time-position
+    plane with the standard's geometric continuity marked per knot: knots on
+    the author's clock, one angle and two handle lengths per knot, a third
+    of the span being the exact C1 Hermite; hold edges and crests G1 with
+    flat angles (PCHIP as drawn, the corner ramp takes the acceleration
+    step), through points G2 by a closed-form angle; under the smooth style
+    Makima's angles and G2 everywhere. The ceilings bound the lengths per
+    piece (one factor, nearest one, above the feel floor); amplitude gives
+    by moving the later knot toward the previous knot's actual position by
+    the least that is legal; time never. Proven in the Kinetic playground's
+    handles page (kin-d0o) before the kernel: the figure case (150 mm
+    strokes at 200 ms between crests) fits at a length of 0.25 under
+    1000 mm/s and 50000 mm/sÂ²; a run of 100 mm strokes at 150 ms against
+    400 mm/s trims every top to 47 mm with the bottoms anchored where the
+    run started; the built-in script renders inside the ceilings at 100,
+    300 and 500 mm windows with 0, 9 and 13 knots trimmed. Met on the way:
+    angles must be held to vmax before any length is tried (a chord over
+    the ceiling has no legal piece); a trimmed knot's hold moves with it or
+    the hold tilts; angles re-solve from the trimmed chords; a hold edge
+    cannot be G2 with one cubic piece. The cost: one cubic per span needs
+    about twice an S-curve's acceleration at the same peak, so an
+    over-ceiling rise trims more than (bbb)'s saturate (the sawtooth whole
+    150 ms late against 67, or 73% on time). The kernel work is kin-y6e
+    (molecule kin-mol-bgh); the wire side is RFC-106. The spends of (aaa)
+    and (bbb) are superseded by the five cases; the stream engine behind
+    this RFC's promises is unchanged.
+
+---
+
+<a id="rfc-106"></a>
+## RFC-106 -- Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles
+
+- **Status:** DRAFT (operator ruling 2026-10-07, "this is K2": the handle
+  renderer is Kinetic²'s renderer; the kernel follows the playground that
+  proved it).
+- **Origin.** The 2026-10-07 design session over the Kinetic² lab's
+  measurements (RFC-105 (aaa), (bbb)): the operator's pull toward the
+  standard, a composite cubic Bézier in the time-position plane with handles
+  as in Blender's F-curves, with the continuity classes of the standard
+  (G0, G1, G2) marked per knot and the ceilings applied on top. Proven in
+  the handles playground (Kinetic `playground/handles.html`, bead kin-d0o)
+  before any kernel change. Builds on §5.4's `unspecified` end velocity
+  (RFC-058), §9.6's "carry intent, not pre-chewed motion", and the
+  `curve_family` declaration (key 45, RFC-030).
+- **Problem.** A free-velocity segment stream (end velocities `unspecified`)
+  leaves the angle at each knot to the hub, but the family declaration only
+  names the smoothness class the SENDER produced: `c1_cubic` lumps Linear,
+  PCHIP and Makima together because the sender used to supply the slopes.
+  Two players with the same knots and different interpolators therefore
+  render identically on a hub that derives angles and differently on their
+  own screens. And the hub's rendering under the ceilings was a ladder of
+  cases (saturate, dilate, trim, corner attempts, a lateness budget) with no
+  statement of what a spend does to the author's curve, which a second
+  implementation could not match and a client could not draw.
+- **Proposal.**
+  1. **The renderer.** Between knots the hub renders a cubic Bézier in the
+     time-position plane. Knots stay on the author's clock in time and
+     position (only the amplitude rule below moves one, in position). Each
+     knot has one angle (its velocity) and two handle lengths (the time
+     extent of each handle as a fraction of its span). A length of one third
+     is the polynomial cubic: an untouched knot renders the C1 Hermite of
+     RFC-030 exactly, so PCHIP and Makima render as drawn. The continuity
+     classes are geometric: G1 is velocity continuity through the knot
+     (collinear handles, lengths free), G2 is acceleration continuity (one
+     condition on the lengths, or on the angle where the angle is free).
+     Parametric continuity (C1, C2 in the curve parameter) is not used: the
+     parameter is not time, and mirrored handles would change PCHIP for a
+     condition the motor cannot feel. The registry's `c1_cubic` and
+     `c2_quintic` already mean continuity in time, which in this plane is
+     G1 and G2.
+  2. **Classes from the chords.** A knot is a hold edge (a chord within
+     `segment_dwell_span` of zero on either side), a crest (the chords change
+     sign) or a through point (the same sign both sides); the first and last
+     knots are rest. The classification is the hub's and needs the next
+     knot, which the stream's lookahead already supplies (RFC-105).
+  3. **Two styles, as new `curve_families` values** (numbers allocated by
+     the registry at landing; the next free values are proposed):
+     `pchip`: angles zero at crests and hold edges (flat tops, PCHIP's
+     monotone rule), rendered G1 there; through points G2 by their angle,
+     which the hub solves (both sides are linear in it), held to the
+     Fritsch-Carlson monotone band and to `vmax`. `smooth`: Makima's angle
+     rule at crests and through points, hold edges zero, every inner knot
+     G2 (lengths matched at crests). An end velocity that is not
+     `unspecified` is an aligned handle: the angle is the author's, the
+     lengths the hub's. A velocity over `vmax` is clamped as today
+     (`EndVelClamped`). The declaration rides HELLO and PUBLISH as today;
+     the GRANT echo reports the EFFECTIVE family, so a hub without this
+     renderer reports `c1_cubic` and the client knows (RFC-049b's
+     honored-vs-downgraded mechanism, unchanged).
+  4. **The ceilings bound the lengths.** Per piece, both handles scale by one
+     factor, the nearest to one that is legal, never below the feel floor
+     (`handle_floor`, a planner option for RFC-105's table, default 0.15 of
+     the span). Speed caps the length from above (a shorter handle lowers
+     the peak toward the mean), acceleration and jerk floor it (a shorter
+     handle sharpens the ends as one over the length squared). The window
+     is a ceiling like the others.
+  5. **Amplitude gives, time never.** When no length is legal, the later knot
+     of the piece moves toward the previous knot's ACTUAL position by the
+     least that is legal (a monotone bisection). A knot that was reachable
+     never moves; a hold after a trimmed knot moves with it and stays flat;
+     angles are re-solved from the trimmed chords. The move is reported on the
+     `events.anomaly` channel (§9.4) as the hub's existing scaled-waveform
+     kind, the millimeters trimmed in its detail. The lateness budget of
+     RFC-105's options defaults to zero.
+  6. **The jerk ceiling on top.** At a G1 knot the acceleration step is
+     rounded by the corner ramp of |Δa| / `jmax`. A G0 knot (an authored
+     corner: linear or step senders) is rendered as the tightest rounding
+     the acceleration ceiling allows. G2 knots need nothing.
+- **Pros.** One kind of unknown, the handle lengths; every ceiling is a
+  monotone bound on it, so the solve is a bracket, not a search, and a second
+  implementation can match the reference sample for sample. Exact PCHIP where
+  the ceilings allow, flat crests kept, mid-travel points pass through
+  without a corner. Blender's F-curve model: a client draws the handles the
+  hub uses, and the twin renders what the motor does. The five cases replace
+  the spend ladder of RFC-105 (aaa) and (bbb); the stream engine (timeline,
+  horizon, supersede, re-plan from the live state) is untouched.
+- **Cons.** One cubic piece per span puts its peak acceleration at the knot
+  ends, so at the same peak speed it needs about twice the acceleration of
+  an ideal S-curve: at the ceiling it trims more than a cruise profile
+  (measured on the lab's sawtooth: the whole rise 150 ms late against 67, or
+  73% of the stroke on time against about 81%). Inside the ceilings nothing
+  is lost; raising the acceleration ceiling on the motor shrinks the gap;
+  machine-inserted cruise pieces inside a span are the extension if a motor
+  needs them, and would be the only case logic left.
+- **Cost.** Kinetic: the solver's corner branch and the profile spends are
+  replaced by the five cases (the playground's `handles-model.js` is the
+  reference, 1 ms grid parity on its built-in script is the acceptance); the
+  wasm twin follows; Phosphor draws the twin and sends knots plus the style
+  instead of interpolating; registry: two `curve_families` values;
+  RFC-105's options table: `handle_floor`, and the lateness budget's new
+  default.
+- **Wire impact.** Additive. Two `curve_families` values; no record layout
+  change (the `unspecified` end velocity exists, §5.4). A pre-RFC client
+  sees no change; a pre-RFC hub treats the new values as `unspecified` per
+  the existing rule and echoes what it rendered.
+- **Open questions.** (1) The registry numbers, allocated at landing.
+  (2) Whether `smooth` is Makima exactly: the angle rule must be normative
+  for a client's drawing to match the hub (the weights formula goes in
+  RENDERING.md). (3) Trim anchoring: at the previous knot (proposed, the
+  machine is there) or centering the reduced stroke, which would move
+  reachable knots; the operator's call. (4) A through point trimmed toward
+  the previous knot lengthens the piece after it; balancing it between its
+  two pieces is the refinement if a script shows the need. (5) `step` (3)
+  under this renderer: a G0 corner at the knot time, which would make the
+  reserved family declarable. (6) `handle_floor` and the maximum trim as
+  planner options on RFC-105's table, with their keys.
 
 ---
