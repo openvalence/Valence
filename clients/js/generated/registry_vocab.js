@@ -206,7 +206,7 @@ export const CORE_CHANNEL_NAME = {
 
 // ---- cbor_keys -----------------------------------------------------
 export const K = {
-  proto_ver: 1,  // HELLO/WELCOME: protocol major version
+  proto_ver: 1,  // HELLO/WELCOME: protocol MAJOR (SPEC §1.4, RFC-102); never carries a minor
   client_kind: 2,  // e.g. webui, c5-remote, mobile, sim, tcode-bridge
   client_name: 3,  // human-readable, ≤32 UTF-8 bytes
   instance_id: 4,  // 8-byte stable client identity (§6.1)
@@ -333,7 +333,7 @@ export const PROBE_RESULT_K = {
 // ---- identity_keys -------------------------------------------------
 export const IDENTITY_K = {
   product: 1,  // tstr: product/model identifier, e.g. 'nucleus' (<=32 B)
-  fw_version: 2,  // tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made
+  fw_version: 2,  // tstr: the hub's MAJOR.MINOR, e.g. '1.2' (<=24 B); the patch never rides the wire (RFC-102, SPEC 
   hub_name: 3,  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where
   info: 4,  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr;
   hub_instance_id: 5,  // uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once 

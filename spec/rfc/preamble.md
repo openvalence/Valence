@@ -429,7 +429,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
 | [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
-| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Accepted 2026-10-07 |
+| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Landed ce16f93 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
 | [100](#rfc-100) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Landed abe752e + 8d67b4b (accepted 2026-10-03, rfc-6qf) |

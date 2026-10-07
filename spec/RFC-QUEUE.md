@@ -431,7 +431,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
 | [096](#rfc-096) | ` / ` in a `group` string names a section (presentation convention) | Accepted 2026-10-07 (rfc-4ed) |
-| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Accepted 2026-10-07 |
+| [097](#rfc-097) | Pin the 0x0001 catalog STATE layout (12 B) | Landed ce16f93 |
 | [098](#rfc-098) | Quiet release of rail ownership; source kind on control-owner | Accepted 2026-10-03 |
 | [099](#rfc-099) | Trial writes: apply live without persisting, commit or revert | Landed a0f3fcb + 28ba317 (accepted 2026-10-03, rfc-2s0) |
 | [100](#rfc-100) | Plan feasibility flags (`plan.flags`, `plan_flags`) | Landed abe752e + 8d67b4b (accepted 2026-10-03, rfc-6qf) |
@@ -536,12 +536,12 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
 | [095](#rfc-095) | Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods | Landed | closed |
 | [096](#rfc-096) | A ` / ` separator in a group string names a section | Accepted | open |
-| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Landed | open |
+| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Landed | closed |
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
 | [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Accepted | open |
-| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Accepted | open |
+| [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | open |
 | [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Accepted | open |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
@@ -8439,7 +8439,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-097 -- The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes)
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted. Drafted
+- **Status:** LANDED ce16f93 (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted. Drafted
   2026-10-02, from the RFC-077 library landing fd36721.
 - **Origin:** the reference library now re-announces a grown catalog on the
   `catalog` channel 0x0001 (RFC-077, SPEC §8.6) and the JS client must
@@ -8851,7 +8851,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07). Open questions closed:
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07). Open questions closed:
   identity's `protocol_version` carries MAJOR.MINOR only, and a client
   whose MINOR exceeds the hub's hides what the hub lacks and states the
   hub's version once in its about surface, never a warning dialog. Drafted

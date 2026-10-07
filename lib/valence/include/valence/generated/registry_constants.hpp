@@ -115,7 +115,7 @@ inline constexpr uint16_t settings_trial = 0x0016;  // INTENT: RFC-099 (§9.3): 
 }  // namespace channels
 
 enum class CborKey : uint8_t {
-    proto_ver = 1,  // uint: HELLO/WELCOME: protocol major version
+    proto_ver = 1,  // uint: HELLO/WELCOME: protocol MAJOR (SPEC §1.4, RFC-102); never carries a minor
     client_kind = 2,  // tstr: e.g. webui, c5-remote, mobile, sim, tcode-bridge
     client_name = 3,  // tstr: human-readable, ≤32 UTF-8 bytes
     instance_id = 4,  // bstr: 8-byte stable client identity (§6.1)
@@ -186,7 +186,7 @@ inline constexpr uint8_t rtt_ms = 4;  // measured round-trip time, ms
 
 namespace identity {
 inline constexpr uint8_t product = 1;  // tstr: product/model identifier, e.g. 'nucleus' (<=32 B)
-inline constexpr uint8_t fw_version = 2;  // tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3).
+inline constexpr uint8_t fw_version = 2;  // tstr: the hub's MAJOR.MINOR, e.g. '1.2' (<=24 B); the patch never rides the wire (RFC-102, SPEC §4.2-5). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3).
 inline constexpr uint8_t hub_name = 3;  // tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one.
 inline constexpr uint8_t info = 4;  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap.
 inline constexpr uint8_t hub_instance_id = 5;  // uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once and NVS-persisted, survives every reboot and firmware update (only a factory reset regenerates it), as opposed to `boot_id` (cbor_keys 7, §6.1/§7.2), which is a FRESH random value EVERY boot and exists only to fence stale per-boot state. Distinguishes THIS PHYSICAL HUB from any other, across time. Present in WELCOME `identity` (37) for any hub that persists one; absent = the hub has no durable identity yet (a fresh dev build, a non-persisting simulator) and a client MUST tolerate its absence exactly as it tolerates the rest of `identity` (§6.3). Also the value DISCOVER_REPLY (0x1F, §13.8) now carries as `hub_instance_id`, replacing that frame's original `boot_id`-based disambiguator (see the `frame_types` 0x1F note): a boot-scoped id could not deduplicate 'two hubs sharing a name' across a reboot, which was the field's whole job.
