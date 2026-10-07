@@ -8990,7 +8990,7 @@ say exactly which, future-us will want the receipts.*
     the amplitude the ceilings left after shaping, so the client can show
     what the machine is actually doing. The plan's `clamped` flag (RFC-100)
     is set when shaping cut it.
-  - **Safety.** The oscillator is zeroed by PAUSE and ESTOP (§11.3), never
+  - **Safety.** The oscillator is zeroed by PAUSE and ESTOP (§11.1), never
     leaves the window (override does not lift it: an oscillation outside the
     window is never wanted), and is disabled by a deadman like any intent. It
     owns nothing: it rides whichever source owns the rail, a running stream
