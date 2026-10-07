@@ -431,7 +431,8 @@ def page_channels(reg: dict, reg_display: str) -> str:
     rows = []
     for cid in sorted(reg["core_channels"]):
         e = reg["core_channels"][cid]
-        rows.append([code(hexcode(cid, 4)), code(e["name"]), code(e["class"]), cell(e["note"])])
+        note = (f"layout {e['layout']}; " if e.get("layout") else "") + e["note"]
+        rows.append([code(hexcode(cid, 4)), code(e["name"]), code(e["class"]), cell(note)])
     table(p, ["Id", "Name", "Class", "Notes"], rows)
     return w.getvalue()
 

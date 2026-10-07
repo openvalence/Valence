@@ -157,7 +157,7 @@ def gen(reg: dict) -> str:
     p("namespace channels {\n")
     for cid in sorted(reg["core_channels"]):
         e = reg["core_channels"][cid]
-        p(f"inline constexpr uint16_t {ident(e['name'])} = 0x{cid:04X};  // {e['class']}: {e['note']}\n")
+        p(f"inline constexpr uint16_t {ident(e['name'])} = 0x{cid:04X};  // {e['class']}: {note_text(e)}\n")
     p("}  // namespace channels\n\n")
 
     # ---- CBOR keys ----------------------------------------------------------
@@ -369,11 +369,17 @@ def js_num(code: int, hex_nibbles: int) -> str:
     return f"0x{code:0{hex_nibbles}x}" if hex_nibbles else str(code)
 
 
-def js_note(entry: dict) -> str:
+def note_text(entry: dict) -> str:
+    # A `layout:` key (the packed wire layout, RFC-097) leads the note so it
+    # survives the JS one-liner's cut.
     note = entry.get("ref") or entry.get("note") or ""
+    return f"layout {entry['layout']}; {note}" if entry.get("layout") else str(note)
+
+
+def js_note(entry: dict) -> str:
     # Generated one-liners: a note that wraps stops being scannable, and the
     # authoritative prose lives in registry.yaml regardless.
-    note = " ".join(str(note).split())
+    note = " ".join(note_text(entry).split())
     return f"  // {note[:96]}" if note else ""
 
 
