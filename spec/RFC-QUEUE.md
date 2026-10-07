@@ -542,7 +542,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
 | [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Landed | closed |
 | [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | closed |
-| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Landed | open |
+| [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Landed | closed |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
 | [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles | Draft | open |
@@ -7927,7 +7927,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-089 -- Store writer field roles: find slot, name and item by identity
 
 
-- **Status:** LANDED 44c52b8 (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
+- **Status:** LANDED 44c52b8 (2026-10-07). Landing fixes: b25a712. ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
   closed: an import that does not fit the binding's frame is refused
   `FRAME_TOO_LARGE`, acceptable for v1; a full store on `save` is refused
   `INVALID_VALUE` with a detail naming the store full, no new NACK code;
@@ -8054,7 +8054,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-090 -- SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base`
 
 
-- **Status:** LANDED 1b290c8 (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-0wp). Accepted with one
+- **Status:** LANDED 1b290c8 (2026-10-07). Landing fixes: 5225569. ACCEPTED (operator, 2026-10-07; rfc-0wp). Accepted with one
   amendment, folded into the proposed change: a bundle whose stamps lie
   beyond now plus the lead cap moves earlier as a whole, never stamp by
   stamp. Editorial and separable: it changes no behavior the operator
@@ -8441,7 +8441,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-097 -- The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes)
 
 
-- **Status:** LANDED ce16f93 (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted. Drafted
+- **Status:** LANDED ce16f93 (2026-10-07). Landing fixes: b75431f. ACCEPTED (operator, 2026-10-07) as drafted. Drafted
   2026-10-02, from the RFC-077 library landing fd36721.
 - **Origin:** the reference library now re-announces a grown catalog on the
   `catalog` channel 0x0001 (RFC-077, SPEC §8.6) and the JS client must
@@ -8739,7 +8739,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
 
 
-- **Status:** LANDED c51ff34 (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
+- **Status:** LANDED c51ff34 (2026-10-07). Landing fixes: 5225569. ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
   question stays deferred. Drafted from Nucleus val-dbo, amended for
   val-zsr: the operator ruled the reference hub's homing on 2026-10-03
   ahead of this text, and ruled it two-sided the same day after the first
@@ -8853,7 +8853,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
 
 
-- **Status:** LANDED 6a89df8 (2026-10-07). Landed on identity `fw_version`
+- **Status:** LANDED 6a89df8 (2026-10-07). Landing fixes: 5cfd99a, e1e3912. Landed on identity `fw_version`
   (registry `identity_keys` 2; SPEC §4.2-5, §6.3): identity has no
   `protocol_version` key, `fw_version` is its one version string, so the
   MAJOR.MINOR rule below binds there; operator confirmation of that mapping
@@ -8932,7 +8932,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-103 -- Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second
 
 
-- **Status:** LANDED 4938889 (2026-10-07). ACCEPTED (operator, 2026-10-07) with an amendment and three
+- **Status:** LANDED 4938889 (2026-10-07). Landing fixes: 03dd0bf, 63b2a87. ACCEPTED (operator, 2026-10-07) with an amendment and three
   answers, folded below: the oscillator is an additional feature, it sums
   with every source, amplitude is a share of the travel window, and a saw's
   period starts at the trough, rising; the yields-first ruling stands.
