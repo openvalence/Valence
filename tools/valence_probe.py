@@ -409,6 +409,7 @@ ANOMALY_KINDS = {
     8: "handoff_bounded",   # M4d / RFC-008 -- the hub-side handoff sanity guard
     9: "waveform_smoothed", # kinetic 0.8.0 -- the budgeted policies' own kind
     10: "dwell_zeroed",
+    11: "knot_refused",   # Kinetic²: a knot not after the newest, or in the past
 }
 # ANOMALY_KINDS is index-aligned with the hub's own 0x4100 `kind` option labels
 # (catalog `options`, wire value = array index); check_anomaly_vocab() fails
