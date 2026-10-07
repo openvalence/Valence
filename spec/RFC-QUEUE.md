@@ -425,7 +425,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
 | [087](#rfc-087) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088) | Flip: rail-bound direction flip | Landed a7415b0 |
-| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Accepted 2026-10-07 (rfc-hen) |
+| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Landed 44c52b8 |
 | [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Landed 1b290c8 |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
@@ -530,7 +530,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units: `deg`, `us` and a hub-time stamp unit; display autoranging is a client choice | Accepted | open |
 | [087](#rfc-087) | Segments-kind bundles span the schedule horizon; the horizon is advertised per grant | Accepted | open |
 | [088](#rfc-088) | Flip: a rail-bound direction flip, home swaps ends | Accepted | open |
-| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Landed | open |
+| [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Landed | closed |
 | [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Landed | closed |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources, not one generator with a mode | Landed | closed |
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
@@ -540,7 +540,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
-| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Accepted | open |
+| [101](#rfc-101) | The home verb's cycle: the ECHO answers the start, motion status answers the end | Landed | open |
 | [102](#rfc-102) | Version numbers promise compatibility: one major across the stack, minors add, patches are free | Landed | closed |
 | [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Accepted | open |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
@@ -7927,7 +7927,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-089 -- Store writer field roles: find slot, name and item by identity
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
+- **Status:** LANDED 44c52b8 (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-hen). Open questions
   closed: an import that does not fit the binding's frame is refused
   `FRAME_TOO_LARGE`, acceptable for v1; a full store on `save` is refused
   `INVALID_VALUE` with a detail naming the store full, no new NACK code;
@@ -8737,7 +8737,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-101 -- The home verb's cycle: the ECHO answers the start, motion status answers the end
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted; the deferred ECHO
   question stays deferred. Drafted from Nucleus val-dbo, amended for
   val-zsr: the operator ruled the reference hub's homing on 2026-10-03
   ahead of this text, and ruled it two-sided the same day after the first
@@ -8750,9 +8750,9 @@ say exactly which, future-us will want the receipts.*
   and the operator asked for two things: a second leg to the far end, so the
   rail length is measured rather than typed in, and a faster approach (the
   one-sided cycle crawled at 12 mm/s).
-- **Problem.** SPEC names the verb (`action.home`, §8.8 roles), admits it
-  under PAUSE whether or not the hub is unhomed (§11.1), and clears
-  `home_required` on "a completed home" (§11.2). It says nothing of what the
+- **Problem.** SPEC names the verb (`action.home`, Â§8.8 roles), admits it
+  under PAUSE whether or not the hub is unhomed (Â§11.1), and clears
+  `home_required` on "a completed home" (Â§11.2). It says nothing of what the
   verb's ECHO means for a cycle that lasts seconds, how a cycle that fails is
   reported, what ends a cycle early, or what other motion does meanwhile. A
   client cannot tell "homing started" from "homed", and cannot learn why a
@@ -8762,15 +8762,15 @@ say exactly which, future-us will want the receipts.*
      the cycle is queued. The outcome is state, not a reply: the
      motion-status `homing` bit (the reference `motion-status` flags, Appendix D
      row 0xEE05) is set from acceptance until the cycle ends, `homed` is
-     set if and only if it completed, and `home_required` (§11.2) clears
+     set if and only if it completed, and `home_required` (Â§11.2) clears
      only on a completed cycle.
   2. **Refusals at the start.** `UNSUPPORTED_OP` when the hub has no means
      to home (no end-of-travel sense on this build); `INTERLOCK` when its
      sense cannot be trusted (undriven, or already reading end-of-travel),
-     while the machine moves, or under override (§11.1: `return` first);
+     while the machine moves, or under override (Â§11.1: `return` first);
      `ESTOP_ACTIVE` while ESTOP is latched; `SOURCE_CONFLICT` while a source
      owns the rail outside PAUSE (under PAUSE an owning source is suspended
-     and the verb is admitted, §11.1). Each carries a `detail` (§16.1).
+     and the verb is admitted, Â§11.1). Each carries a `detail` (Â§16.1).
   3. **During a cycle.** The cycle owns the rail: every other motion intent
      is refused `INTERLOCK`, and a second `action.home` is an ordinary ECHO
      that changes nothing. A bench verb that declares the machine homed
@@ -8778,7 +8778,7 @@ say exactly which, future-us will want the receipts.*
   4. **What ends a cycle early, unhomed.** ESTOP; a `pause` op, even with
      PAUSE already latched (the cycle runs under the latch, so a fresh pause
      is the operator saying stop); loss of motor power; a change to the
-     travel geometry. The reason goes to the log channel at Warn (§16.2).
+     travel geometry. The reason goes to the log channel at Warn (Â§16.2).
   5. **Failure.** No end-of-travel within either leg's search
      (`geometry.max_travel` plus a hub margin), a sense that still reads
      end-of-travel after the hub backs off it, a far end closer than the
@@ -8789,7 +8789,7 @@ say exactly which, future-us will want the receipts.*
      threshold, the drive), the speeds, the debounce, the backoffs, the
      search margin and the deadline are the hub's. The protocol fixes only
      that 0 is where the cycle says the home end is, and that the flip
-     (§9.6) swaps which end that is.
+     (Â§9.6) swaps which end that is.
   7. **Two legs; the travel is measured.** The cycle takes a datum at the
      home end, then at the far end. The home datum is 0; the far datum
      minus it is the measured travel. On completion the hub publishes it as
@@ -8832,7 +8832,7 @@ say exactly which, future-us will want the receipts.*
 - **Cons.** A failed cycle's reason reaches only a client that reads the log
   channel. Overwriting `geometry.max_travel` with the measurement means the
   search distance shrinks to the rail it found.
-- **Cost.** SPEC §11.1 and §11.2, a few sentences; §9 one sentence that a
+- **Cost.** SPEC Â§11.1 and Â§11.2, a few sentences; Â§9 one sentence that a
   completed home MAY store its measured travel in `geometry.max_travel`;
   Appendix D's 0xEE05 row a clause. Reference hub: none beyond what landed
   (Nucleus val-dbo, val-zsr).

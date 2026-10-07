@@ -423,7 +423,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [086](#rfc-086) | Units `deg`, `us`, `hub_s` | Landed 20b2da5 |
 | [087](#rfc-087) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088) | Flip: rail-bound direction flip | Landed a7415b0 |
-| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Accepted 2026-10-07 (rfc-hen) |
+| [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Landed 44c52b8 |
 | [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Landed 1b290c8 |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
