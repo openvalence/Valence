@@ -243,7 +243,7 @@ export const K = {
   grants: 35,  // WELCOME: batch grant results: array of {13:priority, 14:granted_rate_hz, 15:channel_id} (§6.3, §
   granted_publishes: 36,  // WELCOME / PUBLISH result: granted STREAM-ingress publishes: array of {14:granted_rate_hz, 15:cha
   identity: 37,  // WELCOME: hub identity (RFC-016): sub-keys in `identity_keys`. Capability discovery is CATALOG in
-  blob: 38,  // BLOB_REQ / BLOB_CHUNK / store CRUD intents: which blob, and its item fields (RFC-021): sub-keys 
+  blob: 38,  // BLOB_REQ / BLOB_CHUNK: which blob (RFC-021): sub-keys in `blob_keys`. A store CRUD INTENT carrie
   trust: 39,  // HELLO + WELCOME + AUTH: identity proof, signature material, token presentation, pairing modes (R
   body: 40,  // EVENT: the kind-specific fields. Integer keys come from the CHANNEL'S CATALOG `schema`, exactly 
   intent_seq: 41,  // NACK: seq of the frame being rejected (RFC-001). Hubs SHOULD populate it whenever a specific inb

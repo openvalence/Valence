@@ -8027,7 +8027,9 @@ say exactly which, future-us will want the receipts.*
 - **Compatibility.** Pre-tag, additive. Reference-hub follow-ups (Nucleus
   board): `pattern-presets-cmd` and the relationships writer (0x0015) tag
   their slot, name and item fields and enforce the per-verb set. Phosphor
-  (ph-e82.13.6): bind by role and drop the type guess.
+  (ph-e82.13.6): bind by role and drop the type guess. Valence (rfc-fqyc):
+  `clients/js/localhub.js` storeOp binds by role, takes `store.item` whole
+  and enforces the per-verb set.
 - **Open questions.**
   1. **Item size against the frame.** An INTENT is one frame, and a store
      item may reach `per_item_max` (default 4096, §8.7), far past the
