@@ -9400,5 +9400,32 @@ say exactly which, future-us will want the receipts.*
     ESP-IDF carves a task's thread-local block from that task's own stack,
     so the IPC task could not be created and the board boot-looped before
     app_main (Kinetic kin-6tz).
+    (vv) A window solve is bounded, 2026-10-06 (Kinetic kin-ys0, a9958a0).
+    The P4 measured one solve at 283 ms: every submit re-solved every
+    pending knot, every spend was a bisection that re-solved the junction
+    chain per step, and the chain was double precision (software float on
+    the P4). Now: a submit re-solves the new knot and the one before it;
+    the junction system is float, scaled to a unit diagonal (within 1.1e-6
+    of the window of the double result); a junction sees 8 knots ahead;
+    every spend starts from the referee's ratio and the ceiling that bound
+    (a Blend share of 1 / worst, a Stretch of T times the ratio, its square
+    root or its cube root), judged and refined a bounded number of times,
+    with a short climb from below when legality is not monotone in the
+    time (operator ruling 2026-10-06: amplitude is given up before
+    timing). Config::solve_budget bounds one solve in referee passes (96;
+    twice that for the first knot of a solve); knots it does not reach
+    wait for the next tick and render as an unbounded solve would. Per
+    plan, the funscript, jog and 60 Hz stream mixes need 7.1, 1.9 and 2.0
+    judges on average (36, 29 and 4.2 before), and the 64-knot bundle 14
+    in its first tick (1247 before). On an infeasible PCHIP funscript, 13
+    stretches totalling 0.5 s became 2 totalling 0.02 s and the mean
+    share kept fell from 0.63 to 0.56. Phosphor sends no curve family, so
+    its segments render as C2: Corner::Cubic applies only under a C1
+    curve policy, which also turns every PCHIP turnaround (v = 0) into a
+    HARD stop; on a feasible script that matched PCHIP to 5.5 mm mean
+    against 0.67 mm for the default continuous corner. The brake from a
+    deceleration above its own amax (a pause planned under the input
+    amax while a faster jog decelerates) now ramps the deceleration down
+    under jmax before it holds, and no longer reverses (Nucleus val-9z5).
 
 ---
