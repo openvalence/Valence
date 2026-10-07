@@ -9478,5 +9478,12 @@ say exactly which, future-us will want the receipts.*
     breaks a ceiling falls back to the smooth path, where Blend trims it.
     Open: the first span from rest (the carriage has no acceleration, the
     first cubic has) still errs by a fifth of the peak velocity.
+    (zz) truncateAfter keeps the knot at its own time: a bundle whose first
+    start is where the queue ends replaces nothing. RFC-087 replaces the
+    segments whose START is at or after t_base; the one ending there is
+    kept. Dropping that knot and standing a C2 hand-off in its place turned
+    every knot of a C1 script into a C2 junction, one bundle per span, and
+    the author's corners were lost on the bench even with the client
+    declaring c1_cubic (Kinetic kin-az1).
 
 ---
