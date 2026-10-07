@@ -110,6 +110,27 @@ role is never an error.
 | `mod.rest` | RFC-066: dwell at the bottom of the cycle (field unit: strokes or seconds) |
 | `mod.phase` | RFC-066: offset of this modulator's cycle start (field unit: strokes or seconds) |
 | `mod.shape` | RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest) |
+| `osc.enabled` | RFC-103: bool, the oscillator runs. Never persisted (false at boot); cleared by the hub when the session that set it ends by any §6.9 door, the deadman included. |
+| `osc.frequency` | RFC-103: f32, Hz, 0 .. WELCOME limits osc_max_hz (key 7), clamped. The moving part of one cycle takes 1 / frequency; dwells stretch the period beyond it. Driven by osc.frequency.drive. |
+| `osc.amplitude` | RFC-103: f32, a share of the travel window, 0 .. 1: the PEAK displacement from the planned position (the swing is twice it). The client shows millimeters. What the ceilings and the window leave of it is osc.amplitude_effective. Driven by osc.amplitude.drive. |
+| `osc.shape` | RFC-103: select over osc_shapes (0 sine, 1 square, 2 saw, 3 saw_reverse); the wire value is the table value. Every period starts at the trough, rising; every shape is band-limited by construction (§9.7). |
+| `osc.dwell_crest` | RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle (1 / frequency) held at the crest, added to it as RFC-095's dwells add to a stroke, so the period becomes (1 + dwell_crest + dwell_trough) / frequency and the moving halves keep their speed. A dwelled sine renders its halves as rest-to-rest quintics. The saw shapes ignore both dwells (a saw arrives at its extremes moving). |
+| `osc.dwell_trough` | RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle held at the trough, as osc.dwell_crest. A square with dwells is a pulse-width control. |
+| `osc.frequency.drive` | RFC-103: select over osc_drives: what sets osc.frequency. fixed = the field's own value (the bounds unused); speed, position = the planned motion the oscillator rides; axis = the osc.drive stream's frequency field. The other three map the drive's input through osc.frequency.in_min/in_max/out_min/out_max as §8.11's linear_clamp, the output clamped into 0 .. osc_max_hz. |
+| `osc.frequency.in_min` | RFC-103: f32, the drive's input at which osc.frequency reads out_min (the drive's own unit: telemetry.velocity's for speed, telemetry.target's for position, 0 .. 1 for axis) |
+| `osc.frequency.in_max` | RFC-103: f32, the drive's input at which osc.frequency reads out_max; in_min != in_max |
+| `osc.frequency.out_min` | RFC-103: f32, Hz, the frequency at in_min |
+| `osc.frequency.out_max` | RFC-103: f32, Hz, the frequency at in_max |
+| `osc.amplitude.drive` | RFC-103: select over osc_drives: what sets osc.amplitude, as osc.frequency.drive; axis = the osc.drive stream's amplitude field; the output clamped into 0 .. 1. |
+| `osc.amplitude.in_min` | RFC-103: f32, the drive's input at which osc.amplitude reads out_min (the drive's own unit, as osc.frequency.in_min) |
+| `osc.amplitude.in_max` | RFC-103: f32, the drive's input at which osc.amplitude reads out_max; in_min != in_max |
+| `osc.amplitude.out_min` | RFC-103: f32, window share, the amplitude at in_min |
+| `osc.amplitude.out_max` | RFC-103: f32, window share, the amplitude at in_max |
+| `osc.active` | RFC-103: STATE bool: the oscillator is enabled and rendering a nonzero amplitude this instant. False under PAUSE and ESTOP. |
+| `osc.amplitude_effective` | RFC-103: STATE f32, window share: the amplitude the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit3 clamped (RFC-100) is set. |
+| `store.slot` | RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename; optional on save (absent, the hub picks a free slot and ECHO `applied` carries it; no free slot is INVALID_VALUE with a detail naming the store full). Binds within the entry carrying the action.store op select. |
+| `store.name` | RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename. Binds within the entry carrying the action.store op select. |
+| `store.item` | RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, name, kind, payload, optional digest), never the bare payload. Optional on save (absent, the hub captures live state; a store with no live state to capture requires it). Its slot and name MUST equal store.slot and store.name, else INVALID_VALUE. One frame: an item past the binding's max_frame is FRAME_TOO_LARGE. Binds within the entry carrying the action.store op select. |
 | `color.red` | RFC-083: writable numeric red channel of one color group; color.red/green/blue together trigger the `color` archetype (all three essential) |
 | `color.green` | RFC-083: writable numeric green channel of one color group |
 | `color.blue` | RFC-083: writable numeric blue channel of one color group |
@@ -133,6 +154,7 @@ field. The same doctrine applies: unknown roles render generically.
 |---|---|
 | `events.anomaly` | EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a planner fallback, a rejected plan). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name. |
 | `anomaly.summary` | STATE entry: the latched counters twin of an events.anomaly channel (§9.4 duality rule), so the event log and its counters bind together. |
+| `osc.drive` | RFC-103: c2h samples-kind STREAM entry, the external axis driving the oscillator. The role fixes the layout: amplitude (f32, 0 .. 1) then frequency (f32, 0 .. 1), each mapped through its parameter's own bounds where that parameter's drive is axis. Carries no input.target, so it is never motion input and never owns the rail. Quiet for stream_quiet_release_ms, an axis-driven parameter reads 0. The reference hub names its entry osc-drive. |
 
 ## Setting flags
 
@@ -180,4 +202,26 @@ The `curve_family` sub-key is CBOR key 45, inside a `publishes` or `granted_publ
 | `1` | `c1_cubic` | velocity-continuous cubic (Linear/Pchip/Makima/monotone-cubic senders). Acceleration lawfully STEPS at knots; a follow-client hub reconstructs C1 and does NOT smooth the corner the author put there. |
 | `2` | `c2_quintic` | curvature-continuous; the sender means the smoothness. A follow-client hub may use its C2 reconstruction (backward-difference af estimation is valid here: the quantity exists). |
 | `3` | `step` | held value with instantaneous transitions (step/none interpolation). The family says intent, the machine owns feasibility as always. RFC-049a: NUMBER KEPT, never renumbered, but status is `reserved`: the reference engine has no step renderer, so a `step` declaration renders as `c2_quintic` and the GRANT echo reports exactly that effective family (§9.6, §18-20). Declarable again when a step renderer exists in the reference engine; only the delegate's mapping changes when it does. |
+
+## Oscillator shapes
+
+The `osc.shape` select of the hub-side oscillator (RFC-103, SPEC §9.7). Every period starts at the trough, rising.
+
+| Value | Shape | Notes |
+|---|---|---|
+| `0` | `sine` | -cos: trough at phase 0, crest at the half cycle. With a dwell, each half is a rest-to-rest quintic. |
+| `1` | `square` | a rising quintic edge at phase 0, the crest held, a falling edge at the half cycle, the trough held; with dwells, a pulse-width control |
+| `2` | `saw` | a linear rise over most of the period, then a quintic flyback whose slope matches the ramp at both ends. Ignores the dwells. |
+| `3` | `saw_reverse` | saw mirrored in time: the flyback rises, the ramp falls. Ignores the dwells. |
+
+## Oscillator drives
+
+The `osc.frequency.drive` and `osc.amplitude.drive` selects (RFC-103, SPEC §9.7): what sets the parameter. A driven parameter maps its source through `linear_clamp` (SPEC §8.11) with the entry's `in_min`/`in_max`/`out_min`/`out_max` fields.
+
+| Value | Drive | Notes |
+|---|---|---|
+| `0` | `fixed` | the parameter is its own field's value; the bounds are unused |
+| `1` | `speed` | the magnitude of the commanded speed the oscillator rides, in the unit of the hub's telemetry.velocity field |
+| `2` | `position` | the commanded position the oscillator rides, in the unit of the hub's telemetry.target field |
+| `3` | `axis` | the osc.drive stream's field of the same name (amplitude or frequency), 0 .. 1; 0 once the stream has been quiet for stream_quiet_release_ms |
 

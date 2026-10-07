@@ -111,6 +111,8 @@ SECTION_HOMES: dict[str, str] = {
     "setting_flags": "catalog-vocabulary.md",
     "procedure_phases": "catalog-vocabulary.md",
     "curve_families": "catalog-vocabulary.md",
+    "osc_shapes": "catalog-vocabulary.md",
+    "osc_drives": "catalog-vocabulary.md",
     "session_event_kinds": "events.md",
     "log_event_kinds": "events.md",
     "pairing_event_kinds": "events.md",
@@ -561,6 +563,24 @@ def page_catalog_vocabulary(reg: dict, reg_display: str) -> str:
              cell(reg["curve_families"][k].get("note", ""))]
             for k in sorted(reg["curve_families"])]
     table(p, ["Value", "Family", "Notes"], rows)
+
+    p("## Oscillator shapes\n\n")
+    p("The `osc.shape` select of the hub-side oscillator (RFC-103, SPEC §9.7). "
+      "Every period starts at the trough, rising.\n\n")
+    rows = [[code(k), code(reg["osc_shapes"][k]["name"]),
+             cell(reg["osc_shapes"][k].get("note", ""))]
+            for k in sorted(reg["osc_shapes"])]
+    table(p, ["Value", "Shape", "Notes"], rows)
+
+    p("## Oscillator drives\n\n")
+    p("The `osc.frequency.drive` and `osc.amplitude.drive` selects (RFC-103, "
+      "SPEC §9.7): what sets the parameter. A driven parameter maps its "
+      "source through `linear_clamp` (SPEC §8.11) with the entry's "
+      "`in_min`/`in_max`/`out_min`/`out_max` fields.\n\n")
+    rows = [[code(k), code(reg["osc_drives"][k]["name"]),
+             cell(reg["osc_drives"][k].get("note", ""))]
+            for k in sorted(reg["osc_drives"])]
+    table(p, ["Value", "Drive", "Notes"], rows)
     return w.getvalue()
 
 

@@ -66,6 +66,8 @@ All multi-byte integers on the wire are **little-endian**. Bit 0 is the least-si
 
 Access tiers are named **watch**, **control** and **configure** throughout ([§12.2](security.md#s12-2)). The v1-draft names *viewer*, *controller* and *admin* denote the same three wire values `0/1/2` and appear in this document only where a legacy name is being retired.
 
+**Version numbers promise compatibility** (RFC-102). This document, every hub, every client and every library carry a `MAJOR.MINOR.PATCH` version, and the three numbers are a compatibility statement, never a date. **MAJOR is the compatibility line, shared across the stack:** every 1.x.y hub, client and library interoperate; a break between two 1.x parties is a bug in one of them — either the older behavior was wrong or the newer one is — and the fix ships as a patch; a MAJOR bump is the only place a wire or semantic break may land, and it comes with an RFC that names the break. **MINOR adds:** a feature introduced in x.2 may not work against an x.1 peer, which does not know it, and nothing outside that feature may break (what each side does on meeting an older peer: [§4.2-5](#s4-2), [§6.3](session.md#s6-3)). **PATCH is free and moves on every build**, not only on releases: two builds with different bits never share a patch, and a patch carries no compatibility meaning at all. This document's MAJOR is the line everyone implements: it is **1** (`valence/1`, v1.0-draft) and stays there, since the number drives the protocol itself. An implementation below 1.0 is a pre-release build against protocol major 1 and makes no promise to any other pre-release build; each party's promise starts at its own 1.0.0 and never counts back down. Each repo computes its own PATCH (the reference client counts commits since its `base/MAJOR.MINOR` tag; the reference hub stamps per flash); MAJOR and MINOR are edited by hand, once, in the one file each repo names as its source.
+
 ### 1.5 Index of honesty clauses *(normative)* {#s1-5}
 
 Each of the following is a normative limitation of `valence/1`. An implementation MUST NOT present a user-facing claim that contradicts one, and SHOULD surface the limitation where a user could reasonably assume otherwise.
@@ -168,7 +170,7 @@ Layering, bottom-up: **transport binding** ([§13](transports.md#s13): open/clos
 
 ### 4.1 Protocol version negotiation {#s4-1}
 
-HELLO carries `proto_ver` (key 1), the highest major version the client speaks. The hub replies WELCOME with the version it will serve — the highest common version ≤ its own. If none is servable: NACK `UNSUPPORTED_VERSION` and close. Within a major version all evolution is additive and governed by [§4.3](#s4-3); there are no minor versions on the wire.
+HELLO carries `proto_ver` (key 1), the highest major version the client speaks. The hub replies WELCOME with the version it will serve — the highest common version ≤ its own. If none is servable: NACK `UNSUPPORTED_VERSION` and close. Within a major version all evolution is additive and governed by [§4.3](#s4-3); `proto_ver` carries no minor. The `MAJOR.MINOR` a hub reports as its own version rides identity's `fw_version` ([§4.2-5](#s4-2)) and is never negotiated.
 
 ### 4.2 The four tokens {#s4-2}
 
@@ -179,14 +181,15 @@ Four version-like tokens coexist. They answer different questions and MUST NOT b
 | `proto_ver` | "What wire grammar are we speaking?" | Spec major revision | HELLO, WELCOME |
 | `catalog_etag` | "What channels/schemas/annotations does this hub expose?" | Firmware update, or any catalog content change | WELCOME, HELLO, CATALOG_READY, channel `catalog` |
 | `cfg_gen` | "Which generation of *config content* is current?" | Any **effective** config change, at runtime | WELCOME, ECHO, config STATE frames, INTENT `precondition` |
-| `fw_version` | "What software is this machine running?" | Hub firmware update | WELCOME `identity` ([§6.3](session.md#s6-3)) |
+| `fw_version` | "Which `MAJOR.MINOR` is this machine running?" | A hub firmware update that moves MAJOR or MINOR ([§1.4](#s1-4)) | WELCOME `identity` ([§6.3](session.md#s6-3)) |
 
 Rules:
 
 1. A `cfg_gen` bump MUST NOT change `catalog_etag`, and a catalog content change MUST change the etag ([§8.3](catalog.md#s8-3)).
 2. **`cfg_gen` advances if and only if at least one applied configuration value actually changed, regardless of who or what changed it.** An accepted but value-identical write still receives its post-clamp ECHO (ground truth is unaffected) but MUST NOT bump `cfg_gen` and MUST NOT trigger an on-change STATE republish. Symmetrically, a configuration change originating *on the machine* — a physical control, boot adoption, an internal recalculation — MUST bump `cfg_gen`; otherwise a client's `precondition` compare-and-set passes against config that has already moved. Both directions are required; either alone is a bug. A trial write ([§9.3](channels.md#s9-3)) is a change like any other; its commit changes no effective value and does not advance `cfg_gen`; a revert advances it iff a restored value differs.
-3. A hub whose catalog can change without reboot MUST emit an updated `catalog` STATE frame carrying the new etag, and clients MUST treat an observed etag change **outside the user space** as a demand to re-enter SYNCING ([§6.4](session.md#s6-4)); a change confined to the user space does not revoke readiness ([§8.6](catalog.md#s8-6), RFC-077). On hubs where a firmware update implies reboot, the new `boot_id` forces a full reconnect anyway — but the etag path MUST still be correct, because simulators and host hubs exercise it.
+3. A hub whose catalog can change without reboot MUST emit an updated `catalog` STATE frame carrying the new etag (layout per the registry, `core_channels` `0x0001`), and clients MUST treat an observed etag change **outside the user space** as a demand to re-enter SYNCING ([§6.4](session.md#s6-4)); a change confined to the user space does not revoke readiness ([§8.6](catalog.md#s8-6), RFC-077). On hubs where a firmware update implies reboot, the new `boot_id` forces a full reconnect anyway — but the etag path MUST still be correct, because simulators and host hubs exercise it.
 4. `fw_version` has exactly one wire home: WELCOME `identity` ([§6.3](session.md#s6-3)). It MUST NOT be duplicated onto a STATE channel; two homes drift.
+5. `fw_version` carries `MAJOR.MINOR` and nothing after it (RFC-102): the patch is noise on the wire and never rides it. The pair is the hub's own version under [§1.4](#s1-4) — the number a client compares against its own.
 
 ### 4.3 Tolerance rules {#s4-3}
 

@@ -118,7 +118,7 @@ generated: true
 
 | Parent | Sub-keys |
 |---|---|
-| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame`, 5 `max_sessions`, 6 `sessions_in_use` |
+| `limits` (22) | 1 `max_frame`, 2 `max_subscriptions`, 3 `retained_pending`, 4 `max_subscriptions_per_frame`, 5 `max_sessions`, 6 `sessions_in_use`, 7 `osc_max_hz` |
 | `probe_result` (26) | 1 `bytes_received`, 2 `span_ms`, 3 `loss_pct_x100`, 4 `rtt_ms` |
 | `identity` (37) | 1 `product`, 2 `fw_version`, 3 `hub_name`, 4 `info` (device-defined map), 5 `hub_instance_id`, 6 `estop_cuts_power` |
 | `blob` (38) | 1 `ns`, 2 `store_id`, 3 `slot`, 4 `generation`, 5 `name`, 6 `kind`, 7 `payload`, 8 `chunk_index`, 9 `chunk_count`, 10 `total_bytes`, 11 `digest` |
@@ -147,7 +147,7 @@ A plausible motion machine, sketched to show how the classes and annotations com
 | 0xEE02 | motion-segment | STREAM (`segments`) | c→h | control | timed `{target, duration, end_velocity}`; **non-decimable** ([§10.4](qos.md#s10-4)); `t_base+t_off` is a schedule ([§5.4](wire-format.md#s5-4)) |
 | 0xEE03 | machine-config | STATE | h→c | watch | window min/max and the user/input ceilings, `setting_key`-annotated against 0xEE04, role-tagged `limit.*`/`window.*`, plus a `meta.enabled_mask` |
 | 0xEE04 | config-set | INTENT | c→h | control | the paired writer named by 0xEE03's `setting_channel` |
-| 0xEE05 | motion-status | STATE | h→c | watch | homed/homing/running/paused bits — no `setting_key`, so read-only by construction |
+| 0xEE05 | motion-status | STATE | h→c | watch | homed/homing/running/paused bits — `homing` set from the home verb's acceptance to the cycle's end, `homed` only on completion ([§11.1](safety.md#s11-1)); no `setting_key`, so read-only by construction |
 | 0xEE06 | plan-strip | STATE | h→c | watch | the planner's current segment; `elevated` priority, high rate |
 | 0xEE07 | pattern-config | STATE | h→c | watch | a `u8 + options` single-select plus its parameters; the mask genuinely drops when unhomed |
 | 0xEE08 | pattern-control | INTENT | c→h | control | select/configure/run/stop — activates a hub-autonomous source ([§11.3](safety.md#s11-3)) |
@@ -251,3 +251,4 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `conformance_min_clients` | 4 | [§6.3](session.md#s6-3), [§17.1](conformance.md#s17-1) |
 | `default_max_clients_ws` / `_espnow` / `_ble` / `_serial` | 8 / 4 / 1 / 1 | [§6.3](session.md#s6-3) |
 | `ws_subprotocol` | `valence.v1` | [§13.2](transports.md#s13-2) |
+| `group_section_separator` | ` / ` | [§8.8](catalog.md#s8-8) `group`; RENDERING [§3](foundations.md#s3) |

@@ -27,7 +27,7 @@ A receiver ignores an unknown key. It never NACKs one.
 
 | Key | Name | Type | Notes |
 |---|---|---|---|
-| `1` | `proto_ver` | `uint` | HELLO/WELCOME: protocol major version |
+| `1` | `proto_ver` | `uint` | HELLO/WELCOME: protocol MAJOR (SPEC §1.4, RFC-102); never carries a minor |
 | `2` | `client_kind` | `tstr` | e.g. webui, c5-remote, mobile, sim, tcode-bridge |
 | `3` | `client_name` | `tstr` | human-readable, ≤32 UTF-8 bytes |
 | `4` | `instance_id` | `bstr` | 8-byte stable client identity (§6.1) |
@@ -97,6 +97,7 @@ Sizing caps the hub advertises in WELCOME.
 | `4` | `max_subscriptions_per_frame` | RFC-033.3: most subscription wishes one SUBSCRIBE (or HELLO) frame may carry. Before this was advertised, a client could only find the reference hub's 16-wish decode cap by binary-searching against a live machine. Two clients did this, one night each. |
 | `5` | `max_sessions` | RFC-055 (§6.3): concurrent sessions this hub admits. 0 = unknown. |
 | `6` | `sessions_in_use` | RFC-055 (§6.3): sessions occupying a slot, the admitted one included (STALE sessions count). 0 = unknown. |
+| `7` | `osc_max_hz` | RFC-103 (§9.7): float, Hz: the highest frequency this hub's oscillator renders, from the hub's own measurement (the reference hub's Kinetic bench), never a registry constant. osc.frequency is clamped to it. Absent = the hub carries no oscillator. |
 
 ### `probe_result` (key 26)
 
@@ -116,7 +117,7 @@ Who this hub is. There is exactly one home for hub identity.
 | Sub-key | Name | Notes |
 |---|---|---|
 | `1` | `product` | tstr: product/model identifier, e.g. 'nucleus' (<=32 B) |
-| `2` | `fw_version` | tstr: hub firmware version, e.g. '2.1.47' (<=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3). |
+| `2` | `fw_version` | tstr: the hub's MAJOR.MINOR, e.g. '1.2' (<=24 B); the patch never rides the wire (RFC-102, SPEC §4.2-5). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3). |
 | `3` | `hub_name` | tstr: operator-assigned machine name (<=32 B). Writable as a str16/str32 setting (RFC-026) where the hub offers one. |
 | `4` | `info` | map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr; the protocol never interprets them. Depth: WELCOME map -> identity map -> info map = 3, one under the §5.3 cap. |
 | `5` | `hub_instance_id` | uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once and NVS-persisted, survives every reboot and firmware update (only a factory reset regenerates it), as opposed to `boot_id` (cbor_keys 7, §6.1/§7.2), which is a FRESH random value EVERY boot and exists only to fence stale per-boot state. Distinguishes THIS PHYSICAL HUB from any other, across time. Present in WELCOME `identity` (37) for any hub that persists one; absent = the hub has no durable identity yet (a fresh dev build, a non-persisting simulator) and a client MUST tolerate its absence exactly as it tolerates the rest of `identity` (§6.3). Also the value DISCOVER_REPLY (0x1F, §13.8) now carries as `hub_instance_id`, replacing that frame's original `boot_id`-based disambiguator (see the `frame_types` 0x1F note): a boot-scoped id could not deduplicate 'two hubs sharing a name' across a reboot, which was the field's whole job. |

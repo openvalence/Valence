@@ -138,3 +138,9 @@ registry's own rationale where it records one.
 | `accessory_declaration_max_bytes` | `4096` | RFC-076 (§8.10): largest encoded accessory declaration a host accepts. A worst-case 30-channel declaration is about 3.5 KB (19 chunks of catalog_chunk_payload). |
 | `spoke_scan_dwell_ms` | `150` | an accessory's per-channel listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 channels x 150 ms = about 2 s cold join. |
 
+## Presentation conventions (RFC-096, RENDERING.md §3)
+
+| Name | Value | Notes |
+|---|---|---|
+| `group_section_separator` | `/` | RFC-096: the first occurrence in a `group` string (SPEC §8.8) separates a section from the card heading; only the first splits, a later one belongs to the heading. One spelling for every hub, client and lint; a renderer MAY draw sections, one that does not draws the whole string. |
+
