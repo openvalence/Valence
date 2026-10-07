@@ -9441,5 +9441,26 @@ say exactly which, future-us will want the receipts.*
     the arbiter writes per frame and only while the tick's lease is fresh
     (a 4 ms lapse stops it); solve_budget is fixed by the machine, never a
     catalog field.
+    (xx) A HARD knot is the fastest move to rest from wherever the carriage
+    is, 2026-10-07 (Kinetic kin-hnp, 844bb30). Promise 2's HARD tail was a
+    quintic head into a brake, with a cruise speed bisected only after the
+    crawl head judged legal; from a moving start (a live jog after its flush,
+    (ww)) the crawl never did, and the knot fell to one smooth quintic
+    stretched to 1.5 s, so a redirected jog decelerated instead of turning.
+    Now the knot renders as one constant-jerk profile (Profile::point): a
+    jerk-limited change of velocity to the cruise speed, through zero when
+    moving away, the cruise, and the brake landing on the knot; past the
+    knot or too fast to stop short, a brake beyond it and the same move
+    back. Its time is the authored time or the profile's end, whichever is
+    later; with time to spare it holds then launches from rest, or cruises
+    slower when moving. A HARD sample (a jog: its deadline is the sender's
+    estimate) takes the profile's end silently; a late HARD segment reports
+    the Stretch, and is no longer trimmed under Blend (a ruling is owed: the
+    smooth path that trimmed it dropped 5 of 60 C1 funscript knots and
+    stretched others to the 8 s cap). A flush counts a sample at its solved
+    time, so a jog still under way is replaced, never queued behind. A live
+    jog costs 8 budget units per move and nothing is refused; the sender
+    may set a jog's deadline as soon as possible and let the profile time
+    it.
 
 ---
