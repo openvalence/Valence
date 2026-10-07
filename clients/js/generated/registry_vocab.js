@@ -156,7 +156,7 @@ export const PACKED_NAME = {
 
 // ---- core_channels -------------------------------------------------
 export const CORE_CHANNEL = {
-  catalog: 0x0001,  // catalog meta: etag, chunk count, entry count. Every client MUST subscribe (RFC-077). Announces u
+  catalog: 0x0001,  // catalog meta (RFC-097): etag_lo u32 + etag_hi u32 (the 8 etag bytes in wire order) + chunk_count
   session_roster: 0x0002,  // RFC-047 §3: allocated and specified (RFC-018), NOT implemented: no reference catalog builder dec
   safety: 0x0003,  // latched safety word (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE; bits 1/2 (STOP/HOLD) retired, zero
   control_owner: 0x0004,  // owning session per arbiter source (§11.4). 4 slots {src<i> u8, owner<i> u32 (0 = unowned)} = 20 

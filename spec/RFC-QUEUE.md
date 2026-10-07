@@ -426,7 +426,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [087](#rfc-087) | Segments bundles span the schedule horizon | Landed 1dbdc3e |
 | [088](#rfc-088) | Flip: rail-bound direction flip | Landed a7415b0 |
 | [089](#rfc-089) | Store writer field roles (`store.slot`, `store.name`, `store.item`) | Accepted 2026-10-07 (rfc-hen) |
-| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Accepted 2026-10-07 (rfc-0wp) |
+| [090](#rfc-090) | SPEC 5.4 rule 3 repair: segments span relative to `t_base` (editorial) | Landed 1b290c8 |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources (`advgen.running`; `advgen.mode` retired) | Landed 4ca8592 |
 | [094](#rfc-094) | Navigation tiers; `control` -> `generator`; `tuning`/`library` fold | Landed 0c33da4 |
 | [095](#rfc-095) | Advanced generator dwell roles (crest, trough) | Landed 20f968e |
@@ -531,12 +531,12 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [087](#rfc-087) | Segments-kind bundles span the schedule horizon; the horizon is advertised per grant | Accepted | open |
 | [088](#rfc-088) | Flip: a rail-bound direction flip, home swaps ends | Accepted | open |
 | [089](#rfc-089) | Store writer field roles: find slot, name and item by identity | Accepted | open |
-| [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Landed | open |
+| [090](#rfc-090) | SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base` | Landed | closed |
 | [093](#rfc-093) | Classic and Advanced generators are two rail sources, not one generator with a mode | Landed | closed |
 | [094](#rfc-094) | Navigation tiers: Machine, Link and Client; `control` becomes `generator`; `tuning` and `library` fold into `motion` and `system` | Landed | closed |
 | [095](#rfc-095) | Advanced generator dwell: `advgen.dwell_crest` and `advgen.dwell_trough`, a hold at each end of the stroke in stroke periods | Landed | closed |
 | [096](#rfc-096) | A ` / ` separator in a group string names a section | Accepted | open |
-| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Accepted | open |
+| [097](#rfc-097) | The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes) | Landed | open |
 | [098](#rfc-098) | Rail ownership is released when its source goes quiet; `control-owner` names each slot's source kind | Accepted | open |
 | [099](#rfc-099) | Trial writes: a setting applied live without persisting, then committed or reverted | Accepted | open |
 | [100](#rfc-100) | Plan feasibility flags: one byte on the plan telemetry says how the planner bent the segment | Accepted | open |
@@ -8052,7 +8052,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-090 -- SPEC 5.4 rule 3 repair: the segments span cap is relative to `t_base`
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-0wp). Accepted with one
+- **Status:** LANDED 1b290c8 (2026-10-07). ACCEPTED (operator, 2026-10-07; rfc-0wp). Accepted with one
   amendment, folded into the proposed change: a bundle whose stamps lie
   beyond now plus the lead cap moves earlier as a whole, never stamp by
   stamp. Editorial and separable: it changes no behavior the operator
@@ -8062,11 +8062,11 @@ say exactly which, future-us will want the receipts.*
   no wire, registry or conformance change).
 - **Origin:** Valence val-091.54, 2026-10-02. The library's `handleStream`
   dropped a `segments` bundle whose last start lay beyond the granted
-  horizon, following SPEC Â§5.4 rule 3 as landed by
+  horizon, following SPEC Ã‚Â§5.4 rule 3 as landed by
   [RFC-087](#rfc-087)
   (1dbdc3e). Commit 9dd395d moved it to the clamp; this entry brings the
   rule's wording into line.
-- **Problem.** SPEC Â§5.4 contradicts itself for c2h `segments` bundles:
+- **Problem.** SPEC Ã‚Â§5.4 contradicts itself for c2h `segments` bundles:
   1. **Rule 3** reads "`t_base + t_off[n-1]` MUST NOT lie further ahead of
      hub time than the horizon", and the paragraph after the rules makes
      any violation **malformed**, rejected **whole**.
@@ -8082,11 +8082,11 @@ say exactly which, future-us will want the receipts.*
   now it lies (a lead, which depends on arrival time and is the lead cap's
   business). A bundle stamped 300 ms ahead with a 50 ms span is well
   formed; only its lead is too long.
-- **Proposed change.** Rule 3 of Â§5.4's bundle rules becomes:
+- **Proposed change.** Rule 3 of Ã‚Â§5.4's bundle rules becomes:
 
-  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] â‰¤
+  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] Ã¢â€°Â¤
   >    bundle_max_span_ms` (20 ms); for a c2h `segments`-kind bundle,
-  >    `t_off[n-1] Ã— segment_t_off_unit_us` MUST NOT exceed the grant's
+  >    `t_off[n-1] Ãƒâ€” segment_t_off_unit_us` MUST NOT exceed the grant's
   >    schedule horizon (RFC-087). The span is measured from `t_base`; how
   >    far the bundle lies ahead of hub time is not a span violation, and a
   >    bundle whose stamps lie beyond now plus the cap is clamped per the
@@ -8096,10 +8096,10 @@ say exactly which, future-us will want the receipts.*
   bundle whose stamps lie beyond now plus the cap moves earlier as a
   whole, its `t_base` shifted until the last stamp sits on the cap, every
   spacing kept, so each segment keeps its duration; stamps are never
-  clamped one by one. Nothing else in Â§5.4 changes; the lead-cap and
+  clamped one by one. Nothing else in Ã‚Â§5.4 changes; the lead-cap and
   schedule-horizon paragraphs already say the rest.
 - **Wire impact.** None. The library already behaves this way (9dd395d):
-  the span cap is `t_off[n-1] Ã— 100 Âµs â‰¤ horizon`, malformed if over, and
+  the span cap is `t_off[n-1] Ãƒâ€” 100 Ã‚Âµs Ã¢â€°Â¤ horizon`, malformed if over, and
   the lead beyond hub time is clamped by moving the bundle as a whole.
 - **Registry impact.** None.
 - **Conformance impact.** None new: RFC-087's stated cases (a 240 ms span
@@ -8439,7 +8439,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-097 -- The catalog channel's STATE layout: etag, chunk count, entry count (12 bytes)
 
 
-- **Status:** ACCEPTED (operator, 2026-10-07) as drafted. Drafted
+- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) as drafted. Drafted
   2026-10-02, from the RFC-077 library landing fd36721.
 - **Origin:** the reference library now re-announces a grown catalog on the
   `catalog` channel 0x0001 (RFC-077, SPEC §8.6) and the JS client must
