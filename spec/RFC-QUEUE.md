@@ -8062,11 +8062,11 @@ say exactly which, future-us will want the receipts.*
   no wire, registry or conformance change).
 - **Origin:** Valence val-091.54, 2026-10-02. The library's `handleStream`
   dropped a `segments` bundle whose last start lay beyond the granted
-  horizon, following SPEC Ã‚Â§5.4 rule 3 as landed by
+  horizon, following SPEC §5.4 rule 3 as landed by
   [RFC-087](#rfc-087)
   (1dbdc3e). Commit 9dd395d moved it to the clamp; this entry brings the
   rule's wording into line.
-- **Problem.** SPEC Ã‚Â§5.4 contradicts itself for c2h `segments` bundles:
+- **Problem.** SPEC §5.4 contradicts itself for c2h `segments` bundles:
   1. **Rule 3** reads "`t_base + t_off[n-1]` MUST NOT lie further ahead of
      hub time than the horizon", and the paragraph after the rules makes
      any violation **malformed**, rejected **whole**.
@@ -8082,11 +8082,11 @@ say exactly which, future-us will want the receipts.*
   now it lies (a lead, which depends on arrival time and is the lead cap's
   business). A bundle stamped 300 ms ahead with a 50 ms span is well
   formed; only its lead is too long.
-- **Proposed change.** Rule 3 of Ã‚Â§5.4's bundle rules becomes:
+- **Proposed change.** Rule 3 of §5.4's bundle rules becomes:
 
-  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] Ã¢â€°Â¤
+  > 3. span: for a `samples`-kind or h2c bundle, `t_off[n-1] ≤
   >    bundle_max_span_ms` (20 ms); for a c2h `segments`-kind bundle,
-  >    `t_off[n-1] Ãƒâ€” segment_t_off_unit_us` MUST NOT exceed the grant's
+  >    `t_off[n-1] × segment_t_off_unit_us` MUST NOT exceed the grant's
   >    schedule horizon (RFC-087). The span is measured from `t_base`; how
   >    far the bundle lies ahead of hub time is not a span violation, and a
   >    bundle whose stamps lie beyond now plus the cap is clamped per the
@@ -8096,10 +8096,10 @@ say exactly which, future-us will want the receipts.*
   bundle whose stamps lie beyond now plus the cap moves earlier as a
   whole, its `t_base` shifted until the last stamp sits on the cap, every
   spacing kept, so each segment keeps its duration; stamps are never
-  clamped one by one. Nothing else in Ã‚Â§5.4 changes; the lead-cap and
+  clamped one by one. Nothing else in §5.4 changes; the lead-cap and
   schedule-horizon paragraphs already say the rest.
 - **Wire impact.** None. The library already behaves this way (9dd395d):
-  the span cap is `t_off[n-1] Ãƒâ€” 100 Ã‚Âµs Ã¢â€°Â¤ horizon`, malformed if over, and
+  the span cap is `t_off[n-1] × 100 µs ≤ horizon`, malformed if over, and
   the lead beyond hub time is clamped by moving the bundle as a whole.
 - **Registry impact.** None.
 - **Conformance impact.** None new: RFC-087's stated cases (a 240 ms span
@@ -8750,9 +8750,9 @@ say exactly which, future-us will want the receipts.*
   and the operator asked for two things: a second leg to the far end, so the
   rail length is measured rather than typed in, and a faster approach (the
   one-sided cycle crawled at 12 mm/s).
-- **Problem.** SPEC names the verb (`action.home`, Â§8.8 roles), admits it
-  under PAUSE whether or not the hub is unhomed (Â§11.1), and clears
-  `home_required` on "a completed home" (Â§11.2). It says nothing of what the
+- **Problem.** SPEC names the verb (`action.home`, §8.8 roles), admits it
+  under PAUSE whether or not the hub is unhomed (§11.1), and clears
+  `home_required` on "a completed home" (§11.2). It says nothing of what the
   verb's ECHO means for a cycle that lasts seconds, how a cycle that fails is
   reported, what ends a cycle early, or what other motion does meanwhile. A
   client cannot tell "homing started" from "homed", and cannot learn why a
@@ -8762,15 +8762,15 @@ say exactly which, future-us will want the receipts.*
      the cycle is queued. The outcome is state, not a reply: the
      motion-status `homing` bit (the reference `motion-status` flags, Appendix D
      row 0xEE05) is set from acceptance until the cycle ends, `homed` is
-     set if and only if it completed, and `home_required` (Â§11.2) clears
+     set if and only if it completed, and `home_required` (§11.2) clears
      only on a completed cycle.
   2. **Refusals at the start.** `UNSUPPORTED_OP` when the hub has no means
      to home (no end-of-travel sense on this build); `INTERLOCK` when its
      sense cannot be trusted (undriven, or already reading end-of-travel),
-     while the machine moves, or under override (Â§11.1: `return` first);
+     while the machine moves, or under override (§11.1: `return` first);
      `ESTOP_ACTIVE` while ESTOP is latched; `SOURCE_CONFLICT` while a source
      owns the rail outside PAUSE (under PAUSE an owning source is suspended
-     and the verb is admitted, Â§11.1). Each carries a `detail` (Â§16.1).
+     and the verb is admitted, §11.1). Each carries a `detail` (§16.1).
   3. **During a cycle.** The cycle owns the rail: every other motion intent
      is refused `INTERLOCK`, and a second `action.home` is an ordinary ECHO
      that changes nothing. A bench verb that declares the machine homed
@@ -8778,7 +8778,7 @@ say exactly which, future-us will want the receipts.*
   4. **What ends a cycle early, unhomed.** ESTOP; a `pause` op, even with
      PAUSE already latched (the cycle runs under the latch, so a fresh pause
      is the operator saying stop); loss of motor power; a change to the
-     travel geometry. The reason goes to the log channel at Warn (Â§16.2).
+     travel geometry. The reason goes to the log channel at Warn (§16.2).
   5. **Failure.** No end-of-travel within either leg's search
      (`geometry.max_travel` plus a hub margin), a sense that still reads
      end-of-travel after the hub backs off it, a far end closer than the
@@ -8789,7 +8789,7 @@ say exactly which, future-us will want the receipts.*
      threshold, the drive), the speeds, the debounce, the backoffs, the
      search margin and the deadline are the hub's. The protocol fixes only
      that 0 is where the cycle says the home end is, and that the flip
-     (Â§9.6) swaps which end that is.
+     (§9.6) swaps which end that is.
   7. **Two legs; the travel is measured.** The cycle takes a datum at the
      home end, then at the far end. The home datum is 0; the far datum
      minus it is the measured travel. On completion the hub publishes it as
@@ -8832,7 +8832,7 @@ say exactly which, future-us will want the receipts.*
 - **Cons.** A failed cycle's reason reaches only a client that reads the log
   channel. Overwriting `geometry.max_travel` with the measurement means the
   search distance shrinks to the rail it found.
-- **Cost.** SPEC Â§11.1 and Â§11.2, a few sentences; Â§9 one sentence that a
+- **Cost.** SPEC §11.1 and §11.2, a few sentences; §9 one sentence that a
   completed home MAY store its measured travel in `geometry.max_travel`;
   Appendix D's 0xEE05 row a clause. Reference hub: none beyond what landed
   (Nucleus val-dbo, val-zsr).
@@ -8926,7 +8926,7 @@ say exactly which, future-us will want the receipts.*
 ## RFC-103 -- Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second
 
 
-- **Status:** LANDED (2026-10-07). ACCEPTED (operator, 2026-10-07) with an amendment and three
+- **Status:** LANDED 4938889 (2026-10-07). ACCEPTED (operator, 2026-10-07) with an amendment and three
   answers, folded below: the oscillator is an additional feature, it sums
   with every source, amplitude is a share of the travel window, and a saw's
   period starts at the trough, rising; the yields-first ruling stands.
@@ -9117,17 +9117,17 @@ say exactly which, future-us will want the receipts.*
 
 
 - **Status:** DRAFT (operator 2026-10-05). The reference planner is being
-  rewritten as KineticÂ² (Nucleus epic val-7p2, code in the Kinetic repo).
+  rewritten as Kinetic² (Nucleus epic val-7p2, code in the Kinetic repo).
   This RFC states only the wire-visible promises of a hub that plans the
-  way KineticÂ² plans; the kernel itself is the Kinetic repo's design doc.
+  way Kinetic² plans; the kernel itself is the Kinetic repo's design doc.
   **This draft is a working document:** the "Anticipated workflow" section
   at its end grows while the kernel is built, one entry per thing met on
   the way, and the proposal above it is corrected from those entries before
   acceptance.
 - **Origin.** The reference planner plans one trajectory per command at
   arrival with one segment of lookahead, and chases bare samples at zero
-  latency with prediction. SPEC Â§5.4 already defines `schedule_latency_us`
-  on a samples grant as the chase-planning budget, and Â§9's curve family
+  latency with prediction. SPEC §5.4 already defines `schedule_latency_us`
+  on a samples grant as the chase-planning budget, and §9's curve family
   text already says a C1 corner is authored on purpose; neither promise is
   stated as a planner contract a client can rely on.
 - **Problem.** A client cannot know, from the spec, whether its samples are
@@ -9141,7 +9141,7 @@ say exactly which, future-us will want the receipts.*
      sample as a knot at `arrival + schedule_latency_us`, and the commanded
      curve passes through the knots, interpolating between the two it knows,
      never extrapolating past the newest. The declared latency is therefore
-     exact, not a budget, and a client leads its media by it (Â§5.4).
+     exact, not a budget, and a client leads its media by it (§5.4).
   2. **Junction kinds.** At every knot the hub renders one of three
      junctions, chosen by the grant's effective `curve_family` and the
      segment's `end_vel`: SMOOTH (no end velocity, C2: velocity and
@@ -9163,7 +9163,7 @@ say exactly which, future-us will want the receipts.*
      (the planner's measured sustainable segment rate; the catalog
      `max_rate_hz` of the segment stream is at most this and defaults to
      half of it) and `osc_max_hz` (RFC-103).
-  6. **Planner options are catalog settings.** Every option KineticÂ² exposes
+  6. **Planner options are catalog settings.** Every option Kinetic² exposes
      is a setup-category field (RFC-079), one of a registered table
      `planner_options` that names its semantic so a client can present it
      and a tuner can score it: the latency (the grant key, read-only here),
@@ -9187,9 +9187,9 @@ say exactly which, future-us will want the receipts.*
   the dashboard and the search all see it for free.
 - **Cons.** Promise 3 makes the ceilings a conformance test the hub can fail
   in public. That is the point.
-- **Cost.** Registry: `planner_options`, two limits. SPEC: Â§5.4 one
-  paragraph, Â§9 a Junctions subsection, Â§10.1 the limits. Reference hub:
-  KineticÂ². Reference client: the tuner page, the preview on the wasm build.
+- **Cost.** Registry: `planner_options`, two limits. SPEC: §5.4 one
+  paragraph, §9 a Junctions subsection, §10.1 the limits. Reference hub:
+  Kinetic². Reference client: the tuner page, the preview on the wasm build.
 - **Wire impact.** Additive. The two limits and the fields are new; the
   junction keys exist.
 - **Open questions.** Whether SMOOTH under C1 should exist (a C1 stream with
@@ -9255,7 +9255,7 @@ say exactly which, future-us will want the receipts.*
     smooth stop need not. (m) A brake wins over the timeline: every pending
     knot is dropped and the origin moves to the brake's end, at rest, so a
     knot submitted meanwhile chains from there and one dated before it is
-    refused as past; the hub's e-stop and pause semantics (Â§11.3) sit on
+    refused as past; the hub's e-stop and pause semantics (§11.3) sit on
     exactly this.
   - 2026-10-05, sources (kin-ob3): the sample and segment conversions are
     one small header, and promise 1 is a test on it: a 60 Hz sample stream
@@ -9434,7 +9434,7 @@ say exactly which, future-us will want the receipts.*
     jerk ceiling of 500 as well. (rr) A junction accelerating toward vmax is
     clamped so jmax can shed the acceleration before the velocity reaches
     the ceiling, as the rail clamp does for position: any knot may turn out
-    to be the last. (ss) Ruling 2026-10-06: KineticÂ² is the hub's planner in
+    to be the last. (ss) Ruling 2026-10-06: Kinetic² is the hub's planner in
     every build; the kernel switch, Kinetic 1 and Ruckig leave Nucleus, and
     the bench A/B no longer gates it. The factory input jerk ceiling is
     5,000,000 mm/s^3 (2,000,000 was kinematically limiting; 5 to 10 million
@@ -9458,7 +9458,7 @@ say exactly which, future-us will want the receipts.*
     follows the new bundle, census refused 0 and failures 0.
     (uu) The solver's banded system is storage the engine owns per axis
     (jerk::Workspace), never static and never thread_local: the first
-    KineticÂ²-only image on the P4 carried 10 KB of thread-local data, and
+    Kinetic²-only image on the P4 carried 10 KB of thread-local data, and
     ESP-IDF carves a task's thread-local block from that task's own stack,
     so the IPC task could not be created and the board boot-looped before
     app_main (Kinetic kin-6tz).
@@ -9552,7 +9552,7 @@ say exactly which, future-us will want the receipts.*
     quintic first priced every spend for a curve a quarter faster: a fall
     96 mm in 125 ms at 15 % over the speed ceiling cost 27 % of its stroke
     (Blend) or 42 ms (Stretch) where 13 % or 19 ms was due, measured in the
-    KineticÂ² lab on the operator's recording. Now: speed-bound alone, the
+    Kinetic² lab on the operator's recording. Now: speed-bound alone, the
     cubic is SATURATED, its speed clipped at the ceiling with jerk-limited
     round-offs (Profile::saturate), the knot later by the clipped area (4 ms
     there, the whole stroke, 1.4 mm rms against the author's curve where the
@@ -9590,7 +9590,7 @@ say exactly which, future-us will want the receipts.*
     21.6 -> 7.3 (the rise whole at the ceiling, 67 ms late, given back by
     the fall's third span); Krampus at 200 mm 16.5 -> 3.2.
     (ccc) The handle model (operator ruling 2026-10-07, "this is K2"). The
-    renderer between knots is a composite cubic BÃ©zier in the time-position
+    renderer between knots is a composite cubic Bézier in the time-position
     plane with the standard's geometric continuity marked per knot: knots on
     the author's clock, one angle and two handle lengths per knot, a third
     of the span being the exact C1 Hermite; hold edges and crests G1 with
@@ -9602,7 +9602,7 @@ say exactly which, future-us will want the receipts.*
     the least that is legal; time never. Proven in the Kinetic playground's
     handles page (kin-d0o) before the kernel: the figure case (150 mm
     strokes at 200 ms between crests) fits at a length of 0.25 under
-    1000 mm/s and 50000 mm/sÂ²; a run of 100 mm strokes at 150 ms against
+    1000 mm/s and 50000 mm/s²; a run of 100 mm strokes at 150 ms against
     400 mm/s trims every top to 47 mm with the bottoms anchored where the
     run started; the built-in script renders inside the ceilings at 100,
     300 and 500 mm windows with 0, 9 and 13 knots trimmed. Met on the way:
