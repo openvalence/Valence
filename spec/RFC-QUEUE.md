@@ -8851,7 +8851,11 @@ say exactly which, future-us will want the receipts.*
 ## RFC-102 -- Version numbers promise compatibility: one major across the stack, minors add, patches are free
 
 
-- **Status:** LANDED 6a89df8 (2026-10-07). ACCEPTED (operator, 2026-10-07). Open questions closed:
+- **Status:** LANDED 6a89df8 (2026-10-07). Landed on identity `fw_version`
+  (registry `identity_keys` 2; SPEC §4.2-5, §6.3): identity has no
+  `protocol_version` key, `fw_version` is its one version string, so the
+  MAJOR.MINOR rule below binds there; operator confirmation of that mapping
+  owed, veto-able (a new identity key would be its own RFC). ACCEPTED (operator, 2026-10-07). Open questions closed:
   identity's `protocol_version` carries MAJOR.MINOR only, and a client
   whose MINOR exceeds the hub's hides what the hub lacks and states the
   hub's version once in its about surface, never a warning dialog. Drafted
