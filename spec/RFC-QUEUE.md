@@ -9427,5 +9427,19 @@ say exactly which, future-us will want the receipts.*
     deceleration above its own amax (a pause planned under the input
     amax while a faster jog decelerates) now ramps the deceleration down
     under jmax before it holds, and no longer reverses (Nucleus val-9z5).
+    (ww) Ruling 2026-10-06: a jog is LIVE. The newest Manual target
+    supersedes every move still queued (Engine::truncateAfter at the
+    reaction horizon, as the RFC-087 segments flush), the motion in flight
+    hands off there and the new move chains from it; this amends (n), which
+    chained every jog behind the newest knot. A 20 Hz scrub of the tape had
+    filled the 64-knot timeline, replayed the finger seconds late, refused
+    knots, and re-solved 64 knots on every move (the 283 ms solve behind
+    the 2026-10-06 end-stop incident). Also landed that day: the tick clamps
+    the rendered demand to the window (or the rail under override) before
+    the feedforward and prices its caps over at most two ticks, so a late
+    tick is a stall, never a burst; the LP core renders only inside a fence
+    the arbiter writes per frame and only while the tick's lease is fresh
+    (a 4 ms lapse stops it); solve_budget is fixed by the machine, never a
+    catalog field.
 
 ---
