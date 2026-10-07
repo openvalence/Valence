@@ -13,7 +13,7 @@
 
 meta:
   protocol_name: valence
-  protocol_version: 1   # the MAJOR of SPEC §1.4 (RFC-102): the compatibility line every hub, client and library shares; the MINOR is the document's
+  protocol_version: 1   # the MAJOR of SPEC §1.4 (RFC-102): the compatibility line every hub, client and library shares
   byte_order: little-endian
   header_bytes: 8
 
