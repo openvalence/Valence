@@ -158,8 +158,9 @@ suites:
                 #   byte-exact vector, only the raw-frame ESTOP path (E-01..E-04)
     - id: N-02  # hole: no vectors yet -- RFC-018 session-admin (0x0009 INTENT)
                 #   {op: evict, session_id} -> GOODBYE, exact bytes
-    - id: N-03  # hole: no vectors yet -- RFC-030 curve_family: wish -> effective
-                #   value echo, exact bytes; behavioral coverage: SI-23
+    - id: N-03  # closed: the curve_family wish and echo were retired pre-tag by
+                #   RFC-106; no vector is owed. Behavioral coverage that a hub
+                #   ignores key 45 in a wish: SI-23
     - id: N-04  # hole: no vectors yet -- RFC-038 deadman_wish_ms: clamp to
                 #   registry bounds, echoed applied on key 24, exact bytes;
                 #   behavioral coverage: SI-22

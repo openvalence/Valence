@@ -250,10 +250,10 @@ export const K = {
   burst: 42,  // publishes / granted_publishes ENTRY maps: token-bucket capacity in samples, decoupled from rate 
   reboot_in_ms: 43,  // ECHO `applied` (19): this accepted intent commits by rebooting, in about this many ms (RFC-020).
   deadman_wish_ms: 44,  // HELLO: requested deadman window (RFC-038). The hub clamps into [deadman_min_ms, deadman_max_ms] 
-  curve_family: 45,  // publishes / granted_publishes ENTRY maps: which `curve_families` smoothness class the segment st
+  // 45 curve_family: RETIRED pre-tag by RFC-106 (operator 2026-10-08): the segment stream's family wish. A sender's d
   ws_port: 46,  // WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding but load-
   ipv4: 47,  // WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1
-  requested_curve_family: 48,  // publishes / granted_publishes ENTRY maps (RFC-049b): echoes the client's `curve_family` (45) WIS
+  // 48 requested_curve_family: RETIRED pre-tag by RFC-106 (operator 2026-10-08): the echo of the family wish (45). Never emitte
   schedule_latency_us: 49,  // granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample'
   schedule_horizon_ms: 50,  // granted_publishes ENTRY maps (RFC-087), segments-kind grants only: the schedule horizon, how far
   trial: 51,  // INTENT (RFC-099, §9.3): true = a TRIAL write: applied, clamped, echoed and published like any wr
@@ -303,10 +303,8 @@ export const K_NAME = {
   42: 'burst',
   43: 'reboot_in_ms',
   44: 'deadman_wish_ms',
-  45: 'curve_family',
   46: 'ws_port',
   47: 'ipv4',
-  48: 'requested_curve_family',
   49: 'schedule_latency_us',
   50: 'schedule_horizon_ms',
   51: 'trial',
@@ -586,16 +584,12 @@ export const PROCEDURE_PHASE_NAME = {
 
 // ---- curve_families ------------------------------------------------
 export const CURVE_FAMILY = {
-  unspecified: 0,  // the compatible default: the hub behaves exactly as it did before RFC-030. What every pre-RFC-030
-  c1_cubic: 1,  // velocity-continuous cubic (Linear/Pchip/Makima/monotone-cubic senders). Acceleration lawfully ST
-  c2_quintic: 2,  // curvature-continuous; the sender means the smoothness. A follow-client hub may use its C2 recons
-  step: 3,  // held value with instantaneous transitions (step/none interpolation). The family says intent, the
+  // 0 unspecified: RETIRED pre-tag by RFC-106: no declaration. Never emitted, never reused.
+  // 1 g1: RETIRED pre-tag by RFC-106: a velocity-continuous sender. Never emitted, never reused.
+  // 2 g2: RETIRED pre-tag by RFC-106: an acceleration-continuous sender. Never emitted, never reused.
+  // 3 step: RETIRED pre-tag by RFC-106: a held value with instantaneous transitions. Never emitted, never re
 };
 export const CURVE_FAMILY_NAME = {
-  0: 'unspecified',
-  1: 'c1_cubic',
-  2: 'c2_quintic',
-  3: 'step',
 };
 
 // ---- osc_shapes ----------------------------------------------------
@@ -1195,16 +1189,14 @@ export const DISCOVER_REPLY_FLAG_NAME = {
 
 // ---- plan_flags (bit flags) ----------------------------------------
 export const PLAN_FLAG = {
-  shaped: 1 << 0,  // the planner shortened the commanded stroke, or flattened its shape, to hold the deadline
-  stretched: 1 << 1,  // the segment runs past the commanded deadline
-  fallback: 1 << 2,  // the planner substituted its fallback method for the segment
-  clamped: 1 << 3,  // a ceiling or the travel window changed the command
+  shaped: 1 << 0,  // the planner trimmed a knot toward the previous one to fit the ceilings (amplitude gives, time ne
+  stretched: 1 << 1,  // the knot lands after its commanded time: a jog's fastest move, or the newest knot finishing late
+  clamped: 1 << 2,  // a ceiling or the travel window changed the command
 };
 export const PLAN_FLAG_NAME = {
   1: 'shaped',
   2: 'stretched',
-  4: 'fallback',
-  8: 'clamped',
+  4: 'clamped',
 };
 
 // ---- field_roles (tstr wire values) -------------------------------

@@ -105,10 +105,10 @@ generated: true
 | 20 | `value` | any | 42 | `burst` | float |
 | 21 | `timestamp` | uint | 43 | `reboot_in_ms` | uint |
 | 22 | `limits` | map | 44 | `deadman_wish_ms` | uint |
-| | | | 45 | `curve_family` | uint |
+| | | | 45 | *retired (RFC-106)* | |
 | | | | 46 | `ws_port` | uint |
 | | | | 47 | `ipv4` | uint |
-| | | | 48 | `requested_curve_family` | uint |
+| | | | 48 | *retired (RFC-106)* | |
 | | | | 49 | `schedule_latency_us` | uint |
 | | | | 50 | `schedule_horizon_ms` | uint |
 | | | | 51 | `trial` | bool |

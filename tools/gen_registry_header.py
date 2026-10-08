@@ -164,6 +164,9 @@ def gen(reg: dict) -> str:
     p("enum class CborKey : uint8_t {\n")
     for k in sorted(reg["cbor_keys"]):
         e = reg["cbor_keys"][k]
+        if retired(e):
+            p(f"    // {k} {e['name']}: {e['note']}\n")
+            continue
         p(f"    {ident(e['name'])} = {k},  // {e['type']}: {e['note']}\n")
     p("};\n\n")
 

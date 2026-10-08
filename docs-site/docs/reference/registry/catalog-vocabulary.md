@@ -92,7 +92,7 @@ role is never an error.
 | `plan.duration` | total duration of the segment in flight |
 | `plan.latency` | RFC-059: optional live telemetry twin of a grant's schedule_latency_us (cbor key 49), for diagnostics and generic renderers. Not required for conformance. |
 | `plan.style` | which planning style produced the segment; options are the device's style names, index-aligned with the wire value |
-| `plan.flags` | RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a segment plans, from that plan, cleared when the next segment plans clean, zero while no plan is in flight. A segment planned ahead of its start sets it then, up to one schedule horizon early. A client reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth). |
+| `plan.flags` | RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a segment plans, from that plan, cleared when the next segment plans clean, zero while no plan is in flight. A segment planned ahead of its start sets it then, up to one schedule horizon early. A client reads the plan as infeasible when any of bits 0-2 is set; there is no plan.feasible role (one field, one source of truth). |
 | `advgen.running` | RFC-093: bool, the advanced generator's own run/stop (essential binding of generator-advanced). The advanced generator is a separate §11.4 source: starting it while the classic generator (pattern.running) owns the rail is refused SOURCE_CONFLICT until that one stops, and vice versa. No auto-handoff. |
 | `advgen.master` | RFC-081: overall rate scale of the advanced program, percent of its own range |
 | `advgen.depth_max` | RFC-081: the deep stroke bound the program swings to, percent of the stroke window |
@@ -127,7 +127,7 @@ role is never an error.
 | `osc.amplitude.out_min` | RFC-103: f32, window share, the amplitude at in_min |
 | `osc.amplitude.out_max` | RFC-103: f32, window share, the amplitude at in_max |
 | `osc.active` | RFC-103: STATE bool: the oscillator is enabled and rendering a nonzero amplitude this instant. False under PAUSE and ESTOP. |
-| `osc.amplitude_effective` | RFC-103: STATE f32, window share: the amplitude the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit3 clamped (RFC-100) is set. |
+| `osc.amplitude_effective` | RFC-103: STATE f32, window share: the amplitude the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit2 clamped (RFC-100) is set. |
 | `store.slot` | RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename; optional on save (absent, the hub picks a free slot and ECHO `applied` carries it; no free slot is INVALID_VALUE with a detail naming the store full). Binds within the entry carrying the action.store op select. |
 | `store.name` | RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename. Binds within the entry carrying the action.store op select. |
 | `store.item` | RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, name, kind, payload, optional digest), never the bare payload. Optional on save (absent, the hub captures live state; a store with no live state to capture requires it). Its slot and name MUST equal store.slot and store.name, else INVALID_VALUE. One frame: an item past the binding's max_frame is FRAME_TOO_LARGE. Binds within the entry carrying the action.store op select. |
@@ -152,7 +152,7 @@ field. The same doctrine applies: unknown roles render generically.
 
 | Role | Meaning |
 |---|---|
-| `events.anomaly` | EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a planner fallback, a rejected plan). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name. |
+| `events.anomaly` | EVENT entry: edges reporting the machine did something other than what it was asked (a clamped command, a trimmed knot, a piece over a ceiling, a refused knot). A client giving anomalies a dedicated surface MUST bind by this role or core identity, never by name. |
 | `anomaly.summary` | STATE entry: the latched counters twin of an events.anomaly channel (§9.4 duality rule), so the event log and its counters bind together. |
 | `osc.drive` | RFC-103: c2h samples-kind STREAM entry, the external axis driving the oscillator. The role fixes the layout: amplitude (f32, 0 .. 1) then frequency (f32, 0 .. 1), each mapped through its parameter's own bounds where that parameter's drive is axis. Carries no input.target, so it is never motion input and never owns the rail. Quiet for stream_quiet_release_ms, an axis-driven parameter reads 0. The reference hub names its entry osc-drive. |
 
@@ -172,10 +172,9 @@ bent a segment in flight. Any of bits 0 to 3 means infeasible.
 
 | Mask | Bit | Name | Notes |
 |---|---|---|---|
-| `0x01` | `bit 0` | `shaped` | the planner shortened the commanded stroke, or flattened its shape, to hold the deadline |
-| `0x02` | `bit 1` | `stretched` | the segment runs past the commanded deadline |
-| `0x04` | `bit 2` | `fallback` | the planner substituted its fallback method for the segment |
-| `0x08` | `bit 3` | `clamped` | a ceiling or the travel window changed the command |
+| `0x01` | `bit 0` | `shaped` | the planner trimmed a knot toward the previous one to fit the ceilings (amplitude gives, time never) |
+| `0x02` | `bit 1` | `stretched` | the knot lands after its commanded time: a jog's fastest move, or the newest knot finishing late |
+| `0x04` | `bit 2` | `clamped` | a ceiling or the travel window changed the command |
 
 ## Procedure phases
 
@@ -198,10 +197,10 @@ The `curve_family` sub-key is CBOR key 45, inside a `publishes` or `granted_publ
 
 | Value | Family | Notes |
 |---|---|---|
-| `0` | `unspecified` | the compatible default: the hub behaves exactly as it did before RFC-030. What every pre-RFC-030 client is. |
-| `1` | `c1_cubic` | velocity-continuous cubic (Linear/Pchip/Makima/monotone-cubic senders). Acceleration lawfully STEPS at knots; a follow-client hub reconstructs C1 and does NOT smooth the corner the author put there. |
-| `2` | `c2_quintic` | curvature-continuous; the sender means the smoothness. A follow-client hub may use its C2 reconstruction (backward-difference af estimation is valid here: the quantity exists). |
-| `3` | `step` | held value with instantaneous transitions (step/none interpolation). The family says intent, the machine owns feasibility as always. RFC-049a: NUMBER KEPT, never renumbered, but status is `reserved`: the reference engine has no step renderer, so a `step` declaration renders as `c2_quintic` and the GRANT echo reports exactly that effective family (§9.6, §18-20). Declarable again when a step renderer exists in the reference engine; only the delegate's mapping changes when it does. |
+| `0` | `unspecified` | RETIRED pre-tag by RFC-106: no declaration. Never emitted, never reused. |
+| `1` | `g1` | RETIRED pre-tag by RFC-106: a velocity-continuous sender. Never emitted, never reused. |
+| `2` | `g2` | RETIRED pre-tag by RFC-106: an acceleration-continuous sender. Never emitted, never reused. |
+| `3` | `step` | RETIRED pre-tag by RFC-106: a held value with instantaneous transitions. Never emitted, never reused. |
 
 ## Oscillator shapes
 
