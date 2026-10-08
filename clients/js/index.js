@@ -69,7 +69,7 @@
  *     { anchor: s.hubNowUs() + 60000 });      // execution start, hub time
  *   s.publishSegment(segId, [a, b, c], { anchor, offsetsUs: [0, 120000, 240000] });
  *                                             // several starts, within grant.scheduleHorizonMs
- *   s.state.grantedPublishes                  // Map<ch, {rate, burst, curveFamily,
+ *   s.state.grantedPublishes                  // Map<ch, {rate, burst,
  *                                             //   scheduleLatencyUs, scheduleHorizonMs, ...}>
  *
  * ── Phase D (STORE items, BLOB namespace 1, §8.7) ───────────────────────────

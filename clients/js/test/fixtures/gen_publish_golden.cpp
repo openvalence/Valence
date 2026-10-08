@@ -40,34 +40,29 @@ static std::vector<std::byte> frame(FrameType t, uint16_t ch, uint16_t seq, std:
 int main() {
     std::array<std::byte, 512> buf{};
 
-    // HELLO carrying two publish wishes: a plain one and one with burst + family.
+    // HELLO carrying two publish wishes: a plain one and one with burst.
     HelloMsg h;
     h.client_kind = "test";
     h.client_name = "golden";
     for (int i = 0; i < 8; ++i) h.instance_id[i] = std::byte(i + 1);
     h.publishes_count = 2;
     h.publishes[0] = PublishWish{.channel_id = 0x2100, .rate_hz = 50.0f};
-    h.publishes[1] = PublishWish{.channel_id = 0x2101, .rate_hz = 20.0f, .has_burst = true, .burst = 40.0f,
-                                 .has_curve_family = true, .curve_family = 1};
+    h.publishes[1] = PublishWish{.channel_id = 0x2101, .rate_hz = 20.0f, .has_burst = true, .burst = 40.0f};
     size_t n = encodeHello(h, buf);
     dump("HELLO_FRAME", frame(FrameType::HELLO, 0, 0, std::span(buf.data(), n)));
 
     // PUBLISH mid-session: one wish.
     PublishMsg pm;
     pm.publishes_count = 1;
-    pm.publishes[0] = PublishWish{.channel_id = 0x2101, .rate_hz = 20.0f, .has_burst = true, .burst = 40.0f,
-                                  .has_curve_family = true, .curve_family = 2};
+    pm.publishes[0] = PublishWish{.channel_id = 0x2101, .rate_hz = 20.0f, .has_burst = true, .burst = 40.0f};
     n = encodePublish(pm, buf);
     dump("PUBLISH_FRAME", frame(FrameType::PUBLISH, 0, 0, std::span(buf.data(), n)));
 
-    // GRANT answering that PUBLISH: effective family downgraded to c1 (1), wish echoed as 2.
+    // GRANT answering that PUBLISH.
     GrantMsg g;
     g.granted_publishes_count = 1;
     g.granted_publishes[0] = GrantedPublish{.channel_id = 0x2101, .granted_rate_hz = 20.0f,
-                                            .has_burst = true, .burst = 40.0f,
-                                            .has_curve_family = true, .curve_family = 1,
-                                            .has_requested_curve_family = true,
-                                            .requested_curve_family = 2};
+                                            .has_burst = true, .burst = 40.0f};
     n = encodeGrant(g, buf);
     dump("GRANT_PUBLISH_PAYLOAD", std::span(buf.data(), n));
 

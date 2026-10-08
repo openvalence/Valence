@@ -149,13 +149,6 @@ public:
         }
     }
 
-    // RFC-030: 0 = honor the wish (the library default); nonzero = act like a
-    // machine whose curve_policy forces a family, so tests can see the grant
-    // echo the EFFECTIVE value rather than parroting the request.
-    uint8_t forceCurveFamily = 0;
-    uint8_t effectiveCurveFamily(uint16_t, uint8_t requested) override {
-        return forceCurveFamily != 0 ? forceCurveFamily : requested;
-    }
 };
 
 // ---- raw frame helpers ------------------------------------------------------
@@ -1490,12 +1483,11 @@ TEST_CASE("SI-22: deadman_wish_ms clamps to registry bounds and echoes applied o
     CHECK(wc->deadman_ms == limits::deadman_default_ms);
 }
 
-// ---- SI-23 (RFC-030) --------------------------------------------------------
-// curve family: wish in, EFFECTIVE value out.
-// A declaring client sees its family echoed by an honoring hub, sees the
-// FORCED family from an overriding hub (never a parroted lie), and the
-// application can read the granted family back at drain time.
-TEST_CASE("SI-23: curve_family wish echoes effective value and is readable via publishCurveFamily") {
+// ---- SI-23 (RFC-106) --------------------------------------------------------
+// CBOR keys 45 and 48 are retired: a wish entry that still carries key 45 is
+// granted exactly as one without it (§4.3, the key is skipped), and the GRANT
+// carries neither key, byte for byte the plain wish's grant.
+TEST_CASE("SI-23: a retired curve_family key in a wish is ignored and never echoed") {
     Catalog32 cat;
     makeStreamCatalog(cat);
     ManualClock clock;
@@ -1508,101 +1500,39 @@ TEST_CASE("SI-23: curve_family wish echoes effective value and is readable via p
     REQUIRE(link.endpointB().open());  // no Client owns endpointB here — open it so raw write()s go through
     ITransport& ep = link.endpointB();
 
-    PublishWish wish{};
-    wish.channel_id = kSegCh;
-    wish.rate_hz = 30.0f;
-    wish.has_curve_family = true;
-    wish.curve_family = curve_families::c1_cubic;
-    WelcomeMsg w = connectSession(hub, clock, ep, 0x41, /*token=*/true, {wish});
-
-    REQUIRE(w.granted_publishes_count == 1);
-    CHECK(w.granted_publishes[0].has_curve_family);
-    CHECK(w.granted_publishes[0].curve_family == curve_families::c1_cubic);  // honored
-    CHECK(hub.publishCurveFamily(w.session_id, kSegCh) == curve_families::c1_cubic);
-    CHECK(hub.publishCurveFamily(w.session_id, kStreamCh) == 0);  // no grant -> unspecified
-
-    // Mid-session renegotiation via PUBLISH, against a machine now FORCING C2:
-    // the echo carries what the machine will DO, not what was asked.
-    del.forceCurveFamily = curve_families::c2_quintic;
-    writePublish(ep, {wish});
-    auto replies = tickAndDrain(hub, clock, ep);
-    auto g = findGrant(replies);
-    REQUIRE(g.has_value());
-    REQUIRE(g->granted_publishes_count == 1);
-    CHECK(g->granted_publishes[0].has_curve_family);
-    CHECK(g->granted_publishes[0].curve_family == curve_families::c2_quintic);  // downgrade is VISIBLE
-    CHECK(hub.publishCurveFamily(w.session_id, kSegCh) == curve_families::c2_quintic);
-
-    // A wish that declares nothing gets no family key back (byte-compat rule).
     PublishWish plain{};
     plain.channel_id = kSegCh;
     plain.rate_hz = 30.0f;
-    writePublish(ep, {plain});
-    auto replies2 = tickAndDrain(hub, clock, ep);
-    auto g2 = findGrant(replies2);
-    REQUIRE(g2.has_value());
-    REQUIRE(g2->granted_publishes_count == 1);
-    CHECK_FALSE(g2->granted_publishes[0].has_curve_family);
-}
-
-// ---- SI-23b (RFC-049b) ------------------------------------------------------
-// downgrade visibility: `requested_curve_family` (key 48)
-// echoes the client's ORIGINAL wish verbatim, alongside the EFFECTIVE
-// `curve_family` (45) a curve_policy override may have replaced it with. A
-// client compares the two present keys directly instead of remembering what
-// it asked for.
-TEST_CASE("SI-23b: requested_curve_family echoes the original wish verbatim, distinct from a downgraded effective value") {
-    Catalog32 cat;
-    makeStreamCatalog(cat);
-    ManualClock clock;
-    XorShift32 rng(2331);
-    StreamHubDelegate del;
-    Hub hub(cat, clock, rng, del);
-
-    InProcessLink link(clock, rng);
-    REQUIRE(hub.attachTransport(link.endpointA()));
-    REQUIRE(link.endpointB().open());
-    ITransport& ep = link.endpointB();
-
-    PublishWish wish{};
-    wish.channel_id = kSegCh;
-    wish.rate_hz = 30.0f;
-    wish.has_curve_family = true;
-    wish.curve_family = curve_families::c1_cubic;
-
-    // Honored (no override): requested == effective, both present.
-    WelcomeMsg w = connectSession(hub, clock, ep, 0x42, /*token=*/true, {wish});
+    WelcomeMsg w = connectSession(hub, clock, ep, 0x41, /*token=*/true, {plain});
     REQUIRE(w.granted_publishes_count == 1);
-    CHECK(w.granted_publishes[0].has_curve_family);
-    CHECK(w.granted_publishes[0].curve_family == curve_families::c1_cubic);
-    CHECK(w.granted_publishes[0].has_requested_curve_family);
-    CHECK(w.granted_publishes[0].requested_curve_family == curve_families::c1_cubic);
 
-    // Downgraded via PUBLISH renegotiation against a machine forcing C2: the
-    // requested key stays the CLIENT's original ask, unmodified by the
-    // override — the two now visibly disagree, which IS the downgrade fact.
-    del.forceCurveFamily = curve_families::c2_quintic;
-    writePublish(ep, {wish});
+    // A PUBLISH whose one wish entry carries the retired key 45, built by hand
+    // because the encoder no longer writes it.
+    std::array<std::byte, 64> buf{};
+    CborWriter cw{std::span<std::byte>(buf)};
+    cw.mapHeader(1);
+    cw.key(CborKey::publishes).arrayHeader(1);
+    cw.mapHeader(3);
+    cw.key(CborKey::rate_hz).f32Val(30.0f);
+    cw.key(CborKey::channel_id).uintVal(kSegCh);
+    cw.key(uint64_t(45)).uintVal(1);
+    REQUIRE(cw.size() > 0);
+    writeFrame(ep, FrameType::PUBLISH, 0, std::span<const std::byte>(buf.data(), cw.size()));
     auto replies = tickAndDrain(hub, clock, ep);
-    auto g = findGrant(replies);
-    REQUIRE(g.has_value());
-    REQUIRE(g->granted_publishes_count == 1);
-    CHECK(g->granted_publishes[0].curve_family == curve_families::c2_quintic);          // effective: downgraded
-    CHECK(g->granted_publishes[0].has_requested_curve_family);
-    CHECK(g->granted_publishes[0].requested_curve_family == curve_families::c1_cubic);  // requested: unchanged
+    std::vector<std::byte> withKey;
+    for (const auto& r : replies) if (r.type == FrameType::GRANT) withKey = r.payload;
+    REQUIRE_FALSE(withKey.empty());
+    auto g = decodeGrant(std::span<const std::byte>(withKey));
+    REQUIRE(g);
+    REQUIRE(g.value().granted_publishes_count == 1);
+    CHECK(g.value().granted_publishes[0].channel_id == kSegCh);
 
-    // A wish that declares no family gets neither key back (byte-compat rule
-    // extends to the new key exactly like the existing one).
-    PublishWish plain{};
-    plain.channel_id = kSegCh;
-    plain.rate_hz = 30.0f;
     writePublish(ep, {plain});
     auto replies2 = tickAndDrain(hub, clock, ep);
-    auto g2 = findGrant(replies2);
-    REQUIRE(g2.has_value());
-    REQUIRE(g2->granted_publishes_count == 1);
-    CHECK_FALSE(g2->granted_publishes[0].has_curve_family);
-    CHECK_FALSE(g2->granted_publishes[0].has_requested_curve_family);
+    std::vector<std::byte> without;
+    for (const auto& r : replies2) if (r.type == FrameType::GRANT) without = r.payload;
+    REQUIRE_FALSE(without.empty());
+    CHECK(withKey == without);
 }
 
 // ---- SI-24 (RFC-016a) -------------------------------------------------------

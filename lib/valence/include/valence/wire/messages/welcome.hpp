@@ -50,20 +50,6 @@ struct GrantedPublish {
     float granted_rate_hz = 0.0f;
     bool has_burst = false;
     float burst = 0.0f;
-    // RFC-030: the EFFECTIVE curve family (key 45) — the wish AFTER the hub's
-    // own curve_policy override, so a client can tell "honored" from
-    // "downgraded". Emitted only when the wish declared a family, mirroring
-    // burst's byte-identical rule for everyone else.
-    bool has_curve_family = false;
-    uint8_t curve_family = 0;
-    // RFC-049b: the client's ORIGINAL `curve_family` wish (key 48), echoed
-    // verbatim — unmodified by `curve_policy`, unlike `curve_family` above.
-    // Present iff the wish declared a family, exactly mirroring that field's
-    // own presence rule. Comparing this against `curve_family` is how a
-    // client tells "honored" from "downgraded" without remembering what it
-    // sent.
-    bool has_requested_curve_family = false;
-    uint8_t requested_curve_family = 0;
     // RFC-059: the hub's declared delay (key 49), in us, from a sample's time
     // to the start of its execution; on a samples-kind grant, the chase-
     // planning budget. Constant for the life of the grant; a change is an
@@ -76,18 +62,13 @@ struct GrantedPublish {
 
 // One granted_publishes entry map, shared by WELCOME and GRANT. Keys
 // ascending: granted_rate_hz(14) < channel_id(15) < burst(42) <
-// curve_family(45) < requested_curve_family(48) < schedule_latency_us(49) <
-// schedule_horizon_ms(50).
+// schedule_latency_us(49) < schedule_horizon_ms(50).
 inline void encodeGrantedPublish(CborWriter& w, const GrantedPublish& gp) {
-    w.mapHeader(2 + uint32_t(gp.has_burst) + uint32_t(gp.has_curve_family) +
-                uint32_t(gp.has_requested_curve_family) + uint32_t(gp.schedule_latency_us != 0) +
+    w.mapHeader(2 + uint32_t(gp.has_burst) + uint32_t(gp.schedule_latency_us != 0) +
                 uint32_t(gp.schedule_horizon_ms != 0));
     w.key(CborKey::granted_rate_hz).f32Val(gp.granted_rate_hz);
     w.key(CborKey::channel_id).uintVal(gp.channel_id);
     if (gp.has_burst) w.key(CborKey::burst).f32Val(gp.burst);
-    if (gp.has_curve_family) w.key(CborKey::curve_family).uintVal(gp.curve_family);
-    if (gp.has_requested_curve_family)
-        w.key(CborKey::requested_curve_family).uintVal(gp.requested_curve_family);
     if (gp.schedule_latency_us != 0) w.key(CborKey::schedule_latency_us).uintVal(gp.schedule_latency_us);
     if (gp.schedule_horizon_ms != 0) w.key(CborKey::schedule_horizon_ms).uintVal(gp.schedule_horizon_ms);
 }
@@ -118,22 +99,6 @@ inline Result<GrantedPublish, DecodeError> decodeGrantedPublish(CborReader& r) {
                 if (!vv) return Ret::err(vv.error());
                 gp.burst = vv.value();
                 gp.has_burst = true;
-                break;
-            }
-            case uint64_t(CborKey::curve_family): {
-                auto vv = r.readUint();
-                if (!vv) return Ret::err(vv.error());
-                if (vv.value() > 0xFF) return Ret::err(DecodeError::Malformed);
-                gp.curve_family = uint8_t(vv.value());
-                gp.has_curve_family = true;
-                break;
-            }
-            case uint64_t(CborKey::requested_curve_family): {
-                auto vv = r.readUint();
-                if (!vv) return Ret::err(vv.error());
-                if (vv.value() > 0xFF) return Ret::err(DecodeError::Malformed);
-                gp.requested_curve_family = uint8_t(vv.value());
-                gp.has_requested_curve_family = true;
                 break;
             }
             case uint64_t(CborKey::schedule_latency_us): {

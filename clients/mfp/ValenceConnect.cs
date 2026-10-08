@@ -71,12 +71,6 @@ using Stylet;
 //     ~25/s dense-section peak — it no longer over-declares 30 Hz to buy
 //     bucket depth. The client-side shaper sizes its bucket off the ECHOED
 //     burst in granted_publishes (absent = depth-equals-rate, the old rule).
-//   * RFC-030. The 0x0085 (now 0x2101) wish declares `curve_family` (45): Step scripts
-//     declare 3, everything else 1 (c1_cubic — every MFP interpolator is
-//     C1-class and the emitted {target,duration,end_vel} IS a cubic Hermite).
-//     The GRANT echoes the EFFECTIVE family post machine-override; a
-//     difference logs one WARN ("machine renders as ... (curve policy
-//     override)") — never silently ignored.
 // =============================================================================
 
 public class ValenceConnect : PluginBase
@@ -780,8 +774,7 @@ public class ValenceConnect : PluginBase
 
     // ---- Toolbar mode toggle -------------------------------------------------
     // STREAM MODE IS NEGOTIATED, NOT SWITCHED. The two modes wish for different
-    // channels at different rates, and Segments additionally declares a
-    // curve_family (RFC-030) — all of it settled in HELLO. There is no frame
+    // channels at different rates, all of it settled in HELLO. There is no frame
     // that re-negotiates a live session's publishes, so changing mode means a
     // new session, and this button is honest about doing that rather than
     // pretending the change is free.
@@ -937,9 +930,6 @@ public class ValenceConnect : PluginBase
         // The hub clamps burst to granted_rate × max_burst_multiple and ECHOES
         // the applied values in granted_publishes; the client-side shaper below
         // sizes its own bucket off that echo — ground truth, never the wish.
-        //
-        // RFC-030 rides the same entry: `curve_family` (45) declares WHICH
-        // reconstruction this segment stream means (see segCurveFamily below).
 
         // Cached catalog for THIS host: presenting a matching etag in HELLO
         // makes the session ready at WELCOME with no transfer at all (RFC-015).
@@ -957,33 +947,14 @@ public class ValenceConnect : PluginBase
             (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical),
         };
 
-        // RFC-030: which curve family the 0x2101 stream means. MFP's axis
-        // interpolation IS cleanly reachable (same property SegmentLoop reads
-        // for its own span math): Step means the author wants jumps (family 3);
-        // every other MFP interpolator (Linear/Pchip/Makima/…) is C1-class, and
-        // the wire payload {target, duration, end_vel} this plugin emits is a
-        // C1 cubic Hermite by construction — so 1 (c1_cubic) is the honest
-        // declaration, and the honest FALLBACK when the property read fails.
-        byte segCurveFamily = ValenceWire.CurveC1Cubic;
-        if (mode == StreamMode.Segments)
-        {
-            try
-            {
-                var interpAxis = DeviceAxis.Parse(SourceAxis);
-                var interp = ReadProperty<DeviceAxis, InterpolationType>("Axis::InterpolationType", interpAxis);
-                segCurveFamily = interp == InterpolationType.Step ? ValenceWire.CurveStep : ValenceWire.CurveC1Cubic;
-            }
-            catch { /* not reachable → C1 stays the honest default */ }
-        }
-
         WelcomeInfo welcome;
         if (mode == StreamMode.Segments)
         {
             welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
-                new (ushort ch, double rate, double burst, byte curveFamily)[]
+                new (ushort ch, double rate, double burst)[]
                 {
-                    (ValenceWire.ChMotionInput, wishHz, 0.0, ValenceWire.CurveUnspecified),
-                    (ValenceWire.ChMotionSegment, SegmentWishHz, SegmentWishBurst, segCurveFamily),
+                    (ValenceWire.ChMotionInput, wishHz, 0.0),
+                    (ValenceWire.ChMotionSegment, SegmentWishHz, SegmentWishBurst),
                 },
                 token16, token, subWishes, cached?.Etag);
         }
@@ -1023,14 +994,6 @@ public class ValenceConnect : PluginBase
             Logger.Info("motion-segment grant: rate {0:F1} Hz, burst {1} (wished {2:F1} Hz / {3:F0} samples)",
                 segGranted, double.IsNaN(segGrantedBurst) ? "(not echoed: depth = rate)" : $"{segGrantedBurst:F0} samples",
                 SegmentWishHz, SegmentWishBurst);
-
-            // RFC-030: the echo is the EFFECTIVE family post machine-override.
-            // A difference is a policy statement by the machine, and silence
-            // about it here would be a lie about what the user will feel.
-            long segGrantedFamily = welcome.GrantedCurveFamily(ValenceWire.ChMotionSegment);
-            if (segGrantedFamily >= 0 && segGrantedFamily != segCurveFamily)
-                Logger.Warn("curve_family: declared {0} but the machine renders as {1} (curve policy override)",
-                    ValenceWire.CurveFamilyName(segCurveFamily), ValenceWire.CurveFamilyName(segGrantedFamily));
         }
 
         double segGrantedSnapshot = segGranted;
@@ -3141,27 +3104,6 @@ public static class ValenceWire
     public const int KBody = 40;              // EVENT: the kind-specific field sub-map
     public const int KIntentSeq = 41;         // NACK: header seq of the frame being refused (RFC-001)
     public const int KBurst = 42;             // publishes/granted_publishes entry: token-bucket depth in samples (RFC-013)
-    public const int KCurveFamily = 45;       // publishes/granted_publishes entry: curve family of a segment stream (RFC-030)
-
-    // ---- Curve families (registry curve_families, RFC-030) ------------------
-    // {target, duration_ms, end_vel} uniquely determines a cubic Hermite, so a
-    // segment sender's wish names WHICH reconstruction it means. The GRANT
-    // echoes the EFFECTIVE family post machine-override — "honored" and
-    // "downgraded" are distinguishable, and a downgrade is surfaced, never
-    // silently ignored.
-    public const byte CurveUnspecified = 0;   // the compatible pre-RFC-030 default
-    public const byte CurveC1Cubic = 1;       // velocity-continuous cubic (Linear/Pchip/Makima senders)
-    public const byte CurveC2Quintic = 2;     // curvature-continuous; sender means the smoothness
-    public const byte CurveStep = 3;          // step/none — no interpolation intended
-
-    public static string CurveFamilyName(long v) => v switch
-    {
-        CurveUnspecified => "unspecified",
-        CurveC1Cubic => "C1 cubic",
-        CurveC2Quintic => "C2 quintic",
-        CurveStep => "step",
-        _ => $"family {v}",
-    };
 
     // ---- `blob` (38) sub-map keys (registry blob_keys, RFC-021) -------------
     // ONE vocabulary shared by BLOB_REQ's CBOR map and BLOB_CHUNK's fixed
@@ -3380,7 +3322,7 @@ public static class ValenceWire
         => BuildHello(clientKind, clientName, instanceId,
                       new (ushort ch, double rate)[] { (publishChannel, publishRateHz) }, token16);
 
-    // Rate-only publishes overload: burst/curve_family absent → each wish entry
+    // Rate-only publishes overload: burst absent → each wish entry
     // stays the classic 2-key {12:rate,15:channel} map, byte-identical to the
     // pre-RFC-013 shape (the goldens in WireSelfTest.cs enforce that).
     public static byte[] BuildHello(string clientKind, string clientName, byte[] instanceId,
@@ -3388,18 +3330,16 @@ public static class ValenceWire
                                     IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
                                     byte[] catalogEtag = null)
         => BuildHello(clientKind, clientName, instanceId,
-                      publishes.Select(p => (p.ch, p.rate, 0.0, (byte)0)).ToList(),
+                      publishes.Select(p => (p.ch, p.rate, 0.0)).ToList(),
                       token16, subscribes, catalogEtag);
 
     // Multi-wish variant: the publishes array carries one wish map per channel
     // we want to publish on (§6.2). Entry keys ASCENDING per §5.3:
-    //   rate_hz(12) < channel_id(15) < burst(42) < curve_family(45).
+    //   rate_hz(12) < channel_id(15) < burst(42).
     // burst (RFC-013): token-bucket depth in SAMPLES, decoupled from the
     //   sustained rate. <= 0 omits the key (hub default: depth = granted rate).
-    // curveFamily (RFC-030): which reconstruction a segment stream means.
-    //   0 (unspecified) omits the key — the compatible pre-RFC-030 wire.
     public static byte[] BuildHello(string clientKind, string clientName, byte[] instanceId,
-                                    IReadOnlyList<(ushort ch, double rate, double burst, byte curveFamily)> publishes,
+                                    IReadOnlyList<(ushort ch, double rate, double burst)> publishes,
                                     byte[] token16 = null,
                                     IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
                                     byte[] catalogEtag = null)
@@ -3430,14 +3370,13 @@ public static class ValenceWire
         }
         w.WriteUInt(KPublishes);
         w.WriteArrayHeader(publishes.Count);
-        foreach (var (ch, rate, burst, curveFamily) in publishes)
+        foreach (var (ch, rate, burst) in publishes)
         {
-            int entries = 2 + (burst > 0 ? 1 : 0) + (curveFamily != CurveUnspecified ? 1 : 0);
-            w.WriteMapHeader(entries);                // keys ascending: 12 < 15 < 42 < 45
+            int entries = 2 + (burst > 0 ? 1 : 0);
+            w.WriteMapHeader(entries);                // keys ascending: 12 < 15 < 42
             w.WriteUInt(KRateHz); w.WriteFloat32((float)rate);
             w.WriteUInt(KChannelId); w.WriteUInt(ch);
             if (burst > 0) { w.WriteUInt(KBurst); w.WriteFloat32((float)burst); }
-            if (curveFamily != CurveUnspecified) { w.WriteUInt(KCurveFamily); w.WriteUInt(curveFamily); }
         }
         return w.ToArray();
     }
@@ -3795,10 +3734,7 @@ public sealed class WelcomeInfo
     public long DeadmanMs;
     public long DeadmanPolicy;
     // burst: NaN when the hub did not echo one (RFC-013 default: depth = rate).
-    // curveFamily: -1 when the hub did not echo one (pre-RFC-030 hub); otherwise
-    // the EFFECTIVE family post machine-override, which is how a client tells
-    // "honored" from "downgraded".
-    private readonly List<(ushort ch, double rate, double burst, long curveFamily)> _grantedPublishes = new();
+    private readonly List<(ushort ch, double rate, double burst)> _grantedPublishes = new();
 
     public static WelcomeInfo Parse(byte[] payload)
     {
@@ -3820,8 +3756,7 @@ public sealed class WelcomeInfo
                     ushort ch = e.TryGetValue(ValenceWire.KChannelId, out var c) ? (ushort)Convert.ToInt64(c) : (ushort)0;
                     double rate = e.TryGetValue(ValenceWire.KGrantedRateHz, out var r) ? Convert.ToDouble(r) : 0.0;
                     double burst = e.TryGetValue(ValenceWire.KBurst, out var b) ? Convert.ToDouble(b) : double.NaN;
-                    long fam = e.TryGetValue(ValenceWire.KCurveFamily, out var f) ? Convert.ToInt64(f) : -1;
-                    w._grantedPublishes.Add((ch, rate, burst, fam));
+                    w._grantedPublishes.Add((ch, rate, burst));
                 }
             }
         }
@@ -3831,7 +3766,7 @@ public sealed class WelcomeInfo
     // Granted rate for a publish channel, or NaN if it wasn't granted.
     public double GrantedPublishRate(ushort channel)
     {
-        foreach (var (ch, rate, _, _) in _grantedPublishes)
+        foreach (var (ch, rate, _) in _grantedPublishes)
             if (ch == channel) return rate;
         return double.NaN;
     }
@@ -3840,19 +3775,11 @@ public sealed class WelcomeInfo
     // none — the caller then applies the registry default (depth = granted rate).
     public double GrantedPublishBurst(ushort channel)
     {
-        foreach (var (ch, _, burst, _) in _grantedPublishes)
+        foreach (var (ch, _, burst) in _grantedPublishes)
             if (ch == channel) return burst;
         return double.NaN;
     }
 
-    // EFFECTIVE curve family (RFC-030) the hub granted, or -1 when it echoed
-    // none (a pre-RFC-030 hub, which behaves as `unspecified`).
-    public long GrantedCurveFamily(ushort channel)
-    {
-        foreach (var (ch, _, _, fam) in _grantedPublishes)
-            if (ch == channel) return fam;
-        return -1;
-    }
 }
 
 // =============================================================================
@@ -4269,12 +4196,12 @@ public sealed class HubClient
         IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
         byte[] cachedEtag = null)
         => HelloAsync(kind, name,
-                      publishes.Select(p => (p.ch, p.rate, 0.0, (byte)0)).ToList(),
+                      publishes.Select(p => (p.ch, p.rate, 0.0)).ToList(),
                       token16, token, subscribes, cachedEtag);
 
-    // Rich-wish variant (RFC-013 burst + RFC-030 curve_family per publish entry).
+    // Rich-wish variant (RFC-013 burst per publish entry).
     public async Task<WelcomeInfo> HelloAsync(string kind, string name,
-        IReadOnlyList<(ushort ch, double rate, double burst, byte curveFamily)> publishes,
+        IReadOnlyList<(ushort ch, double rate, double burst)> publishes,
         byte[] token16, CancellationToken token,
         IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
         byte[] cachedEtag = null)

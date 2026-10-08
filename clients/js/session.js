@@ -263,7 +263,7 @@ function defaultCatalogStore() {
  *        counts only WELCOME's own grants, so a channel subscribed later is
  *        not part of the LIVE gate on a fresh session. Catalog-resolved
  *        channels call subscribe() once the catalog lands.
- * @param {Array<[number, number, number?, number?]>} [opts.publishes] [ch, rateHz, burst?, curveFamily?]
+ * @param {Array<[number, number, number?]>} [opts.publishes] [ch, rateHz, burst?]
  *        STREAM publish wishes carried in HELLO (key 11, §6.2). The ids must
  *        be known before the catalog is; a client that finds its channel in
  *        the catalog calls publish() once LIVE instead.
@@ -357,7 +357,7 @@ export function createSession(opts = {}) {
     deadmanPolicy: null,
     limits: {}, // WELCOME limits by WELCOME_LIMITS_K name (max_sessions / sessions_in_use: 0 = unknown)
     grants: new Map(), // channelId -> {rate, priority}
-    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, curveFamily, requestedCurveFamily, scheduleLatencyUs, scheduleHorizonMs}
+    grantedPublishes: new Map(), // channelId -> {channel, rate, burst, scheduleLatencyUs, scheduleHorizonMs}
     clockOffsetUs: 0,
     clockSynced: false, // a CLOCK reply has landed this session, so anchors mean something
   };
@@ -488,14 +488,13 @@ export function createSession(opts = {}) {
   }
 
   // ---- PUBLISH (§6.2 / §6.7) ----------------------------------------------
-  // Entry keys ascending: rate_hz(12) < channel_id(15) < [burst(42)] <
-  // [curve_family(45)]. rate_hz and burst are f32 on the wire; the hub's
-  // decoder rejects an integer there.
+  // Entry keys ascending: rate_hz(12) < channel_id(15) < [burst(42)].
+  // rate_hz and burst are f32 on the wire; the hub's decoder rejects an
+  // integer there.
   function encodePublishWishes(wishes) {
-    return cbArray(wishes.map(([ch, rate, burst, family]) => {
+    return cbArray(wishes.map(([ch, rate, burst]) => {
       const pairs = [[K.rate_hz, cbF32(rate)], [K.channel_id, cbUint(ch)]];
       if (burst != null) pairs.push([K.burst, cbF32(burst)]);
-      if (family != null) pairs.push([K.curve_family, cbUint(family)]);
       return cbMap(pairs);
     }));
   }
@@ -505,7 +504,7 @@ export function createSession(opts = {}) {
    * Resolves with the applied grants from the answering GRANT. A wished
    * channel absent from the answer was refused and is no longer publishable
    * from this client.
-   * @param {Array<[number, number, number?, number?]>} wishes [ch, rateHz, burst?, curveFamily?]
+   * @param {Array<[number, number, number?]>} wishes [ch, rateHz, burst?]
    * @param {Object} [o] {timeoutMs}
    * @returns {Promise<Array<Object>>} the granted publish records
    */
@@ -533,8 +532,6 @@ export function createSession(opts = {}) {
       channel: ch,
       rate: e.get(K.granted_rate_hz),
       burst: e.has(K.burst) ? e.get(K.burst) : null,
-      curveFamily: e.has(K.curve_family) ? e.get(K.curve_family) : null,
-      requestedCurveFamily: e.has(K.requested_curve_family) ? e.get(K.requested_curve_family) : null,
       // RFC-059: the hub's committed delay from a sample's time to its execution
       // (on samples kind, the chase-planning budget). Lead media by this; never
       // hardcode it. null = unspecified (absent or 0).

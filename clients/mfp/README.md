@@ -61,8 +61,8 @@ own slot and never moves a control.
 active mode: a **bezier curve** for Segments (the machine renders the sender's own
 continuous waveform per stroke) and a **staircase** for Samples (discrete position
 points at a fixed rate). Pressing it while connected **re-negotiates the session**:
-stream mode is settled in HELLO (different channels, different rates, and Segments
-declares a `curve_family`) and no frame changes it on a live session. The machine stops
+stream mode is settled in HELLO (different channels, different rates) and no frame
+changes it on a live session. The machine stops
 receiving for the length of the reconnect and its deadman covers the gap, so it is
 safe, but it *is* a visible interruption mid-scene.
 

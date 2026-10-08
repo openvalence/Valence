@@ -193,17 +193,6 @@ public:
         (void)channel_id; (void)session_id; (void)bundle;
     }
 
-    // RFC-030: the EFFECTIVE curve family for a granted segment publish — the
-    // client's wish AFTER the machine's own curve policy. Called at grant time
-    // (HELLO and PUBLISH share it); the returned value is what the grant
-    // echoes, so a force-C1/force-C2 machine tells the sender honestly that
-    // its declaration is being rendered as something else. Default honors the
-    // wish verbatim (a hub with no override). `requested` is already clamped
-    // to the registered `curve_families` range.
-    virtual uint8_t effectiveCurveFamily(uint16_t channel_id, uint8_t requested) {
-        (void)channel_id;
-        return requested;
-    }
 
     // RFC-059: the schedule_latency_us (cbor key 49) this hub commits to on a
     // publish grant of `channel_id`, inclusive of every hub-internal hop. 0 =
@@ -481,13 +470,6 @@ public:
     bool pairingWindowOpen() const {
         return _pairing.windowOpen(_lastUpdateMs) || _pairing.presenceWindowOpen(_lastUpdateMs);
     }
-
-    // ---- RFC-030: the curve family granted to a live publish ---------------
-    // 0 (unspecified) when the session/channel has no grant or declared no
-    // family. Read this at segment-drain time so the consumer honors the
-    // sender's declared smoothness class (subject to the machine's own
-    // curve policy, which already shaped this value at grant time).
-    uint8_t publishCurveFamily(uint32_t session_id, uint16_t channel_id) const;
 
     uint16_t cfgGen() const;
     uint32_t bootId() const;

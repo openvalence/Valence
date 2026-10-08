@@ -22,8 +22,8 @@
 // Run:  dotnet run --project clients/mfp/LiveWireTest.csproj [ip] [port] [--http N] [--sim]
 // Exit 0 only if every hard PASS criterion below is met.
 //
-// VERIFICATION DEBT (plugin v0.4.0 — RFC-013 honest rate/burst + RFC-030
-// curve_family on the 0x2101 wish, was 0x0085 pre-RFC-047): a bench re-run is REQUIRED before this
+// VERIFICATION DEBT (plugin v0.4.0 — RFC-013 honest rate/burst on the 0x2101
+// wish, was 0x0085 pre-RFC-047): a bench re-run is REQUIRED before this
 // plugin version is considered verified — run this test TWICE BACK-TO-BACK
 // WITHOUT rebooting the device in between, per the ownership-release
 // regression pattern (the fw 2.1.44 teardown-leak bug was invisible to every
@@ -754,18 +754,18 @@ internal static class LiveWireTest
         await ws.ConnectAsync(new Uri($"ws://{ip}:{port}/"), token);
         var client = new HubClient(ws, instanceId, Log);
 
-        // The plugin's own Segments HELLO: both wishes, RFC-013 burst, RFC-030
-        // family, and the safety subscription. The motion STATE subscription is
+        // The plugin's own Segments HELLO: both wishes, RFC-013 burst, and the
+        // safety subscription. The motion STATE subscription is
         // role-resolved below rather than wished here: no motion channel
         // number is portable.
         var welcome = await client.HelloAsync("mfp", "MultiFunPlayer Valence Connect",
-            new (ushort ch, double rate, double burst, byte curveFamily)[]
+            new (ushort ch, double rate, double burst)[]
             {
-                (ValenceWire.ChMotionInput, 50.0, 0.0, ValenceWire.CurveUnspecified),
+                (ValenceWire.ChMotionInput, 50.0, 0.0),
                 // The HONEST wish for what THIS harness sends: a constant
                 // 1000/LagSegMs per second, not the plugin's 2-4/s script mean.
                 // Wishing the plugin's 5 Hz here just buys a NACK storm.
-                (ValenceWire.ChMotionSegment, 1000.0 / LagSegMs, 25.0, ValenceWire.CurveC1Cubic),
+                (ValenceWire.ChMotionSegment, 1000.0 / LagSegMs, 25.0),
             },
             token16, token,
             new (ushort, double, byte)[] { (ValenceWire.ChSafety, 0.0, ValenceWire.PriorityCritical) });

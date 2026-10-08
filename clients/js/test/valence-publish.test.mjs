@@ -42,9 +42,9 @@ function refusal(name, fn, code) {
 
 // ---- golden bytes (gen_publish_golden.cpp output) ---------------------------
 const G = {
-  HELLO_FRAME: '0000000000003D00A501010264746573740366676F6C64656E044801020304050607080B82A20CFA424800000F192100A40CFA41A000000F192101182AFA42200000182D01',
-  PUBLISH_FRAME: '1800000000001800A10B81A40CFA41A000000F192101182AFA42200000182D02',
-  GRANT_PUBLISH_PAYLOAD: 'A2182380182481A50EFA41A000000F192101182AFA42200000182D01183002',
+  HELLO_FRAME: '0000000000003A00A501010264746573740366676F6C64656E044801020304050607080B82A20CFA424800000F192100A30CFA41A000000F192101182AFA42200000',
+  PUBLISH_FRAME: '1800000000001500A10B81A30CFA41A000000F192101182AFA42200000',
+  GRANT_PUBLISH_PAYLOAD: 'A2182380182481A30EFA41A000000F192101182AFA42200000',
   GRANT_EMPTY_PAYLOAD: 'A2182380182480',
   WELCOME_PAYLOAD: 'AC0101061A01020304071A0A0B0C0D08480000000000000000090716A3010002000300170118181907D0181900181D480000000000000000182380182481A20EFA424800000F192100',
   STREAM_SAMPLES_FRAME: '0C0000210700120078563412020000001027881306FF4C1D7D00',
@@ -121,12 +121,12 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   const s = createSession({
     host: 't1', clientKind: 'test', clientName: 'golden', deadmanWishMs: null,
     instanceId: Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8), autoReconnect: false,
-    publishes: [[0x2100, 50], [0x2101, 20, 40, 1]],
+    publishes: [[0x2100, 50], [0x2101, 20, 40]],
     catalogStore: memStore(null), WebSocketImpl: FakeWS,
   });
   s.connect();
   FakeWS.last.open();
-  check('HELLO with publish wishes (plain + burst/curve_family) == C++ encodeHello', FakeWS.last.sent[0], G.HELLO_FRAME);
+  check('HELLO with publish wishes (plain + burst) == C++ encodeHello', FakeWS.last.sent[0], G.HELLO_FRAME);
 
   // WELCOME from the C++ encoder: granted_publishes (36) adopted.
   let evt = null;
@@ -134,19 +134,16 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   FakeWS.last.recv(FRAME.WELCOME, fromHex(G.WELCOME_PAYLOAD));
   const gp = s.state.grantedPublishes.get(0x2100);
   assert('WELCOME granted_publishes -> state.grantedPublishes (0x2100 @ 50 Hz, no burst)',
-    !!gp && gp.rate === 50 && gp.burst === null && gp.curveFamily === null);
+    !!gp && gp.rate === 50 && gp.burst === null);
   assert('WELCOME grant emits publishGrant', Array.isArray(evt) && evt.length === 1);
 
   // PUBLISH: byte-exact, and the C++ GRANT answer resolves it.
-  const p = s.publish([[0x2101, 20, 40, 2]]);
+  const p = s.publish([[0x2101, 20, 40]]);
   check('PUBLISH frame == C++ encodePublish', FakeWS.last.framesOf(FRAME.PUBLISH)[0].bytes, G.PUBLISH_FRAME);
   FakeWS.last.recv(FRAME.GRANT, fromHex(G.GRANT_PUBLISH_PAYLOAD));
   const res = await p;
-  const seg = s.state.grantedPublishes.get(0x2101);
   assert('PUBLISH resolves with the applied grant (rate 20, burst 40)',
     res.length === 1 && res[0].rate === 20 && res[0].burst === 40);
-  assert('effective curve_family 1 and requested 2 both kept (downgrade visible)',
-    seg.curveFamily === 1 && seg.requestedCurveFamily === 2);
 
   // A PUBLISH answered by the reference hub's empty GRANT: nothing granted.
   const drop = s.publish([[0x2101, 0]]);

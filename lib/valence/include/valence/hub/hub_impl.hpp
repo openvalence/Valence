@@ -919,8 +919,6 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, Acce
         gp.granted_rate_hz = pg.granted_rate_hz;
         gp.has_burst = pg.burstRequested;
         gp.burst = pg.granted_burst;
-        gp.has_curve_family = pg.curveFamily != 0;
-        gp.curve_family = pg.curveFamily;
         gp.schedule_latency_us = _delegate.scheduleLatencyUs(pg.channel_id);
         gp.schedule_horizon_ms = advertisedHorizonMs(pg.channel_id);
         w.granted_publishes[w.granted_publishes_count++] = gp;
@@ -1344,19 +1342,7 @@ inline std::optional<GrantedPublish> Hub::grantPublishWish(Slot& slot, const Pub
         if (grantedBurst > ceiling) grantedBurst = ceiling;
     }
 
-    // RFC-030: the declared curve family, passed through the application's
-    // curve policy so the echo is the EFFECTIVE family. An unknown (future)
-    // family value is treated as unspecified rather than parroted — the hub
-    // must never claim to honor a smoothness class it cannot name.
-    uint8_t effectiveFamily = 0;
-    if (wish.has_curve_family) {
-        uint8_t fam = (wish.curve_family <= curve_families::step) ? wish.curve_family
-                                                                  : curve_families::unspecified;
-        effectiveFamily = _delegate.effectiveCurveFamily(wish.channel_id, fam);
-    }
-
-    if (!slot.session.addPublishGrant(wish.channel_id, grantedRate, nowMs, grantedBurst, wish.has_burst,
-                                      effectiveFamily)) {
+    if (!slot.session.addPublishGrant(wish.channel_id, grantedRate, nowMs, grantedBurst, wish.has_burst)) {
         return std::nullopt;  // table full and this is a new channel
     }
 
@@ -1365,13 +1351,6 @@ inline std::optional<GrantedPublish> Hub::grantPublishWish(Slot& slot, const Pub
     gp.granted_rate_hz = grantedRate;
     gp.has_burst = wish.has_burst;  // echo a burst only to a client that asked for one
     gp.burst = grantedBurst;
-    gp.has_curve_family = wish.has_curve_family;  // echo a family only to a client that declared one
-    gp.curve_family = effectiveFamily;
-    // RFC-049b: echo the ORIGINAL wish verbatim alongside the effective value
-    // so a downgrade (curve_policy overrode it) is two present keys a client
-    // compares, not an inference from what it remembers sending.
-    gp.has_requested_curve_family = wish.has_curve_family;
-    gp.requested_curve_family = wish.curve_family;
     gp.schedule_latency_us = _delegate.scheduleLatencyUs(wish.channel_id);  // RFC-059
     gp.schedule_horizon_ms = advertisedHorizonMs(wish.channel_id);          // RFC-087
     return gp;
@@ -1385,20 +1364,6 @@ inline uint16_t Hub::advertisedHorizonMs(uint16_t channel_id) {
     if (e == nullptr || !_catalog.isSegmentClass(*e)) return 0;
     const uint16_t h = _delegate.scheduleHorizonMs(channel_id);
     if (h == 500 || h == uint16_t(limits::schedule_horizon_max_ms)) return h;
-    return 0;
-}
-
-// RFC-030: what family is a live publish operating under? 0 = unspecified —
-// no such session, no such grant, or no declaration. Segment consumers read
-// this at drain time.
-inline uint8_t Hub::publishCurveFamily(uint32_t session_id, uint16_t channel_id) const {
-    for (const Slot& slot : _slots) {
-        if (!slot.session.occupied() || slot.session.session_id != session_id) continue;
-        for (const auto& pg : slot.session.publishGrants) {
-            if (pg.used && pg.channel_id == channel_id) return pg.curveFamily;
-        }
-        return 0;
-    }
     return 0;
 }
 

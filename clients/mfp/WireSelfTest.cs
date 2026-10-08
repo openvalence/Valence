@@ -22,11 +22,9 @@
 // regression guard, so a hub or client that still speaks the old shape can be
 // checked against it.
 //
-// v0.4.0 MOVED THE SEGMENTS GOLDEN AGAIN (RFC-013 + RFC-030). The 0x0085 (now
-// 0x2101, RFC-047) wish
-// now declares its honest rate (5 Hz, was an over-declared 30) plus `burst`
-// (42) and `curve_family` (45) in the wish-entry map — keys ascending
-// 12<15<42<45. The pre-RFC-013 2-key entry shape is KEPT as a regression
+// v0.4.0 MOVED THE SEGMENTS GOLDEN AGAIN (RFC-013). The 0x0085 (now 0x2101,
+// RFC-047) wish now declares its honest rate (5 Hz, was an over-declared 30)
+// plus `burst` (42) in the wish-entry map — keys ascending 12<15<42. The pre-RFC-013 2-key entry shape is KEPT as a regression
 // guard (the rate-only BuildHello overload must stay byte-identical). Goldens
 // derived from tools/valence_probe.py's primitives via
 // scratchpad/gen_golden_rfc013_030.py.
@@ -113,16 +111,15 @@ internal static class Program
             "A6010102636D667003781E4D756C746946756E506C617965722056616C656E636520436F6E6E656374044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A20CFA41F000000F192101");
 
         // ---- HELLO: the plugin's ACTUAL v0.4.0 Segments shape ----------------
-        // RFC-013 honest wish + RFC-030 curve declaration on the 0x2101 entry
-        // (RFC-047 grid; was 0x0085):
-        // {12:rate 5.0, 15:0x2101, 42:burst 25.0, 45:curve_family 1} — keys
-        // ascending 12<15<42<45; the 0x2100 fallback entry (was 0x0084) stays
-        // the 2-key map (burst<=0 and family 0 are OMITTED, never encoded).
+        // RFC-013 honest wish on the 0x2101 entry (RFC-047 grid; was 0x0085):
+        // {12:rate 5.0, 15:0x2101, 42:burst 25.0} — keys ascending 12<15<42;
+        // the 0x2100 fallback entry (was 0x0084) stays the 2-key map (burst<=0
+        // is OMITTED, never encoded).
         var helloSegV4 = Wire.BuildHello("mfp", "MultiFunPlayer Valence Connect", inst,
-            new (ushort, double, double, byte)[] { (0x2100, 50.0, 0.0, 0), (0x2101, 5.0, 25.0, 1) },
+            new (ushort, double, double)[] { (0x2100, 50.0, 0.0), (0x2101, 5.0, 25.0) },
             null, subs);
-        Check("HELLO payload (mfp Segments v0.4.0: honest rate + burst + curve_family)", helloSegV4,
-            "A6010102636D667003781E4D756C746946756E506C617965722056616C656E636520436F6E6E656374044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A40CFA40A000000F192101182AFA41C80000182D01");
+        Check("HELLO payload (mfp Segments: honest rate + burst)", helloSegV4,
+            "A6010102636D667003781E4D756C746946756E506C617965722056616C656E636520436F6E6E656374044800010203040506070A82A30CFA000000000D030F03A30CFA41A000000D020F18800B82A20CFA424800000F192100A30CFA40A000000F192101182AFA41C80000");
 
         // ---- HELLO: RFC-015 cached-etag fast path ---------------------------
         // catalog_etag(8) sits between instance_id(4) and subscriptions(10).
@@ -285,8 +282,7 @@ internal static class Wire
     public const int KCatalogEtag = 8, KSubscriptions = 10, KPublishes = 11, KRateHz = 12, KPriority = 13;
     public const int KChannelId = 15, KCode = 16, KIntentId = 18, KValue = 20;
     public const int KChunks = 27, KBlob = 38;
-    public const int KBurst = 42, KCurveFamily = 45;   // RFC-013 / RFC-030 wish-entry keys
-    public const byte CurveUnspecified = 0;
+    public const int KBurst = 42;   // RFC-013 wish-entry key
     public const int BlobKNs = 1, BlobKStoreId = 2, BlobKSlot = 3, BlobKGeneration = 4;
     public const int BlobNsCatalog = 0;
     public const int BlobChunkHeaderBytes = 14;
@@ -313,11 +309,11 @@ internal static class Wire
                                     IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
                                     byte[] catalogEtag = null)
         => BuildHello(clientKind, clientName, instanceId,
-                      publishes.Select(p => (p.ch, p.rate, 0.0, (byte)0)).ToList(),
+                      publishes.Select(p => (p.ch, p.rate, 0.0)).ToList(),
                       token16, subscribes, catalogEtag);
 
     public static byte[] BuildHello(string clientKind, string clientName, byte[] instanceId,
-                                    IReadOnlyList<(ushort ch, double rate, double burst, byte curveFamily)> publishes,
+                                    IReadOnlyList<(ushort ch, double rate, double burst)> publishes,
                                     byte[] token16 = null,
                                     IReadOnlyList<(ushort ch, double rate, byte prio)> subscribes = null,
                                     byte[] catalogEtag = null)
@@ -348,14 +344,13 @@ internal static class Wire
         }
         w.U(KPublishes);
         w.Arr(publishes.Count);
-        foreach (var (ch, rate, burst, curveFamily) in publishes)
+        foreach (var (ch, rate, burst) in publishes)
         {
-            int entries = 2 + (burst > 0 ? 1 : 0) + (curveFamily != CurveUnspecified ? 1 : 0);
-            w.Map(entries);                           // keys ascending: 12 < 15 < 42 < 45
+            int entries = 2 + (burst > 0 ? 1 : 0);
+            w.Map(entries);                           // keys ascending: 12 < 15 < 42
             w.U(KRateHz); w.F((float)rate);
             w.U(KChannelId); w.U(ch);
             if (burst > 0) { w.U(KBurst); w.F((float)burst); }
-            if (curveFamily != CurveUnspecified) { w.U(KCurveFamily); w.U(curveFamily); }
         }
         return w.ToArray();
     }

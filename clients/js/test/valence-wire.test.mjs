@@ -400,11 +400,11 @@ assert('safety decode: 8-byte prefix still decodes, modes simply absent',
   new DataView(p.buffer).setUint16(4, 7500, true);
   p[18] = PLAN_FLAG.shaped | PLAN_FLAG.clamped | 0x80;
   const d = decodePacked(p, withFlags);
-  assert('plan.flags: appended byte decodes after the 18 B layout', d.end_norm === 0.75 && d.feasibility === 0x89);
+  assert('plan.flags: appended byte decodes after the 18 B layout', d.end_norm === 0.75 && d.feasibility === 0x85);
   assert('plan.flags: set bits named in bit order, reserved ignored', planFlagNames(d.feasibility).join() === 'shaped,clamped');
-  assert('plan.flags: registry bits 0-3',
-    PLAN_FLAG.shaped === 1 && PLAN_FLAG.stretched === 2 && PLAN_FLAG.fallback === 4 && PLAN_FLAG.clamped === 8);
-  assert('plan.flags: a clean plan names nothing', planFlagNames(0).length === 0 && planFlagNames(0xf0).length === 0);
+  assert('plan.flags: registry bits 0-2',
+    PLAN_FLAG.shaped === 1 && PLAN_FLAG.stretched === 2 && PLAN_FLAG.clamped === 4 && !('fallback' in PLAN_FLAG));
+  assert('plan.flags: a clean plan names nothing', planFlagNames(0).length === 0 && planFlagNames(0xf8).length === 0);
   const old = decodePacked(p.subarray(0, 18), withFlags);
   assert('plan.flags: a pre-RFC-100 18 B payload reads no flags', old.feasibility === undefined && old.end_norm === 0.75);
   assert('plan.flags: a client without the field ignores the byte', decodePacked(p, planLayout).elapsed_us === 0);

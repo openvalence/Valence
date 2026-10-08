@@ -12,7 +12,7 @@ SKIP_PATHS = (
     "license", "/vectors/",
     # vendored third-party trees (machine repo); inert in the spec repo
     "/lib/asynctcp/", "/lib/espasyncwebserver/", "/lib/lcd_st7735/",
-    "/lib/ruckig/", "/lib/strokeenginepatterns/",
+    "/lib/strokeenginepatterns/",
 )
 
 # Fallback only. codespell's en-GB dictionary is preferred when installed
