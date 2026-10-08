@@ -9756,7 +9756,8 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** DRAFT (operator ruling 2026-10-07, "this is K2": the handle
   renderer is Kinetic²'s renderer; the kernel follows the playground that
-  proved it).
+  proved it). Item 8, the G1 and G2 family labels, by operator ruling
+  2026-10-08.
 - **Origin.** The 2026-10-07 design session over the Kinetic² lab's
   measurements (RFC-105 (aaa), (bbb)): the operator's pull toward the
   standard, a composite cubic Bézier in the time-position plane with handles
@@ -9768,8 +9769,8 @@ say exactly which, future-us will want the receipts.*
   `curve_family` declaration (key 45, RFC-030).
 - **Problem.** A free-velocity segment stream (end velocities `unspecified`)
   leaves the angle at each knot to the hub, but the family declaration only
-  names the smoothness class the SENDER produced: `c1_cubic` lumps Linear,
-  PCHIP and Makima together because the sender used to supply the slopes.
+  names the continuity class the SENDER produced: family 1 (`g1`, item 8)
+  lumps PCHIP and Makima together because the sender supplies the slopes.
   Two players with the same knots and different interpolators therefore
   render identically on a hub that derives angles and differently on their
   own screens. And the hub's rendering under the ceilings was a ladder of
@@ -9788,17 +9789,18 @@ say exactly which, future-us will want the receipts.*
      is R's incoming one. The curve parameter u is not time: velocity,
      acceleration and jerk are time derivatives (v = (dp/du) / (dt/du)).
      Lengths stay within [0.05, 0.95]. A piece whose two lengths are one
-     third is the polynomial cubic, the C1 Hermite of RFC-030 with the same
-     end velocities, so a C1 cubic whose angles are given renders exactly
+     third is the polynomial cubic, the cubic Hermite of RFC-030 with the same
+     end velocities, so a `g1` cubic whose angles are given renders exactly
      while its lengths stay at a third; the angles a free knot takes are
      the style's rule (item 3). The continuity classes are geometric: G1 is
      velocity continuity through the knot (collinear handles, lengths
      free), G2 is acceleration continuity (one condition on the lengths, or
-     on the angle where the angle is free). Parametric continuity (C1, C2
+     on the angle where the angle is free). Parametric continuity (derivatives
      in the curve parameter) is not used: the parameter is not time, and
      mirrored handles would change PCHIP for a condition the motor cannot
-     feel. The registry's `c1_cubic` and `c2_quintic` already mean
-     continuity in time, which in this plane is G1 and G2; item 3 maps
+     feel. The registry's families 1 and 2 mean continuity in
+     time, which in this plane is G1 and G2, the labels item 8 gives them;
+     item 3 maps
      every existing value onto this renderer.
   2. **Classes from the chords.** The chord of the span from knot j to knot
      j+1 is d(j) = (p(j+1) - p(j)) / (t(j+1) - t(j)); at knot i, dIn =
@@ -9904,34 +9906,35 @@ say exactly which, future-us will want the receipts.*
      - An end velocity that is not `unspecified` is an authored angle under
        either style: kept, never solved or banded, held to `vmax` as today
        (`EndVelClamped`), the lengths the hub's. Under `pchip` an authored
-       knot is G1 with both lengths a third, so an authored C1 cubic
+       knot is G1 with both lengths a third, so an authored `g1` cubic
        renders exactly where the ceilings allow; under `smooth` an authored
        crest or hold edge also takes the length match.
      - The existing values under this renderer, for an authored and for a
        free end velocity, with the GRANT echo (key 45, the effective
-       family). The machine's curve policy (force C1, force C2) selects the
-       `c1_cubic` or the `c2_quintic` row.
+       family). The machine's curve policy (force G1, force G2) selects the
+       `g1` or the `g2` row.
        - `unspecified` (0): the hub's undeclared default, which is the
          default style: authored and free knots as `pchip`. Echo: `pchip`.
-       - `c1_cubic` (1): an authored knot renders the author's cubic (angle
+       - `g1` (1): an authored knot renders the author's cubic (angle
          kept, lengths a third until a ceiling scales them, G1, item 6's
          corner ramp at the acceleration step); a free knot takes `pchip`'s
          rules. Every knot is at least G1, so the wish is honored. Echo:
-         `c1_cubic`.
-       - `c2_quintic` (2): authored and free knots as `smooth`, the G2
-         style, or as `pchip` on a hub without it. A hold edge stays G1 and
-         no piece is a quintic, so this renderer never echoes `c2_quintic`.
+         `g1`.
+       - `g2` (2): authored and free knots as `smooth`, the G2 style, or
+         as `pchip` on a hub without it. A hold edge stays G1 and a G2 knot
+         whose piece scales renders as G1 (item 7), so this renderer cannot
+         promise G2 at every knot and never echoes `g2`.
          Echo: `smooth`, or `pchip` without it.
        - `step` (3, reserved): no step renderer yet (open question 5);
          rendered as `unspecified`. Echo: `pchip`, where the registry's
-         `step` note and §18-20 item 20 say `c2_quintic` today.
+         `step` note and §18-20 item 20 say family 2 today.
      - The echo. The declaration rides HELLO and PUBLISH as today; the
        GRANT echo reports the effective family per the list above, and key
        48 (`requested_curve_family`), when present, carries the wish
        verbatim (RFC-049b, unchanged). A hub without this renderer does not
        know the two values, so §9.6 treats them as `unspecified`: it
        renders its undeclared default and echoes in key 45 its effective
-       family for `unspecified` (`c2_quintic` on the pre-RFC reference),
+       family for `unspecified` (family 2 on the pre-RFC reference),
        never the new value. Key 48 may carry the new value: 48 is the wish,
        never a claim about the render, and "never parroted back" binds key
        45 only. This is the option the review recommended, because §9.6
@@ -10054,6 +10057,146 @@ say exactly which, future-us will want the receipts.*
        corner ramp at `jmax` puts on its piece, the piece's end knot and the
        next piece: the piece's peak speed times the ramp's time, halved);
        every ceiling within 0.1%.
+  8. **The family labels are G1 and G2.** Operator ruling 2026-10-08:
+     "strip c1 and c2, because they don't make sense here." Every C1 and C2
+     name and letter for a curve family goes; the NUMBERS ARE KEPT, and two
+     labels, three notes, key 45's note and the table's header comment
+     change.
+     - **Lawful before the tag.** §4.4 and §5.7 bind numbers ("Numbers are
+       never reused or renumbered after a tagged release", from the v1.0
+       tag forward); no tag exists, and a label is not a wire byte (a
+       `curve_family` is a u8). Appendix J's "Renames with unchanged wire
+       values" (the access tiers) is the precedent. The only dependents
+       are the reference implementations listed below; the operator rules
+       that nobody else runs them.
+     - **Why G.** A family is a continuity class of the position-against-
+       time curve at its knots. On such a curve geometric and parametric
+       continuity coincide (the parameter is the abscissa), so G1 is
+       velocity continuity and G2 acceleration continuity, exactly as item
+       1 uses them, and G is the letter Blender and CAD users read on a
+       curve. The old labels also named a piece shape (`_cubic`,
+       `_quintic`) that this renderer does not have: every piece is a cubic
+       Bézier (item 1).
+     - **Registry `curve_families`**, numbers unchanged:
+       - 0 `unspecified`: unchanged.
+       - 1 `c1_cubic` becomes `g1`, note: "velocity-continuous at every
+         knot: the sender's curve has the same slope on both sides (PCHIP,
+         Makima and other cubic Hermite senders). Acceleration may step at
+         a knot. A follow-client hub renders an authored knot as the
+         sender's cubic and a free knot by the `pchip` style (RFC-106 item
+         3), and does not smooth the step the author put there."
+       - 2 `c2_quintic` becomes `g2`, note: "acceleration-continuous at
+         every knot; the sender means the smoothness. A follow-client hub
+         renders it by the `smooth` style (RFC-106 item 3), or by `pchip`
+         on a hub without it. The curve may pass its knots (overshoot) by
+         construction; only the window ceiling judges it."
+       - 3 `step`, `status: reserved`, note: "held value with instantaneous
+         transitions (step/none interpolation). The family says intent,
+         the machine owns feasibility as always. RFC-049a: number kept,
+         status `reserved`: the reference has no step renderer, so a
+         `step` declaration renders as `unspecified` and the GRANT echo
+         reports the effective family for `unspecified` (§9.6, §18-20).
+         Declarable again when a step renderer exists in the reference;
+         only the delegate's mapping changes when it does."
+     - **The table's header comment**, whole: "Curve families (u8) -- the
+       `curve_family` (cbor key 45) wish/echo value on a segment-class
+       publish (RFC-030; labels RFC-106). {target, duration_ms, end_vel}
+       determines a cubic Hermite, so a segment stream is a complete
+       encoding of the sender's curve only if both ends agree on its
+       continuity at the knots. The labels are geometric continuity
+       classes; on a position-against-time curve G1 is velocity continuity
+       and G2 acceleration continuity. Not a taxonomy of interpolator
+       algorithms: the wire carries the class the render must honor, not
+       the sender's interpolator, so PCHIP and Makima are both `g1`. The
+       angle rule for knots a sender leaves free is the style (RFC-106
+       item 3). The machine override outranks the declaration
+       (`curve_policy`: follow client / force G1 / force G2), a feel and
+       safety decision belonging to whoever is strapped to the machine. No
+       clamping semantics are implied (operator ruling, RFC-030.5). The
+       GRANT echo carries the effective family post-override, so a client
+       can tell honored from downgraded." The measured "3-6x lower in-span
+       jerk" sentence is dropped: it was measured on the renderer Kinetic²
+       replaced. Kinetic bead kin-6c4 re-measures it; a ratio that holds
+       returns by RFC.
+     - **Key 45's note** (`cbor_keys` 45): "smoothness class" becomes
+       "continuity class".
+     - **SPEC.md**, two sentences:
+       - §9.6, l.926: "(key 45; registry `curve_families`: 0 `unspecified`,
+         1 `c1_cubic`, 2 `c2_quintic`, 3 `step`)" becomes "(key 45;
+         registry `curve_families`: 0 `unspecified`, 1 `g1`, 2 `g2`, 3
+         `step`)", and "only if both ends agree on the smoothness class: a
+         C2 quintic cannot reproduce a C1 cubic across a knot, because the
+         script's acceleration genuinely steps there, and smoothing that
+         corner erases something the author put there on purpose" becomes
+         "only if both ends agree on the continuity class (geometric: on a
+         position-against-time curve G1 is velocity continuity and G2
+         acceleration continuity): a G2 render cannot reproduce a G1 curve
+         across a knot where the script's acceleration steps, and smoothing
+         that step erases something the author put there on purpose".
+       - §18-20 item 20, l.1651: "so a `step` declaration currently renders
+         as quintic, and the reference delegate's grant echo therefore
+         reports `c2_quintic` for a `step` wish" becomes "so a `step`
+         declaration renders as `unspecified`, and the grant echo
+         therefore reports the effective family for `unspecified` (`pchip`
+         under RFC-106) for a `step` wish", and "`requested=step,
+         effective=c2_quintic`" becomes "`requested=step,
+         effective=pchip`" (the step echo item 3 already plans).
+       - Unchanged: Appendix I's "G1" and "G2" (l.1937-1938) are review
+         finding ids, not curve classes; "Phase C2" (SPEC l.613, l.769,
+         RENDERING.md l.124) is a project phase; l.924's "minimum-jerk
+         quintic" is a feasibility example, not a family. RENDERING.md has
+         no continuity sentence.
+     - **Consumers after ratification**, by file:
+       - Valence, generated (`python tools/gen_registry_header.py`, which
+         also writes the JS vocabulary): `lib/valence/include/valence/generated/registry_constants.hpp`
+         l.338-339 (`curve_families::g1`, `::g2`; Nucleus consumes it
+         through `valence.pin`, an operator bump) and
+         `clients/js/generated/registry_vocab.js` l.590-597
+         (`CURVE_FAMILY.g1`, `.g2`, `CURVE_FAMILY_NAME`). Docs site
+         (`docs-site/tools/gen_docs_tables.py`, `gen_spec_pages.py`):
+         `docs-site/docs/reference/registry/catalog-vocabulary.md`
+         l.202-203, `docs-site/docs/spec/channels.md` l.113,
+         `docs-site/docs/spec/limitations.md` l.42.
+       - Valence, by hand: `test/native/test_valence_streamingress/test_main.cpp`
+         l.1515-1592 (the constants); `clients/mfp/ValenceConnect.cs` l.75,
+         l.965-974, l.3153-3161 (`CurveC1Cubic`, `CurveC2Quintic` and their
+         display names "C1 cubic", "C2 quintic" become `CurveG1`,
+         `CurveG2`, "G1", "G2") and `clients/mfp/LiveWireTest.cs` l.768;
+         the "smoothness class" comments in
+         `lib/valence/include/valence/hub/hub.hpp` l.488,
+         `hub/hub_impl.hpp` l.1350, `session/session.hpp` l.135 and
+         `wire/messages/hello.hpp` l.54 become "continuity class".
+       - Nucleus: `flagship_p4/src/hub/ValenceCatalog.h` l.1495-1497
+         (`curve_policy` desc "Sender's curve or a forced continuity class",
+         options "follow client", "force G1", "force G2") and l.1548,
+         l.1552 (`corner` desc "How a moving G1 corner renders"); the
+         catalog etag moves (option labels and desc are catalog bytes).
+         `flagship_p4/src/motion/MotionArbiter.cpp` l.544, l.549, l.578,
+         l.587 (`kinetic2::Family::G1`, `::G2`); `MotionArbiter.h` l.618;
+         `ValenceMotion.h` l.207; `tools/kinetic-lab/lab.js` l.101, l.111;
+         `tools/kinetic-wasm/README.md` l.94, l.135, l.151;
+         `tools/kinetic-wasm/kinetic_wasm.cpp` l.90; the pinned Kinetic
+         copy by a `kinetic.pin` bump. `sim/`: no hit.
+       - Phosphor: `src/model/motion.js` l.248, l.250 (the player keeps
+         declaring family 1, now `CURVE_FAMILY.g1`; no wire change);
+         `test/plugins.test.mjs` l.416, l.423 (the downgrade log reads
+         "downgraded to g2"); `docs/plugins/FUNSCRIPT.md` l.95, l.108,
+         l.1046 ("`curve_family` g1"; l.1046's "a quintic reconstruction"
+         becomes "a G2 render"); `docs/plugins/FUNSCRIPT-MFP-NOTES.md`
+         l.141, l.157; `plugins/factory/funscript-player/CONTRACT.md`
+         l.756 ("instead of a G2 render").
+       - Kinetic: `include/kinetic2/types.hpp` l.40, `enum class Family :
+         uint8_t { Unspecified = 0, C1 = 1, C2 = 2, Step = 3 }` becomes
+         `{ Unspecified = 0, G1 = 1, G2 = 2, Step = 3 }` (ruled: the enum
+         mirrors the registry, and its names match it), with the comments
+         at l.45-47, l.73, l.76, l.80, l.85; `engine.hpp` l.121-122, l.164;
+         `handles.hpp` l.62 ("the polynomial cubic (cubic Hermite)");
+         `sources.hpp` l.27; `tests/test_kinetic2.cpp` l.24, l.70, l.79,
+         l.376, l.380, l.441, l.446-449; `tests/bench_kinetic2.cpp` l.147,
+         l.172, l.200, l.261, l.286, l.288; `playground/index.html` l.54;
+         `playground/play.js` l.27, l.124, l.487, l.489, l.496, l.649-650,
+         l.682-683. Kinetic 1 (`include/kinetic/`, `tests/test_kinetic.cpp`)
+         is open question 11.
 - **Pros.** One kind of unknown, the handle lengths; every ceiling is a
   monotone bound on it, so the fit is one ordered scan of a single factor
   and the trim one bisection, and a second implementation following items 2
@@ -10078,8 +10221,10 @@ say exactly which, future-us will want the receipts.*
   replaced by the five cases (the playground's `handles-model.js` is the
   reference, 1 ms grid parity on its built-in script is the acceptance); the
   wasm twin follows; Phosphor draws the twin and sends knots plus the style
-  instead of interpolating; registry: two `curve_families` values, and the
-  `unspecified` and `step` notes follow item 3's list; SPEC: §9.6 takes
+  instead of interpolating; registry: two `curve_families` values, the labels
+  `g1` and `g2` with item 8's notes, header comment and key 45 note, and
+  the `unspecified` and `step` notes follow item 3's list; every consumer
+  item 8 lists follows the rename; SPEC: §9.6 takes
   items 2 to 5 (open question 2), §18-20 item 20 the new `step` echo;
   RFC-105's options table: `handle_floor`, the maximum trim `trim`, and the
   lateness budget's new default.
@@ -10089,7 +10234,9 @@ say exactly which, future-us will want the receipts.*
   value in the echo (key 45, item 3's list), never a changed layout. A
   pre-RFC hub treats the new values as `unspecified` per the existing rule
   and echoes in key 45 its own effective family for `unspecified`, never
-  the new value (item 3).
+  the new value (item 3). Item 8 renames two labels and keeps every
+  number: no wire byte changes; the reference catalog's `curve_policy`
+  options and `corner` desc change, so its etag moves.
 - **Open questions and rulings.** (1) The registry numbers of the two values
   and of the `piece_over_ceiling` anomaly kind, to be assigned by the
   registry. (2) RESOLVED, agent default 2026-10-07, veto-able: the normative
@@ -10105,8 +10252,8 @@ say exactly which, future-us will want the receipts.*
   which would make the reserved family declarable. (6) `handle_floor` and the
   maximum trim as planner options on RFC-105's table, with their keys to be
   assigned by the registry. (7) RESOLVED, operator 2026-10-07: the two values
-  stay. Item 3's list keeps `c1_cubic` rendering as `pchip` and `c2_quintic`
-  as `smooth`; the new values let a sender name the angle rule its drawing
+  stay. Item 3's list keeps `g1` rendering as `pchip` and `g2` as
+  `smooth`; the new values let a sender name the angle rule its drawing
   used and the echo name the rule the hub applied. (8) RESOLVED, agent
   default 2026-10-07, veto-able: a piece that no trim can make legal is the
   one exception to RFC-105's promise 3 (item 5, the reference's behavior); it
@@ -10122,7 +10269,14 @@ say exactly which, future-us will want the receipts.*
   veto-able: the hold tolerance is the renderer's own constant, 0.005 of the
   window span (item 2, the reference). `segment_dwell_span` (0.02) keeps its
   meaning, a dwell a sender declares on a segment, which is not a flat the
-  renderer detects; the two names stay distinct.
+  renderer detects; the two names stay distinct. (11) Kinetic 1, the native test oracle kept
+  whole (ruling 2026-10-05): its `CurvePolicy::ForceC1` and `ForceC2` and
+  its comments name its own polynomial pieces in time, where parametric
+  continuity is exact, and two lines cite the registry label
+  (`include/kinetic/kinetic.hpp` l.236 and l.531), which goes stale at
+  ratification. Agent default, veto-able: respell those two citations to
+  `g1` and leave the oracle's own names, because "kept whole" covers code
+  that never ships. Owner: the operator.
 
 ---
 
@@ -10364,9 +10518,9 @@ say exactly which, future-us will want the receipts.*
   5. **Where `curve_style` applies.** It is the hub's undeclared default:
      the style of RFC-106 item 3's `unspecified` (0) row, and of `step` (3)
      while that renders as `unspecified`. It does not override a sender: a
-     declared `c1_cubic`, `c2_quintic` or one of RFC-106's two new values
-     renders as RFC-106 item 3 lists, and `curve_policy`'s force C1 or force
-     C2 selects its row as before. The style is resolved once per stream
+     declared `g1`, `g2` (RFC-106 item 8's labels for families 1 and 2) or
+     one of RFC-106's two new values renders as RFC-106 item 3 lists, and
+     `curve_policy`'s force G1 or force G2 selects its row as before. The style is resolved once per stream
      from the grant's effective family, never per knot: a knot the hub
      inserts itself (a hold, a preroll) never changes it. The GRANT echo
      (key 45) for an `unspecified` declaration reports the style the
@@ -10378,7 +10532,7 @@ say exactly which, future-us will want the receipts.*
      pchip" becomes "Echo: the hub's `curve_style`, `pchip` from the
      factory").
   6. **The reference client.** Phosphor's segments grant declares
-     `c1_cubic` and sends authored end velocities, so `curve_style` does
+     `g1` and sends authored end velocities, so `curve_style` does
      not reach the funscript player: its knots render as the author's
      cubic. For the player to render `smooth` it declares the style itself,
      as RFC-106's new value (the sender's wish, honored or echoed down);
@@ -10393,7 +10547,7 @@ say exactly which, future-us will want the receipts.*
      `curve_style` at offset 57 (the first byte of `reserved2`; zero reads
      as `pchip`), `handle_floor` at 64 and `trim_max` at 68, growing the
      struct from 64 to 72 bytes. The twin submits the family its host
-     declares (today it submits 0 while the host declares `c1_cubic`), and
+     declares (today it submits 0 while the host declares `g1`), and
      the style resolution of item 5 moves from the hub's arbiter into one
      Kinetic function that the hub and the wasm shim both call. Under
      `smooth` a piece may pass its end knot (RFC-106 item 3, Monotonicity:
@@ -10428,8 +10582,8 @@ say exactly which, future-us will want the receipts.*
   user-chosen break of RFC-105 promise 3, bounded by the field's lower
   bound. Retiring `infeasible_policy` re-indexes the card's masks (a
   client reads them from the catalog, as it did after the last
-  retirement). `curve_style` overlaps `curve_policy` force C2, which also
-  renders `smooth`, but force C2 overrides every sender and the style does
+  retirement). `curve_style` overlaps `curve_policy` force G2, which also
+  renders `smooth`, but force G2 overrides every sender and the style does
   not. The funscript player needs its own declaration to use `smooth`.
 - **Cost.**
   - Kinetic: `Config` gains the three members (appended; the ABI note in
@@ -10444,7 +10598,7 @@ say exactly which, future-us will want the receipts.*
     corrected to SPEC §8.8); `EngineConfigMap`; `StoredState` blob version
     bump and migration; trial baselines; `effectiveCurveFamily` overridden
     so the echo reports the resolved style (the delegate echoes the request
-    today, even under force C1 or C2) and the unsolicited GRANT on a style
+    today, even under force G1 or G2) and the unsolicited GRANT on a style
     change; `kinetic_tuning` to 72 bytes with its static_assert and
     `fromC`/`toC`; valencesim; `test_valence_device` (the mask offsets);
     `.claude/rules/motion-control.md`.
