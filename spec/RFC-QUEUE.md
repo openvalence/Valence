@@ -9847,20 +9847,22 @@ say exactly which, future-us will want the receipts.*
      `events.anomaly` channel (§9.4) as the hub's existing scaled-waveform
      kind (`waveform_scaled`), its detail the share of the chord kept
      (0..1). The lateness budget of RFC-105's options defaults to zero.
-     **The terminal rule.** When even the full move is illegal, the knot
-     takes the least-over of the untrimmed position and 25, 50, 75 and 100%
-     of the full move (the smaller move on a tie), the piece renders there
-     as it is, over a ceiling, and it is reported on `events.anomaly` as
-     `plan_failed`, its detail the piece's worst ratio. A hold piece is
-     never trimmed: one that is illegal renders as it is and is reported
-     the same way. The knot is never dropped (RFC-105 (t) does not apply
-     to this renderer). This is the one exception to RFC-105's promise 3:
-     the promise holds on the judge's grid (161 points per piece, within
-     0.1% of every ceiling and of the window span) for every piece not
-     reported `plan_failed`, and between the grid's points it is not
-     separately bounded; a `plan_failed` report is the hub stating, on the
-     wire, that a piece broke the promise and by what ratio (open question
-     8).
+      **The terminal rule.** When even the full move is illegal, the knot
+      takes the least-over of the untrimmed position and 25, 50, 75 and 100%
+      of the full move (the smaller move on a tie), the piece renders there
+      as it is, over a ceiling, and it is reported on `events.anomaly` as
+      `piece_over_ceiling`, a new anomaly kind (number to be assigned by the
+      registry), its detail the piece's worst ratio. `plan_failed` keeps its
+      meaning, a dropped knot, and this renderer never raises it for a knot
+      that renders. A hold piece is never trimmed: one that is illegal
+      renders as it is and is reported the same way. The knot is never
+      dropped (RFC-105 (t) does not apply to this renderer). This is the one
+      exception to RFC-105's promise 3: the promise holds on the judge's grid
+      (161 points per piece, within 0.1% of every ceiling and of the window
+      span) for every piece not reported `piece_over_ceiling`, and between
+      the grid's points it is not separately bounded; a `piece_over_ceiling`
+      report is the hub stating, on the wire, that a piece broke the promise
+      and by what ratio (open question 8).
   6. **The jerk ceiling on top.** At a G1 knot the acceleration step is
      rounded by the corner ramp of |Δa| / `jmax`. A G0 knot (an authored
      corner: linear or step senders) is rendered as the tightest rounding
@@ -9901,36 +9903,38 @@ say exactly which, future-us will want the receipts.*
   pre-RFC hub treats the new values as `unspecified` per the existing rule
   and echoes in key 45 its own effective family for `unspecified`, never
   the new value (item 3).
-- **Open questions and rulings.** (1) The registry numbers of the two values,
-  to be assigned by the registry. (2) RESOLVED, agent default 2026-10-07,
-  veto-able: the normative rules, items 2 to 5 with Makima's angle, go in
-  SPEC §9.6 under the Junctions subsection RFC-105 plans, and RENDERING.md
-  points at them for the twin; RENDERING.md's only curve text stays plan-view
-  (RFC-100). (3) RESOLVED: a trim moves the knot toward the previous knot's
-  rendered position, as the kin-y6e ruling and RFC-105 (ccc) already say;
-  centering the reduced stroke is not an option, it would move reachable
-  knots. (4) A through point trimmed toward the previous knot lengthens the
-  piece after it; balancing it between its two pieces is the refinement if a
-  script shows the need. (5) `step` (3) under this renderer: a G0 corner at
-  the knot time, which would make the reserved family declarable. (6)
-  `handle_floor` and the maximum trim as planner options on RFC-105's table,
-  with their keys to be assigned by the registry. (7) RESOLVED, operator
-  2026-10-07: the two values stay. Item 3's list keeps `c1_cubic` rendering
-  as `pchip` and `c2_quintic` as `smooth`; the new values let a sender name
-  the angle rule its drawing used and the echo name the rule the hub applied.
-  (8) RESOLVED, agent default 2026-10-07, veto-able: `plan_failed` is the one
-  exception to RFC-105's promise 3 (item 5, the reference's behavior) and is
-  reported with the piece's worst ratio; the knot is never dropped, so
-  RFC-105 (t) no longer applies to this renderer. Bounding every angle by
-  what its adjacent spans can stop (Kinetic kin-88m) stays open as the
-  follow-up that makes the exception unreachable, and lands as an amendment.
-  (9) RESOLVED, agent default 2026-10-07, veto-able: `pchip` does not judge
-  monotonicity. Overshoot between monotone knots stays accepted with the
-  window as its only judge (item 3); a sampled judge (kin-88m item 1) would
-  be an amendment. (10) RESOLVED, agent default 2026-10-07, veto-able: the
-  hold tolerance is the renderer's own constant, 0.005 of the window span
-  (item 2, the reference). `segment_dwell_span` (0.02) keeps its meaning, a
-  dwell a sender declares on a segment, which is not a flat the renderer
-  detects; the two names stay distinct.
+- **Open questions and rulings.** (1) The registry numbers of the two values
+  and of the `piece_over_ceiling` anomaly kind, to be assigned by the
+  registry. (2) RESOLVED, agent default 2026-10-07, veto-able: the normative
+  rules, items 2 to 5 with Makima's angle, go in SPEC §9.6 under the
+  Junctions subsection RFC-105 plans, and RENDERING.md points at them for the
+  twin; RENDERING.md's only curve text stays plan-view (RFC-100). (3)
+  RESOLVED: a trim moves the knot toward the previous knot's rendered
+  position, as the kin-y6e ruling and RFC-105 (ccc) already say; centering
+  the reduced stroke is not an option, it would move reachable knots. (4) A
+  through point trimmed toward the previous knot lengthens the piece after
+  it; balancing it between its two pieces is the refinement if a script shows
+  the need. (5) `step` (3) under this renderer: a G0 corner at the knot time,
+  which would make the reserved family declarable. (6) `handle_floor` and the
+  maximum trim as planner options on RFC-105's table, with their keys to be
+  assigned by the registry. (7) RESOLVED, operator 2026-10-07: the two values
+  stay. Item 3's list keeps `c1_cubic` rendering as `pchip` and `c2_quintic`
+  as `smooth`; the new values let a sender name the angle rule its drawing
+  used and the echo name the rule the hub applied. (8) RESOLVED, agent
+  default 2026-10-07, veto-able: a piece that no trim can make legal is the
+  one exception to RFC-105's promise 3 (item 5, the reference's behavior); it
+  is reported as `piece_over_ceiling` with the piece's worst ratio, never as
+  `plan_failed`, which keeps meaning a dropped knot; the knot is never
+  dropped, so RFC-105 (t) no longer applies to this renderer. Bounding every
+  angle by what its adjacent spans can stop (Kinetic kin-88m) stays open as
+  the follow-up that makes the exception unreachable, and lands as an
+  amendment. (9) RESOLVED, agent default 2026-10-07, veto-able: `pchip` does
+  not judge monotonicity. Overshoot between monotone knots stays accepted
+  with the window as its only judge (item 3); a sampled judge (kin-88m item
+  1) would be an amendment. (10) RESOLVED, agent default 2026-10-07,
+  veto-able: the hold tolerance is the renderer's own constant, 0.005 of the
+  window span (item 2, the reference). `segment_dwell_span` (0.02) keeps its
+  meaning, a dwell a sender declares on a segment, which is not a flat the
+  renderer detects; the two names stay distinct.
 
 ---
