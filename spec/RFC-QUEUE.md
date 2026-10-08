@@ -9901,33 +9901,36 @@ say exactly which, future-us will want the receipts.*
   pre-RFC hub treats the new values as `unspecified` per the existing rule
   and echoes in key 45 its own effective family for `unspecified`, never
   the new value (item 3).
-- **Open questions.** (1) The registry numbers of the two values, to be
-  assigned by the registry. (2) The home of the normative rules: items 2 to
-  5, Makima's angle included, are hub conformance and go in SPEC §9.6 under
-  the Junctions subsection RFC-105 plans, with RENDERING.md pointing at them
-  for the twin (proposed); RENDERING.md's only curve text is plan-view
-  (RFC-100). (3) Trim anchoring: at the previous knot (proposed, the
-  machine is there) or centering the reduced stroke, which would move
-  reachable knots; the operator's call. (4) A through point trimmed toward
-  the previous knot lengthens the piece after it; balancing it between its
-  two pieces is the refinement if a script shows the need. (5) `step` (3)
-  under this renderer: a G0 corner at the knot time, which would make the
-  reserved family declarable. (6) `handle_floor` and the maximum trim as
-  planner options on RFC-105's table, with their keys to be assigned by the
-  registry. (7) Whether the two
-  values are needed: under item 3's list `c1_cubic` renders as `pchip` and
-  `c2_quintic` as `smooth`, so what the values add is a sender naming the
-  angle rule its drawing used and an echo naming the rule the hub applied;
-  the ruling could instead keep the existing values with that list and no
-  new ones. (8) The terminal rule: accept the `plan_failed` exception to
-  RFC-105's promise 3 (item 5, the reference's behavior), or first bound
-  every angle by what its adjacent spans can stop, so the full move is
-  always legal and the exception unreachable (Kinetic kin-88m). (9) Whether
-  `pchip` judges monotonicity (no velocity sign change inside a piece,
-  sampled) so a lengthened handle cannot overshoot, or overshoot between
-  monotone knots stays accepted with the window as its only judge (item 3;
-  Kinetic kin-88m). (10) The hold tolerance: the renderer's 0.005 of the
-  window span (the reference) or the registry's `segment_dwell_span` (0.02),
-  so that the wire has one definition of a hold.
+- **Open questions and rulings.** (1) The registry numbers of the two values,
+  to be assigned by the registry. (2) RESOLVED, agent default 2026-10-07,
+  veto-able: the normative rules, items 2 to 5 with Makima's angle, go in
+  SPEC §9.6 under the Junctions subsection RFC-105 plans, and RENDERING.md
+  points at them for the twin; RENDERING.md's only curve text stays plan-view
+  (RFC-100). (3) RESOLVED: a trim moves the knot toward the previous knot's
+  rendered position, as the kin-y6e ruling and RFC-105 (ccc) already say;
+  centering the reduced stroke is not an option, it would move reachable
+  knots. (4) A through point trimmed toward the previous knot lengthens the
+  piece after it; balancing it between its two pieces is the refinement if a
+  script shows the need. (5) `step` (3) under this renderer: a G0 corner at
+  the knot time, which would make the reserved family declarable. (6)
+  `handle_floor` and the maximum trim as planner options on RFC-105's table,
+  with their keys to be assigned by the registry. (7) RESOLVED, operator
+  2026-10-07: the two values stay. Item 3's list keeps `c1_cubic` rendering
+  as `pchip` and `c2_quintic` as `smooth`; the new values let a sender name
+  the angle rule its drawing used and the echo name the rule the hub applied.
+  (8) RESOLVED, agent default 2026-10-07, veto-able: `plan_failed` is the one
+  exception to RFC-105's promise 3 (item 5, the reference's behavior) and is
+  reported with the piece's worst ratio; the knot is never dropped, so
+  RFC-105 (t) no longer applies to this renderer. Bounding every angle by
+  what its adjacent spans can stop (Kinetic kin-88m) stays open as the
+  follow-up that makes the exception unreachable, and lands as an amendment.
+  (9) RESOLVED, agent default 2026-10-07, veto-able: `pchip` does not judge
+  monotonicity. Overshoot between monotone knots stays accepted with the
+  window as its only judge (item 3); a sampled judge (kin-88m item 1) would
+  be an amendment. (10) RESOLVED, agent default 2026-10-07, veto-able: the
+  hold tolerance is the renderer's own constant, 0.005 of the window span
+  (item 2, the reference). `segment_dwell_span` (0.02) keeps its meaning, a
+  dwell a sender declares on a segment, which is not a flat the renderer
+  detects; the two names stay distinct.
 
 ---
