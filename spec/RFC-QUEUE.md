@@ -9715,6 +9715,39 @@ say exactly which, future-us will want the receipts.*
     the next bench run: zero lapses and the 0x1100 rate back at 60 Hz under
     a segment stream are the bar.
 
+    (hhh) 2026-10-08: the reversal overshoot (Kinetic kin-554 b041a20,
+    Nucleus val-8ry b097a81, 0.1.29). On the rail an ordinary script
+    "overshot sometimes": the engine passed an authored reversal (p 0.95,
+    end velocity 0) at 319 mm/s and ran to 1.29 of the window before turning,
+    the backstop holding the carriage at the window edge for 350 ms, with no
+    anomaly reported. Root cause: a segment bundle's start stamp lands a few
+    microseconds before or after the newest knot (every sender rounds its
+    hub-clock estimate; Phosphor's door and the probe both do). Early by
+    microseconds, the hub flushed from the start: commitHorizon had committed
+    through the reversal knot, the window emptied, and submit() read the
+    committed curve's corner-ramp tail as a starvation brake and re-planned
+    from the horizon straight to the next target, deleting the turnaround
+    mid-stroke. Late by microseconds, the hub inserted a one-tick hold knot
+    after a moving knot: a 1 ms piece that stops dead, over amax by
+    construction (reported as piece over ceiling), whose end acceleration
+    became the next piece's start state and wound up through its lead ramp
+    (a^2 / 2J), the same windup val-hlj removed for HARD knots. Fixes:
+    submit() never re-plans a committed curve as a brake; commitHorizon
+    reaches a HARD knot at its solved time; emitRun holds every knot's solved
+    v and a inside vmax and amax; Profile::brake and Profile::point start
+    from an acceleration held to amax; the hub treats a segment start within
+    one motion tick of the newest knot as that knot (no hold, no flush).
+    Both halves are needed. Verified on the hub at 0.1.29 (motor unplugged):
+    the same script sections that overshot read 0.11 and 0.17 mm past the
+    script's envelope over 410 segments, the plan never left the window, no
+    anomaly, no backstop line; the benign 100 ms sine reports 2 pieces over
+    the ceiling where it reported 9 (kin-vz1 stays open for those two). Open:
+    whether the one-tick tolerance belongs in SPEC 9.6's wording ("the one
+    ending exactly at t_us"), the operator's ruling; the plan strip's start
+    field reads the next segment for the last part of a stroke after a
+    commit-through, which Phosphor's auto latency reads as a short lag
+    (val-0ep); kin-g1f's remaining items.
+
 ---
 
 <a id="rfc-106"></a>
