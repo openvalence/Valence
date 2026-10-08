@@ -9686,6 +9686,35 @@ say exactly which, future-us will want the receipts.*
     read as a shrinking duration. Consumers: Nucleus kinetic.pin e921e5c,
     the wasm twins re-recorded (kin-ebc).
 
+    (ggg) 2026-10-08: the solve leaves the motion tick (Nucleus val-8rt,
+    8d6f516; Kinetic 38f3bf1 Engine::peek). The field log of a funscript
+    played on the rail at 0.1.27 showed the cost of the single task: 109
+    stall lines plus 970 suppressed and 56 LP lease lapses in about 80 s,
+    the emitter stopping itself mid-stroke behind solves of 2.8 ms mean and
+    28 ms max. Now two tasks on core 1: a planner at the hub's priority owns
+    the engine (intents, the one sample per tick, the home cycle, the
+    census) and publishes a 128 ms strip of the plan ahead, read-only from
+    Engine::peek (bit for bit what stateAt returns later, 22,095 samples
+    checked); a steer task at the higher priority renders the strip every
+    millisecond (backstop, residual kick, the cap, the wall bound, the
+    lease). A reset (e-stop, power, frame move, rail frame) publishes a new
+    strip generation with its anchor, so the first steer after it is within
+    one tick of accel of zero; a plan that lands later than the reaction
+    horizon shifts the previous command by the gap and closes it at the
+    bounded kick (a late plan, counted and logged; val-nz7 asks whether
+    react_us should grow past 4 ms on the P4); a planner silent past the
+    strip holds its last entry and counts a planner stall. The steer cap is
+    the plan's own ceiling (jog speed for a Manual plan, the input speed
+    otherwise) plus one tick of accel: a jog above the input speed had been
+    clipped and then crawled at the kick (val-25a, measured 1.05 s for a 227
+    mm leg at 1500 mm/s; 0.30 s after). Single-task evaluate() is kept for
+    the host suites and renders the recorded trace bit for bit. Landed in
+    the same pin: pchip judges monotonicity and the solve order is stated
+    (kin-ay9, c04f873; the least-over fallback stays because a zero stroke
+    can be illegal before the angle cap lands, kin-8ck). The P4 verdict is
+    the next bench run: zero lapses and the 0x1100 rate back at 60 Hz under
+    a segment stream are the bar.
+
 ---
 
 <a id="rfc-106"></a>
