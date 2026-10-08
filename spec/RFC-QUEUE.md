@@ -9786,6 +9786,48 @@ say exactly which, future-us will want the receipts.*
     costs host time: a 64-knot window renders in 15.6 ms at 0.5 and 9.5 ms
     at 1 against 2.3 ms at 0; the bound owed is item 8's.
 
+    (v) 2026-10-08: the property suite holds at 2000 seeds per set, and a
+    stream owner can say more is coming (Kinetic 3a6b500, kin-9od3; 540938d,
+    kin-fdh0). Every set at smoothness 0 to 1 now runs 2000 seeds: speed,
+    acceleration, window, late and missed knots, unreported runs and solved
+    knots past vmax or amax are 0; the reported jerk steps are 26 to 41.
+    Met on the way: most excesses were the engine building something other
+    than what the render fit. A piece after a corner exit was a fresh Bezier
+    with the full span's handle shares, so it now is the render's curve from
+    the exit on; a piece the render fit legal that builds over a ceiling or
+    out of the window takes its own length factor, unmatched to its end
+    accelerations when matching leaves the window; a hold after a ramp that
+    landed within the knot tolerance holds where it landed (closing the gap
+    in what was left of the span was a move no jerk ceiling allows, and it
+    handed the next piece an acceleration of -amax at rest beside the wall).
+    An end-acceleration ask from the next piece's corner was not held to
+    amax and is now dropped when no fit honors it legally. The renderer's
+    window tolerance equaled the bar, so a built piece read just past it;
+    under railStop it is now half. The slack passes iterate until a pass
+    tightens nothing, capped at 16 with every piece still asking reported;
+    left to run, a share no fit answers collapsed and ranked the least-over
+    fit by a ceiling nothing meets. The default render moved (fingerprint
+    0x8634649201e3bbef to 0xc7482d96f374ecf0, by the corner-exit tail
+    alone); the Nucleus trace fixture moves at the pin bump and its 60 s
+    script no longer renders a piece over a ceiling. Seeds 2001 to 4000
+    still show one acceleration excess between two authored moving knots at
+    one position and two silent 1.00 to 1.01 jerk reads (Kinetic kin-jsw1).
+    Second: a free knot with no successor rests (RFC-106), so a stream whose
+    successors arrive 125 ms ahead slowed toward every same-direction knot.
+    Engine::expect(axis, until_us) is the stream owner's word that knots
+    follow until until_us: a solve while it holds renders the newest free
+    knot through, toward a provisional successor one span on along its last
+    chord, fit to the ceilings and the window like any piece; a successor
+    replaces it, a reversal re-plans as any knot does, and with none the
+    knot is reached moving and the starvation brake stops the axis. On a
+    staircase streamed 125 ms ahead the slowest interior knot went from 0.62
+    of chord speed to 1.00 at 400 ms spans (0.94 to 0.99 at 200 ms); without
+    expect() the engine is bit for bit unchanged. Wire-visible consequence
+    for this RFC: a hub whose stream grant knows its schedule horizon passes
+    free knots moving, so a client need not author same-direction end
+    velocities to keep speed (Nucleus to call it from the grant's horizon,
+    then Phosphor sends every knot free).
+
 ---
 
 <a id="rfc-106"></a>
