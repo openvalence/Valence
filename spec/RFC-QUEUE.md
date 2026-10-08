@@ -9662,6 +9662,30 @@ say exactly which, future-us will want the receipts.*
     dense-reversal finding of kin-j6g stands for SEGMENT streams, which keep
     the handle renderer and its trims.
 
+    (fff) 2026-10-08: the engine renders the render's curve (Kinetic kin-b1d,
+    70116b1). The engine's piece builder had moved a piece's start handle
+    toward the live start acceleration before its lead ramp whenever the end
+    accelerations could not be matched: legal under the ceilings (the solver
+    judges what the engine builds) but a different curve than the one the
+    render chose. A lone 42 mm segment in 200 ms from rest rendered as a 150
+    ms crawl then a 736 mm/s spike where the render was the symmetric
+    smoothstep (316 mm/s); the bench's "moves quick then slows to a crawl"
+    is this, read from the other end. The lengths stay and the jerk-limited
+    lead ramp carries the start step (the start correction when it does not
+    fit); the canonical fingerprint is unchanged. Landed with it: the corner
+    ramp passes every reachable knot (kin-1ir part 2: the walk-back settles
+    by false position and an unsettled ramp keeps a plan that passes the
+    knot; a feasible, untrimmed knot that is not a hold is passed within
+    0.002 of its authored position on every seed; fingerprint
+    0x8634649201e3bbef), the playground model carries the kernel's railStop
+    rules (kin-88m: model and kernel renderer agree within 1e-4 on 4979 of
+    5000 random scripts, the rest at legality boundaries the two judges read
+    apart), and the hub reads the plan.start, plan.elapsed and plan.duration
+    roles from the segment's authored start (Engine::segStart) instead of the
+    re-plan origin, which moved to the reaction horizon on every sample and
+    read as a shrinking duration. Consumers: Nucleus kinetic.pin e921e5c,
+    the wasm twins re-recorded (kin-ebc).
+
 ---
 
 <a id="rfc-106"></a>
