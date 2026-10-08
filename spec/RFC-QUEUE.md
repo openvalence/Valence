@@ -9766,6 +9766,26 @@ say exactly which, future-us will want the receipts.*
     The two ends of smoothness reproduce the two styles bit for bit, so the
     default render and the fingerprint did not move.
 
+    (iv) 2026-10-08: smoothness above 0 holds the property suite's bars
+    (Kinetic 3ee99dd, kin-rfw7). The suite now runs every set at
+    smoothness 0, 0.25, 0.5, 0.75, 1 and a random value per run: speed,
+    acceleration, window, unreported runs and solved knots past vmax or amax
+    are 0 in every set, the reported jerk steps 17 at 0 and 5 to 10 above.
+    Met on the way: the length walk's side rule (an acceleration or jerk
+    excess wants longer handles) holds only for lengths of a third; a smooth
+    solve's lengths sum past 1, where longer handles raise the jerk, so a
+    legal zero stroke was judged illegal and its angle never capped (4x amax
+    rendered). The G2 sweeps couple the knots, so the slack passes settle
+    slower (8 above 0, 3 at 0; the count is not monotone in what it leaves).
+    A corner ramp at jmax followed by a start step under kStepS reads up to
+    0.8% over jmax on the 1 ms grid unreported; above 0 the piece after it
+    carries the step exactly. The pchip render did not move (fingerprint and
+    both smoothness-0 hashes). The suite's 400 seeds are its whole proof:
+    seeds 401 to 2000 put speed, acceleration and the window over at
+    smoothness 0 too, with 5 runs unreported (Kinetic kin-9od3). Smoothness
+    costs host time: a 64-knot window renders in 15.6 ms at 0.5 and 9.5 ms
+    at 1 against 2.3 ms at 0; the bound owed is item 8's.
+
 ---
 
 <a id="rfc-106"></a>
