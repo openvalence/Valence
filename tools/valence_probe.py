@@ -410,6 +410,7 @@ ANOMALY_KINDS = {
     9: "waveform_smoothed", # kinetic 0.8.0 -- the budgeted policies' own kind
     10: "dwell_zeroed",
     11: "knot_refused",   # Kinetic²: a knot not after the newest, or in the past
+    12: "piece_over_ceiling",  # Kinetic² handle renderer: a span no trim keeps inside a limit (RFC-106)
 }
 # ANOMALY_KINDS is index-aligned with the hub's own 0x4100 `kind` option labels
 # (catalog `options`, wire value = array index); check_anomaly_vocab() fails
