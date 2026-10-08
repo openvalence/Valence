@@ -546,6 +546,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
 | [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles | Draft | open |
+| [107](#rfc-107) | Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -9936,5 +9937,130 @@ say exactly which, future-us will want the receipts.*
   window span (item 2, the reference). `segment_dwell_span` (0.02) keeps its
   meaning, a dwell a sender declares on a segment, which is not a flat the
   renderer detects; the two names stay distinct.
+
+---
+
+<a id="rfc-107"></a>
+## RFC-107 -- Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write
+
+- **Status:** DRAFT (2026-10-07). Amends RFC-099 as landed: SPEC §9.3
+  "Trial writes" (items 1 to 6) and §8.8 "Trial marks"; registry.yaml
+  l.183 (0x0016 `settings-trial`), l.251 (cbor key 51 `trial`), l.1242-1244
+  (`trial_ops`), l.760 (`meta.trial_pending`), l.643 (NACK 0x0303
+  `UNSUPPORTED_OP`), l.647 (NACK 0x0307 `TRIAL_CONFLICT`).
+- **Origin.** Bead ph-oodw (Phosphor board), measured 2026-10-07 on the
+  reference hub (Nucleus c89ae84, P4 bench). The catalog declares
+  `settings-trial` (0x0016), and the kinetic waveform card (0x1122) carries a
+  `meta.trial_pending` field (`trial_mask`) whose bit 3 is `chase_dense_ms`.
+  Yet a trial write of 0x3120 key 10 `chase_dense_ms` from Phosphor's Tuning
+  preview is refused `UNSUPPORTED_OP` with the detail "not trialable". The
+  refusal is deliberate (`ValenceDevice::trialBaseline` excludes the key):
+  `chase_dense_ms` sets a `samples` grant's `schedule_latency_us`, a
+  commitment for the life of the grant (§5.4, RFC-059), so a trial opened
+  with no grant live could later be reverted, and a revert is never refused
+  (§9.3 "Trial writes" items 3 and 4), under a grant that committed to the
+  trial value.
+- **Problem.** §9.3 "Trial writes" item 5 already lets a hub refuse a trial
+  on "a value whose write the hub gates on live machine state", which covers
+  this key, so the reference hub is conformant. What is missing is
+  everything around the refusal:
+  1. Nothing announces it. Declaring 0x0016 reads as hub-wide (registry.yaml
+     l.183), and §8.8 gives every setting-annotated field a
+     `meta.trial_pending` bit, this key's included, so a client learns which
+     keys are not trialable only by trying.
+  2. The refusal names nothing a person can act on. Item 5 requires no
+     `detail` (§16.1: optional); the reference library's detail, "not
+     trialable", names neither the key nor the reason; and the
+     `UNSUPPORTED_OP` note (l.643, "intent op not implemented on this hub")
+     reads as if the hub had no trials at all.
+  3. No client behavior is stated. A client may retry the trial, drop the
+     edit, or send a durable write in its place, which stores the value the
+     operator chose to preview rather than keep. Phosphor's Tuning preview
+     shows a refused write with no reason.
+  4. Item 5 does not say whether the refusal is of the whole intent, or
+     whether it says anything about a durable write of the same key.
+- **Proposal.** §9.3 "Trial writes" item 5 and §8.8 "Trial marks" take the
+  following; nothing else changes.
+  1. **Per-key refusal.** A hub that declares `settings-trial` MAY refuse a
+     trial write on any key it cannot hold on trial (one it cannot restore
+     unconditionally, item 5). The refusal is NACK `UNSUPPORTED_OP` of the
+     whole intent, no key applied, as `TRIAL_CONFLICT` refuses (item 2). It
+     MUST carry `detail` (cbor key 17, registry.yaml l.216) naming the
+     refused key first, by its schema field name (or `key N`), then the
+     reason, for example `chase_dense_ms: a samples grant commits to it`.
+     The key comes first because a sender truncates `detail` to
+     `nack_detail_max_bytes` (48, l.1506) (§16.1, §5.8 item 4). The detail
+     stays diagnostic (§16.1): no client parses it.
+  2. **A property of the key.** Whether a key is trialable is fixed for as
+     long as the catalog etag holds: a key refused this way is refused every
+     time, whatever the machine's state. A refusal that depends on the
+     moment is not this one; it is the key's ordinary write rule (for
+     example `INTERLOCK`, with the key's `meta.enabled_mask` bit low, §8.8),
+     applied to trial and durable writes alike.
+  3. **The durable write is untouched.** The refusal is of the trial only. A
+     durable write of the same key is judged by the key's ordinary rules,
+     unchanged (on the reference hub: accepted while no `samples` grant is
+     live, `INTERLOCK` while one is).
+  4. **The client falls back.** A client correlates the NACK to its intent
+     (§16.1: `intent_id`, `intent_seq`). When the refused trial intent
+     carried one key, that key is not trialable for the rest of the session:
+     the client MUST NOT send that key with `trial` again in the session,
+     and SHOULD offer the durable write instead, as an explicit operator
+     action. It MUST NOT send the durable write in the trial's place on its
+     own: a durable write stores the value, which is what a preview
+     declines. When the intent carried several keys, the refusal does not
+     say which one (the detail is diagnostic); the client MAY resend them
+     one key per trial intent and learn per key from those answers. A client
+     that needs per-key answers SHOULD trial one key per intent.
+  5. **The trial mark stays.** The key's `meta.trial_pending` bit is never
+     set, because the key never holds a trial value; a clear bit makes no
+     claim that a key is trialable. The bit cannot be dropped: §8.8 indexes
+     bit i to the i-th setting-annotated field of the layout, so the bits
+     are positions, not a list of trialable keys. On a released layout,
+     dropping the key's entry from the field's `bits` shifts every later
+     bit's meaning, which §5.4's append-only rule forbids ("writers MUST NOT
+     reorder, resize, or remove released fields"); on a new layout the same
+     indexing gives the key a bit anyway. The bit stays and is never set.
+- **Pros.** No new number and no layout change: the reference hub already
+  refuses conformantly, and only its detail text changes. The operator sees
+  which key and why; a preview never turns into a stored value on its own;
+  a client stops resending a trial that cannot succeed.
+- **Cons.** A client still learns trialability by trying: one refused round
+  trip per untrialable key per session, more when a multi-key trial is
+  split. The reason is human-readable only, so a client cannot branch on it.
+  `UNSUPPORTED_OP` now also means "not this key" on a hub that supports the
+  op, which its one-line registry note must be widened to say.
+- **Cost.**
+  - SPEC: §9.3 "Trial writes" item 5 takes items 1 to 4; §8.8 "Trial marks"
+    takes item 5 in one sentence. Registry: the notes of 0x0303 (l.643) and
+    cbor key 51 (l.251) point at §9.3 item 5; no number, no codegen change.
+  - Valence library (hub): the trial refusal's detail names the key and
+    carries the delegate's reason (today a fixed "not trialable");
+    `trialBaseline` gains a way to say why.
+  - Nucleus: the reason string for 0x3120 key 10; the refusal itself is in
+    place since c89ae84.
+  - Phosphor: the Tuning preview marks a key refused this way as not
+    previewable for the session with the detail shown, offers the durable
+    write as an explicit action, and never resends its trial (ph-oodw).
+  - JS reference client: `session.js` keeps the session's set of (channel,
+    key) refused this way and rejects a further `trial` intent carrying one
+    locally, as `sendIntent` already rejects `trial` to a hub without
+    `settings-trial`; `localhub.js` names the key in its refusal detail.
+- **Wire impact.** None on bytes: no key, code, channel, role or layout
+  changes, and no etag moves. A pre-RFC client that ignores `detail` is
+  unaffected. A pre-RFC hub's refusal (detail absent or generic) is still
+  handled correctly by a client following item 4, which acts on the code and
+  its own intent, never on the detail.
+- **Open questions.** (1) Telling the client before it tries: a per-field
+  annotation, for example a `setting_flags` bit `no_trial` (bit4, the next
+  free one), would let a client gray the preview for the key up front; it
+  costs a registry number and a catalog change on every adopting hub. (2) A
+  dedicated code: NACK `NOT_TRIALABLE` (0x0308, the next free intent code)
+  would let a client tell "not this key" from "no such op" without the
+  detail; an unaware client falls back to the intent-range generic (§4.3).
+  (3) Partial application: applying the trialable keys of a multi-key trial
+  intent and leaving the refused one out of the ECHO (key-complete, §9.3)
+  would save the split, at the cost of the reason for the missing key; the
+  draft keeps the whole refusal the reference already makes.
 
 ---
