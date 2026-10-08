@@ -545,9 +545,9 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [103](#rfc-103) | Oscillation modulator: one intent makes the hub vibrate, instead of a hundred segments a second | Landed | closed |
 | [104](#rfc-104) | Hub programs: op chains on the hub under a declared budget, machine targets, and user variables | Draft | open |
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
-| [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth, rendered as a composite cubic Bézier with the ceilings as bounds on the handles; the family wish retires | Accepted | open |
+| [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth, rendered as a composite cubic Bézier with the ceilings as bounds on the handles; the family wish retires | Landed | open |
 | [107](#rfc-107) | Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write | Draft | open |
-| [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Accepted | open |
+| [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Landed | open |
 
 
 <a id="rfc-001"></a>
@@ -9771,7 +9771,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-106"></a>
 ## RFC-106 -- Curve styles for free-velocity segment streams: pchip and smooth, rendered as a composite cubic Bézier with the ceilings as bounds on the handles; the family wish retires
 
-- **Status:** ACCEPTED (operator, 2026-10-08: "106: a.", open question
+- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "106: a.", open question
   12 ruled (a): the family wish, its echo, the `curve_families` table and
   the reference's `curve_policy` retire; item 8 is rewritten to that
   ruling and absorbs the earlier G1/G2 relabel of 2026-10-08). Earlier
@@ -10345,7 +10345,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-108"></a>
 ## RFC-108 -- Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's
 
-- **Status:** ACCEPTED (operator, 2026-10-08: "108: as this is pre-release
+- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "108: as this is pre-release
   we can delete and re-arrange, after the fact not, so now is the time to
   make it clean and sensible, one is less spec aligned, one is the correct
   answer today. q3 .1 is fine, but default is trim as much as needed, the
