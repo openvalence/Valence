@@ -9828,6 +9828,24 @@ say exactly which, future-us will want the receipts.*
     velocities to keep speed (Nucleus to call it from the grant's horizon,
     then Phosphor sends every knot free).
 
+    (vi) 2026-10-08: smooth crests are flat, and the provisional continuation
+    eases to rest (Kinetic 226bcc3, kin-4o6r). The operator saw a free-knot
+    trough of two close knots 'smooth to a little boing' on Virtual: under
+    smooth a crest took Makima's angle, so the curve passed the lower trough
+    knot and steepened back (0.0015 of the window at smoothness 1, 0.0043
+    with expect(), the crest 0.0130; the slope there 0.37/s). expect() made
+    it show at single crests too: the provisional successor gave Makima the
+    fourth knot it needs. Ruled: under any smoothness a crest and a hold edge
+    are extrema at zero slope, G2 carried by the handle lengths on both
+    sides; only through points keep an angle and may overshoot (RFC-106 item
+    3's crest sentence amended, Valence follow-up for the spec text). Now 0
+    past at 0.5 and 1. The provisional successor now lies at rest, easing
+    from chord speed to 0 across the horizon (at least the last span): a
+    reversal declared 5 ms ahead is passed 0.0015 past instead of 0.0019
+    (400 ms span), the staircase's slowest knot at 400 ms spans is 0.957 of
+    chord speed (was 1.00). Wire-visible: none; the smooth render a client
+    previews from the playground model moves with the kernel.
+
 ---
 
 <a id="rfc-106"></a>
