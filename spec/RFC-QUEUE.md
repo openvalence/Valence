@@ -9645,6 +9645,23 @@ say exactly which, future-us will want the receipts.*
     one-sample-behind schedule needs the solve off the motion tick (Nucleus
     val-8rt) before dense streams are usable.
 
+    (eee) 2026-10-08: samples and segments part ways (operator ruling,
+    Kinetic kin-j6g). A sample carries position only: the hub holds one or
+    two for lookahead and renders the fastest legal move to rest on the
+    newest of them (a jerk-limited point profile, re-planned as each sample
+    lands, never trimmed, never a Bezier); the newest lands at its time or
+    when the physics allows, later, and the earlier samples of a run are
+    passed wherever that move is at their times. Segments alone get the
+    handle renderer. Promise 1 (one sample behind) and the ingress promises
+    stand; a sample stream faster than its ceilings now lands late by what
+    the fastest move needs instead of trimming toward its predecessor, and
+    nothing about it reports. Measured: the spent 60 Hz stream ends on its
+    last sample (it crept to 246 of 309 mm under the trims); the per-sample
+    cost on the bench host fell from 254 us to 1 us, which on the P4 takes a
+    60 Hz sample stream from 13 ms per sample to well under the tick. The
+    dense-reversal finding of kin-j6g stands for SEGMENT streams, which keep
+    the handle renderer and its trims.
+
 ---
 
 <a id="rfc-106"></a>
