@@ -9930,6 +9930,67 @@ say exactly which, future-us will want the receipts.*
      rounded by the corner ramp of |Δa| / `jmax`. A G0 knot (an authored
      corner: linear or step senders) is rendered as the tightest rounding
      the acceleration ceiling allows. G2 knots need nothing.
+  7. **The solve order and parity.** Draft text (Kinetic kin-ay9), at the
+     operator's ruling with the rest of this RFC; the reference is Kinetic
+     `include/kinetic2/handles.hpp` and its model.
+     - Angles first, at a third. Every angle is set with every length a
+       third: an authored angle kept and a free one the style's (item 3),
+       each held to `vmax`, the origin's live velocity kept exactly; then
+       the four G2 sweeps. Every round solves its angles at a third again: a
+       length the ceilings scaled never feeds back into an angle.
+     - Then the lengths, per piece in knot order, on the k grid: the 37
+       factors 0.2 to 2.0 in steps of 0.05, tried nearest one first with the
+       lower first on a tie (1, 0.95, 1.05, 0.90, 1.10, ... 0.20, 1.80, then
+       1.85, 1.90, 1.95, 2.0); the first legal factor is taken (item 4), and
+       when none is legal the knot trims (item 5).
+     - The rounds. The first solves on the authored chords; two more solve
+       on the trimmed chords and fit and trim again from the authored
+       positions; the last is rendered. A last round that caps an angle or
+       asks an end acceleration earns one more round, at most four. The cap
+       is the fastest angle whose zero-stroke piece over the knot's outgoing
+       span is legal at some factor, set when the piece out of a moving knot
+       is still over after its trim; the ask is the end acceleration the
+       next piece's start needs from the piece before the knot, set when
+       that start's corner ramp has no room.
+     - The engine's slack passes. A built piece over a ceiling as the 1 ms
+       grid reads it (its lead ramp, start correction and corner ramps,
+       which the render does not see) tightens that ceiling for its piece
+       and the window renders again, at most three more times; what is still
+       over is reported `piece_over_ceiling`.
+     - G2 degradation. Angles are solved with the lengths a third, so a G2
+       knot whose adjoining piece scales loses the match and renders as G1:
+       its acceleration step is rounded by item 6's corner ramp at `jmax`.
+     - Monotonicity under `pchip`, a draft amendment to item 3's
+       Monotonicity paragraph and to open question 9, which this text does
+       not rule. A piece whose travel is more than the hold tolerance and
+       whose two angles are band-legal for its own chord (zero or of its
+       sign, at most 3 (1 + 0.001) times it) stays monotone at its scaled
+       lengths: a factor whose piece travels backward (overshoots its end
+       knot or reverses inside the span) by more than 0.001 of its chord is
+       illegal, ranked 1 plus that share. With A and C as in item 3 and
+       B = 1 - A - C, the piece reverses only when B < 0 and B^2 > A C, and the
+       backward travel is the position between the two roots of dp/du. A
+       piece with an angle outside the band is not judged: an authored
+       overshoot at a third is the author's cubic, and a start angle against
+       the chord (the origin's live velocity) would make every factor and
+       every partial trim illegal. `smooth` keeps its freedom; the window
+       judges it.
+     - The terminal rule stays reachable. The full move is a zero stroke,
+       illegal while the knot before heads into the span faster than the
+       span can turn it (the cap lands the round after), and a partial move
+       is often legal then: over 5000 random scripts the final round took
+       item 5's terminal rule 108 times, 99 of them on a legal partial move,
+       and without the rule the reference's property suite reported
+       `piece_over_ceiling` 472 times instead of 48. Bounding every angle up
+       front (open question 8) is what would make it unreachable.
+     - Parity with the reference (Kinetic
+       `tests/test_kinetic2_handles.cpp`): every knot's trim within 1e-4 of
+       the window span, renderer against model, with no allowance; the
+       engine's position on the 1 ms grid within 0.5% of the window span and
+       its trims within 1e-4, both past the corner-ramp allowance (the lag a
+       corner ramp at `jmax` puts on its piece, the piece's end knot and the
+       next piece: the piece's peak speed times the ramp's time, halved);
+       every ceiling within 0.1%.
 - **Pros.** One kind of unknown, the handle lengths; every ceiling is a
   monotone bound on it, so the fit is one ordered scan of a single factor
   and the trim one bisection, and a second implementation following items 2
