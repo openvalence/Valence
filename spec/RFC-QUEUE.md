@@ -9957,9 +9957,15 @@ say exactly which, future-us will want the receipts.*
   refusal is deliberate (`ValenceDevice::trialBaseline` excludes the key):
   `chase_dense_ms` sets a `samples` grant's `schedule_latency_us`, a
   commitment for the life of the grant (§5.4, RFC-059), so a trial opened
-  with no grant live could later be reverted, and a revert is never refused
+  with no grant live could later be reverted, by op or at the session's end
   (§9.3 "Trial writes" items 3 and 4), under a grant that committed to the
-  trial value.
+  trial value, and a revert is never refused (item 5). §5.4 lets a hub move
+  the value by an unsolicited GRANT; the reference library has no re-grant
+  of a publication, so the reference hub refuses the change while a grant
+  is live instead (item 3 below). The key is not the only one: the same hub
+  trials only 0x3000 keys 1 to 8 and the 0x3120 keys but 10, so every
+  0x3030 key (behind a machine-modes `trial_mask` that never sets) and
+  every drive and pattern setting is refused the same way.
 - **Problem.** §9.3 "Trial writes" item 5 already lets a hub refuse a trial
   on "a value whose write the hub gates on live machine state", which covers
   this key, so the reference hub is conformant. What is missing is
@@ -9976,7 +9982,8 @@ say exactly which, future-us will want the receipts.*
   3. No client behavior is stated. A client may retry the trial, drop the
      edit, or send a durable write in its place, which stores the value the
      operator chose to preview rather than keep. Phosphor's Tuning preview
-     shows a refused write with no reason.
+     showed a refused write with no reason (ph-oodw; since a869bd6 a fixed
+     status, still not the hub's detail).
   4. Item 5 does not say whether the refusal is of the whole intent, or
      whether it says anything about a durable write of the same key.
 - **Proposal.** §9.3 "Trial writes" item 5 and §8.8 "Trial marks" take the
@@ -10016,11 +10023,10 @@ say exactly which, future-us will want the receipts.*
      set, because the key never holds a trial value; a clear bit makes no
      claim that a key is trialable. The bit cannot be dropped: §8.8 indexes
      bit i to the i-th setting-annotated field of the layout, so the bits
-     are positions, not a list of trialable keys. On a released layout,
-     dropping the key's entry from the field's `bits` shifts every later
-     bit's meaning, which §5.4's append-only rule forbids ("writers MUST NOT
-     reorder, resize, or remove released fields"); on a new layout the same
-     indexing gives the key a bit anyway. The bit stays and is never set.
+     are positions, not a list of trialable keys. The field's `bits` labels
+     name those positions and cannot skip one: leaving the key's label out
+     moves every later label onto the wrong bit, on a released layout and a
+     new one alike. The bit stays and is never set.
 - **Pros.** No new number and no layout change: the reference hub already
   refuses conformantly, and only its detail text changes. The operator sees
   which key and why; a preview never turns into a stored value on its own;
@@ -10032,16 +10038,27 @@ say exactly which, future-us will want the receipts.*
   op, which its one-line registry note must be widened to say.
 - **Cost.**
   - SPEC: §9.3 "Trial writes" item 5 takes items 1 to 4; §8.8 "Trial marks"
-    takes item 5 in one sentence. Registry: the notes of 0x0303 (l.643) and
-    cbor key 51 (l.251) point at §9.3 item 5; no number, no codegen change.
+    takes item 5 in one sentence. Registry: the notes of 0x0016 (l.183),
+    0x0303 (l.643) and cbor key 51 (l.251) point at §9.3 item 5; no
+    number. The notes ride the generated headers as comments, so codegen
+    reruns (`registry_constants.hpp`, `registry_vocab.js`, comments only).
   - Valence library (hub): the trial refusal's detail names the key and
     carries the delegate's reason (today a fixed "not trialable");
-    `trialBaseline` gains a way to say why.
-  - Nucleus: the reason string for 0x3120 key 10; the refusal itself is in
-    place since c89ae84.
+    `trialBaseline` gains a way to say why. The library's own refusals (a
+    motion or safety channel, a string-valued key) name the key and their
+    reason the same way. Its "trial table full" refusal depends on the
+    moment, so item 2 excludes it from `UNSUPPORTED_OP` (open question 4).
+  - Nucleus: a reason for every key `trialBaseline` refuses (0x3120 key 10,
+    every 0x3030 key, the drive and pattern settings), or the library's
+    default reason; the refusal itself is in place since c89ae84.
   - Phosphor: the Tuning preview marks a key refused this way as not
     previewable for the session with the detail shown, offers the durable
-    write as an explicit action, and never resends its trial (ph-oodw).
+    write as an explicit action, and never resends its trial. ph-oodw is
+    closed on a869bd6, which landed before this ruling and differs from
+    item 4 three ways: it marks every key of a refused multi-key intent,
+    shows a fixed status instead of the detail, and sends the next edit of
+    a marked key as a durable write, confirmed only when the field already
+    needs a confirm (`chase_dense_ms` does not).
   - JS reference client: `session.js` keeps the session's set of (channel,
     key) refused this way and rejects a further `trial` intent carrying one
     locally, as `sendIntent` already rejects `trial` to a hub without
@@ -10050,7 +10067,8 @@ say exactly which, future-us will want the receipts.*
   changes, and no etag moves. A pre-RFC client that ignores `detail` is
   unaffected. A pre-RFC hub's refusal (detail absent or generic) is still
   handled correctly by a client following item 4, which acts on the code and
-  its own intent, never on the detail.
+  its own intent, never on the detail, except a capacity refusal (open
+  question 4).
 - **Open questions.** (1) Telling the client before it tries: a per-field
   annotation, for example a `setting_flags` bit `no_trial` (bit4, the next
   free one), would let a client gray the preview for the key up front; it
@@ -10061,6 +10079,13 @@ say exactly which, future-us will want the receipts.*
   (3) Partial application: applying the trialable keys of a multi-key trial
   intent and leaving the refused one out of the ECHO (key-complete, §9.3)
   would save the split, at the cost of the reason for the missing key; the
-  draft keeps the whole refusal the reference already makes.
+  draft keeps the whole refusal the reference already makes. (4) Capacity:
+  the reference library refuses a trial `UNSUPPORTED_OP` "trial table full"
+  when its 32-entry table (`kHubMaxTrials`, hub.hpp) has no room, a refusal
+  that depends on the moment, which a client following item 4 would read as
+  a key property. Either a hub MUST hold room for every key it can trial
+  (RFC-099: keys are exclusive across sessions, so that count bounds the
+  set), or that refusal takes another code. Owner of (1) to (4): the
+  operator, at the ruling (rfc-mol-06b).
 
 ---
