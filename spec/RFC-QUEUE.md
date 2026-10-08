@@ -9624,6 +9624,27 @@ say exactly which, future-us will want the receipts.*
     and (bbb) are superseded by the five cases; the stream engine behind
     this RFC's promises is unchanged.
 
+    (ddd) 2026-10-08: the handle renderer landed in Kinetic ace0570 (kin-y6e)
+    and runs on the bench P4 as Nucleus 0.1.23 (kinetic.pin ace0570). What
+    the port met: the model's judge (161 u samples per piece, 37 length
+    factors, 16 bisection steps per trim, three rounds) costs about a million
+    curve evaluations per new knot, far past a 1 ms tick on the P4; the
+    kernel judges a piece at 11 samples plus the exact turning points of v, a
+    and j (root-bracketed), skips the side of 1 the k = 1 parts rule out, and
+    memoizes a piece whose inputs did not change, four times cheaper with the
+    same decisions within the tolerance, the per-tick bound still owed
+    (kin-tnv). A piece no trim makes legal reports a new anomaly kind, piece
+    over ceiling, with its worst ratio; plan_failed keeps meaning a dropped
+    knot (RFC-106 ruling 8). The corner ramp at a G1 knot is kept and the
+    parity bar carries its position lag as an allowance (the model has no
+    ramp; kin-88m carries the kernel's railStop rules to the model). A spent
+    60 Hz sample stream (latency = one period) trims nearly every sample: its
+    16.7 ms spans are beyond any cubic at jmax (kin-j6g); segment streams
+    render at amplitude 0.99 with 172 ms lag on the bench. The sample-stream
+    load halves the hub's 0x1100 frame rate on the P4: promise 1's
+    one-sample-behind schedule needs the solve off the motion tick (Nucleus
+    val-8rt) before dense streams are usable.
+
 ---
 
 <a id="rfc-106"></a>
