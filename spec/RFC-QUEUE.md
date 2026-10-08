@@ -9749,6 +9749,23 @@ say exactly which, future-us will want the receipts.*
     commit-through, which Phosphor's auto latency reads as a short lag
     (val-0ep); kin-g1f's remaining items.
 
+    (iii) 2026-10-08: Kinetic²'s tuning set in the kernel (Kinetic ca56157,
+    RFC-108, kin-tnv). Config carries smoothness, handle_floor and
+    trim_max and nothing the renderer does not read; Family left the knot,
+    and a HARD knot is a sample at rest. Met on the way: the smooth style
+    had never been the kernel's style, so the railStop hardening was proved
+    for pchip only; the property suite fails above smoothness 0 (0.5: speed
+    over in 3 runs of 400, acceleration in 4, one run over a ceiling
+    unreported; 1.0: speed in 6, acceleration in 17, one solved knot past
+    vmax or amax), Kinetic kin-rfw7. Until it closes a
+    hub bounds smoothness to 0, the lever RFC-108 item 6 already gives a hub
+    that does not render smooth. The resumable bound of item 8 needs every
+    stage of the render re-entrant on a cursor in the workspace (Kinetic
+    kin-v1kx, design there); its open risk is a stream whose knots arrive
+    faster than a computation finishes, restarting it before it publishes.
+    The two ends of smoothness reproduce the two styles bit for bit, so the
+    default render and the fingerprint did not move.
+
 ---
 
 <a id="rfc-106"></a>
