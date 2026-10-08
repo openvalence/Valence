@@ -9655,63 +9655,228 @@ say exactly which, future-us will want the receipts.*
      time-position plane. Knots stay on the author's clock in time and
      position (only the amplitude rule below moves one, in position). Each
      knot has one angle (its velocity) and two handle lengths (the time
-     extent of each handle as a fraction of its span). A length of one third
-     is the polynomial cubic: an untouched knot renders the C1 Hermite of
-     RFC-030 exactly, so PCHIP and Makima render as drawn. The continuity
-     classes are geometric: G1 is velocity continuity through the knot
-     (collinear handles, lengths free), G2 is acceleration continuity (one
-     condition on the lengths, or on the angle where the angle is free).
-     Parametric continuity (C1, C2 in the curve parameter) is not used: the
-     parameter is not time, and mirrored handles would change PCHIP for a
-     condition the motor cannot feel. The registry's `c1_cubic` and
-     `c2_quintic` already mean continuity in time, which in this plane is
-     G1 and G2.
-  2. **Classes from the chords.** A knot is a hold edge (a chord within
-     `segment_dwell_span` of zero on either side), a crest (the chords change
-     sign) or a through point (the same sign both sides); the first and last
-     knots are rest. The classification is the hub's and needs the next
-     knot, which the stream's lookahead already supplies (RFC-105).
-  3. **Two styles, as new `curve_families` values** (numbers allocated by
-     the registry at landing; the next free values are proposed):
-     `pchip`: angles zero at crests and hold edges (flat tops, PCHIP's
-     monotone rule), rendered G1 there; through points G2 by their angle,
-     which the hub solves (both sides are linear in it), held to the
-     Fritsch-Carlson monotone band and to `vmax`. `smooth`: Makima's angle
-     rule at crests and through points, hold edges zero, every inner knot
-     G2 (lengths matched at crests). An end velocity that is not
-     `unspecified` is an aligned handle: the angle is the author's, the
-     lengths the hub's. A velocity over `vmax` is clamped as today
-     (`EndVelClamped`). The declaration rides HELLO and PUBLISH as today;
-     the GRANT echo reports the EFFECTIVE family, so a hub without this
-     renderer reports `c1_cubic` and the client knows (RFC-049b's
-     honored-vs-downgraded mechanism, unchanged).
-  4. **The ceilings bound the lengths.** Per piece, both handles scale by one
-     factor, the nearest to one that is legal, never below the feel floor
-     (`handle_floor`, a planner option for RFC-105's table, default 0.15 of
-     the span). Speed caps the length from above (a shorter handle lowers
-     the peak toward the mean), acceleration and jerk floor it (a shorter
-     handle sharpens the ends as one over the length squared). The window
-     is a ceiling like the others.
-  5. **Amplitude gives, time never.** When no length is legal, the later knot
-     of the piece moves toward the previous knot's ACTUAL position by the
-     least that is legal (a monotone bisection). A knot that was reachable
-     never moves; a hold after a trimmed knot moves with it and stays flat;
-     angles are re-solved from the trimmed chords. The move is reported on the
+     extent of each handle as a fraction of its span). The piece from knot
+     L to knot R, T seconds and D of travel, has the control points (0, 0),
+     (l0 T, s0 l0 T), (T - l1 T, D - s1 l1 T) and (T, D) relative to L,
+     where s0 and s1 are the two angles, l0 is L's outgoing length and l1
+     is R's incoming one. The curve parameter u is not time: velocity,
+     acceleration and jerk are time derivatives (v = (dp/du) / (dt/du)).
+     Lengths stay within [0.05, 0.95]. A piece whose two lengths are one
+     third is the polynomial cubic, the C1 Hermite of RFC-030 with the same
+     end velocities, so a C1 cubic whose angles are given renders exactly
+     while its lengths stay at a third; the angles a free knot takes are
+     the style's rule (item 3). The continuity classes are geometric: G1 is
+     velocity continuity through the knot (collinear handles, lengths
+     free), G2 is acceleration continuity (one condition on the lengths, or
+     on the angle where the angle is free). Parametric continuity (C1, C2
+     in the curve parameter) is not used: the parameter is not time, and
+     mirrored handles would change PCHIP for a condition the motor cannot
+     feel. The registry's `c1_cubic` and `c2_quintic` already mean
+     continuity in time, which in this plane is G1 and G2; item 3 maps
+     every existing value onto this renderer.
+  2. **Classes from the chords.** The chord of the span from knot j to knot
+     j+1 is d(j) = (p(j+1) - p(j)) / (t(j+1) - t(j)); at knot i, dIn =
+     d(i-1) and dOut = d(i). A knot is an end (the first or last knot of a
+     render), a hold edge (a position change of at most 0.005 of the window
+     span on either side, the reference's hold tolerance), a crest (the
+     chords change sign) or a through point (the same sign both sides). The
+     classification is the hub's and needs the next knot; the angle rules
+     need more (PCHIP's start angle one knot on each side, Makima's two,
+     and the G2 solve couples every through point of the render), all
+     within the stream's lookahead (RFC-105), so a new knot can change
+     angles back to the committed horizon and never before it. In a stream
+     the ends are not a script's:
+     - The first knot of a render is the origin, the committed state at
+       the reaction horizon (RFC-105 (bb), (gg)). Its angle is the live
+       velocity, kept as an authored angle is and never solved; the live
+       acceleration is carried into the first piece by its start length
+       where that stays legal, else by a ramp at `jmax` ahead of the piece.
+       The origin never moves.
+     - The last knot of a render is the newest knot. With an `unspecified`
+       end velocity it rests (angle 0; §9.6: no scheduled successor, rest)
+       until a successor arrives; the next render classifies and solves it
+       as an inner knot, and the part of the piece into it already inside
+       the committed horizon does not change.
+     - The previous knot's actual position (item 5) is its RENDERED
+       position: its authored position plus its own trim, or the origin's
+       position for the first piece. It is where the machine is commanded
+       to be at that knot's time, the sense in which §9.6's handoff guard
+       measures `chord_in` from the machine's actual position.
+  3. **Two styles, as new `curve_families` values** (numbers to be assigned
+     by the registry). A style is the angle and continuity rule for FREE
+     knots (end velocity `unspecified`, §5.4), the part of the curve the
+     family did not name.
+     - `pchip`, the default, which every hub with this renderer MUST
+       render: ends, crests and hold edges take angle 0 and are G1 with
+       both lengths a third (flat tops and holds, PCHIP's monotone rule); a
+       through point starts from PCHIP's angle and is G2 by its angle,
+       solved in closed form, held to the monotone band and to `vmax`. A
+       piece between two knots that are each an end, a crest or a hold edge is
+       PCHIP's piece exactly while its lengths stay a third; a through
+       point carries its G2 angle, not PCHIP's.
+     - `smooth`, OPTIONAL for a hub: ends take angle 0 and are G1; a crest
+       takes Makima's angle; a through point starts from Makima's angle and
+       is then G2 by its angle exactly as under `pchip`, so Makima's angle
+       survives at crests only; a crest or a hold edge is G2 by its lengths
+       where the two sides' end accelerations agree in sign, else G1 (an
+       exact hold has no end acceleration on its flat side, so a hold edge
+       stays G1 in practice). In a render of three knots or fewer Makima is
+       not used: a crest takes 0 and a through point starts from PCHIP's
+       angle. A hub without `smooth` renders a `smooth` declaration as
+       `pchip` and echoes `pchip` (below).
+     - The rules, normative so that a second implementation and a client's
+       drawing match the hub:
+       - PCHIP's start angle (Fritsch-Butland): with h1 and h2 the spans
+         before and after the knot, w1 = 2 h2 + h1 and w2 = h2 + 2 h1, the
+         angle is (w1 + w2) / (w1 / dIn + w2 / dOut), and 0 when
+         dIn * dOut <= 0.
+       - Makima's angle: w1 = |d(i+1) - d(i)| + |d(i+1) + d(i)| / 2 and
+         w2 = |d(i-1) - d(i-2)| + |d(i-1) + d(i-2)| / 2; the angle is
+         (w1 d(i-1) + w2 d(i)) / (w1 + w2), or (d(i-1) + d(i)) / 2 when
+         both weights are 0. It needs two chords on each side; past a
+         render's ends the missing chord is extrapolated, d(-1) =
+         2 d(0) - d(1) and d(n-1) = 2 d(n-2) - d(n-3) for n knots, and the
+         angle re-solves when the real chord arrives.
+       - The monotone band (Fritsch-Carlson): a free through angle lies in
+         [0, 3 min(|dIn|, |dOut|)] when the chords rise and in
+         [-3 min(|dIn|, |dOut|), 0] when they fall.
+       - The through angle s: with the knot's lengths lIn and lOut, the
+         spans TL and TR and the travels DL and DR on its two sides, the
+         neighbors' angles sL and sR and their facing lengths lL (the left
+         neighbor's outgoing) and lR (the right neighbor's incoming), the
+         left piece ends at acceleration AL + BL s and the right piece
+         starts at AR + BR s, where cL = 2 / (3 lIn^2 TL^2),
+         cR = 2 / (3 lOut^2 TR^2), AL = cL (-DL + sL lL TL),
+         BL = cL TL (1 - lL), AR = cR (DR - sR lR TR) and
+         BR = -cR TR (1 - lR). G2 is s = (AR - AL) / (BL - BR), held to the
+         band and then to `vmax` in magnitude.
+       - The length match (`smooth`, a crest or a hold edge of angle s):
+         XL = 2 / (3 TL^2) (-DL + s TL (1 - lL) + sL lL TL) and
+         XR = 2 / (3 TR^2) (DR - s TR (1 - lR) - sR lR TR); when
+         XL XR > 0, with r = sqrt(XR / XL), lIn = (1/3) / sqrt(r) and
+         lOut = (1/3) sqrt(r), each held to [0.05, 0.95] (the product stays
+         a ninth before the hold); otherwise the lengths stay.
+       - The order: every angle is set first (authored, the style's start
+         angle, or 0) and held to `vmax` in magnitude, and every length is
+         a third; then four sweeps in knot order solve each free G2 through
+         angle and, under `smooth`, each crest's and hold edge's lengths,
+         each step using its neighbors' current values (Gauss-Seidel).
+         Parity is with the four sweeps, not with an exact solve of the
+         coupled system.
+     - Monotonicity. The band is sufficient for a monotone piece only while
+       both of the piece's lengths are at most one third. In chord units
+       (m = D / T, alpha = s0 / m, beta = s1 / m, A = alpha l0,
+       C = beta l1, the angles zero or of the chord's sign) a piece is
+       monotone if and only if A + C - sqrt(A C) <= 1, and max(A, C) <= 1
+       suffices; the band gives alpha, beta <= 3, so lengths at or under a
+       third keep every band-legal piece monotone. When the ceilings
+       lengthen a handle past a third (item 4), nothing further bounds the
+       angle: it stays held to the band and to `vmax`, the piece may
+       overshoot its end knot or reverse inside the span (alpha, beta =
+       3, 0 at a length of 0.5 overshoots by 8% of the chord), and only the
+       window ceiling judges it (open question 9).
+     - An end velocity that is not `unspecified` is an authored angle under
+       either style: kept, never solved or banded, held to `vmax` as today
+       (`EndVelClamped`), the lengths the hub's. Under `pchip` an authored
+       knot is G1 with both lengths a third, so an authored C1 cubic
+       renders exactly where the ceilings allow; under `smooth` an authored
+       crest or hold edge also takes the length match.
+     - The existing values under this renderer, for an authored and for a
+       free end velocity, with the GRANT echo (key 45, the effective
+       family). The machine's curve policy (force C1, force C2) selects the
+       `c1_cubic` or the `c2_quintic` row.
+       - `unspecified` (0): the hub's undeclared default, which is the
+         default style: authored and free knots as `pchip`. Echo: `pchip`.
+       - `c1_cubic` (1): an authored knot renders the author's cubic (angle
+         kept, lengths a third until a ceiling scales them, G1, item 6's
+         corner ramp at the acceleration step); a free knot takes `pchip`'s
+         rules. Every knot is at least G1, so the wish is honored. Echo:
+         `c1_cubic`.
+       - `c2_quintic` (2): authored and free knots as `smooth`, the G2
+         style, or as `pchip` on a hub without it. A hold edge stays G1 and
+         no piece is a quintic, so this renderer never echoes `c2_quintic`.
+         Echo: `smooth`, or `pchip` without it.
+       - `step` (3, reserved): no step renderer yet (open question 5);
+         rendered as `unspecified`. Echo: `pchip`, where the registry's
+         `step` note and §18-20 item 20 say `c2_quintic` today.
+     - The echo. The declaration rides HELLO and PUBLISH as today; the
+       GRANT echo reports the effective family per the list above, and key
+       48 (`requested_curve_family`), when present, carries the wish
+       verbatim (RFC-049b, unchanged). A hub without this renderer does not
+       know the two values, so §9.6 treats them as `unspecified`: it
+       renders its undeclared default and echoes in key 45 its effective
+       family for `unspecified` (`c2_quintic` on the pre-RFC reference),
+       never the new value. Key 48 may carry the new value: 48 is the wish,
+       never a claim about the render, and "never parroted back" binds key
+       45 only. This is the option the review recommended, because §9.6
+       already requires it, so a pre-RFC hub is conformant as it stands and
+       the client sees the downgrade as key 45 differing from its wish.
+  4. **The ceilings bound the lengths.** Per piece, in knot order, both
+     lengths scale by one factor, the nearest to one that is legal: the
+     factors 0.2 to 2.0 in steps of 0.05 are tried nearest one first (1,
+     0.95, 1.05, 0.90, ... 0.2, then 1.85 to 2.0; the lower first on a
+     tie), each scaled length held to [`handle_floor`, 0.95], and the first
+     legal factor is taken. `handle_floor` is the feel floor, a planner
+     option for RFC-105's table, default 0.15 of the span. Speed caps the
+     length from above (a shorter handle lowers the peak toward the mean),
+     acceleration and jerk floor it (a shorter handle sharpens the ends as
+     one over the length squared). The window is a ceiling like the others.
+     The judge samples a piece at 161 points evenly spaced in u
+     (u = k / 160), with v, a and j the exact time derivatives there; the
+     piece's worst ratio is the largest of peak |v| / `vmax`, peak |a| /
+     `amax`, peak |j| / `jmax` and 1 plus the excursion past the window as
+     a share of its span; a worst ratio of at most 1.001 is legal. A G2
+     knot whose adjoining piece scales generally loses the match, and the
+     acceleration step is then item 6's.
+  5. **Amplitude gives, time never.** When no factor is legal, the later
+     knot of the piece moves toward the previous knot's rendered position
+     (item 2) by the least that is legal. The full move is judged first:
+     the whole chord, bounded by the maximum trim (`trim`, a planner option
+     for RFC-105's table, default the window span, so by default the whole
+     chord). If it is legal, 16 bisection steps between no move and the
+     full move keep the least legal move found. A knot whose piece is legal
+     untrimmed does not move in that round. A hold after a trimmed knot
+     (its authored chord within the hold tolerance) moves with it and stays
+     flat. Every knot after the origin may move, the newest included; the
+     reference model renders a finished script and keeps its final knot,
+     which a stream render does not. The render runs three rounds: solve
+     (item 3), then fit and trim every piece (items 4 and 5); then twice,
+     solve again on the trimmed chords, then fit and trim again from the
+     authored positions; the last round is rendered. Each trimmed knot (a
+     hold that moves with one is not reported again) is reported on the
      `events.anomaly` channel (§9.4) as the hub's existing scaled-waveform
-     kind, the millimeters trimmed in its detail. The lateness budget of
-     RFC-105's options defaults to zero.
+     kind (`waveform_scaled`), its detail the share of the chord kept
+     (0..1). The lateness budget of RFC-105's options defaults to zero.
+     **The terminal rule.** When even the full move is illegal, the knot
+     takes the least-over of the untrimmed position and 25, 50, 75 and 100%
+     of the full move (the smaller move on a tie), the piece renders there
+     as it is, over a ceiling, and it is reported on `events.anomaly` as
+     `plan_failed`, its detail the piece's worst ratio. A hold piece is
+     never trimmed: one that is illegal renders as it is and is reported
+     the same way. The knot is never dropped (RFC-105 (t) does not apply
+     to this renderer). This is the one exception to RFC-105's promise 3:
+     the promise holds on the judge's grid (161 points per piece, within
+     0.1% of every ceiling and of the window span) for every piece not
+     reported `plan_failed`, and between the grid's points it is not
+     separately bounded; a `plan_failed` report is the hub stating, on the
+     wire, that a piece broke the promise and by what ratio (open question
+     8).
   6. **The jerk ceiling on top.** At a G1 knot the acceleration step is
      rounded by the corner ramp of |Δa| / `jmax`. A G0 knot (an authored
      corner: linear or step senders) is rendered as the tightest rounding
      the acceleration ceiling allows. G2 knots need nothing.
 - **Pros.** One kind of unknown, the handle lengths; every ceiling is a
-  monotone bound on it, so the solve is a bracket, not a search, and a second
-  implementation can match the reference sample for sample. Exact PCHIP where
-  the ceilings allow, flat crests kept, mid-travel points pass through
-  without a corner. Blender's F-curve model: a client draws the handles the
-  hub uses, and the twin renders what the motor does. The five cases replace
-  the spend ladder of RFC-105 (aaa) and (bbb); the stream engine (timeline,
-  horizon, supersede, re-plan from the live state) is untouched.
+  monotone bound on it, so the fit is one ordered scan of a single factor
+  and the trim one bisection, and a second implementation following items 2
+  to 5 can match the reference sample for sample. PCHIP exactly on every
+  piece between flat knots (ends, crests, hold edges) where the ceilings
+  allow, which is every piece of a script of turnarounds and holds; authored
+  knots render the author's cubic; through points pass without an
+  acceleration step (their G2 angle stays in PCHIP's monotone band but is
+  not PCHIP's angle). Blender's F-curve model: a client draws the handles
+  the hub uses, and the twin renders what the motor does. The five cases
+  replace the spend ladder of RFC-105 (aaa) and (bbb); the stream engine
+  (timeline, horizon, supersede, re-plan from the live state) is untouched.
 - **Cons.** One cubic piece per span puts its peak acceleration at the knot
   ends, so at the same peak speed it needs about twice the acceleration of
   an ideal S-curve: at the ceiling it trims more than a cruise profile
@@ -9724,23 +9889,45 @@ say exactly which, future-us will want the receipts.*
   replaced by the five cases (the playground's `handles-model.js` is the
   reference, 1 ms grid parity on its built-in script is the acceptance); the
   wasm twin follows; Phosphor draws the twin and sends knots plus the style
-  instead of interpolating; registry: two `curve_families` values;
-  RFC-105's options table: `handle_floor`, and the lateness budget's new
-  default.
+  instead of interpolating; registry: two `curve_families` values, and the
+  `unspecified` and `step` notes follow item 3's list; SPEC: §9.6 takes
+  items 2 to 5 (open question 2), §18-20 item 20 the new `step` echo;
+  RFC-105's options table: `handle_floor`, the maximum trim `trim`, and the
+  lateness budget's new default.
 - **Wire impact.** Additive. Two `curve_families` values; no record layout
-  change (the `unspecified` end velocity exists, §5.4). A pre-RFC client
-  sees no change; a pre-RFC hub treats the new values as `unspecified` per
-  the existing rule and echoes what it rendered.
-- **Open questions.** (1) The registry numbers, allocated at landing.
-  (2) Whether `smooth` is Makima exactly: the angle rule must be normative
-  for a client's drawing to match the hub (the weights formula goes in
-  RENDERING.md). (3) Trim anchoring: at the previous knot (proposed, the
+  change (the `unspecified` end velocity exists, §5.4). A pre-RFC client's
+  records are unchanged; from a hub with this renderer it may read a new
+  value in the echo (key 45, item 3's list), never a changed layout. A
+  pre-RFC hub treats the new values as `unspecified` per the existing rule
+  and echoes in key 45 its own effective family for `unspecified`, never
+  the new value (item 3).
+- **Open questions.** (1) The registry numbers of the two values, to be
+  assigned by the registry. (2) The home of the normative rules: items 2 to
+  5, Makima's angle included, are hub conformance and go in SPEC §9.6 under
+  the Junctions subsection RFC-105 plans, with RENDERING.md pointing at them
+  for the twin (proposed); RENDERING.md's only curve text is plan-view
+  (RFC-100). (3) Trim anchoring: at the previous knot (proposed, the
   machine is there) or centering the reduced stroke, which would move
   reachable knots; the operator's call. (4) A through point trimmed toward
   the previous knot lengthens the piece after it; balancing it between its
   two pieces is the refinement if a script shows the need. (5) `step` (3)
   under this renderer: a G0 corner at the knot time, which would make the
   reserved family declarable. (6) `handle_floor` and the maximum trim as
-  planner options on RFC-105's table, with their keys.
+  planner options on RFC-105's table, with their keys to be assigned by the
+  registry. (7) Whether the two
+  values are needed: under item 3's list `c1_cubic` renders as `pchip` and
+  `c2_quintic` as `smooth`, so what the values add is a sender naming the
+  angle rule its drawing used and an echo naming the rule the hub applied;
+  the ruling could instead keep the existing values with that list and no
+  new ones. (8) The terminal rule: accept the `plan_failed` exception to
+  RFC-105's promise 3 (item 5, the reference's behavior), or first bound
+  every angle by what its adjacent spans can stop, so the full move is
+  always legal and the exception unreachable (Kinetic kin-88m). (9) Whether
+  `pchip` judges monotonicity (no velocity sign change inside a piece,
+  sampled) so a lengthened handle cannot overshoot, or overshoot between
+  monotone knots stays accepted with the window as its only judge (item 3;
+  Kinetic kin-88m). (10) The hold tolerance: the renderer's 0.005 of the
+  window span (the reference) or the registry's `segment_dwell_span` (0.02),
+  so that the wire has one definition of a hold.
 
 ---
