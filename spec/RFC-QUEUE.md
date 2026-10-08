@@ -547,7 +547,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [105](#rfc-105) | Kinetic²: what a hub promises about timed knots, and the planner options a client may tune | Draft | open |
 | [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth families, rendered as a composite cubic Bézier with the ceilings as bounds on the handles | Draft | open |
 | [107](#rfc-107) | Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write | Draft | open |
-| [108](#rfc-108) | Curve style, handle floor and maximum trim as planner settings; the render budget is the hub's | Draft | open |
+| [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -10197,6 +10197,18 @@ say exactly which, future-us will want the receipts.*
          `playground/play.js` l.27, l.124, l.487, l.489, l.496, l.649-650,
          l.682-683. Kinetic 1 (`include/kinetic/`, `tests/test_kinetic.cpp`)
          is open question 11.
+     - **Reconciled with RFC-108** (operator rulings 2026-10-08: the style
+       is one value, `smoothness`, 0 crisp (`pchip`) to 1 smooth, the
+       renderer lerping between the two free-knot solutions, RFC-108 item
+       6). Under open question 12 (a), the agent default, the family table
+       retires: 1 `g1`, 2 `g2` and 3 `step` keep their numbers and labels
+       with `status: reserved`, keys 45 and 48 likewise, item 3's two new
+       values are never allocated (open question 1 shrinks to the anomaly
+       kind), item 3's rows collapse to "every free knot renders at the
+       hub's `smoothness`, every authored angle is kept", and the
+       consumers above that declare or test a family drop the declaration
+       instead of respelling it. Under (b) this item stands as written and
+       the wish moves to the new key. The operator rules.
 - **Pros.** One kind of unknown, the handle lengths; every ceiling is a
   monotone bound on it, so the fit is one ordered scan of a single factor
   and the trim one bisection, and a second implementation following items 2
@@ -10276,7 +10288,26 @@ say exactly which, future-us will want the receipts.*
   (`include/kinetic/kinetic.hpp` l.236 and l.531), which goes stale at
   ratification. Agent default, veto-able: respell those two citations to
   `g1` and leave the oracle's own names, because "kept whole" covers code
-  that never ships. Owner: the operator.
+  that never ships. Owner: the operator. (12) The family wish
+  under `smoothness` (RFC-108 item 6). A 0..1 knob on the hub makes the
+  two-valued wish (key 45, echo 48, RFC-030 and RFC-049b) a coarse
+  duplicate: a sender's real declaration under Kinetic² is per knot, a
+  velocity present or left free. (a) Retire the wish and the echo, numbers
+  kept with `status: reserved` as `step`: the hub's `smoothness` alone
+  shapes free knots, and `curve_policy` has nothing left to override and
+  retires too. Cost: SPEC §9.6's curve family paragraph and §18-20 item 20
+  become a retirement note, and the reference hub, the JS and MFP clients
+  and the funscript player drop the declaration; a sender loses any way
+  to ask for a smoothness beyond the velocities it sends. (b) Keep the
+  wish as the same 0..1 value under a new key, echoed with the effective
+  value, so "honored vs downgraded" stays a comparison of two numbers;
+  `curve_policy` becomes sender's / forced. Cost: two new registry keys,
+  an echo rule rewritten for a float, and the hub, both clients and the
+  player re-plumbed for a float wish; one more knob that duplicates the
+  hub's. Agent default, veto-able: (a), because the person strapped to
+  the machine owns feel (RFC-030.5's own reason for the override), the
+  sender already says what it means knot by knot, and the default spends
+  no new numbers. Owner: the operator.
 
 ---
 
@@ -10431,15 +10462,20 @@ say exactly which, future-us will want the receipts.*
 ---
 
 <a id="rfc-108"></a>
-## RFC-108 -- Curve style, handle floor and maximum trim as planner settings; the render budget is the hub's
+## RFC-108 -- Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's
 
-- **Status:** DRAFT (2026-10-08, review folded the same day). Kinetic bead
+- **Status:** DRAFT (2026-10-08, review folded the same day; rewritten the
+  same day to the operator's ruling "remove all old verbage and pointless
+  controls from the wire, and replace it with k2's set", and folded the
+  operator's rulings that the style is one value, `smoothness`, 0..1).
+  Kinetic bead
   kin-tnv; builds on [RFC-105](#rfc-105) item 6 (planner options are
-  catalog settings) and [RFC-106](#rfc-106) item 3 (the styles) and open
-  question 6 (`handle_floor` and the maximum trim as planner options),
-  which this RFC answers. Ratifiable with or after RFC-106: the `pchip` and
-  `smooth` echo values have no registry numbers until RFC-106 lands (its
-  open question 1). No kernel, hub or twin change before the ruling.
+  catalog settings) and [RFC-106](#rfc-106) items 3 (the styles) and 8 (the
+  G1 and G2 labels) and open question 6 (`handle_floor` and the maximum
+  trim as planner options), which this RFC answers. Ratifiable with RFC-106:
+  `smoothness` lerps its two styles, and its open question 12 decides
+  whether a sender may still ask for one. No kernel, hub or twin change
+  before the ruling.
 - **Origin.** The handle renderer of RFC-106 has three knobs that are
   compile-time constants in the reference, because the kernel's `Config` is
   ABI and did not carry them: the feel floor (Kinetic
@@ -10450,110 +10486,165 @@ say exactly which, future-us will want the receipts.*
   render's bound: on the P4 at 0.1.26 a funscript knot solved in 2.4 ms
   mean, 6.3 ms worst, and a 50 Hz sample stream 12.9 ms per sample (kin-tnv
   notes, 2026-10-08), measured before the solve left the motion tick
-  (RFC-105 (ggg)).
-- **Problem.** A user cannot choose between the two styles RFC-106 defines
-  except by forcing a smoothness class on every sender (`curve_policy`), and
-  cannot trade amplitude against ceiling breaks or set how sharp a ceiling
-  may make a piece. The reference client's twin renders the constants, so a
-  hub built with other values would no longer match its preview. And
-  nothing says whether the render budget is a setting, a promise or neither.
+  (RFC-105 (ggg)). The operator ruled the same day that the tuning surface
+  is Kinetic²'s set and nothing else: every setting the kernel does not
+  read leaves the wire, and the remaining text that describes the replaced
+  planner is retired or rewritten.
+- **Problem.** A user cannot choose how smooth free knots render except
+  by forcing a continuity class on every sender (`curve_policy`),
+  and cannot trade amplitude against ceiling breaks or set how sharp a
+  ceiling may make a piece. The reference client's twin renders the
+  constants, so a hub built with other values would no longer match its
+  preview. Nothing says whether the render budget is a setting, a promise
+  or neither. And `kinetic-waveform` (0x1122) carries three settings the
+  kernel never reads (`infeasible_policy`, `amplitude_budget`, `corner`)
+  beside three padding members of settings retired earlier, so a user
+  tunes knobs that do nothing, against Nucleus's own rule for the tuning
+  struct ("Every member is read: a member the planner stops reading leaves
+  this struct and the wire together", `flagship_p4/src/motion/ValenceMotion.h`
+  l.195-196).
 - **Proposal.**
-  1. **Three settings on the kinetic waveform card.** Appended to the tail
-     of `kinetic-waveform` (0x1122, category `motion`, section Tuning) after
-     `react_ms` (SPEC §5.4, append-only), written through the shared writer
-     `kinetic-set` (0x3120) under new setting keys 23, 24 and 25 (keys 4 to
-     9, 11, 12, 15, 16 and 18 to 20 are released and never reused). Each is
+  1. **Kinetic²'s set, proved.** A setting stays only where the hub applies
+     it and the kernel reads what it sets. Proof at Kinetic HEAD and Nucleus
+     HEAD, 2026-10-08:
+
+     | setting (key) | where the hub applies it (Nucleus) | the kernel reads it (Kinetic) | verdict |
+     |---|---|---|---|
+     | `jmax_ovr` (1), `vmax_ovr` (2), `amax_ovr` (3), on 0x1120 | `MotionArbiter.cpp` l.650-653 (`limitsFor`), via `MotionArbiter.h` l.503-504, into `Config::limits` (l.497) | `engine.hpp` l.65, 196, 220, 246, 281, 301, 474, 486; `solver.hpp` l.603 | keep (0x1120 unchanged) |
+     | `chase_dense_ms` (10) | `ValenceMotion.h` l.244 (`sampleLatencyUs`), `MotionArbiter.cpp` l.703 and l.593 (`knotFromSample` latency); the samples grant's latency, `ValenceDevice.cpp` l.765 | `sources.hpp` l.24 (`t_us = arrival_us + latency_us`): the sample knot's time | keep: the sample path reads it |
+     | `react_ms` (22) | `MotionArbiter.cpp` l.699 (`Config::react_us`) | `engine.hpp` l.498, 519 | keep |
+     | `curve_policy` (13) | `MotionArbiter.cpp` l.549-551: sets `Knot::family` on segment knots | NONE today: the kernel reads `Knot::family` only in `types.hpp` l.80 (`junctionOf`), and only for a sample; `handles.hpp` and `solver.hpp` never read it; the style is the constant `kStyle` (`solver.hpp` l.67) | retire under RFC-106 open question 12 (a), the default; under (b) it stays as sender's / forced |
+     | `infeasible_policy` (14) | `MotionArbiter.cpp` l.695, l.498 (`Config::policy`) | NONE: `types.hpp` l.32 ("Not read by Kinetic²"), l.102-105; `solver.hpp` l.24 | retire |
+     | `amplitude_budget` (17) | `MotionArbiter.cpp` l.696 (`Config::amplitude_floor`) | NONE: `types.hpp` l.102-105; `solver.hpp` l.24 | retire |
+     | `corner` (21) | `MotionArbiter.cpp` l.698 (`Config::corner`) | NONE: `types.hpp` l.84-88 ("The handle renderer (solver.hpp) does not read it"), l.102-105 ("Corner::Continuous is a no-op"); `solver.hpp` l.24. The solver's corner rung is `Solved::corner` (`solver.hpp` l.81-82, set at l.332 from the acceleration step at every G1 knot), a geometric fact, never `Config::corner` | retire |
+     | `smooth_budget_reserved`, `blend_steps_reserved`, `settle_grace_reserved` | none (published 0) | NONE | retire |
+     | `smoothness` (23), `handle_floor` (24), `trim_max` (25), new | item 2 | `handles::Cfg` style, `lfloor`, `trim` (`handles.hpp` l.83-85), set today from constants at `solver.hpp` l.607-609; `smoothness` replaces the `Style` pick with item 6's lerp | add |
+
+     Not on the wire and not affected: `Config::lookahead_us`,
+     `late_budget_us` and `solve_budget` (no kernel reader either;
+     `solve_budget` is item 8's). `kinetic-limits` (0x1120) keeps its three
+     overrides and its mask pair unchanged.
+  2. **The card: `kinetic-planner` at 0x1123 replaces `kinetic-waveform`
+     at 0x1122.** STATE, category `motion`, section Tuning, rank control,
+     setting channel `kinetic-set` (0x3120), family 2 member 3. 0x1122 is
+     retired and its id is never reused, as 0x1121 was (item 3). The layout
+     is Kinetic²'s set in mask order, 22 bytes (RFC-106 open question 12 (a), the
+     default):
+
+     | field | key | wire type | unit, scale | default | bounds | group | mask bit |
+     |---|---|---|---|---|---|---|---|
+     | `smoothness` | 23 | f32 | "" (0 crisp, 1 smooth), 1 | 0 (crisp: today's `kStyle`, solver.hpp l.67) | 0 to 1, step 0.05 | Tuning / Curve | 0 |
+     | `handle_floor` | 24 | f32 | "" (share of the span), 1 | 0.15 (solver.hpp l.66, handles.hpp l.83) | 0.05 to 0.33, step 0.01 | Tuning / Curve | 1 |
+     | `trim_max` | 25 | f32 | "" (share of the window span), 1 | 1.0 (solver.hpp l.608) | 0.1 to 1, step 0.05 | Tuning / Ceilings | 2 |
+     | `chase_dense_ms` | 10 | u32 | ms, 1000 (the wire carries us) | 60 | 10 to 500 | Tuning / Sample streams | 3 |
+     | `react_ms` | 22 | u32 | ms, 1000 | 4 | 0 to 100, step 0.5 | Tuning / Re-planning | 4 |
+     | `enabled_mask` | -- | bitfield8, role `meta.enabled_mask` | flag | -- | -- | -- | -- |
+     | `trial_mask` | -- | bitfield8, role `meta.trial_pending` | flag | -- | -- | -- | -- |
+
+     Under RFC-106 open question 12 (b), `curve_policy` (key 13, u8 select: 0
+     sender's, 1 forced) leads the layout at bit 0 and the rest shift by
+     one: 23 bytes, six settings. Either way one mask pair suffices, so
+     SPEC §8.8 needs no multi-mask text. `kinetic-set` (0x3120) drops the
+     schema fields of keys 14, 17 and 21 (and 13 under (a)) and gains 23,
+     24 and 25; the dropped keys join the released keys (4 to 9, 11, 12,
+     15, 16 and 18 to 20), never reused, and a request carrying only
+     released keys NACKs `INVALID_VALUE` as today. The end labels "crisp"
+     and "smooth" are provisional: the operator is choosing between
+     crisp/smooth and rigid/loose. Each new setting is
      setup-category in the RFC-079 sense, flagged `advanced`, and persisted
      with the rest of the card. A change applies at the next render: every
      knot not yet committed (past `react_ms`) renders again under the new
-     value; the committed curve is untouched.
-
-     | field | key | wire type | unit, scale | default | bounds | group |
-     |---|---|---|---|---|---|---|
-     | `curve_style` | 23 | u8 select: 0 `pchip`, 1 `smooth` | "", 1 | 0 `pchip` (solver.hpp l.67) | the two options | Tuning / Curve |
-     | `handle_floor` | 24 | f32 | "" (share of the span), 1 | 0.15 (solver.hpp l.66, handles.hpp l.83) | 0.05 to 0.33, step 0.01 | Tuning / Curve |
-     | `trim_max` | 25 | f32 | "" (share of the window span), 1 | 1.0 (solver.hpp l.608) | 0.1 to 1, step 0.05 | Tuning / Infeasible moves |
-
-     The select's ordinals are `handles::Style`'s (handles.hpp l.69-72). The
-     floor's lower bound is the renderer's shortest handle (`kLMin`,
-     handles.hpp l.60; the kernel clamps with `fmax(kLMin, lfloor)`, l.604);
-     its upper bound is just under a third (`kThird`, l.62), the polynomial
-     cubic's length, so under `pchip` the floor never touches an unscaled
-     piece and RFC-106's "PCHIP exactly where the ceilings allow" holds.
-     Under `smooth` the length match can set a length below a third at
-     factor 1, so any floor may alter an unscaled `smooth` piece. `trim_max`
-     is RFC-106's maximum trim as a share of the window span; the hub passes
+     value; the committed curve is untouched. The floor's
+     lower bound is the renderer's shortest handle (`kLMin`, handles.hpp
+     l.60; the kernel clamps with `fmax(kLMin, lfloor)`, l.604); its upper
+     bound is just under a third (`kThird`, l.62), the polynomial cubic's
+     length, so at `smoothness` 0 the floor never touches an unscaled piece
+     and RFC-106's "PCHIP exactly where the ceilings allow" holds. Above 0
+     the length match can set a length below a third at factor 1, so any
+     floor may alter an unscaled piece. `trim_max` is
+     RFC-106's maximum trim as a share of the window span; the hub passes
      `trim_max * (hi - lo)` to the renderer. Below 1 it can leave a piece
      over a ceiling (reported `piece_over_ceiling`), the newest knot
      included, which overrides the kernel's stated invariant that the
      newest knot never renders over a ceiling (handles.hpp l.88-90); the
      lower bound keeps a slider from switching trims off (open question 3).
-  2. **Catalog text** (one terse fragment each, the tooltip rule):
-     `curve_style` "Curve rule for knots the sender left free";
+  3. **Why a new id, and the law.** SPEC §5.4: "a layout, once released,
+     may only grow at the tail ... writers MUST NOT reorder, resize, or
+     remove released fields ... Removing or changing a field requires
+     allocating a **new channel id** and retiring the old one, which keeps
+     its id forever (§4.4)." §4.4: "Numbers are never reused or renumbered
+     after a tagged release. This rule binds from the **v1.0 tag
+     forward**." §5.7: "nothing is renumbered post-tag (§4.4)." §4.4 and
+     §5.7 are scoped to the tag; §5.4 is not: it binds "once released",
+     which the spec does not define, and the reference catalog has read it
+     as binding since the hub port (0x1122's own retired padding, and
+     0x1121 retired by a new id rather than emptied). So removing fields
+     from 0x1122 IN PLACE is not lawful as written, and re-issuing the card
+     under a new id with the old one retired IS: that is §5.4's own
+     removal procedure, and the ruling is honored with no doctrine change.
+     This RFC takes that path. 🚩 CANON FLAG for the operator: the ruling
+     ("nobody uses the firmware except me, until I ship it") can be read as
+     removal in place, and the further retirements of item 9 (the
+     kinetic-diag counters, `plan_kind`) would each cost a channel id under
+     the same rule. If the operator wants in-place removal before the tag,
+     the doctrine amendment the ruling implies, to land in SPEC §5.4 beside
+     §17.2's C-6 pre-tag window, is: "Until the first tagged release an RFC
+     may remove or rename wire members by operator ruling; from the tag,
+     §5.4, §4.4 and §5.7 are absolute." Accepted, it lets this RFC keep
+     0x1122 with the item 2 layout instead (open question 6).
+  4. **Catalog text** (one terse fragment each, the tooltip rule):
+     `smoothness` "Free knots: 0 crisp, 1 smooth";
      `handle_floor` "Sharpest a ceiling may bend a piece";
-     `trim_max` "Farthest a knot moves to fit the ceilings".
-  3. **The mask: retire `infeasible_policy`, stay at eight.**
-     `kinetic-waveform` carries six settings today (`curve_policy`,
-     `infeasible_policy`, `amplitude_budget`, `chase_dense_ms`, `corner`,
-     `react_ms`; bits 0 to 5). `infeasible_policy` (key 14) is never read by
-     the handle renderer: time never gives (types.hpp l.102-105). It retires
-     as the card's earlier fields did: its byte stays as hidden padding
-     published 0, with no `setting_key`, and key 14 becomes a permanent gap.
-     The card then holds eight settings, one `bitfield8` each for
-     `meta.enabled_mask` and `meta.trial_pending`, re-indexed in layout
-     order: `curve_policy` 0, `amplitude_budget` 1, `chase_dense_ms` 2,
-     `corner` 3, `react_ms` 4, `curve_style` 5, `handle_floor` 6,
-     `trim_max` 7. The layout grows from 26 to 35 bytes. If the operator
-     keeps `infeasible_policy`, nine settings need a second mask pair
-     (`enabled_mask2`, `trial_mask2`, appended after `trim_max`, as 0x1210's
-     `enabled_mask2`), and SPEC §8.8 must first state the multi-mask index
-     (mask k in layout order per role gates settings 8k to 8k + 7), which
-     today lives only in `valence_probe` (rfc-o9m) and Phosphor; or a third
-     STATE card at 0x1123 (family 2 member 3; 0x1121 is retired) under
-     0x3120 (§8.8 "A category spans channels"). Open question 1.
-  4. **Trialable.** All three accept trial writes (§9.3, RFC-099) like the
-     card's other members except `chase_dense_ms` (RFC-107); `trial_mask`
-     marks them. A trial applies exactly as a durable write does, without
-     persisting.
-  5. **Where `curve_style` applies.** It is the hub's undeclared default:
-     the style of RFC-106 item 3's `unspecified` (0) row, and of `step` (3)
-     while that renders as `unspecified`. It does not override a sender: a
-     declared `g1`, `g2` (RFC-106 item 8's labels for families 1 and 2) or
-     one of RFC-106's two new values renders as RFC-106 item 3 lists, and
-     `curve_policy`'s force G1 or force G2 selects its row as before. The style is resolved once per stream
-     from the grant's effective family, never per knot: a knot the hub
-     inserts itself (a hold, a preroll) never changes it. The GRANT echo
-     (key 45) for an `unspecified` declaration reports the style the
-     setting chose, and a change of `curve_style` while such a grant is
-     live sends an unsolicited GRANT (§10.2) with the new echo, as a moved
-     `schedule_latency_us` does. A hub that does not render `smooth` keeps
-     the field with `pchip` as its only option, so the layout is the same
-     on every build. This amends RFC-106 item 3's `unspecified` row ("Echo:
-     pchip" becomes "Echo: the hub's `curve_style`, `pchip` from the
-     factory").
-  6. **The reference client.** Phosphor's segments grant declares
-     `g1` and sends authored end velocities, so `curve_style` does
-     not reach the funscript player: its knots render as the author's
-     cubic. For the player to render `smooth` it declares the style itself,
-     as RFC-106's new value (the sender's wish, honored or echoed down);
-     the hub setting serves undeclared senders (adapters, TCode). The
-     player's own style choice is a Phosphor bead after the ruling.
-  7. **The twin contract.** The preview and its Auto Scale fit render
-     through the client's build of the same kernel (Phosphor
+     `trim_max` "Farthest a knot moves to fit the ceilings";
+     under RFC-106 open question 12 (b), `curve_policy` "Sender's smoothness or
+     the machine's". `chase_dense_ms` and `react_ms` keep theirs.
+  5. **Trialable.** Every setting on the card accepts trial writes (§9.3,
+     RFC-099) except `chase_dense_ms` (RFC-107); `trial_mask` marks them. A
+     trial applies exactly as a durable write does, without persisting.
+  6. **`smoothness`, one value from crisp to smooth** (operator ruling
+     2026-10-08). RFC-106 item 3's two styles become the two ends of one
+     f32: 0 is `pchip` (crisp: velocity-continuous, acceleration may step
+     at a knot, no overshoot between monotone knots) and 1 is `smooth`
+     (acceleration-continuous where the rules allow, overshoots by
+     construction). In between, the renderer solves the window under both
+     styles (RFC-106 item 3, each with its four sweeps) and gives every
+     free knot the angle and the two lengths (1 - s) times the `pchip`
+     solution plus s times the `smooth` one, s being `smoothness`; the
+     ceilings then fit and trim the lerped curve (RFC-106 items 4 and 5).
+     Authored knots keep their angles at every s; an authored crest or
+     hold edge takes s times `smooth`'s length match. At 0 and at 1 the
+     render is exactly the style's, so RFC-106's parity tests hold at the
+     ends. Overshoot grows continuously with s, so the twin's Auto Scale
+     fit follows it with no extra rule. Kernel obligation after
+     ratification: `handles.hpp` picks today between the PCHIP angle and
+     the `smooth` sweep by `Style` (l.69-72, `kStyle` at `solver.hpp`
+     l.67); it gains the lerp and `handles::Cfg` takes the float. A hub
+     that does not render `smooth` bounds `smoothness` to 0 to 0, so the
+     layout is the same on every build. Under RFC-106 open question 12 (a)
+     `smoothness` shapes every free knot of every sender, and no family
+     wish or echo exists to resolve; under (b) the sender's wish is the
+     same 0..1 value and `smoothness` is the hub's value for a sender that
+     sent none or when `curve_policy` forces it.
+  7. **The reference client and the twin.** Phosphor's segments grant
+     sends authored end velocities, so `smoothness` reaches the funscript
+     player only through its authored crests and hold edges (item 6); its
+     free knots, where it leaves a velocity out, take the hub's value. The
+     player's client-side box filter is labeled "Smoothing" today; it is
+     renamed or retired on the Phosphor side after ratification so the two
+     never sit in one card. The preview and its Auto Scale fit render
+     through the client's build of
+     the same kernel (Phosphor
      `plugins/factory/funscript-player/kinetic/kinetic.js`, `tuningOf` and
      `TUNING`, over Nucleus `tools/kinetic-wasm` `kinetic_tuning`).
-     `tuningOf` binds catalog fields by member name, so the three fields
-     reach the twin when `kinetic_tuning` gains members of those names:
-     `curve_style` at offset 57 (the first byte of `reserved2`; zero reads
-     as `pchip`), `handle_floor` at 64 and `trim_max` at 68, growing the
-     struct from 64 to 72 bytes. The twin submits the family its host
-     declares (today it submits 0 while the host declares `g1`), and
-     the style resolution of item 5 moves from the hub's arbiter into one
-     Kinetic function that the hub and the wasm shim both call. Under
-     `smooth` a piece may pass its end knot (RFC-106 item 3, Monotonicity:
-     only the window judges it); Auto Scale measures the twin's raw plan,
-     overshoot included, so it sees that overshoot only if the twin renders
-     the style the hub renders.
+     `tuningOf` binds catalog fields by member name. `kinetic_tuning` is
+     re-laid to Kinetic²'s set, 32 bytes, with no retired members:
+     `jmax_ovr` 0, `vmax_ovr` 4, `amax_ovr` 8 (f32), `chase_dense_us` 12,
+     `react_us` 16 (u32), `smoothness` 20, `handle_floor` 24, `trim_max`
+     28 (f32); under RFC-106 open question 12 (b) a `curve_policy` byte and three
+     zero bytes follow, 36 bytes. Above 0 a piece may pass its end knot
+     (RFC-106 item 3, Monotonicity: only the window judges it); Auto Scale
+     measures the twin's raw plan, overshoot included, so it sees that
+     overshoot only if the twin renders the `smoothness` the hub renders.
   8. **The render budget is the hub's constant, not a setting.**
      `Config::solve_budget` stays fixed by the machine (RFC-105 (ww),
      Kinetic `include/kinetic2/types.hpp` l.120-127). Since RFC-105 (ggg)
@@ -10571,67 +10662,171 @@ say exactly which, future-us will want the receipts.*
      (rendering only the knots a budget reaches) is not allowed: a render's
      last knot rests (RFC-106 item 2) and the G2 sweeps couple every knot,
      so a cut changes the angles at the boundary. No wire field.
-- **Pros.** The two styles RFC-106 defines become a choice for undeclared
-  senders without overriding a sender that declared. The floor and the
-  trim, the two knobs RFC-106 names as options, reach the tuner and the
-  dashboard as ordinary fields, so the tuner (RFC-105 item 7) can A/B them.
-  The preview stays the truth because the twin reads the same fields and
-  resolves the style with the hub's function. One card, one writer, one
-  mask pair, no new channel, no SPEC change to §8.8.
-- **Cons.** A `trim_max` below 1 lets pieces render over a ceiling, a
-  user-chosen break of RFC-105 promise 3, bounded by the field's lower
-  bound. Retiring `infeasible_policy` re-indexes the card's masks (a
-  client reads them from the catalog, as it did after the last
-  retirement). `curve_style` overlaps `curve_policy` force G2, which also
-  renders `smooth`, but force G2 overrides every sender and the style does
-  not. The funscript player needs its own declaration to use `smooth`.
-- **Cost.**
-  - Kinetic: `Config` gains the three members (appended; the ABI note in
-    types.hpp); `solveWindow` reads them instead of the constants; the
-    style resolution function, moved from Nucleus `MotionArbiter.cpp`; the
-    resumable per-run bound and its parity test (bounded against
-    unbounded, bit for bit); the stale `Style::Smooth` comment
-    (handles.hpp l.71) corrected to RFC-106 item 3.
-  - Nucleus: the three fields and keys on 0x1122 and 0x3120,
-    `infeasible_policy` retired, the masks re-indexed (and the "capped at
-    8 settings" and "8-bit enabled_mask" comments in `ValenceCatalog.h`
-    corrected to SPEC §8.8); `EngineConfigMap`; `StoredState` blob version
-    bump and migration; trial baselines; `effectiveCurveFamily` overridden
-    so the echo reports the resolved style (the delegate echoes the request
-    today, even under force G1 or G2) and the unsolicited GRANT on a style
-    change; `kinetic_tuning` to 72 bytes with its static_assert and
-    `fromC`/`toC`; valencesim; `test_valence_device` (the mask offsets);
-    `.claude/rules/motion-control.md`.
-  - Phosphor: three `TUNING` rows; `renderCore`'s tuning buffer from 64 to
-    72 bytes (`k.malloc(64)`, kinetic.js l.72, or the wasm writes past it)
-    and the header's "64 B"; the twin submits the declared family; the
-    tuning, virtual and funscript-player suites.
-  - Registry: no number. The setting keys are the device's (§8.8). This
-    answers RFC-106 open question 6: `handle_floor` and `trim_max` are
-    catalog settings with device keys; when RFC-105's `planner_options`
-    table lands it lists `curve_style`, `handle_floor` and `trim_max` by
-    those names.
-- **Wire impact.** Additive on the wire, one retirement in the reference
-  catalog. A tail append to 0x1122's layout (three fields), one field there
-  retired to padding with its key gapped, three keys on 0x3120's schema;
-  the catalog etag changes. The key 45 echo can carry the hub's style for
-  an `unspecified` declaration and can change by unsolicited GRANT. No
-  registry number, no golden vector, no RENDERING.md change; a client at
-  the old etag parses the prefix it knows (§5.4).
+  9. **Old text, retired or rewritten.** Each describes the replaced
+     planner; each is rewritten to Kinetic² or retired, numbers kept.
+     - Registry `plan_flags` (RFC-100) and SPEC §8.8 l.762, by who sets
+       each bit under Kinetic² (Nucleus `MotionArbiter.cpp` l.1335-1338,
+       l.1416):
+       - bit0 `shaped`, set when a knot's `share` < 1
+         (`solver.hpp` l.383): note becomes "the planner trimmed the knot
+         toward the previous one to fit the ceilings (amplitude gives, time
+         never)".
+       - bit1 `stretched`, set when `stretched_s` > 0 (`solver.hpp` l.134,
+         a hard knot: a live jog's time-optimal move landing late; l.583,
+         the newest knot finishing past its time): note becomes "the knot
+         lands after its commanded time (a jog's fastest move, or the
+         newest knot finishing late)".
+       - bit2 `fallback`: no Kinetic² path sets it ("fallback is never set,
+         nothing falls back", `MotionArbiter.cpp` l.1335). Retire candidate:
+         number kept, `status: reserved`, as `curve_families` 3 `step`;
+         SPEC l.762 says "bit2 reserved". The reference catalog's
+         `feasibility` labels (`ValenceCatalog.h` l.1046-1051) and
+         Phosphor's `kinetic.js` l.26 and `CONTRACT.md` l.692 `FLAGS` follow.
+       - bit3 `clamped`, set from `Solved::clamped` (`solver.hpp` l.378),
+         the window clamp and the backstop: unchanged.
+     - Registry `channel_roles` `events.anomaly` note and SPEC §9.4 l.898:
+       "(a clamped command, a planner fallback, a rejected plan)" becomes
+       "(a clamped command, a trimmed knot, a piece over a ceiling, a
+       refused knot)".
+     - SPEC §9.6 l.924: "A minimum-jerk quintic over a chord `d` in time
+       `T` peaks at `1.875·d/T` in velocity ... needs 1.875× that" becomes
+       "A rest-to-rest cubic over a chord `d` in time `T` (PCHIP at two
+       crests, RFC-106) peaks at `1.5·d/T` in velocity ... needs 1.5×
+       that".
+     - SPEC §9.6 l.926 and §18-20 item 20 l.1651, the registry
+       `curve_families` notes and header: RFC-106 item 8.
+     - Unchanged: the oscillator's quintic ramps (SPEC l.938, registry
+       `osc_shapes`) are Kinetic² (`oscillator.hpp` l.11, l.120-140);
+       RENDERING.md has no planner sentence.
+     - Reference catalog, `kinetic-diag` (Nucleus `ValenceCatalog.h`):
+       `plan_kind` options l.1144-1146 ("none", "quintic", ...): Kinetic²
+       renders cubic Bézier pieces, so ordinal 1 is relabeled "bezier"
+       (`MotionArbiter.cpp` l.45 `kPlanKindQuintic` follows);
+       `anom_waveform_scaled` desc "Strokes shortened to finish on time"
+       becomes "Knots trimmed to fit the ceilings"; `anom_endvel_clamped`
+       "Handoff speed cut to stay inside the window" becomes "Authored
+       speeds held to the ceiling or the wall"; `anom_plan_failed` and
+       `anom_deadline_stretched` count kinds Kinetic² never emits
+       (`types.hpp` l.136, l.139) and join the four hidden never-emitted
+       counters (l.1161-1179, whose descs describe the replaced planner).
+       Retiring those six counters from the wire is a re-issue of
+       `kinetic-diag` under item 3's rule, a follow-up for the operator
+       (open question 7).
+     - Nucleus doctrine and comments that contradict the kernel (Canon C-5
+       flag class 1, for the Nucleus board): `.claude/rules/motion-control.md`
+       l.90-96 (Blend, Stretch, `amplitude_floor`; "A sample is never
+       trimmed", against `sources.hpp` l.28); `MotionArbiter.cpp` l.689-693
+       ("The engine reads the policy, the amplitude floor ..., the
+       lookahead, the corner"); `MotionArbiter.cpp` l.488-493 (a Manual
+       move "stretches" by policy); `ValenceMotion.h` l.195-196, true again
+       once this RFC lands.
+  10. **The kernel's `Config` follows.** `policy`, `amplitude_floor`,
+     `corner`, `lookahead_us` and `late_budget_us` leave `Config`, and the
+     `Policy` and `Corner` enums retire, since nothing reads them
+     (`solver.hpp` l.24); `Config` gains `smoothness`, `handle_floor` and
+     `trim_max`, which `solveWindow` reads in place of l.607-609.
+     `solve_budget` stays (item 8).
+- **Pros.** The tuning surface is exactly what the renderer reads: five
+  settings, each proved by a reader, one card, one writer, one mask pair,
+  no padding, no SPEC §8.8 change. The two styles of RFC-106 become one
+  continuous feel knot, owned by whoever is strapped to the machine. The
+  floor and the trim reach the tuner and the dashboard as ordinary fields,
+  so the tuner (RFC-105 item 7) can A/B them. The preview stays the truth
+  because the twin reads the same fields. The removal is lawful under
+  §5.4 as written.
+- **Cons.** One channel id (0x1122) is spent. A `trim_max` below 1 lets
+  pieces render over a ceiling, a user-chosen break of RFC-105 promise 3,
+  bounded by the field's lower bound. The lerp renders the window twice
+  per round, about doubling the solve cost against item 8's budget when
+  0 < s < 1 (the ends render one style). Under RFC-106 open question 12 (a) a
+  sender cannot ask for a smoothness; its only lever is the velocities it
+  sends.
+- **Cost and consumers after ratification**, by file:
+  - Kinetic: `include/kinetic2/types.hpp` l.31-40 (`Policy`), l.84-93
+    (`Corner`), l.100-128 (`Config`, item 10, with the ABI note);
+    `solver.hpp` l.24, l.66-67, l.607-609 (`solveWindow` reads the three);
+    item 6's lerp in `handles.hpp` (l.69-72 `Style` becomes the float in
+    `handles::Cfg`, l.83-85) with parity at both ends; the resumable per-run bound and
+    its parity test (bounded against unbounded, bit for bit); every test
+    and bench that sets the retired members; then a `kinetic.pin` bump in
+    Nucleus.
+  - Nucleus catalog: `flagship_p4/src/hub/ValenceCatalog.h` l.86-89 (`ch::`:
+    `kinetic_waveform` 0x1122 retired, `kinetic_planner` 0x1123), l.1475-1567
+    (`addKineticWaveform` becomes `addKineticPlanner`), l.2102-2135
+    (`addKineticSet`: keys 14, 17, 21 out, 23 to 25 in, the released-keys
+    comment), l.2302, and item 9's `kinetic-diag` edits; the catalog etag
+    moves.
+  - Nucleus device: `flagship_p4/src/hub/ValenceDevice.cpp` l.246-285
+    (the key switch and readback), l.307-311 (the compare), l.451-480 (the
+    pack, new order, mask bits), l.672, l.782 and l.1898 (the
+    `chase_dense_ms` interlock bit, now bit 4), the trial baselines;
+    `ValenceDevice.h` l.267; `ValenceHub.cpp` l.14, l.95-98 (the
+    `amplitude_budget` and `corner` static_asserts go, `smoothness`,
+    `handle_floor`, `trim_max` ones come). Under RFC-106 open question 12
+    (a), `curve_policy` leaves `MotionTuning`, the key switch, the pack
+    and `StoredState.h` l.101 and l.206 too, and `MotionArbiter.cpp`
+    l.549-551 stops setting a family.
+  - Nucleus persistence: `flagship_p4/src/hub/StoredState.h` l.4, l.96-105
+    (bounds: `infeasible_max`, `budget_max`, `corner_max` go; the three new
+    ones come), l.115 (`kConfigVersion` 7 to 8, with the v2 to v7
+    migration dropping the retired values and seeding the new ones from
+    the factory), l.202-210, l.229-241, l.272-293 (validate, write,
+    read); cfg_gen rides as today.
+  - Nucleus motion: `flagship_p4/src/motion/ValenceMotion.h` l.192-218
+    (`MotionTuning` loses `infeasible_policy`, `amplitude_budget`,
+    `corner` and `lookahead_us`, gains the three); `MotionArbiter.cpp`
+    l.56-58, l.488-498, l.686-706 (`applyTuning`), l.1462-1474;
+    `MotionArbiter.h` l.620.
+  - Nucleus tools and tests: `tools/kinetic-wasm/kinetic_wasm.cpp` l.78-98,
+    l.126-130, l.336-353 (`kinetic_tuning` re-laid, item 7) and
+    `README.md` l.94, l.131-151; `tools/kinetic-wasm/check.mjs` l.22;
+    `tools/kinetic-lab/host.js` l.63-64 and `lab.js` l.98-101, l.189;
+    `test/native/test_valence_device/test_main.cpp` l.238, l.749, l.793,
+    l.875, l.944-953, l.1260-1321; `test_stored_state` l.57-58, l.109-110,
+    l.221, l.513-520; `test_motion_arbiter` l.960-965;
+    `test_kinetic_wasm_trace` l.150; `sim/valencesim/README.md` l.29;
+    `.claude/rules/motion-control.md` l.90-96.
+  - Phosphor: `plugins/factory/funscript-player/kinetic/kinetic.js` l.22-26
+    (`TUNING` re-laid to item 7's offsets, the retired names out, `FLAGS`
+    bit 2); `plugins/factory/funscript-player/interp.js` l.291 (the box
+    filter's "Smoothing" label, renamed or the filter retired, item 7);
+    `src/model/motion.js` l.248-250 (the family wish, gone under RFC-106
+    open question 12 (a)) and `renderCore`'s tuning buffer (`k.malloc(64)` becomes 32,
+    l.72, and the header's "64 B"); `CONTRACT.md` l.692; the twin submits
+    the declared family; `test/funscript-player.test.mjs` l.176, l.243;
+    `test/valence-sim.mjs` l.232, l.287-314; `test/valence-tuning.mjs`
+    l.3, l.32, l.116, l.124 (it still names the retired 0x1121 and
+    `settle_grace_ms`); `test/virtual.test.mjs` l.37 (its example field,
+    `amplitude_budget` on key 17, moves to `handle_floor` on key 24);
+    `docs/plugins/FUNSCRIPT.md` l.851.
+  - Valence: the registry notes of item 9 (`plan_flags`, `events.anomaly`)
+    and SPEC l.762, l.898, l.924 by RFC-106 item 8's procedure; the
+    generated headers and docs site follow (`tools/gen_registry_header.py`,
+    `docs-site/tools/`). `tools/valence_probe.py` l.410-430 (kind labels
+    and the kinetic-diag decode) when `kinetic-diag` moves. No golden
+    vector carries 0x1122. `clients/mfp`: no reference.
+  - Registry: no new number. The setting keys are the device's (§8.8).
+    This answers RFC-106 open question 6: `handle_floor` and `trim_max`
+    are catalog settings with device keys; when RFC-105's
+    `planner_options` table lands it lists `smoothness`, `handle_floor`
+    and `trim_max` by those names.
+- **Wire impact.** In the reference catalog: 0x1122 retired (id never
+  reused), 0x1123 `kinetic-planner` new with five settings (six under
+  RFC-106 open question 12 (b)), three keys on
+  0x3120 released and three added; the catalog etag changes. A client at
+  the old etag finds 0x1122 gone and degrades per §8.5; nothing it
+  parses misreads. Under RFC-106 open question 12 (a), keys 45 and 48 and
+  `curve_families` become `reserved` (numbers kept); under (b) a new key
+  carries the 0..1 wish and its echo. Registry:
+  `plan_flags` bit2 becomes `reserved` and two notes are rewritten, no
+  number moves. No golden vector, no RENDERING.md change.
 - **Open questions.**
-  (1) Retire `infeasible_policy` to stay at eight settings (item 3, agent
-  default, veto-able). Keeping it needs a second mask pair plus a §8.8
-  amendment, or a third card at 0x1123; of the two the reviewer and the
-  author prefer the second mask pair with the §8.8 text, because 0x1123
-  brings a new publish path, persistence and a sim channel for three
-  fields. Owner: the operator.
-  (2) `amplitude_budget` (key 17) and `corner` (key 21, whose `continuous`
-  is a no-op) are not read by the handle renderer either. Agent default,
-  veto-able: keep both for now; `corner` was the operator's ruling
-  (RFC-105, 2026-10-05) and is not retired without one; `amplitude_budget`
-  could later become the least share of a chord a trim keeps (a
-  chord-relative form of `trim_max`) or retire, by its own RFC. Owner: the
-  operator.
+  (1) ANSWERED by the operator's ruling 2026-10-08: `infeasible_policy`
+  retires; the kernel never reads it (item 1).
+  (2) ANSWERED by the same ruling: `amplitude_budget` retires (no kernel
+  reader); `corner` retires (no kernel reader: `Config::corner` is unread
+  and `Corner::Continuous` is a no-op; the corner ramp at every G1 knot is
+  the solver's geometry, item 1).
   (3) `trim_max`'s lower bound, 0.1 by default (agent, veto-able): 0 would
   switch trims off and with them promise 3. Owner: the operator.
   (4) RESOLVED in item 8: the bound is a resumable slice, bit-identical,
@@ -10641,5 +10836,13 @@ say exactly which, future-us will want the receipts.*
   (5) The hold tolerance (`kHoldEps`, 0.005 of the window span) stays the
   renderer's constant, per RFC-106 open question 10; it is not the feel
   floor and is not exposed.
+  (6) Item 3's flag: re-issue at 0x1123 (default, lawful as written) or
+  accept the pre-tag amendment and keep 0x1122. Owner: the operator.
+  (7) `plan_flags` bit2 `fallback` to `reserved`, `plan_kind` ordinal 1
+  relabeled, and the six never-emitted `kinetic-diag` counters retired
+  from the wire (item 9): agent default, veto-able, yes to all three, the
+  counters in a follow-up RFC under (6)'s answer. Owner: the operator.
+  (8) The end labels of `smoothness`, crisp/smooth (written here) or
+  rigid/loose: the operator's pending choice.
 
 ---
