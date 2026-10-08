@@ -2398,6 +2398,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#presentation-conventions-rfc-096-renderingmd-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Presentation conventions (RFC-096, RENDERING.md §3)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2827,6 +2838,17 @@
     <span class="md-ellipsis">
       
         ESP-NOW accessory spoke (RFC-075, §13.3.1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#presentation-conventions-rfc-096-renderingmd-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Presentation conventions (RFC-096, RENDERING.md §3)
       
     </span>
   </a>
@@ -3362,6 +3384,23 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <td><code>spoke_scan_dwell_ms</code></td>
 <td><code>150</code></td>
 <td>an accessory's per-<abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> listen after its DISCOVER_PROBE; also the host's floor between out-of-cadence probe-answer beacons. 13 <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> x 150 ms = about 2 s cold join.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="presentation-conventions-rfc-096-renderingmd-3">Presentation conventions (RFC-096, RENDERING.md §3)<a class="headerlink" href="#presentation-conventions-rfc-096-renderingmd-3" title="Link to this section">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>group_section_separator</code></td>
+<td><code>/</code></td>
+<td>RFC-096: the first occurrence in a <code>group</code> string (SPEC §8.8) separates a section from the card heading; only the first splits, a later one belongs to the heading. One spelling for every <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> and lint; a renderer MAY draw sections, one that does not draws the whole string.</td>
 </tr>
 </tbody>
 </table>

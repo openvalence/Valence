@@ -3335,8 +3335,8 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td></td>
 <td></td>
 <td>45</td>
-<td><code>curve_family</code></td>
-<td>uint</td>
+<td><em>retired (RFC-106)</em></td>
+<td></td>
 </tr>
 <tr>
 <td></td>
@@ -3359,8 +3359,8 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td></td>
 <td></td>
 <td>48</td>
-<td><code>requested_curve_family</code></td>
-<td>uint</td>
+<td><em>retired (RFC-106)</em></td>
+<td></td>
 </tr>
 <tr>
 <td></td>
@@ -3407,7 +3407,7 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <tbody>
 <tr>
 <td><code>limits</code> (22)</td>
-<td>1 <code>max_frame</code>, 2 <code>max_subscriptions</code>, 3 <code>retained_pending</code>, 4 <code>max_subscriptions_per_frame</code>, 5 <code>max_sessions</code>, 6 <code>sessions_in_use</code></td>
+<td>1 <code>max_frame</code>, 2 <code>max_subscriptions</code>, 3 <code>retained_pending</code>, 4 <code>max_subscriptions_per_frame</code>, 5 <code>max_sessions</code>, 6 <code>sessions_in_use</code>, 7 <code>osc_max_hz</code></td>
 </tr>
 <tr>
 <td><code>probe_result</code> (26)</td>
@@ -3502,7 +3502,7 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td>STATE</td>
 <td>h→c</td>
 <td>watch</td>
-<td>homed/homing/running/paused bits — no <code>setting_key</code>, so read-only by construction</td>
+<td>homed/homing/running/paused bits — <code>homing</code> set from the home verb's acceptance to the cycle's end, <code>homed</code> only on completion (<a href="../safety/#s11-1">§11.1</a>); no <code>setting_key</code>, so read-only by construction</td>
 </tr>
 <tr>
 <td>0xEE06</td>
@@ -3916,6 +3916,11 @@ On any conflict the registry wins (<a href="../wire-format/#s5-7">§5.7</a>).</p
 <td><code>ws_subprotocol</code></td>
 <td><code>valence.v1</code></td>
 <td><a href="../transports/#s13-2">§13.2</a></td>
+</tr>
+<tr>
+<td><code>group_section_separator</code></td>
+<td><code>/</code></td>
+<td><a href="../catalog/#s8-8">§8.8</a> <code>group</code>; RENDERING <a href="../foundations/#s3">§3</a></td>
 </tr>
 </tbody>
 </table>

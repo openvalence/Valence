@@ -3007,7 +3007,7 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>0x0001</code></td>
 <td><code>catalog</code></td>
 <td><code>STATE</code></td>
-<td><abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> meta: <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr>, chunk count, entry count. Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> back to SYNCING.</td>
+<td>layout etag_lo u32 + etag_hi u32 (the 8 <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> bytes in wire order) + chunk_count u16 + entry_count u16 = 12 B; <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> meta (RFC-097): on-change, <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr>, <code>watch</code> access, <code>normal</code> priority. Every <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST subscribe (RFC-077). Announces user-space growth without revoking readiness (§6.4, §8.6); a change outside the user space still sends <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> back to SYNCING.</td>
 </tr>
 <tr>
 <td><code>0x0002</code></td>
@@ -3127,7 +3127,7 @@ does not exist on that <abbr title="The single authoritative endpoint of one mac
 <td><code>0x0015</code></td>
 <td><code>relationships-write</code></td>
 <td><code>INTENT</code></td>
-<td>RFC-078 (§8.11): <code>configure</code>; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with <code>enabled</code> changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-<abbr title="A channel class, and the only way a client changes anything.">intents</abbr> resume (§11.6).</td>
+<td>RFC-078 (§8.11): <code>configure</code>; an action.store op select over store_ops (save creates/replaces, delete, rename; enabling is a save with <code>enabled</code> changed) carrying store_id (entry key 17) naming 0x0013. A save closing a feedback loop is refused INVALID_VALUE. No arm op: arming is safety-<abbr title="A channel class, and the only way a client changes anything.">intents</abbr> resume (§11.6). RFC-089: its slot, name and item fields carry the <code>store.*</code> roles; the store has no live state to capture, so a save without <code>store.item</code> is INVALID_VALUE.</td>
 </tr>
 <tr>
 <td><code>0x0016</code></td>

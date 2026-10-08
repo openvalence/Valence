@@ -2247,6 +2247,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#oscillator-shapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscillator shapes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oscillator-drives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscillator drives
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2811,6 +2833,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#oscillator-shapes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscillator shapes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oscillator-drives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Oscillator drives
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3099,7 +3143,7 @@ role is never an error.</p>
 </tr>
 <tr>
 <td><code>plan.flags</code></td>
-<td>RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans, from that plan, cleared when the next <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans clean, zero while no plan is in flight. A <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> planned ahead of its start sets it then, up to one schedule horizon early. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads the plan as infeasible when any of bits 0-3 is set; there is no plan.feasible role (one field, one source of truth).</td>
+<td>RFC-100 (§8.8): bitfield8, bits per plan_flags: set when a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans, from that plan, cleared when the next <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> plans clean, zero while no plan is in flight. A <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> planned ahead of its start sets it then, up to one schedule horizon early. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> reads the plan as infeasible when any of bits 0-2 is set; there is no plan.feasible role (one field, one source of truth).</td>
 </tr>
 <tr>
 <td><code>advgen.running</code></td>
@@ -3170,6 +3214,90 @@ role is never an error.</p>
 <td>RFC-066: optional select naming the cycle shape; absent = the cycling trapezoid (rise, hold, fall, rest)</td>
 </tr>
 <tr>
+<td><code>osc.enabled</code></td>
+<td>RFC-103: bool, the oscillator runs. Never persisted (false at boot); cleared by the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> when the <abbr title="The stateful association between one client and the hub.">session</abbr> that set it ends by any §6.9 door, the <abbr title="The silence window bound to an active source, after which the source's loss policy fires.">deadman</abbr> included.</td>
+</tr>
+<tr>
+<td><code>osc.frequency</code></td>
+<td>RFC-103: f32, Hz, 0 .. WELCOME limits osc_max_hz (key 7), <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr>. The moving part of one cycle takes 1 / frequency; dwells stretch the period beyond it. Driven by osc.frequency.drive.</td>
+</tr>
+<tr>
+<td><code>osc.amplitude</code></td>
+<td>RFC-103: f32, a share of the travel window, 0 .. 1: the PEAK displacement from the planned position (the swing is twice it). The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> shows millimeters. What the ceilings and the window leave of it is osc.amplitude_effective. Driven by osc.amplitude.drive.</td>
+</tr>
+<tr>
+<td><code>osc.shape</code></td>
+<td>RFC-103: select over osc_shapes (0 sine, 1 square, 2 saw, 3 saw_reverse); the wire value is the table value. Every period starts at the trough, rising; every shape is band-limited by construction (§9.7).</td>
+</tr>
+<tr>
+<td><code>osc.dwell_crest</code></td>
+<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle (1 / frequency) held at the crest, added to it as RFC-095's dwells add to a stroke, so the period becomes (1 + dwell_crest + dwell_trough) / frequency and the moving halves keep their speed. A dwelled sine renders its halves as rest-to-rest quintics. The saw shapes ignore both dwells (a saw arrives at its extremes moving).</td>
+</tr>
+<tr>
+<td><code>osc.dwell_trough</code></td>
+<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle held at the trough, as osc.dwell_crest. A square with dwells is a pulse-width control.</td>
+</tr>
+<tr>
+<td><code>osc.frequency.drive</code></td>
+<td>RFC-103: select over osc_drives: what sets osc.frequency. fixed = the field's own value (the bounds unused); speed, position = the planned motion the oscillator rides; axis = the osc.drive stream's frequency field. The other three map the drive's input through osc.frequency.in_min/in_max/out_min/out_max as §8.11's linear_clamp, the output <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> into 0 .. osc_max_hz.</td>
+</tr>
+<tr>
+<td><code>osc.frequency.in_min</code></td>
+<td>RFC-103: f32, the drive's input at which osc.frequency reads out_min (the drive's own unit: telemetry.velocity's for speed, telemetry.target's for position, 0 .. 1 for axis)</td>
+</tr>
+<tr>
+<td><code>osc.frequency.in_max</code></td>
+<td>RFC-103: f32, the drive's input at which osc.frequency reads out_max; in_min != in_max</td>
+</tr>
+<tr>
+<td><code>osc.frequency.out_min</code></td>
+<td>RFC-103: f32, Hz, the frequency at in_min</td>
+</tr>
+<tr>
+<td><code>osc.frequency.out_max</code></td>
+<td>RFC-103: f32, Hz, the frequency at in_max</td>
+</tr>
+<tr>
+<td><code>osc.amplitude.drive</code></td>
+<td>RFC-103: select over osc_drives: what sets osc.amplitude, as osc.frequency.drive; axis = the osc.drive stream's amplitude field; the output <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> into 0 .. 1.</td>
+</tr>
+<tr>
+<td><code>osc.amplitude.in_min</code></td>
+<td>RFC-103: f32, the drive's input at which osc.amplitude reads out_min (the drive's own unit, as osc.frequency.in_min)</td>
+</tr>
+<tr>
+<td><code>osc.amplitude.in_max</code></td>
+<td>RFC-103: f32, the drive's input at which osc.amplitude reads out_max; in_min != in_max</td>
+</tr>
+<tr>
+<td><code>osc.amplitude.out_min</code></td>
+<td>RFC-103: f32, window share, the amplitude at in_min</td>
+</tr>
+<tr>
+<td><code>osc.amplitude.out_max</code></td>
+<td>RFC-103: f32, window share, the amplitude at in_max</td>
+</tr>
+<tr>
+<td><code>osc.active</code></td>
+<td>RFC-103: <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> bool: the oscillator is enabled and rendering a nonzero amplitude this instant. False under <abbr title="Suspend the pattern generator at a safe phase and park position.">PAUSE</abbr> and <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr>.</td>
+</tr>
+<tr>
+<td><code>osc.amplitude_effective</code></td>
+<td>RFC-103: <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> f32, window share: the amplitude the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit2 <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> (RFC-100) is set.</td>
+</tr>
+<tr>
+<td><code>store.slot</code></td>
+<td>RFC-089 (§8.7): uint, the item's slot in the writer's store. Required by load, delete and rename; optional on save (absent, the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> picks a free slot and <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> <code>applied</code> carries it; no free slot is INVALID_VALUE with a detail naming the store full). Binds within the entry carrying the action.store op select.</td>
+</tr>
+<tr>
+<td><code>store.name</code></td>
+<td>RFC-089 (§8.7): text, the item's name, fitting the store's name_max. Required by save and rename. Binds within the entry carrying the action.store op select.</td>
+</tr>
+<tr>
+<td><code>store.item</code></td>
+<td>RFC-089 (§8.7): byte string carrying one whole store-item document (the blob_keys map: slot, name, kind, payload, optional digest), never the bare payload. Optional on save (absent, the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> captures live state; a store with no live state to capture requires it). Its slot and name MUST equal store.slot and store.name, else INVALID_VALUE. One frame: an item past the binding's max_frame is FRAME_TOO_LARGE. Binds within the entry carrying the action.store op select.</td>
+</tr>
+<tr>
 <td><code>color.red</code></td>
 <td>RFC-083: writable numeric red <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> of one color group; color.red/green/blue together trigger the <code>color</code> archetype (all three essential)</td>
 </tr>
@@ -3218,11 +3346,15 @@ field. The same doctrine applies: unknown roles render generically.</p>
 <tbody>
 <tr>
 <td><code>events.anomaly</code></td>
-<td><abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> entry: edges reporting the machine did something other than what it was asked (a <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> command, a planner fallback, a rejected plan). A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> giving anomalies a dedicated surface MUST bind by this role or core identity, never by name.</td>
+<td><abbr title="A channel class carrying discrete occurrences, edges, not levels.">EVENT</abbr> entry: edges reporting the machine did something other than what it was asked (a <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> command, a trimmed knot, a piece over a ceiling, a refused knot). A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> giving anomalies a dedicated surface MUST bind by this role or core identity, never by name.</td>
 </tr>
 <tr>
 <td><code>anomaly.summary</code></td>
 <td><abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> entry: the <abbr title="A safety condition that stays true in state until something explicitly clears it.">latched</abbr> counters twin of an events.anomaly <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (§9.4 duality rule), so the event log and its counters bind together.</td>
+</tr>
+<tr>
+<td><code>osc.drive</code></td>
+<td>RFC-103: c2h samples-kind <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> entry, the external axis driving the oscillator. The role fixes the layout: amplitude (f32, 0 .. 1) then frequency (f32, 0 .. 1), each mapped through its parameter's own bounds where that parameter's drive is axis. Carries no input.target, so it is never motion input and never owns the rail. Quiet for stream_quiet_release_ms, an axis-driven parameter reads 0. The reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr> names its entry osc-drive.</td>
 </tr>
 </tbody>
 </table>
@@ -3280,23 +3412,17 @@ bent a <abbr title="One STREAM data point that commands a time extent, carrying 
 <td><code>0x01</code></td>
 <td><code>bit 0</code></td>
 <td><code>shaped</code></td>
-<td>the planner shortened the commanded stroke, or flattened its shape, to hold the deadline</td>
+<td>the planner trimmed a knot toward the previous one to fit the ceilings (amplitude gives, time never)</td>
 </tr>
 <tr>
 <td><code>0x02</code></td>
 <td><code>bit 1</code></td>
 <td><code>stretched</code></td>
-<td>the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> runs past the commanded deadline</td>
+<td>the knot lands after its commanded time: a jog's fastest move, or the newest knot finishing late</td>
 </tr>
 <tr>
 <td><code>0x04</code></td>
 <td><code>bit 2</code></td>
-<td><code>fallback</code></td>
-<td>the planner substituted its fallback method for the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr></td>
-</tr>
-<tr>
-<td><code>0x08</code></td>
-<td><code>bit 3</code></td>
 <td><code>clamped</code></td>
 <td>a ceiling or the travel window changed the command</td>
 </tr>
@@ -3357,22 +3483,88 @@ intermediate steps. A <abbr title="Any endpoint that establishes a session with 
 <tr>
 <td><code>0</code></td>
 <td><code>unspecified</code></td>
-<td>the compatible default: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> behaves exactly as it did before RFC-030. What every pre-RFC-030 <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> is.</td>
+<td>RETIRED pre-tag by RFC-106: no declaration. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td><code>c1_cubic</code></td>
-<td>velocity-continuous cubic (Linear/Pchip/Makima/monotone-cubic senders). Acceleration lawfully STEPS at knots; a follow-<abbr title="Any endpoint that establishes a session with the hub.">client</abbr> <abbr title="The single authoritative endpoint of one machine.">hub</abbr> reconstructs C1 and does NOT smooth the corner the author put there.</td>
+<td><code>g1</code></td>
+<td>RETIRED pre-tag by RFC-106: a velocity-continuous sender. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
-<td><code>c2_quintic</code></td>
-<td>curvature-continuous; the sender means the smoothness. A follow-<abbr title="Any endpoint that establishes a session with the hub.">client</abbr> <abbr title="The single authoritative endpoint of one machine.">hub</abbr> may use its C2 reconstruction (backward-difference af estimation is valid here: the quantity exists).</td>
+<td><code>g2</code></td>
+<td>RETIRED pre-tag by RFC-106: an acceleration-continuous sender. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>3</code></td>
 <td><code>step</code></td>
-<td>held value with instantaneous transitions (step/none interpolation). The family says <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>, the machine owns feasibility as always. RFC-049a: NUMBER KEPT, never renumbered, but status is <code>reserved</code>: the reference engine has no step renderer, so a <code>step</code> declaration renders as <code>c2_quintic</code> and the GRANT echo reports exactly that effective family (§9.6, §18-20). Declarable again when a step renderer exists in the reference engine; only the delegate's mapping changes when it does.</td>
+<td>RETIRED pre-tag by RFC-106: a held value with instantaneous transitions. Never emitted, never reused.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="oscillator-shapes">Oscillator shapes<a class="headerlink" href="#oscillator-shapes" title="Link to this section">#</a></h2>
+<p>The <code>osc.shape</code> select of the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-side oscillator (RFC-103, SPEC §9.7). Every period starts at the trough, rising.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Shape</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>sine</code></td>
+<td>-cos: trough at phase 0, crest at the half cycle. With a dwell, each half is a rest-to-rest <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr>.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>square</code></td>
+<td>a rising <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr> edge at phase 0, the crest held, a falling edge at the half cycle, the trough held; with dwells, a pulse-width control</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>saw</code></td>
+<td>a linear rise over most of the period, then a <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr> flyback whose slope matches the ramp at both ends. Ignores the dwells.</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>saw_reverse</code></td>
+<td>saw mirrored in time: the flyback rises, the ramp falls. Ignores the dwells.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="oscillator-drives">Oscillator drives<a class="headerlink" href="#oscillator-drives" title="Link to this section">#</a></h2>
+<p>The <code>osc.frequency.drive</code> and <code>osc.amplitude.drive</code> selects (RFC-103, SPEC §9.7): what sets the parameter. A driven parameter maps its source through <code>linear_clamp</code> (SPEC §8.11) with the entry's <code>in_min</code>/<code>in_max</code>/<code>out_min</code>/<code>out_max</code> fields.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Drive</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td><code>fixed</code></td>
+<td>the parameter is its own field's value; the bounds are unused</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td><code>speed</code></td>
+<td>the magnitude of the commanded speed the oscillator rides, in the unit of the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s telemetry.velocity field</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>position</code></td>
+<td>the commanded position the oscillator rides, in the unit of the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s telemetry.target field</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td><code>axis</code></td>
+<td>the osc.drive stream's field of the same name (amplitude or frequency), 0 .. 1; 0 once the stream has been quiet for stream_quiet_release_ms</td>
 </tr>
 </tbody>
 </table>

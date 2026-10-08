@@ -2903,7 +2903,7 @@ experimental and never appear in a tagged release.</p>
 <td><code>1</code></td>
 <td><code>proto_ver</code></td>
 <td><code>uint</code></td>
-<td>HELLO/WELCOME: protocol major version</td>
+<td>HELLO/WELCOME: protocol MAJOR (SPEC §1.4, RFC-102); never carries a minor</td>
 </tr>
 <tr>
 <td><code>2</code></td>
@@ -3125,7 +3125,7 @@ experimental and never appear in a tagged release.</p>
 <td><code>38</code></td>
 <td><code>blob</code></td>
 <td><code>map</code></td>
-<td>BLOB_REQ / BLOB_CHUNK / store CRUD <abbr title="A channel class, and the only way a client changes anything.">intents</abbr>: which <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr>, and its item fields (RFC-021): sub-keys in <code>blob_keys</code>.</td>
+<td>BLOB_REQ / BLOB_CHUNK: which <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> (RFC-021): sub-keys in <code>blob_keys</code>. A store CRUD <abbr title="A channel class, and the only way a client changes anything.">INTENT</abbr> carries its arguments as schema fields with the <code>store.*</code> roles in <code>value</code> (RFC-089, SPEC §8.7); the store-item document inside <code>store.item</code> is keyed by <code>blob_keys</code>.</td>
 </tr>
 <tr>
 <td><code>39</code></td>
@@ -3167,7 +3167,7 @@ experimental and never appear in a tagged release.</p>
 <td><code>45</code></td>
 <td><code>curve_family</code></td>
 <td><code>uint</code></td>
-<td><abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> / granted_publishes ENTRY maps: which <code>curve_families</code> smoothness class the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> stream describes (RFC-030). Wish rides HELLO or PUBLISH (0x18) like <code>burst</code>, so a sender switching interpolators mid-<abbr title="The stateful association between one client and the hub.">session</abbr> renegotiates without a reconnect; the GRANT echo carries the EFFECTIVE family, post <code>curve_policy</code> override, so a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> can tell 'honored' from 'downgraded'. Absent = unspecified = today's behavior. RFC-049b: <code>requested_curve_family</code> (48) rides the SAME entry map echoing the original wish verbatim, so the honored-vs-downgraded read is a direct comparison of two present keys, not an inference from what the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> remembers sending.</td>
+<td>RETIRED pre-tag by RFC-106 (operator 2026-10-08): the <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> stream's family wish. A sender's declaration is per knot (an end velocity given or <code>unspecified</code>, §5.4, §9.6). Never emitted, never reused; a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> ignores it in a wish entry (§4.3).</td>
 </tr>
 <tr>
 <td><code>46</code></td>
@@ -3185,7 +3185,7 @@ experimental and never appear in a tagged release.</p>
 <td><code>48</code></td>
 <td><code>requested_curve_family</code></td>
 <td><code>uint</code></td>
-<td><abbr title="The hub's applied answer to a client's wish to send on an inbound STREAM channel.">publishes</abbr> / granted_publishes ENTRY maps (RFC-049b): echoes the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>'s <code>curve_family</code> (45) WISH verbatim, unmodified by <code>curve_policy</code>. Exists alongside the existing effective value at key 45 so a downgrade is a visible FACT (both numbers present, compare them) rather than an inference a <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> has to reconstruct from what it originally sent. Present only when a curve_family wish was made; a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with no curve-family opinion omits both keys exactly as before this RFC. Implementation: Phase D (RFC-049).</td>
+<td>RETIRED pre-tag by RFC-106 (operator 2026-10-08): the echo of the family wish (45). Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>49</code></td>
@@ -3252,6 +3252,11 @@ number here has no meaning in the global space above.</p>
 <td><code>sessions_in_use</code></td>
 <td>RFC-055 (§6.3): <abbr title="The stateful association between one client and the hub.">sessions</abbr> occupying a slot, the admitted one included (STALE <abbr title="The stateful association between one client and the hub.">sessions</abbr> count). 0 = unknown.</td>
 </tr>
+<tr>
+<td><code>7</code></td>
+<td><code>osc_max_hz</code></td>
+<td>RFC-103 (§9.7): float, Hz: the highest frequency this <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s oscillator renders, from the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own measurement (the reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s Kinetic bench), never a <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> constant. osc.frequency is <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> to it. Absent = the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> carries no oscillator.</td>
+</tr>
 </tbody>
 </table>
 <h3 id="probe_result-key-26"><code>probe_result</code> (key 26)<a class="headerlink" href="#probe_result-key-26" title="Link to this section">#</a></h3>
@@ -3306,7 +3311,7 @@ number here has no meaning in the global space above.</p>
 <tr>
 <td><code>2</code></td>
 <td><code>fw_version</code></td>
-<td>tstr: <abbr title="The single authoritative endpoint of one machine.">hub</abbr> firmware version, e.g. '2.1.47' (&lt;=24 B). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3).</td>
+<td>tstr: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s MAJOR.MINOR, e.g. '1.2' (&lt;=24 B); the patch never rides the wire (RFC-102, SPEC §4.2-5). Retires the mDNS-TXT-only exposure that made the MFP plugin label devices 'boot 0x...'. A change here SHOULD be surfaced to the user (RFC-029.3).</td>
 </tr>
 <tr>
 <td><code>3</code></td>
