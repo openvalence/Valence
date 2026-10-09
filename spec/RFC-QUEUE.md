@@ -548,6 +548,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [106](#rfc-106) | Curve styles for free-velocity segment streams: pchip and smooth, rendered as a composite cubic Bézier with the ceilings as bounds on the handles; the family wish retires | Landed | open |
 | [107](#rfc-107) | Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write | Draft | open |
 | [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Landed | open |
+| [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -10824,5 +10825,292 @@ say exactly which, future-us will want the receipts.*
   split segment bundles, and nothing resets the counters). Agent default,
   veto-able: keep both, since neither is the replaced planner's and each
   has a planned source. Owner: the operator.
+
+---
+
+<a id="rfc-109"></a>
+## RFC-109 -- Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused
+
+- **Status:** DRAFT (2026-10-09). Molecule rfc-mol-eqd (rfc-lifecycle);
+  next gate: fresh-eyes review, then the operator's ruling.
+- **Origin.** Phosphor bead ph-9t5l (operator, 2026-10-09: "the stream was
+  cutting in and out when I was playing a script, the machine would
+  gracefully handle it and resume ... however I was lost as to what was
+  happening, no log in phosphor showed why"), its design note section 7
+  ("What needs a Valence RFC"), and Nucleus bead val-0s8 (what the hub will
+  measure). Evidence: the diag archive `Nucleus/artifacts/diag-20261008-203332.txt`
+  (fw 0.1.33): through the stream the WebSocket never dropped, LATE PLAN rose
+  from about 3/min to 22/min, and nothing on the wire could say whether the
+  bundles left the client late, crossed the network late, or arrived on time
+  and were planned late.
+- **Problem.** A stream cutout has three possible causes and a client can
+  measure only the first. (a) CLIENT: the bundle left late; the client sees
+  it as its own lead at send. (b) NETWORK: the bundle left on time and
+  arrived late; only the hub sees arrival, and over WebSocket a lost packet
+  becomes a delay (TCP), so a connected but slow link leaves no trace. (c)
+  HUB: the bundle arrived on time and the planner landed late. The catalog
+  carries none of the hub's half. The reference hub has most of the numbers
+  internally (`ValenceDevice::onStreamBundle` computes each sample's lead
+  and then clamps a negative one to zero without counting it;
+  `MotionArbiter` counts late plans and only logs them; the WiFi disconnect
+  handler reconnects silently; `hub-status` carries `rssi` and `heap_free`
+  with no role), and what reaches the wire is untagged, so a client binds it
+  by channel id and field name or not at all (§8.8: roles are how a client
+  finds a thing on any hub). A client's own estimate of one-way delay rides
+  the CLOCK offset (§7.1), whose error is half the path asymmetry; the hub's
+  arrival stamp is in hub time and has no offset error. That makes the hub's
+  arrival lead the one decisive NETWORK signal.
+- **Proposal.**
+  1. **Eight field roles** (registry `field_roles`), on layout fields of any
+     h2c STATE entry the hub chooses, `watch` access. They bind catalog-wide
+     under §8.8's cardinality rule (first in catalog order), except
+     `health.fault` (item 8). No new channel, frame, key or limit.
+
+     | role | type | unit (unit_id), scale | cadence | hub |
+     |---|---|---|---|---|
+     | `link.rssi` | i8 | dBm (`dbm`, new 26), 1 | refreshed at least every 10 s; any rate | MAY |
+     | `link.drops` | u32 | count (14), 1 | on change, or at the channel's rate | SHOULD, wireless station hubs |
+     | `stream.arrival_lead` | i16 | ms (7), 1 | channel at 1 Hz or faster while a stream owns the rail | SHOULD, motion-stream hubs |
+     | `stream.late` | u32 | count (14), 1 | as `stream.arrival_lead` | SHOULD, motion-stream hubs |
+     | `stream.starved` | u32 | count (14), 1 | as `stream.arrival_lead` | SHOULD, motion-stream hubs |
+     | `plan.late` | u32 | count (14), 1 | 1 Hz or faster while motion runs | MAY |
+     | `health.fault` | u8 select or bitfield8 | none | on change, and at the channel's rate | SHOULD, hubs with a latching cutout |
+     | `telemetry.heap` | u32 | bytes (15), 1 | refreshed at least every 10 s | MAY |
+
+     Every counter counts from boot (a new `boot_id` restarts it, §6.1),
+     wraps modulo 2^32, and is read by difference. Counters are the
+     conflation-proof record: a STATE snapshot the hub conflates (§9.1,
+     §10.4) loses no increment, because the next one carries the total.
+     "Motion-stream hub" means a hub declaring a c2h STREAM entry tagged
+     `input.target` (§9.6, RFC-071).
+  2. **`link.rssi`.** The received signal strength at the hub of its own
+     wireless network link, the one its WebSocket binding (§13.2) rides, as
+     the radio last measured it, in dBm; 0 = no reading (not associated, or
+     no report yet). It is the hub's view of its radio only: the client's
+     radio and the path between are not in it. A hub on a wired network
+     declares no field. Inclusion test (§8.8's, asked of a hub: "would a
+     different hub have this concept?"): every hub that reaches its clients
+     over a radio has a signal strength, and the number and its unit are the
+     radio's, not the device's.
+  3. **`link.drops`.** Times the hub lost an established wireless network
+     link since boot: the link the WebSocket binding rides went down after it
+     had an address, for any reason. A failed attempt to rejoin is not a
+     drop: a hub retrying twenty times while its access point is away counts
+     one. It is the one network event a client cannot see when the session
+     survives it (a short reassociation that keeps the address keeps the TCP
+     connection, and the client sees only a delay). Inclusion test: every
+     networked hub has links that drop.
+  4. **`stream.arrival_lead`.** For each bundle the hub receives on a c2h
+     STREAM entry tagged `input.target`, the arrival lead is its earliest
+     sample time (`t_base`, since `t_off[0]` is 0, §5.4, resolved per §7.2)
+     minus the hub clock (§7.1) when the hub took the bundle in, measured
+     before any lead cap (RFC-084) or past-due handling. Positive = it
+     arrived ahead of its time; negative = after it. The field carries the
+     minimum over the bundles received in the trailing 1000 ms at the moment
+     of publish, saturated to -32767 .. 32767, and -32768 (the type minimum,
+     the unspecified sentinel of RFC-058) when no bundle arrived in that
+     window. A trailing window, not "since the last publish", because a hub
+     cannot know which snapshot a subscriber received (§9.1 conflation), so
+     each snapshot stands alone. The hub stamps as early on its receive path
+     as it can; its own receive queueing is inside the number and is the
+     hub's to keep small (the reference stamps at decode on the hub task, at
+     most one 5 ms tick behind the transport). On a `segments` stream the
+     lead is the time left before execution, comparable with the grant's
+     `schedule_latency_us` (RFC-059); on a `samples` stream (the stamp is the
+     arrival time, RFC-084) it is the lead against the arrival time the
+     client stamped. Inclusion test: every hub that executes timed bundles
+     resolves each stamp against its own clock at ingress (§5.4, §7.2), so
+     the number exists on every such hub; it is the protocol's quantity, not
+     a device's. Millisecond resolution because every threshold it meets
+     (`schedule_latency_us`, the RTT, the 250 to 1000 ms horizon) is tens of
+     milliseconds or more; i16 covers 32 s, past any lead cap.
+  5. **`stream.late`.** Samples received on a c2h STREAM entry tagged
+     `input.target` whose time had already passed at ingress (arrival lead
+     below zero), since boot, counted per sample whatever the hub then did
+     with them (the reference starts them now; another hub may refuse them).
+     Inclusion test: as item 4.
+  6. **`stream.starved`.** Times the motion a c2h stream source commanded
+     ran out while still moving, with that source still owning the rail, so
+     the hub braked to rest (the settle of §11.3): the hub's own edge of a
+     cutout, counted once at the brake whether or not the stream resumes. Not
+     counted: a brake the hub ordered (PAUSE, ESTOP, override, a release,
+     §11.1, §11.4), or a stream that ends at rest. A stream whose final
+     segment ends moving counts once at its end; the client that sent that
+     segment knows it was the last. Inclusion test: every hub executing a
+     timed stream meets "the next command did not arrive before the last one
+     ended", and §11.3 already fixes what it does then, so counting it adds
+     no behavior. A hub MAY also emit the edge on an `events.anomaly` channel
+     (§9.4; the reference's `motion-anomaly` kind 1 `settle` already does,
+     brakes it ordered included); this counter is the narrower, latched
+     record of starvation alone.
+  7. **`plan.late`.** Re-plans that took effect after the motion had moved
+     past the state they were planned from, so the hub had to join the
+     running motion to the new plan (the reference closes the gap with a
+     bounded correction), since boot. It is a compute-time fact; a plan whose
+     deadline stretched is `plan.flags` bit1 `stretched` (RFC-100), a
+     property of the command, and does not count here. Inclusion test, §8.8's
+     own for `plan.*` ("would a different machine's motion planner have this
+     concept?"): every planner that solves while the machine moves has a
+     solve time and can land after its moment; one that solves inside its
+     tick and never misses it declares no field.
+  8. **`health.fault`, a STATE level, not an event kind.** A layout field,
+     either a u8 select or a bitfield8, whose labels are its own `options`:
+     zero while nothing is latched; nonzero while a fault is latched that
+     switched something off or refuses an operation until a person acts (a
+     motor power switch that tripped, a drive alarm, a thermal cutout). A
+     select names the one active fault by `options[value]` (index 0 = none);
+     a bitfield8 names each active fault by its bit's label. The field's
+     `group` names the subsystem ("Motor power"). It MAY appear once per
+     `group`, so a machine with two cutouts declares two fields; the
+     first-in-order tiebreak applies within a group, as for `color.*`
+     (RFC-083). Why a level: a fault is something that is still true, and
+     §9.4's duality rule requires a latched STATE twin for anything a client
+     cannot afford to miss; an event kind alone fails every client that
+     connects after the edge, and events are best-effort and never replayed.
+     The edge needs nothing new: a hub logs it (§16.2) and MAY put it on its
+     `events.anomaly` channel. Why both types: a select is "the reason this
+     one latch tripped" (a switch latches on its first fault), a bitfield is
+     "independent faults that coexist"; both carry labels through `options`,
+     so the client's rule is one line. Inclusion test: every machine with a
+     protective cutout has "something is latched off and needs a person";
+     which faults exist is hardware, so the labels stay the catalog's, the
+     same split as `events.anomaly` (portable role, device labels). The
+     safety word (§11.1) stays the only safety truth: a client MUST NOT read
+     `health.fault` as ESTOP or PAUSE, or gate safety behavior on it.
+  9. **`telemetry.heap`.** The largest single block the hub could allocate
+     right now from the memory its real-time path (sessions, transport
+     buffers, motion) allocates from, in bytes; not the total free.
+     Fragmentation leaves free bytes plentiful while no block fits a frame
+     buffer, so the largest block is the number that predicts the failure
+     (Nucleus memory-budget T21, measured: free 23,408 B, largest block
+     11,252 B, a 12,288 B request refused 5 of 5). A hub with several heaps
+     reports the one its real-time path allocates from; a hub that allocates
+     nothing at run time declares no field. No low-water role: the trend is
+     the client's. Inclusion test: every hub with a run-time allocator has a
+     largest free block; `telemetry.uptime` is the precedent for the hub's
+     own telemetry under `telemetry.*`.
+  10. **MAY versus SHOULD.** SHOULD where the role is the only evidence for
+     a cause and the hub already has the number: the stream trio (items 4 to
+     6) on a motion-stream hub, `link.drops` on a hub that is a wireless
+     station, `health.fault` on a hub with a latching cutout. MAY where the
+     role corroborates or the concept is planner- or device-dependent:
+     `link.rssi`, `plan.late`, `telemetry.heap`. A client MUST NOT require
+     any of them (registry doctrine: roles are opportunities); a missing role
+     reads "not reported by this machine".
+  11. **Honesty clause H14** (§1.5): the stream roles place a delay before
+     the client's send, between the send and the hub's ingress, or after
+     ingress; they cannot name the hop inside the path (the client's radio or
+     operating system, the router, the hub's radio, a TCP retransmission, the
+     hub's own receive queue). `link.rssi` and `link.drops` describe the
+     hub's radio only. A client MUST NOT present one hop as the established
+     cause on this evidence alone; "network delay" is the verdict the
+     evidence supports.
+- **Client behavior (informative; Phosphor's classifier, ph-9t5l
+  section 3).** An episode opens when `stream.starved` increments (or the
+  client clipped a late span itself). Evidence window: 1 s before the edge
+  in hub time, extended one publish period after it, because the late
+  bundle that ends a NETWORK starvation arrives after the brake. Same-cause
+  episodes within 10 s merge. First match wins:
+  1. CLIENT: the client's lead at send fell under its need
+     (`schedule_latency_us` + one hub tick + half the RTT), or it clipped a
+     span.
+  2. NETWORK: lead at send was fine, and `stream.arrival_lead`'s minimum in
+     the window fell under `schedule_latency_us`, or `stream.late`
+     incremented. A `link.drops` increment or a weak `link.rssi` in the
+     window corroborates; neither decides.
+  3. HUB: arrival was clean and `plan.late` incremented, or
+     `stream.starved` incremented with no late arrival.
+  4. UNKNOWN: nothing decisive; the evidence is kept and said plainly.
+
+  Machine conditions: weak signal from `link.rssi` (below -75 dBm for 30 s
+  warns, below -82 acts), a hub WiFi drop on each `link.drops` increment,
+  late plans above 6 per minute from `plan.late`, a fault from any nonzero
+  `health.fault` (label: the field's group, then the option or bit label),
+  and hub memory falling more than 20 % over 30 min from `telemetry.heap`.
+  Without the roles (an older hub), NETWORK falls back to the client's CLOCK
+  one-way-delay proxy and is marked "likely". Under H14, Phosphor's
+  network-cutout short line says "network delay", not "WiFi delay".
+- **Who publishes (reference hub, Nucleus).** `hub-status` 0x0006 (core,
+  layout unpinned): `rssi` gains `link.rssi`; `motor_fault` gains
+  `health.fault` with group "Motor power" and clears when the switch leaves
+  `faulted` (open question 3); appended `link_drops` u32 (`link.drops`) and
+  `heap_block` u32 (`telemetry.heap`, internal RAM's largest free block):
+  16 to 24 B. `kinetic-diag` 0x1111 (1 Hz, background): appended
+  `arrival_lead_ms` i16 (`stream.arrival_lead`), `stream_late` u32,
+  `stream_starved` u32, `late_plans` u32 (`plan.late`): 72 to 86 B. Both
+  inside the 242 B floor; the etag moves. valencesim compiles the hub from
+  the firmware's sources and publishes the same bytes.
+- **Backward compatibility.** Additive. Roles on existing fields change no
+  byte; appended fields grow layouts tail-only (§5.4); a client that does
+  not know a role renders the field generically. The unit id is new and an
+  older client renders an unknown unit id by the field's unit string.
+- **Pros.** The cutout gets a cause: NETWORK and HUB become decisive on any
+  hub that declares the roles, instead of guessed from client-side proxies.
+  The hub's half of link health (signal, drops, faults, memory) is found by
+  role on any machine, and the numbers the reference hub already computes
+  stop dying in a clamp or a rate-limited log line.
+- **Cons.** Eight roles, one unit id and one honesty clause. 22 bytes on two
+  reference layouts. `stream.starved` counts a stream that ends moving (open
+  question 6). Arrival lead includes the hub's own receive queueing.
+- **Cost.** By file:
+  - Valence, landing: `spec/registry/registry.yaml` (`field_roles` +8,
+    `unit_ids` 26 `dbm`); `spec/SPEC.md` §8.8 (one bullet for the health
+    roles, the `health.fault` per-group sentence in "Role cardinality"),
+    §16.2 (one bullet pointing at the roles), §1.5 (row H14); codegen
+    (`tools/gen_registry_header.py`: `lib/valence/include/valence/generated/registry_constants.hpp`,
+    `clients/js/generated/registry_vocab.js`); docs-site tables
+    (`docs-site/tools/gen_docs_tables.py`, catalog-vocabulary). RENDERING.md:
+    none (no archetype; generic fallback renders the fields).
+  - Nucleus: `flagship_p4/src/hub/ValenceCatalog.h` (the two layouts
+    above); `flagship_p4/src/main.cpp` (count the loss of an established
+    link in the `WIFI_EVENT_STA_DISCONNECTED` handler, beside val-0s8's
+    reason log); `flagship_p4/src/hub/ValenceHub.{h,cpp}` (a link-drops
+    setter beside `hubSetLinkRssi`, the largest-free-block read beside
+    `deviceFreeHeapBytes`, the hub-status pack);
+    `flagship_p4/src/hub/ValenceDevice.cpp` (`onStreamBundle`: the
+    per-bundle minimum lead and the late count from the delta it already
+    computes, before the clamp; the trailing-second minimum; the
+    kinetic-diag pack); `flagship_p4/src/motion/MotionArbiter.{h,cpp}`
+    (`latePlans()` exists; a starved counter for settles the arbiter did not
+    order with a brake; both into the motion census);
+    `flagship_p4/src/system/MotorSwitch` (the fault clears on recovery);
+    the native catalog layout tests (the two sizes).
+  - Phosphor: `src/model/roles.js` (eight `ROLE` entries);
+    `src/model/machine.svelte.js` (subscribe the entries carrying the roles,
+    found by role, at background priority); the health model (new, ph-9t5l
+    phase 2: bind the roles, diff the counters, reset on `boot_id`, the
+    classifier's NETWORK and HUB deciders, conditions L12, L13, M1 to M3);
+    the Health page's Link and Machine cards; `test/health.test.mjs` (the
+    role-backed rows of the classify table).
+- **Wire impact.** Eight field roles (strings, no numbers), one unit id
+  (`dbm` 26), one honesty clause. No frame, CBOR key, channel, limit or
+  vector. The reference hub's `hub-status` grows 16 to 24 B and
+  `kinetic-diag` 72 to 86 B; its etag moves.
+- **Open questions.**
+  1. Placement: the roles bind by role, so the channel is the hub's choice.
+     Default: the reference puts the link roles, `health.fault` and
+     `telemetry.heap` on `hub-status` and the stream roles and `plan.late`
+     on `kinetic-diag`; no new channel. Alternative: one device "link
+     health" channel at 2 Hz.
+  2. Arrival lead shape. Default: i16 ms, minimum over a trailing 1000 ms,
+     -32768 for none (conflation-proof, threshold-scale resolution).
+     Alternative (ph-9t5l's sketch): i32 us, minimum since the last publish.
+  3. Reference `motor_fault` keeps the last fault after a recovery today,
+     but `health.fault` means "latched now". Default: it clears when the
+     switch leaves `faulted`; the trip's reason stays in the log line at the
+     trip. Alternative: append a separate current-fault select (+1 B) and
+     keep `motor_fault` as history.
+  4. Register `dbm` as unit id 26? Default yes: one line, and the role names
+     a unit no unit id carries (the reference field says "dBm" in its unit
+     string only).
+  5. H14. Default yes, and Phosphor's network-cutout line says "network
+     delay" (its action keeps "move closer to the router").
+  6. `stream.starved` cannot tell starvation from a stream that ends moving
+     at the instant of the brake. Default: count it; the client discounts a
+     starve at its own last segment. Alternative: count only when a bundle
+     for the same source arrives within the quiet window after the brake
+     (exact, but the counter lags the edge by up to that window, 500 ms or
+     the horizon).
+  7. The MAY and SHOULD split of item 10. Default as written.
 
 ---
