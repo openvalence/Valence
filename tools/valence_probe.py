@@ -403,18 +403,13 @@ CH_POWER = 0x1010            # STATE, background — FEATURE-GATED: absent on a 
 CH_MOTION_DIAG = 0x1111      # STATE, background 1Hz — planner stats + stream counters
 CH_MOTION_ANOMALY = 0x4100   # EVENT, watch — VMotion anomalies, device-authored
 ANOMALY_KINDS = {
-    0: "none", 1: "plan_failed", 2: "settle", 3: "endvel_clamped",
-    4: "deadline_stretched", 5: "waveform_fallback", 6: "waveform_scaled",
-    7: "waveform_centered",
-    8: "handoff_bounded",   # M4d / RFC-008 -- the hub-side handoff sanity guard
-    9: "waveform_smoothed", # kinetic 0.8.0 -- the budgeted policies' own kind
-    10: "dwell_zeroed",
-    11: "knot_refused",   # Kinetic²: a knot not after the newest, or in the past
-    12: "piece_over_ceiling",  # Kinetic² handle renderer: a span no trim keeps inside a limit (RFC-106)
+    0: "none", 1: "settle", 2: "endvel_clamped", 3: "knot_trimmed",
+    4: "dwell_zeroed", 5: "knot_refused", 6: "piece_over_ceiling",
 }
-# ANOMALY_KINDS is index-aligned with the hub's own 0x4100 `kind` option labels
-# (catalog `options`, wire value = array index); check_anomaly_vocab() fails
-# the run when they disagree, because the 0x1111 struct width derives from it.
+# ANOMALY_KINDS equals the hub's own 0x4100 kind labels (the entry's
+# event_kinds map, kind value -> label, RFC-065); RFC-108 item 9 lays them
+# out. check_anomaly_vocab() fails the run when they disagree, because the
+# 0x1111 struct width derives from it.
 #
 # 0x4100's `body` (40) sub-map keys — the CHANNEL'S OWN schema keys, which is
 # the whole v1.0 EVENT grammar: a device names its own event fields without a
@@ -996,38 +991,36 @@ def decode_power(payload):
     return out
 
 
-# plans, failures, anomalies, mode, plan_kind, Nx per-kind, plan_us x3, 5x sync, reset_gen
+# RFC-108 item 9, 72 B: plans, failures, anomalies, mode, plan_kind, one u32
+# per kind 1..N (kind 0 is never counted), plan_us x3, 5x sync, reset_gen.
 #
-# THE PER-KIND BLOCK SITS IN THE MIDDLE, so its width is not a cosmetic detail:
-# every field after it shifts by 4 B per kind. This struct was hardcoded at 8
-# kinds and silently kept decoding a 84 B payload as the 80 B pre-M4d layout --
-# the length check passed (80 <= 84) and plan_us_*/sync_*/reset_gen were read
-# one slot early, which looks like plausible data rather than an error. Derive
-# the count from ANOMALY_KINDS so the table and the struct cannot drift again.
-_N_KINDS = len(ANOMALY_KINDS)
+# THE PER-KIND BLOCK SITS IN THE MIDDLE: every field after it shifts by 4 B per
+# kind, and a short table still passes a >= length check while reading the
+# tail one slot early. The count derives from ANOMALY_KINDS, and
+# check_anomaly_vocab() holds ANOMALY_KINDS to the hub's labels.
+_N_KINDS = len(ANOMALY_KINDS) - 1
 DIAG_STRUCT = struct.Struct("<IIIBB%dIIIfIIIIIH" % _N_KINDS)
+PLAN_KINDS = {0: "none", 1: "bezier"}
 
 
 def check_anomaly_vocab(catalog_bytes):
-    """Compare ANOMALY_KINDS against the hub's 0x4100 `kind` option labels. A
+    """Compare ANOMALY_KINDS against the hub's 0x4100 event_kinds labels. A
     mismatch means every 0x1111 field after the per-kind block decodes at the
     wrong offset, so it is a FAIL, never a warning."""
     entry = _catalog_entries(catalog_bytes).get(CH_MOTION_ANOMALY)
     if entry is None:
         skip("anomaly_vocab", "catalog does not declare motion-anomaly(0x4100) -- nothing to compare")
         return
-    field = entry.get(CAT_E["schema"], {}).get(ANOM_BODY_K["kind"], {})
-    labels = field.get(CAT_F["options"])
+    labels = entry.get(CAT_E["event_kinds"])
     if not labels:
-        skip("anomaly_vocab", "motion-anomaly(0x4100) `kind` carries no option labels")
+        skip("anomaly_vocab", "motion-anomaly(0x4100) carries no event_kinds labels")
         return
-    ours = [ANOMALY_KINDS.get(i) for i in range(len(ANOMALY_KINDS))]
-    if list(labels) == ours:
-        ok("anomaly_vocab", "probe anomaly table matches the hub's %d `kind` labels" % len(labels))
+    if labels == ANOMALY_KINDS:
+        ok("anomaly_vocab", "probe anomaly table matches the hub's %d event_kinds labels" % len(labels))
     else:
-        bad("anomaly_vocab", "probe ANOMALY_KINDS %r disagrees with the hub's 0x4100 `kind` "
-            "labels %r -- kinetic-diag(0x1111) decodes are misaligned until it is updated"
-            % (ours, list(labels)))
+        bad("anomaly_vocab", "probe ANOMALY_KINDS %r disagrees with the hub's 0x4100 event_kinds "
+            "%r -- kinetic-diag(0x1111) decodes are misaligned until it is updated"
+            % (ANOMALY_KINDS, labels))
 
 
 def check_estop_cuts_power(welcome, hardware):
@@ -1071,14 +1064,15 @@ def check_welcome_identity(welcome):
 
 
 def decode_motion_diag(payload):
-    if len(payload) < DIAG_STRUCT.size:
+    if len(payload) < DIAG_STRUCT.size:   # trailing bytes are ignored (SPEC 5.4)
         raise ValueError("kinetic-diag(0x1111) payload too short: %d bytes (need >= %d)"
                           % (len(payload), DIAG_STRUCT.size))
     v = DIAG_STRUCT.unpack_from(payload, 0)
     return {
         "plans": v[0], "failures": v[1], "anomalies": v[2],
-        "mode": PLAN_STYLES.get(v[3], "?%d" % v[3]), "plan_kind": v[4],
-        "by_kind": {ANOMALY_KINDS.get(i, "?%d" % i): v[5 + i] for i in range(_N_KINDS)},
+        "mode": PLAN_STYLES.get(v[3], "?%d" % v[3]),
+        "plan_kind": PLAN_KINDS.get(v[4], "?%d" % v[4]),
+        "by_kind": {ANOMALY_KINDS[i + 1]: v[5 + i] for i in range(_N_KINDS)},
         "plan_us_last": v[5 + _N_KINDS], "plan_us_max": v[6 + _N_KINDS],
         "plan_us_avg": v[7 + _N_KINDS],
         "sync_bundles": v[8 + _N_KINDS], "sync_samples": v[9 + _N_KINDS],
@@ -2329,9 +2323,10 @@ def _run_session(ws, args):
         try:
             d = decode_motion_diag(diag)
             nonzero = {k: v for k, v in d["by_kind"].items() if v}
-            ok("motion_diag", "kinetic-diag(0x1111) decodes (%d B): plans=%d failures=%d "
-               "anomalies=%d reset_gen=%d bundles=%d samples=%d dropped=%d; by_kind=%s"
-               % (len(diag), d["plans"], d["failures"], d["anomalies"], d["reset_gen"],
+            ok("motion_diag", "kinetic-diag(0x1111) decodes (%d B): mode=%s plan_kind=%s plans=%d "
+               "failures=%d anomalies=%d reset_gen=%d bundles=%d samples=%d dropped=%d; by_kind=%s"
+               % (len(diag), d["mode"], d["plan_kind"], d["plans"], d["failures"], d["anomalies"],
+                  d["reset_gen"],
                   d["sync_bundles"], d["sync_samples"], d["sync_dropped"],
                   nonzero if nonzero else "(all zero)"))
             # RFC-019: the per-kind histogram must never exceed its own total,
