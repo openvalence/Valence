@@ -9847,6 +9847,19 @@ say exactly which, future-us will want the receipts.*
     chord speed (was 1.00). Wire-visible: none; the smooth render a client
     previews from the playground model moves with the kernel.
 
+    (vii) 2026-10-09: a frame move keeps the curve in flight through the
+    reaction horizon too (Kinetic cdfb47a, kin-n6jy; Nucleus val-4dt,
+    val-83q). The frame move re-planned from the restated state at now, the
+    one re-plan that skipped (bb): a window write inside a
+    knot's horizon re-planned a piece too short to bend and the knot was
+    trimmed to rest on the write's state, out and back (-336 mm/s) or a held
+    tick at the knot. Engine::reframe takes the frame map, restates the
+    curve the engine holds (a Bezier and its profiles are affine in p) and
+    commits it as a submit does, the later half counted from the segment's
+    authored start (measured from the origin, every write of a drag moves
+    it). Wire-visible: none; a window dragged mid-stream renders without
+    reversals, peaks 820-930 mm/s against 1100-1190.
+
 ---
 
 <a id="rfc-106"></a>
