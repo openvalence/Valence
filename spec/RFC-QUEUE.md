@@ -9860,6 +9860,22 @@ say exactly which, future-us will want the receipts.*
     it). Wire-visible: none; a window dragged mid-stream renders without
     reversals, peaks 820-930 mm/s against 1100-1190.
 
+    (viii) 2026-10-09: speed, acceleration and the window hold over 4000
+    random scripts at every smoothness (Kinetic a88042f, kin-jsw1). Seeds
+    2001 to 4000 found three runs over a ceiling that promise 3 forbids,
+    each reported: a hold on an exact zero chord between two moving
+    authored knots kept the later knot's angle, 14% over amax (the hold
+    now lies at rest, its end velocity reported clamped); a corner ramp at
+    a low jmax unwinding a large step gained aL^2 / 2J of speed, 2.4 times
+    vmax (the step is kept instead, a jerk excess reported with the piece
+    after it); a ramp centered on a G1 knot handed a 20 ms piece a state
+    0.27 of speed off the render, 19% over amax at the slack floor (a
+    rescue pass after the slack passes ends the ramp on its knot where that
+    builds less over). Only jerk is over in the suite now, always reported
+    (63 to 82 of 4000 runs per smoothness, the corner-ramp ruling owed on
+    kin-y6e). Wire-visible: a hold re-commanded with an end velocity can
+    render at rest, with EndVelClamped; otherwise none.
+
 ---
 
 <a id="rfc-106"></a>
