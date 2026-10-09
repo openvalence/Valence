@@ -991,15 +991,15 @@ Note in particular that knowing `vmax/amax/jmax` is **not sufficient** to predic
      piece between two knots that are each an end, a crest or a hold edge is
      PCHIP's piece exactly while its lengths stay a third; a through
      point carries its G2 angle, not PCHIP's.
-   - `smooth`, OPTIONAL for a hub: ends take angle 0 and are G1; a crest
-     takes Makima's angle; a through point starts from Makima's angle and
-     is then G2 by its angle exactly as under `pchip`, so Makima's angle
-     survives at crests only; a crest or a hold edge is G2 by its lengths
-     where the two sides' end accelerations agree in sign, else G1 (an
-     exact hold has no end acceleration on its flat side, so a hold edge
-     stays G1 in practice). In a render of three knots or fewer Makima is
-     not used: a crest takes 0 and a through point starts from PCHIP's
-     angle. A hub without `smooth` bounds `smoothness` to 0.
+   - `smooth`, OPTIONAL for a hub (RFC-106 item 9): ends, crests and
+     hold edges take angle 0, extrema never passed; ends are G1, and a
+     crest or a hold edge is G2 by its lengths where the two sides' end
+     accelerations agree in sign, else G1 (an exact hold has no end
+     acceleration on its flat side, so a hold edge stays G1 in practice).
+     Only a through point takes an angle: it starts from Makima's angle
+     and is then G2 by its angle exactly as under `pchip`. In a render of
+     three knots or fewer Makima is not used: a through point starts from
+     PCHIP's angle. A hub without `smooth` bounds `smoothness` to 0.
    - The rules, normative so that a second implementation and a client's
      drawing match the hub:
      - PCHIP's start angle (Fritsch-Butland): with h1 and h2 the spans

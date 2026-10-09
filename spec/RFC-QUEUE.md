@@ -9851,7 +9851,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-106"></a>
 ## RFC-106 -- Curve styles for free-velocity segment streams: pchip and smooth, rendered as a composite cubic Bézier with the ceilings as bounds on the handles; the family wish retires
 
-- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "106: a.", open question
+- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. AMENDED 2026-10-09 by item 9 (operator ruling 2026-10-08, Kinetic 226bcc3, kin-4o6r): smooth crests are flat. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "106: a.", open question
   12 ruled (a): the family wish, its echo, the `curve_families` table and
   the reference's `curve_policy` retire; item 8 is rewritten to that
   ruling and absorbs the earlier G1/G2 relabel of 2026-10-08). Earlier
@@ -9941,7 +9941,7 @@ say exactly which, future-us will want the receipts.*
        piece between two knots that are each an end, a crest or a hold edge is
        PCHIP's piece exactly while its lengths stay a third; a through
        point carries its G2 angle, not PCHIP's.
-     - `smooth`, OPTIONAL for a hub: ends take angle 0 and are G1; a crest
+     - `smooth` (superseded by item 9), OPTIONAL for a hub: ends take angle 0 and are G1; a crest
        takes Makima's angle; a through point starts from Makima's angle and
        is then G2 by its angle exactly as under `pchip`, so Makima's angle
        survives at crests only; a crest or a hold edge is G2 by its lengths
@@ -10184,6 +10184,24 @@ say exactly which, future-us will want the receipts.*
        the kernel; `junctionOf` (l.80) keys Hard on a sample at rest
        alone; `engine.hpp` l.164, `sources.hpp` l.27 and l.41, the tests,
        bench and playground follow.
+  9. **Smooth crests are flat** (amendment, operator ruling 2026-10-08,
+     Kinetic 226bcc3, kin-4o6r; Valence rfc-7bzv). Under `smooth` a crest
+     took Makima's angle, so a free trough of two close knots was passed
+     and steepened back ("it smooths to a little boing"). Ruled: at every
+     `smoothness` a crest, like a hold edge, is an extremum at zero slope,
+     its G2 carried by the handle lengths on both sides, never the angle;
+     only a through point takes an angle. Item 3's `smooth` bullet now
+     reads:
+     - `smooth`, OPTIONAL for a hub: ends, crests and hold edges take
+       angle 0, extrema never passed; ends are G1, and a crest or a hold
+       edge is G2 by its lengths where the two sides' end accelerations
+       agree in sign, else G1 (an exact hold has no end acceleration on
+       its flat side, so a hold edge stays G1 in practice). Only a through
+       point takes an angle: it starts from Makima's angle and is then G2
+       by its angle exactly as under `pchip`. In a render of three knots
+       or fewer Makima is not used: a through point starts from PCHIP's
+       angle. A hub without `smooth` bounds `smoothness` to 0.
+     Wire impact: none. SPEC §9.6 "Free-knot rendering" rule 3 follows.
 - **Pros.** One kind of unknown, the handle lengths; every ceiling is a
   monotone bound on it, so the fit is one ordered scan of a single factor
   and the trim one bisection, and a second implementation following items 2
