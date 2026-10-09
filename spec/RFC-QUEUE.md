@@ -9876,6 +9876,28 @@ say exactly which, future-us will want the receipts.*
     kin-y6e). Wire-visible: a hold re-commanded with an end velocity can
     render at rest, with EndVelClamped; otherwise none.
 
+    (ix) 2026-10-09: the oscillator stage, verified against SPEC 9.7 as
+    landed (Kinetic 920836b, kin-4d0; Nucleus val-dzf). The yield of
+    2026-10-06 was per sample, so the amplitude stepped with the planned
+    headroom and the executed positions broke every ceiling: up to 117
+    times amax and 5 times vmax under 100 to 250 ms strokes at the hub's
+    set, by finite differences of the sum; the suite had checked the
+    reported v and a, which leave out the envelope's own derivatives. The
+    stage now renders over the planned grid (the hub's strip): the
+    amplitude is the least the ask, the window and each ceiling's headroom
+    allow over the next fade, the planned jerk read off the grid (the open
+    item closed), smoothed by a quadratic B-spline one fade long (three
+    periods, 150 ms at most) under budget factors that pay for its
+    derivatives; frequency, shape and dwells latch at rest through a fade.
+    Two limits for RFC-103's text: a plan changed with less notice than a
+    fade (a brake, a knot landing inside the look-ahead) can exceed a
+    ceiling until the fade ends, so "bound by construction" holds for the
+    plan known one fade ahead; and the budget factors leave headroom unused
+    at steady state (at 20 Hz the sum reaches 74% of amax at rest), so the
+    rendered amplitude is the largest the smoothing allows, not the largest
+    the instant allows. The saw's flyback overshot the window bound by 1.7%;
+    every shape is normalized to a peak of 1. Wire-visible: none.
+
 ---
 
 <a id="rfc-106"></a>
