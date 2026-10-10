@@ -215,7 +215,6 @@ The fixture's coverage gaps at v1.0 are stated in [§18-7](limitations.md#s18) r
 | `max_future_schedule_ms` | 250 | [§5.4](wire-format.md#s5-4) |
 | `schedule_horizon_max_ms` / `segment_t_off_unit_us` | 1000 / 100 | [§5.4](wire-format.md#s5-4) |
 | `max_burst_multiple` | 4 | [§10.5](qos.md#s10-5) |
-| `segment_handoff_k` | 1.5 | [§9.6](channels.md#s9-6) |
 | `segment_end_vel_unspecified` | -32768 | [§5.4](wire-format.md#s5-4), [§9.6](channels.md#s9-6) |
 | `segment_dwell_span` | 0.02 | [§9.6](channels.md#s9-6) |
 | `spoke_beacon_interval_ms` / `spoke_deadman_ms` / `spoke_scan_dwell_ms` | 1000 / 5000 / 150 | [§13.3](transports.md#s13-3).1 |

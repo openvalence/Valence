@@ -10519,7 +10519,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-108"></a>
 ## RFC-108 -- Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's
 
-- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "108: as this is pre-release
+- **Status:** LANDED d5ed3ba (2026-10-08). Valence consumers: 702a6b4. AMENDED 2026-10-09 by item 9's last bullet (rfc-jj22, under q7's ruling): SPEC §9.6's handoff paragraph, H11 and §18 item 1 struck, `segment_handoff_k` removed. Consumer beads: Nucleus val-97p, Phosphor ph-y3mg, Kinetic kin-hqeu, Valence rfc-u5f0. ACCEPTED (operator, 2026-10-08: "108: as this is pre-release
   we can delete and re-arrange, after the fact not, so now is the time to
   make it clean and sensible, one is less spec aligned, one is the correct
   answer today. q3 .1 is fine, but default is trim as much as needed, the
@@ -10774,6 +10774,15 @@ say exactly which, future-us will want the receipts.*
        "reads the policy, the amplitude floor ..., the lookahead, the
        corner"); `MotionArbiter.cpp` l.488-493 (a Manual move "stretches"
        by policy); `ValenceMotion.h` l.195-196, true once this lands.
+     - **Amendment 2026-10-09 (rfc-jj22), missed by the sweep**: SPEC §9.6
+       "Machine-side handoff sanity" describes an end-velocity bound
+       Kinetic² never applies (no handoff anomaly kind since this item;
+       Nucleus val-3ka closed as moot). Struck under q7's ruling: the §9.6
+       paragraph, honesty clause H11 (§1.5) and §18 item 1, each number
+       kept as RFC-065 kept §18 item 2, and the three §9.6 sentences that
+       pointed at the paragraph; the registry's `segment_handoff_k`
+       (`limits`, RFC-049c) leaves with it, read by nothing in Nucleus,
+       Kinetic or Phosphor.
   10. **The kernel follows.** `Config` loses `policy`, `amplitude_floor`,
      `corner`, `lookahead_us` and `late_budget_us`, and the `Policy` and
      `Corner` enums retire, since nothing reads them (`solver.hpp` l.24);

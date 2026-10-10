@@ -789,7 +789,6 @@ inline constexpr uint32_t max_future_schedule_ms = 250;
 inline constexpr uint32_t max_burst_multiple = 4;
 inline constexpr int32_t segment_end_vel_unspecified = -32768;
 inline constexpr float segment_dwell_span = 0.02f;
-inline constexpr float segment_handoff_k = 1.5f;
 inline constexpr uint32_t desc_max_bytes = 128;
 inline constexpr uint32_t nack_detail_max_bytes = 48;
 inline constexpr uint32_t option_label_max_bytes = 24;
