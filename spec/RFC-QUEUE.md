@@ -550,6 +550,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Landed | closed |
 | [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
 | [110](#rfc-110) | Oscillator drives amended: silence hands back the card, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency, home waits for it | Draft | open |
+| [111](#rfc-111) | INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -11571,5 +11572,176 @@ say exactly which, future-us will want the receipts.*
      §9.7 say both drives SHOULD default to `axis`, so a third-party hub
      plays a script's oscillation without setup? Pick: yes, one SHOULD in
      Driven parameters (the operator's call).
+
+---
+
+<a id="rfc-111"></a>
+## RFC-111 -- INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name
+
+- **Status:** DRAFT (2026-10-09). Molecule rfc-mol-4jk (rfc-lifecycle);
+  next: fresh-eyes review, then the operator's ruling.
+- **Origin.** Valence bug rfc-zvh9, found by the Neutrino fleet soak
+  (Phosphor ph-ode2): `node test/fleet/fleet.mjs --replay 90` against a
+  native valencesim built from Nucleus 25713b4 (fw 0.1.38) had osc-set writes
+  of 11 keys refused MALFORMED; the same seed against the pinned Neutrino
+  (Nucleus 4226af7, a 6-key osc-set) echoed. The fleet harness already sends
+  eight keys a frame to get past it (Phosphor `test/fleet/client.mjs`
+  `applyPreset`).
+- **Problem.** The reference hub library decodes at most
+  `kIntentMaxValueFields` = 8 keys of an INTENT value map
+  (`lib/valence/include/valence/wire/messages/intent.hpp`) and answers a
+  longer map with a bare NACK `MALFORMED` carrying neither `channel_id` nor
+  `intent_id` (`Hub::handleIntent`). Neither §9.3, the registry nor WELCOME
+  `limits` states the cap, so a catalog-faithful client cannot know it, and the
+  refusal reads as a client encoding bug. The spec itself defines an entry over
+  it: §9.7's oscillator is one INTENT entry of 16 schema keys (six parameters
+  plus two drives of five). At Nucleus 0.1.38, osc-set is that entry, and
+  pattern-advanced-cmd (0x3210) declares 58 keys (ids 2 to 59). The library's
+  comment says the cap limits what one frame carries, not what a catalog
+  declares; nothing in the protocol tells a client to split, and splitting is
+  not free: the only atomic write §9.3 has is one INTENT (Phosphor's shadow
+  coalesces a min/max pair into one intent for exactly that reason).
+
+  Phosphor writes of more than 8 keys of one entry in one intent today (the
+  shadow's `flush` coalesces every queued key of a writer channel into one
+  INTENT):
+  1. Page Reset, `src/App.svelte` `applyReset`: every resettable field on
+     screen to its catalog default. A page showing the oscillator card (16
+     osc-set keys at 0.1.38, all with defaults) or more than 8
+     advanced-generator fields (pattern-advanced-cmd) sends more than 8.
+  2. Revert, `src/model/history.svelte.js` `revertAll`: every setting that
+     differs from the baseline, back to it; over 8 when more than 8 keys of one
+     writer differ.
+  3. The advanced-penetration plugin's Reset,
+     `plugins/factory/advanced-penetration/index.js` (the `reset` click
+     handler): every base control, dwell and modulator that differs from its
+     default, one pattern-advanced-cmd intent, up to 57 keys.
+
+  Not over 8: single-control writes, the rail's min/max pair, the color
+  picker (3), a modulator's trash (6), the merge pane (one key per intent),
+  history undo and redo (one key), the funscript player (`osc.js` writes no
+  osc-set key; the analyzer one key per control), presets (a
+  pattern-presets-cmd op; the hub applies the stored item). The oscillator
+  editor (ph-8ztu) is not built yet.
+- **Alternatives.**
+  - **A. Raise the cap to the largest INTENT entry the hub declares (58).**
+    Measured for the P4 (riscv32-esp-elf-g++ 14.2, `-O2`, `-fstack-usage`,
+    static frames, the device delegate excluded; ring slot sized for the
+    largest ECHO):
+
+    | cap | ring slot | `decodeIntent` frame | `Hub::handleIntent` frame | sum | ring per session | `Hub` object |
+    |---|---|---|---|---|---|---|
+    | 8 (today) | 96 B | 1,712 B | 2,880 B | 4,592 B | 3,272 B | 94,608 B |
+    | 16 | 128 B | 3,072 B | 5,248 B | 8,320 B | 4,296 B | 99,728 B |
+    | 24 | 160 B | 4,416 B | 7,616 B | 12,032 B | 5,320 B | 104,848 B |
+    | 32 | 192 B | 5,760 B | 9,984 B | 15,744 B | 6,344 B | 109,968 B |
+    | 58 | 256 B | 10,144 B | 17,680 B | 27,824 B | 8,392 B | 120,208 B |
+
+    Nucleus runs the hub on a 16,384 B task stack in internal RAM
+    (`kHubTaskStackBytes`); the `Hub` object and its rings live in PSRAM. At
+    58, `handleIntent`'s own frame is larger than the whole stack. The cap
+    would also stay unstated, so the next hub or accessory with a larger entry
+    repeats the bug. Rejected as stated; the affordable part (16) is in the
+    proposal.
+  - **B. Advertise the cap (WELCOME `limits` key 8) and have clients split.**
+    Cheap, and RFC-033.3's `max_subscriptions_per_frame` is the precedent.
+    But a split write is several writes. Each chunk is applied and acted on
+    alone, so the machine runs combinations nobody asked for between chunks (a
+    live oscillator takes the new frequency one round trip before the new
+    amplitude). A min/max pair split across chunks is clamped against its stale
+    partner, so the result differs from the one-intent write. `cfg_gen`
+    advances once per chunk that changes a value, and each chunk republishes the
+    STATE twin. A `precondition` has to be chained (chunk k+1 carries chunk k's
+    ECHO `cfg_gen`): that detects an interleaved writer but cannot undo the
+    chunks already applied, and a refusal mid-sequence leaves a partly written
+    entry with no rollback. Every client carries a splitter and a pairing rule
+    the catalog has no vocabulary for. It also cuts against §6.3 (capability
+    discovery is catalog introspection): the limit would be a second number
+    that can drift from the catalog it constrains. Rejected.
+  - **C. The INTENT entry is the unit of an atomic write and always fits one
+    INTENT.** A catalog-design constraint, like §9.1's MTU rule for STATE. The
+    catalog is the advertisement, and nothing new goes on the wire. Picked.
+- **Proposal.**
+  1. **Capacity (§9.3, new bullet).** A hub MUST accept, in one INTENT, a
+     `value` map carrying every schema key of any INTENT entry its catalog
+     declares. This is a catalog-design constraint: an entry with more keys
+     than the hub decodes in one intent is split into several INTENT entries
+     at catalog-design time, each written atomically. Conformance tooling
+     SHOULD check it mechanically, since the schema key count is static. A
+     client needs no limit: a write of any subset of one entry's keys always
+     fits.
+  2. **Atomicity (§9.3, stated).** One INTENT is the unit of an atomic write:
+     its keys are applied and clamped as one change, echoed together, and
+     advance `cfg_gen` at most once (§4.2). A write spanning several entries is
+     that many intents, each applied, echoed and published on its own; a
+     client that must detect an interleaved writer chains `precondition` from
+     each ECHO's `cfg_gen`.
+  3. **Refusal by name.** An INTENT whose `value` map is larger than the hub
+     can hold (under item 1, one carrying keys its entry does not declare) is
+     refused whole with NACK `INVALID_VALUE` (0x0302) carrying `channel_id`,
+     `intent_id` and a `detail` naming the cause, never a bare `MALFORMED`,
+     which stays for bytes that do not decode. Canonical key order puts
+     `channel_id` (15) and `intent_id` (18) before `value` (20), so the hub has
+     both when the map overflows. Registry: `INVALID_VALUE`'s note gains the
+     case (note text only).
+  4. **User space (§8.10).** A host refuses an accessory declaration carrying
+     an INTENT entry with more schema keys than the host decodes in one intent:
+     join result `capacity` (2), nothing stored.
+  5. **§9.7, made explicit.** The oscillator entry has 16 keys by definition,
+     so a hub carrying it decodes at least 16 keys in one intent.
+- **Pros.** Whole-entry writes stay atomic on every client with no splitter,
+  pair rule, chained precondition or partly written entry. No new wire number:
+  the catalog states the requirement and the refusal reuses `INVALID_VALUE`.
+  Checkable statically, at catalog build, as §9.1's MTU rule is. Matches §6.3
+  and how Phosphor already writes (one intent per writer per flush). The
+  refusal names itself on every hub, conforming or not, which closes the
+  "reads as an encoding bug" half of rfc-zvh9 by itself.
+- **Cons.** The device author pays. Nucleus restructures pattern-advanced-cmd
+  (58 keys) into per-card writers, eight more catalog entries: machine use is
+  47 of the 48-entry machine budget (Nucleus `valence_capacity.cmake`), so
+  the budget rises to about 56, and (256 - 56) / 31 still leaves 6
+  accessories. A hub
+  cannot offer an atomic write wider than its decode capacity without paying
+  the stack for it. Atomicity across entries is not offered (it never was).
+- **Cost.**
+  - Spec: §9.3 two bullets, §8.10 one sentence, §9.7 one sentence, a §17
+    conformance line, the registry `INVALID_VALUE` note. No new numbers; no
+    golden vector changes.
+  - Library: (a) the value-map capacity becomes a build-time hub parameter
+    (`VALENCE_INTENT_MAX_FIELDS`, RFC-077 item 8's pattern), default 16 for
+    §9.7's entry, at the measured cost above (static frames on the decode path
+    4,592 to 8,320 B; `Hub` +5,120 B). (b) `Catalog::addSchemaField` latches
+    overflow on an INTENT entry's key past the capacity, so a nonconforming
+    catalog fails at build (`ok()` false), not in the field. (c)
+    `handleIntent` answers an over-capacity map `INVALID_VALUE` with the ids
+    and the detail. (d) The replay slot (`IntentRing`, 96 B) is sized for the
+    largest ECHO the capacity allows, and a failed store is handled: today
+    `handleIntent` drops `IntentRing::store()`'s `false`, so an ECHO over 96 B
+    is sent unstored and a duplicate intent id re-applies, against §9.3. (e)
+    Optional: `IntentValueField` is 56 B on the P4 because `IntentValue` holds
+    every alternative side by side; a union would bring it near 16 B
+    (estimated, not measured), making 16 keys cheaper than today's 8.
+  - Nucleus (consumer bead at landing): pattern-advanced-cmd split per card
+    (the 0x1210 writer carries 10 keys, the eight modulator writers 6 each),
+    the machine entry budget raised, osc-set unchanged at 16, and the hub
+    task's stack high-water re-measured on silicon at the new capacity.
+  - Phosphor: nothing required. The three writes above work once the hub
+    conforms; the fleet harness's eight-key chunking can go.
+- **Wire impact.** No new frame, key, code or limit. An over-capacity
+  INTENT's NACK changes from `MALFORMED` to `INVALID_VALUE` and gains
+  `channel_id`, `intent_id` and `detail`. Nucleus's catalog etag moves when its
+  writers split (pre-tag). Static clients are unaffected.
+- **Open questions.**
+  1. Default capacity 16 or 24? 16 is §9.7's entry exactly, and the library's
+     own sizing rule says stopping on the line is no margin; 24 puts 12,032 B
+     of static frames on the decode path against a 16,384 B stack. Proposed:
+     16, with the build flag for a hub that measures room for more. Owner: the
+     operator, at the ruling.
+  2. Accessory refusal: `capacity` (2) or `declaration_invalid` (4)? Proposed
+     `capacity`, whose note already covers a declaration over the host's
+     capacity.
+  3. EVENT bodies share the library cap (`event.hpp`). Proposed: no spec
+     text, since an EVENT body is hub-authored; the catalog build check of
+     item (b) covers EVENT entries too.
 
 ---
