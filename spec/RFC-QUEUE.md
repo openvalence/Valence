@@ -9946,6 +9946,30 @@ say exactly which, future-us will want the receipts.*
     question 1); and a lead above half the lead cap (156 of 250 ms) cannot
     follow §5.4's half-cap advice and still land on its stamps.
 
+    (xii) 2026-10-10: ceilings lowered under a moving chase (Kinetic afe45ac,
+    kin-h1ii). The re-plan at the first sample after the drop starts over the
+    new ceilings; it was undone, and the chase planned under the old set ran
+    on to its rest with its reports erased: 88 ms over 0.2 window/s,
+    decelerating at up to 50 against amax 2. The chase re-plan now converges:
+    the velocity changes at the jerk ceiling to the nearest speed the new vmax
+    allows, decelerating at most at the amax the motion was planned under, and
+    to a lower speed when the new set's stop from there would leave the
+    window; it takes the jerk the motion was planned under only when no
+    convergence at the new one stays in the window. Over 4000 random drops the
+    motion is back inside the new ceilings within one 1 ms tick of the
+    jerk-limited optimum from one tick past the reaction horizon. Every sample
+    over the new ceilings is reported `piece_over_ceiling` by the time it
+    renders, the curve committed through the reaction horizon included; an
+    explicit brake (a pause) is the stop ordered under its own set and is not
+    judged. For promise 3: "ceilings are never exceeded in the rendered
+    motion" cannot hold when they are lowered under the motion (a stop from 2
+    window/s at amax 2 needs a whole window); the promise wants that
+    exception, bounded by the jerk-limited convergence and reported. Segment
+    re-plans and HARD knots under a lowered set are as before (a HARD knot is
+    its profile under the new set, kin-v9z); a segment piece an undo keeps
+    over a changed set is now reported. Wire-visible: `piece_over_ceiling`
+    events after a ceiling change where none came before.
+
 ---
 
 <a id="rfc-106"></a>
