@@ -1397,3 +1397,10 @@ export const LIMITS = {
   ws_subprotocol: 'valence.v1',
   group_section_separator: ' / ',
 };
+
+// ---- udp_discovery --------------------------------------------------------------
+export const UDP_DISCOVERY = {
+  port: 22096,
+  magic: 'VLNC',
+  reply_rate_limit_per_source_s: 1,
+};

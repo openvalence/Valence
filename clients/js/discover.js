@@ -15,22 +15,19 @@
  * - No node import, so a browser bundle can import this file. A page cannot
  *   send UDP, so discover() takes the socket factory (node:
  *   dgram.createSocket).
- * - HAND-COPIED REGISTRY NUMBERS: the codegen emits no `udp_discovery`
- *   section, so DISCOVERY_PORT, DISCOVERY_MAGIC and DISCOVERY_REPLY_INTERVAL_MS
- *   copy it; the test pins them to registry.yaml.
  * - Discovery is untrusted input (§13.7): a reply names a candidate endpoint
  *   and is never a reason to connect on its own.
  */
 
-import { PROTO_VER } from './generated/registry_vocab.js';
+import { PROTO_VER, UDP_DISCOVERY, DISCOVER_REPLY_FLAG } from './generated/registry_vocab.js';
 import { toHex, fromHex } from './sha256.js';
 
-export const DISCOVERY_PORT = 22096;              // registry udp_discovery.port
-export const DISCOVERY_MAGIC = 'VLNC';            // registry udp_discovery.magic
-export const DISCOVERY_REPLY_INTERVAL_MS = 1000;  // registry udp_discovery.reply_rate_limit_per_source_s
+export const DISCOVERY_PORT = UDP_DISCOVERY.port;
+export const DISCOVERY_MAGIC = UDP_DISCOVERY.magic;
+export const DISCOVERY_REPLY_INTERVAL_MS = UDP_DISCOVERY.reply_rate_limit_per_source_s * 1000;
 export const DISCOVER_PROBE_BYTES = 9;
 export const DISCOVER_REPLY_BYTES = 76;
-export const DISCOVER_FLAG_PAIRING_WINDOW_OPEN = 0x01; // reply flags bit0; bits 1-7 are zero
+export const DISCOVER_FLAG_PAIRING_WINDOW_OPEN = DISCOVER_REPLY_FLAG.pairing_window_open; // bits not assigned are zero
 
 const MAGIC = Uint8Array.from(DISCOVERY_MAGIC, (c) => c.charCodeAt(0));
 const NAME_BYTES = 32; // str32

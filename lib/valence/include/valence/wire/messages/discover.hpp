@@ -11,11 +11,6 @@
 //   fixed-width NUL-padded UTF-8 types: encode truncates BYTE-wise (the
 //   packStringField rule), decode stops at the first NUL.
 // - Read-only identity: nothing here can command a hub (§13.8).
-// - HAND-COPIED REGISTRY NUMBERS: gen_registry_header.py emits no
-//   `udp_discovery` section, so `udp_discovery::` below copies it, pinned to
-//   registry.yaml by clients/js/test/valence-discover.test.mjs. The namespace
-//   mirrors the generator's `limits` shape; delete it when the codegen emits
-//   the section.
 // - The vectors at the end are the cross-language pins. Their identity and
 //   etag inputs reuse spec/vectors/manifest.yaml's frozen fixtures.
 #pragma once
@@ -32,12 +27,6 @@
 #include "valence/util/byte_io.hpp"
 
 namespace valence {
-
-namespace udp_discovery {
-inline constexpr uint32_t port = 22096;                       // registry udp_discovery.port
-inline constexpr std::string_view magic = "VLNC";             // registry udp_discovery.magic
-inline constexpr uint32_t reply_rate_limit_per_source_s = 1;  // registry udp_discovery.reply_rate_limit_per_source_s
-}  // namespace udp_discovery
 
 inline constexpr size_t kDiscoverMagicBytes = 4;
 inline constexpr size_t kDiscoverHubNameBytes = 32;    // str32

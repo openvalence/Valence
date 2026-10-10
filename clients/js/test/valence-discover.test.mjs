@@ -36,11 +36,6 @@ assert('DISCOVERY_REPLY_INTERVAL_MS matches the per-source limit',
   DISCOVERY_REPLY_INTERVAL_MS === Number(udp.reply_rate_limit_per_source_s) * 1000, String(DISCOVERY_REPLY_INTERVAL_MS));
 
 const hpp = read('../../../lib/valence/include/valence/wire/messages/discover.hpp');
-const cpp = (name) => { const m = new RegExp('\\b' + name + ' = ("?)(\\w+)\\1;').exec(hpp); return m && m[2]; };
-assert('discover.hpp udp_discovery::port matches the registry', cpp('port') === udp.port, cpp('port'));
-assert('discover.hpp udp_discovery::magic matches the registry', cpp('magic') === udp.magic, cpp('magic'));
-assert('discover.hpp reply_rate_limit_per_source_s matches the registry',
-  cpp('reply_rate_limit_per_source_s') === udp.reply_rate_limit_per_source_s, cpp('reply_rate_limit_per_source_s'));
 
 console.log('discover.js: golden vectors from discover.hpp');
 const vector = (name) => {

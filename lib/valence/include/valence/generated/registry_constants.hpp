@@ -814,4 +814,10 @@ inline constexpr std::string_view ws_subprotocol = "valence.v1";
 inline constexpr std::string_view group_section_separator = " / ";
 }  // namespace limits
 
+namespace udp_discovery {
+inline constexpr uint32_t port = 22096;
+inline constexpr std::string_view magic = "VLNC";
+inline constexpr uint32_t reply_rate_limit_per_source_s = 1;
+}  // namespace udp_discovery
+
 }  // namespace valence

@@ -250,19 +250,20 @@ def gen(reg: dict) -> str:
         p(f"    {e['name']} = 0x{code:04X},  // {e['note']}\n")
     p("};\n\n")
 
-    # ---- Limits -------------------------------------------------------------
-    p("namespace limits {\n")
-    for key in reg["limits"]:  # preserve registry order — it groups related limits
-        v = reg["limits"][key]
-        if isinstance(v, str):
-            p(f'inline constexpr std::string_view {ident(key)} = "{v}";\n')
-        elif isinstance(v, float):
-            p(f"inline constexpr float {ident(key)} = {v}f;\n")
-        elif v < 0:
-            p(f"inline constexpr int32_t {ident(key)} = {v};\n")
-        else:
-            p(f"inline constexpr uint32_t {ident(key)} = {v};\n")
-    p("}  // namespace limits\n\n")
+    # ---- Limits and the UDP discovery constants -----------------------------
+    for section in ("limits", "udp_discovery"):
+        p(f"namespace {section} {{\n")
+        for key in reg[section]:  # preserve registry order — it groups related values
+            v = reg[section][key]
+            if isinstance(v, str):
+                p(f'inline constexpr std::string_view {ident(key)} = "{v}";\n')
+            elif isinstance(v, float):
+                p(f"inline constexpr float {ident(key)} = {v}f;\n")
+            elif v < 0:
+                p(f"inline constexpr int32_t {ident(key)} = {v};\n")
+            else:
+                p(f"inline constexpr uint32_t {ident(key)} = {v};\n")
+        p(f"}}  // namespace {section}\n\n")
 
     p("}  // namespace valence\n")
     return w.getvalue()
@@ -471,13 +472,14 @@ def gen_js(reg: dict) -> str:
             p(f"  {js_ident(key)}: {js_str(key)},{js_note(e)}\n")
         p("};\n\n")
 
-    p("// ---- limits " + "-" * 62 + "\n")
-    p("export const LIMITS = {\n")
-    for key in limits:  # registry order — it groups related limits
-        v = limits[key]
-        val = f"'{esc(v)}'" if isinstance(v, str) else repr(v)
-        p(f"  {js_ident(key)}: {val},\n")
-    p("};\n")
+    for section, export in (("limits", "LIMITS"), ("udp_discovery", "UDP_DISCOVERY")):
+        p(f"// ---- {section} " + "-" * 62 + "\n")
+        p(f"export const {export} = {{\n")
+        for key in reg[section]:  # registry order — it groups related values
+            v = reg[section][key]
+            val = f"'{esc(v)}'" if isinstance(v, str) else repr(v)
+            p(f"  {js_ident(key)}: {val},\n")
+        p("};\n" if export == "UDP_DISCOVERY" else "};\n\n")
     return w.getvalue()
 
 
