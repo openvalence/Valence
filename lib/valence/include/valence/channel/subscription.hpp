@@ -33,6 +33,7 @@
 #pragma once
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 
@@ -55,29 +56,53 @@ struct SubscriptionEntry {
     // existing one, §6.6) resets this to false specifically so the very
     // next dueForPush() check fires regardless of `changePending`.
     bool everPushed = false;
-    uint32_t lastPushMs = 0;  // valid only when everPushed
+    // The next push's due time: hub-ms plus a sub-ms remainder, valid only
+    // when everPushed. A SCHEDULE that advances one grant period per push:
+    // the caller checks on its own tick, and a period restarted at each push
+    // rounds every gap up to whole ticks, so a 60 Hz grant on a 5 ms tick
+    // would deliver 50 (bd val-7ur).
+    uint16_t dueFracUs = 0;
+    uint32_t dueMs = 0;
 
     // §9.1 rate-ceiling + on-change semantics:
     //   - not yet pushed since grant -> due now (push-on-grant, see above).
     //   - no change pending -> never due (nothing new to conflate/send).
     //   - rate_hz == 0 (on-change only) -> due immediately once changed.
-    //   - rate_hz > 0 -> due at most once per (1000/rate_hz) ms: periodic
-    //     channels push at min(grant, change rate) per §9.1.
+    //   - rate_hz > 0 -> due on the schedule: periodic channels push at
+    //     min(grant, change rate) per §9.1, the grant met on average and
+    //     never exceeded.
     // Time comparison goes through util/serial_arithmetic.hpp's timeReached
     // (wrap-safe hub-ms, §7.2) — no inline `now >= deadline` here.
     bool dueForPush(uint32_t nowMs, bool changePending) const {
         if (!everPushed) return true;
         if (!changePending) return false;
         if (granted_rate_hz <= 0.0f) return true;
-        uint32_t periodMs = uint32_t(1000.0f / granted_rate_hz);
-        return timeReached(nowMs, lastPushMs + periodMs);
+        return timeReached(nowMs, dueMs);
     }
 
     // Caller calls this immediately after actually sending a push (whether
     // that push was the on-grant retained value or a periodic due push).
+    // A push a whole period late (a stalled caller, or no change pending)
+    // restarts the schedule from now: late is a gap, never a catch-up burst.
     void markPushed(uint32_t nowMs) {
+        const uint32_t periodUs = grantPeriodUs();
+        uint32_t ms = dueMs + (dueFracUs + periodUs) / 1000u;
+        uint32_t frac = (dueFracUs + periodUs) % 1000u;
+        if (!everPushed || timeReached(nowMs, ms)) {
+            ms = nowMs + periodUs / 1000u;
+            frac = periodUs % 1000u;
+        }
         everPushed = true;
-        lastPushMs = nowMs;
+        dueMs = ms;
+        dueFracUs = uint16_t(frac);
+    }
+
+    // One grant period in µs, rounded UP so the schedule never runs above the
+    // grant; 0 for on-change. Clamped: the rate is a client's wish.
+    uint32_t grantPeriodUs() const {
+        if (!(granted_rate_hz > 0.0f)) return 0;
+        const float us = std::ceil(1.0e6f / granted_rate_hz);
+        return us < 4.0e9f ? uint32_t(us) : 4000000000u;
     }
 };
 
@@ -101,7 +126,6 @@ public:
             e->granted_rate_hz = granted_rate_hz;
             e->priority = priority;
             e->everPushed = false;  // force push-on-(re)grant, §9.1
-            e->lastPushMs = 0;
             return true;
         }
         if (_count >= Capacity) return false;

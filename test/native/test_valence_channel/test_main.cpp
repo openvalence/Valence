@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <span>
 #include <vector>
 
@@ -256,6 +257,51 @@ TEST_CASE("SubscriptionEntry::dueForPush: rate 10Hz due at most every 100ms") {
     e->markPushed(100);
     CHECK_FALSE(e->dueForPush(150, /*changePending=*/true));  // only 50ms since last push
     CHECK(e->dueForPush(200, /*changePending=*/true));
+}
+
+// A hub checks dueForPush on its own tick, a change always pending, and
+// counts the pushes over 6 s (bd val-7ur). `tickUs` is the hub's period and
+// `jitterUs` a late wake on every other tick.
+static int pushesIn6s(float rateHz, uint32_t tickUs, uint32_t jitterUs) {
+    SubscriptionTable<> table;
+    REQUIRE(table.upsert(0x1100, rateHz, Priority::elevated));
+    SubscriptionEntry* e = table.find(0x1100);
+    REQUIRE(e != nullptr);
+    e->markPushed(0);  // the push-on-grant, not counted
+    int n = 0;
+    for (uint64_t k = 1; k * tickUs <= 6000000u; ++k) {
+        const uint32_t nowMs = uint32_t((k * tickUs + (k % 2 ? jitterUs : 0)) / 1000u);
+        if (e->dueForPush(nowMs, /*changePending=*/true)) {
+            e->markPushed(nowMs);
+            ++n;
+        }
+    }
+    return n;
+}
+
+TEST_CASE("SubscriptionEntry pacing delivers the granted rate on a coarse hub tick") {
+    // The P4's and the twin's hub tick is 5 ms: 60 Hz must not round to 50.
+    for (float hz : {25.0f, 30.0f, 45.0f, 50.0f, 60.0f}) {
+        CAPTURE(hz);
+        CHECK(std::abs(pushesIn6s(hz, 5000, 0) - int(hz * 6.0f)) <= 1);
+        CHECK(std::abs(pushesIn6s(hz, 5000, 1500) - int(hz * 6.0f)) <= 1);
+    }
+    // Never above the grant either: a 1 ms tick at 60 Hz is not 62.5 Hz.
+    CHECK(std::abs(pushesIn6s(60.0f, 1000, 0) - 360) <= 1);
+}
+
+TEST_CASE("SubscriptionEntry pacing: a stalled hub resumes at the rate, never a burst") {
+    SubscriptionTable<> table;
+    REQUIRE(table.upsert(0x1100, 50.0f, Priority::elevated));
+    SubscriptionEntry* e = table.find(0x1100);
+    REQUIRE(e != nullptr);
+    e->markPushed(0);
+    // No tick for 200 ms, then one: due, and the next push is a full period on.
+    REQUIRE(e->dueForPush(200, true));
+    e->markPushed(200);
+    CHECK_FALSE(e->dueForPush(205, true));
+    CHECK_FALSE(e->dueForPush(219, true));
+    CHECK(e->dueForPush(220, true));
 }
 
 TEST_CASE("Conflation semantics: two publishes between dues -> one push of latest") {
