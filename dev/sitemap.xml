@@ -2,242 +2,242 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://openvalence.org/Valence/dev/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/cli/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/hub/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/local-testing/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/plugins/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/quickstart/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/clients/cpp/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/clients/csharp/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/clients/javascript/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/build/clients/python/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/community/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/community/contributing/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/community/governance/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/community/rfc-process/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/channel-catalog/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/channel-grid/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/dictionary/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/catalog-vocabulary/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/cbor-keys/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/channels/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/discovery/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/errors/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/events/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/frames/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/limits/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/pairing/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/rendering/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/reference/registry/safety/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/appendices/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/catalog/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/channels/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/conformance/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/errata/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/errors/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/foundations/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/legacy/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/limitations/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/qos/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/rationale/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/rendering/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/safety/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/schema/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/security/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/session/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/time/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/traces/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/transports/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/spec/wire-format/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/anatomy/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/capabilities/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/ecosystem/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/for-everyone/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/how-it-works/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/security/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
     <url>
          <loc>https://openvalence.org/Valence/dev/understand/what-it-replaces/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <lastmod>2026-10-10</lastmod>
     </url>
 </urlset>

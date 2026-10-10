@@ -3227,11 +3227,6 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <td><code>0.02</code></td>
 <td>RFC-058: §9.6 dwell rule, normalized units: a <abbr title="One STREAM data point that commands a time extent, carrying its own duration.">segment</abbr> whose target is within this of the previous accepted target on the same source is a hold; a nonzero end velocity on it SHOULD be bounded to zero and surfaced as its own anomaly kind. Tested against the target, never position.</td>
 </tr>
-<tr>
-<td><code>segment_handoff_k</code></td>
-<td><code>1.5</code></td>
-<td>RFC-049c: the H11 machine-side handoff-sanity bound (§9.6) — a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> SHOULD reject/bound an accepted end-velocity exceeding k * min(|chord_in|, |chord_out|). Was reference-implementation-only (the MFP plugin's own Fritsch-Carlson limiter and the firmware's boundHandoffVelocity both hardcoded 1.5 independently) — the panel quoted this <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr>'s OWN doctrine ("a competing implementation has no authoritative source for the <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamping</abbr> constant") back at us. Pinned here so a second implementation matches shape without reverse-engineering the reference. <abbr title="The single authoritative endpoint of one machine.">Hub</abbr>-side per-source scheduling-depth backstop (widening H11's lookahead-bounded coverage) is Phase D implementation, not a <abbr title="The single machine-readable file that decides every number Valence puts on the wire.">registry</abbr> number.</td>
-</tr>
 </tbody>
 </table>
 <h2 id="string-caps-rfc-009-rfc-0225-rfc-0282">String caps (RFC-009, RFC-022.5, RFC-028.2)<a class="headerlink" href="#string-caps-rfc-009-rfc-0225-rfc-0282" title="Link to this section">#</a></h2>
