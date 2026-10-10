@@ -10974,7 +10974,13 @@ say exactly which, future-us will want the receipts.*
   revision is not yet reviewed. The reference hub carries `link.rssi`,
   `link.resent` and the power pair ahead of the ruling as development
   divergence (Nucleus branch `feat/link-health`, val-jpi; Phosphor lane
-  `lp/linkloss`, ph-8pww).
+  `lp/linkloss`, ph-8pww). Revised again 2026-10-10 from the
+  implementation (operator: "write the code like the RFC exists, and adapt
+  the RFC"): item 14 gains the power roles' no-reading value and what the
+  draw may cover, Who publishes and Cost carry the declared 0x1010, open
+  question 14 is answered by the implementation and 15 is new. The
+  reference declares and fills 0x1010 (Nucleus `feat/power-publish`,
+  val-9hr; Phosphor lane `lp/power`).
 - **Origin.** Phosphor bead ph-9t5l (operator, 2026-10-09: "the stream was
   cutting in and out when I was playing a script, the machine would
   gracefully handle it and resume ... however I was lost as to what was
@@ -11241,6 +11247,15 @@ say exactly which, future-us will want the receipts.*
      than half can measure both or could; specific rails fail it (not
      guaranteed present, and board layouts vary too much) and stay
      device-defined fields. A hub that measures neither declares no field.
+     An unsigned field carrying either role reserves its type's maximum
+     (65535 on a u16) as no reading, as `link.resent` does: a failed read
+     or a sensor that has not answered publishes it, never a 0, and a
+     reading saturates one count below it; 0 is a real 0.
+     `telemetry.power.draw` is the draw the hub measures: where its sensor
+     covers one path of the machine (the reference's sits after its motor
+     switch and sees the motor path alone), the field's `desc` names that
+     path (open question 15). Neither role sets a rate; the reference
+     publishes both at 1 Hz.
   15. **Who shows them.** A conformant renderer (RENDERING.md §1), whatever
      its class (§12), SHOULD surface `link.rssi`, `link.resent` and
      `link.retries` where it shows the link's health. A client that is not a
@@ -11287,10 +11302,22 @@ say exactly which, future-us will want the receipts.*
   fast path rewinds it), probes in the persist state are skipped; lwIP's
   MIB2 `tcpretranssegs` is not used, since it counts the fast path only.
   Cost 10 B of BSS and an 11-slot window in the hub's PSRAM, no
-  `LWIP_STATS`. No `link.retries` (item 13). `power` 0x1010: `bus_mV` keeps
-  `telemetry.power.bus` (unit id `v`) and gains `draw_w10` u16 (W, scale
-  10, `telemetry.power.draw`); the entry stays undeclared on this board
-  (open question 14).
+  `LWIP_STATS`. No `link.retries` (item 13). `power` 0x1010 (1 Hz,
+  background), declared on the board and the twin: `bus_mV` u16 (V, scale
+  1000, `telemetry.power.bus`, unit id `v`) and `draw_w10` u16 (W, scale
+  10, `telemetry.power.draw`, unit id `w`), 4 B; `peak_mA` and `i_bus_mA`
+  leave the never-declared layout (a peak sampled once a second is not a
+  peak). The voltage is the board monitor's +BUS, with the INA228/INA237's
+  MOTOR_V+ standing in only while the motor switch is on; the draw is the
+  INA's V x I over the motor path, regen read as 0. One task, the motor
+  switch's, owns the sensors' I2C bus from the boot self-check's verdict
+  on (any other task's read is refused before it touches the bus), reads
+  once a second outside the pre-charge window, and hands the pair to the
+  hub task as one 32-bit word, so a reader never pairs two reads and never
+  waits; a failed read publishes 65535 (item 14). The host twin reports a
+  constant 36 V and a modeled holding draw while its switch is on; the
+  field descs name that model and are the same bytes on the board, so board
+  and twin keep one etag.
   `kinetic-diag` 0x1111 (1 Hz, background): appended `arrival_lead_ms` i16
   (`stream.arrival_lead`), `stream_late` u32, `stream_starved` u32,
   `late_plans` u32 (`plan.late`): 72 to 86 B. The new counters carry
@@ -11309,8 +11336,8 @@ say exactly which, future-us will want the receipts.*
   role on any machine, and the numbers the reference hub already computes
   stop dying in a clamp or a rate-limited log line.
 - **Cons.** Eleven roles and a narrowed note, one unit id, one scope
-  value and one honesty clause. 24 bytes on two reference layouts, 2 more
-  on `power` where declared. `link.resent` is a transport-level proxy, not
+  value and one honesty clause. 24 bytes on two reference layouts, and the
+  reference's `power` declared at 4 B. `link.resent` is a transport-level proxy, not
   the radio's frame loss (H14). `stream.starved` also counts a
   stream that ends moving (see the sixth open question). Arrival lead
   includes the hub's own receive queueing.
@@ -11341,15 +11368,20 @@ say exactly which, future-us will want the receipts.*
     `flagship_p4/src/system/MotorSwitch` (the fault clears on recovery);
     `flagship_p4/src/system/TcpTally.h`, `ValenceTcpTally.cpp`,
     `ValenceTcpHook.h` and the lwip hook lines in `src/CMakeLists.txt`
-    (`link.resent`); the 0x1010 `power` layout (`bus_mV` unit id, `draw_w10`)
-    and, on a ruling, its packer;
+    (`link.resent`); the 0x1010 `power` layout and its packer,
+    `boardFeatures()` declaring it, the motor-switch task as the sensors'
+    bus owner (`system/ValencePower.*`, `PowerMonitor.h`,
+    `ValenceMotorSwitch.*`), the twin's power model
+    (`sim/valencesim/src/SimMotorSwitch.cpp`);
     the native catalog layout tests (the two sizes).
   - Phosphor: `src/model/roles.js` (eleven `ROLE` entries; the
     `telemetry.power.bus` label becomes "Bus voltage");
     `src/model/linkstats.js` (the top bar's `machine.stats.link`); the two
     readers of `telemetry.power.bus`, `src/model/health/health.svelte.js`
     (the Machine card's bus list) and `src/ui/ChannelHeat.svelte` (the
-    channel tip's readings), each also reading `telemetry.power.draw`;
+    channel tip's readings), each also reading `telemetry.power.draw`
+    and each reading the no-reading value as none
+    (`src/model/settings.js` `reportedReading`);
     `src/model/machine.svelte.js` (subscribe the entries carrying the roles,
     found by role, at background priority); the health model (new, ph-9t5l
     phase 2: bind the roles, diff the counters, re-baseline on `boot_id` and
@@ -11359,7 +11391,8 @@ say exactly which, future-us will want the receipts.*
 - **Wire impact.** Eleven field roles and one narrowed role note (strings, no numbers), one unit id
   (`dbm` 26), one scope value (`boot` 3), one honesty clause. No frame,
   CBOR key, channel, limit or vector. The reference hub's `hub-status`
-  grows 16 to 26 B and `kinetic-diag` 72 to 86 B; its etag moves.
+  grows 16 to 26 B and `kinetic-diag` 72 to 86 B, and it declares `power`
+  0x1010 (4 B, 1 Hz); its etag moves.
 - **Open questions.**
   1. Placement: the roles bind by role, so the channel is the hub's choice.
      Default: the reference puts the link roles, `health.fault` and
@@ -11408,12 +11441,18 @@ say exactly which, future-us will want the receipts.*
   13. Narrow `telemetry.power.bus` in place or rename it
      (`telemetry.power.voltage`). Default narrow, for the reasons in item
      14.
-  14. The reference's `power` 0x1010 is gated off by `boardFeatures()`
-     (operator ruling 2026-09-21, no current sensor) and has no packer,
-     while the flagship carries an INA228/INA237 whose reads are owned by
-     the motor-switch task. Default: unchanged until the operator rules on
-     declaring it (and on the twin, which would then need a power model or
-     a different etag).
+  14. The reference's `power` 0x1010 was gated off by `boardFeatures()`
+     (operator ruling 2026-09-21, no current sensor) with no packer.
+     Answered by the implementation (2026-10-10, operator: write the code
+     like the RFC exists): the board gained its INA228/INA237, so 0x1010 is
+     declared and filled on the board and the twin, as Who publishes says.
+     Default: keep it.
+  15. `telemetry.power.draw` where the sensor sees one path. Default: the
+     role carries the draw the hub measures and the `desc` names the path
+     (the reference: its motor path; its logic rails, a few watts, are not
+     on the shunt). Alternative: a second role for a sub-path draw
+     (`telemetry.power.motor`), keeping `telemetry.power.draw` for the
+     whole machine only.
 
 ---
 
