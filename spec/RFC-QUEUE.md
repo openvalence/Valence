@@ -10966,13 +10966,15 @@ say exactly which, future-us will want the receipts.*
 - **Status:** DRAFT (2026-10-09). Molecule rfc-mol-eqd (rfc-lifecycle);
   fresh-eyes review folded the same day (rfc-mol-1hr, 9 should-fix and 5
   nits, no blockers); next: the operator's ruling. Revised in place
-  2026-10-10 (operator: the hub's link loss "goes with the rest of the
-  health", no separate RFC): `link.tcp_sent` and `link.tcp_resent` added
-  (items 1, 10, 11, 12, 13; hub-status grows to 32 B; open questions 10 to
-  12). The revision is not yet reviewed. The reference hub carries the two
-  new roles and `link.rssi` ahead of the ruling as development divergence
-  (Nucleus branch `feat/link-health`, val-jpi; Phosphor lane `lp/linkloss`,
-  ph-8pww).
+  2026-10-10 on operator direction (the hub's link loss and power "go with
+  the rest of the health"; no separate RFC): `link.resent`, `link.retries`
+  and `telemetry.power.draw` added, `telemetry.power.bus` narrowed to
+  voltage, the registry test stated per role, who shows them (items 1, 2,
+  10, 11 and 12 to 15; Who publishes; open questions 10 to 14). The
+  revision is not yet reviewed. The reference hub carries `link.rssi`,
+  `link.resent` and the power pair ahead of the ruling as development
+  divergence (Nucleus branch `feat/link-health`, val-jpi; Phosphor lane
+  `lp/linkloss`, ph-8pww).
 - **Origin.** Phosphor bead ph-9t5l (operator, 2026-10-09: "the stream was
   cutting in and out when I was playing a script, the machine would
   gracefully handle it and resume ... however I was lost as to what was
@@ -11003,7 +11005,7 @@ say exactly which, future-us will want the receipts.*
   arrival lead the decisive NETWORK signal; the split from CLIENT still
   subtracts the client's lead at send, which does carry it (item 11).
 - **Proposal.**
-  1. **Ten field roles** (registry `field_roles`), on layout fields of any
+  1. **Eleven field roles** (registry `field_roles`), on layout fields of any
      h2c STATE entry the hub chooses, `watch` access. They bind catalog-wide
      under §8.8's cardinality rule (first in catalog order), except
      `health.fault` (item 8). No new channel, frame, key or limit.
@@ -11012,8 +11014,9 @@ say exactly which, future-us will want the receipts.*
      |---|---|---|---|---|---|
      | `link.rssi` | i8 | dBm (`dbm`, new 26), 1 | live | refreshed at least every 10 s; any rate | MAY |
      | `link.drops` | u32 | count (14), 1 | total, boot | on change, or at the channel's rate | SHOULD, wireless station hubs |
-     | `link.tcp_sent` | u32 | count (14), 1 | total, boot | the channel's rate, 1 Hz or faster | MAY, hubs whose binding rides TCP |
-     | `link.tcp_resent` | u32 | count (14), 1 | total, boot | as `link.tcp_sent` | MAY, as `link.tcp_sent` |
+     | `link.resent` | u16 | percent (5), 100 | live, window | the channel's rate, 1 Hz or faster | SHOULD, hubs whose binding rides TCP |
+     | `link.retries` | u16 | percent (5), 100 | live, window | as `link.resent` | MAY, hubs that read their radio's transmit counters |
+     | `telemetry.power.draw` | any numeric | W (`w`, 11) | live | the channel's rate | MAY, hubs that measure their supply |
      | `stream.arrival_lead` | i16 | ms (7), 1 | min, window | channel at 1 Hz or faster while a stream owns the rail | SHOULD, motion-stream hubs |
      | `stream.late` | u32 | count (14), 1 | total, boot | as `stream.arrival_lead` | SHOULD, motion-stream hubs |
      | `stream.starved` | u32 | count (14), 1 | total, boot | as `stream.arrival_lead` | SHOULD, motion-stream hubs |
@@ -11034,6 +11037,13 @@ say exactly which, future-us will want the receipts.*
      conflates or sheds (§9.1, §10.4) loses no increment, because the next
      one carries the total. "Motion-stream hub" means a hub declaring a c2h
      STREAM entry tagged `input.target` (§9.6, RFC-071).
+
+     **The registry test** (operator, 2026-10-10): a quantity earns a
+     registry role only when more than half of machines would use it.
+     Each item below says how its role passes. A quantity that fails it
+     (one board's supply rails, a radio coprocessor's transport counters, an
+     accessory's own health) stays a plain device-defined field on the hub's
+     health STATE entry, shown generically from its catalog metadata.
   2. **`link.rssi`.** The received signal strength at the hub of its own
      wireless network link, the one its WebSocket binding (§13.2) rides, as
      the radio last measured it, in dBm; 0 = no reading (not associated, or
@@ -11045,6 +11055,9 @@ say exactly which, future-us will want the receipts.*
      test (§8.8's, asked of a hub: "would a different hub have this
      concept?"): every hub that reaches its clients over a radio has a signal
      strength, and the number and its unit are the radio's, not the device's.
+     Registry test: the protocol runs over WebSockets and most hubs are WiFi
+     stations, so more than half have it; a wired or BLE-only hub declares
+     no field, never a zero.
   3. **`link.drops`.** Times the hub lost an established wireless network
      link since boot: the link the WebSocket binding rides went down after it
      had an address, for any reason. A failed attempt to rejoin is not a
@@ -11165,8 +11178,10 @@ say exactly which, future-us will want the receipts.*
      4, 5 and 6 on a motion-stream hub, `link.drops` on a hub that is a
      wireless station, `health.fault` on a hub with a latching cutout. MAY
      where the role corroborates or the concept is planner- or
-     device-dependent: `link.rssi`, `link.tcp_sent` and `link.tcp_resent`,
-     `plan.late`, `telemetry.heap_block`. A
+     device-dependent: `link.rssi`, `link.retries`, `plan.late`,
+     `telemetry.heap_block`, `telemetry.power.draw`. `link.resent` is SHOULD
+     on a hub whose binding rides TCP: it is the only number on the wire that
+     says how much the link is losing now. A
      client MUST NOT require any of them (registry doctrine: roles are
      opportunities); a missing role reads "not reported by this machine".
   11. **Honesty clause H14** (§1.5): the stream roles place a delay before
@@ -11176,43 +11191,61 @@ say exactly which, future-us will want the receipts.*
      hub's own receive queue), and the line between "late before the send"
      and "late in transit" is only as sharp as the client's CLOCK offset
      (§7.1), whose error is half the path asymmetry. `link.rssi` and
-     `link.drops` describe the hub's radio only. `link.tcp_resent` over
-     `link.tcp_sent` is the hub's TCP inferring loss: a segment, or its ACK,
-     was lost, or arrived later than the retransmission timer allowed, or
-     the resend was spurious, and one timeout resends every unacknowledged
-     segment, not only the lost one. It is therefore an upper bound on
-     segment loss in the hub-to-client direction, measured above the radio
-     (frames the 802.11 layer retried and delivered are not in it), summed
-     over every session. A client presents it as a resent share ("4 %
-     resent"), never as the radio's packet loss. A client MUST NOT present
-     one hop as the established cause on this evidence alone; "network
-     delay" is the verdict the evidence supports.
-  12. **`link.tcp_sent` and `link.tcp_resent`, a pair.** A hub declares
-     both or neither, in the same layout, published from one snapshot.
-     `link.tcp_sent` counts the TCP segments the hub sent on the
+     `link.drops` describe the hub's radio only. `link.resent` is the hub's
+     TCP inferring loss: a segment, or its ACK, was lost, or arrived later
+     than the retransmission timer allowed, or the resend was spurious, and
+     one timeout resends every unacknowledged segment, not only the lost
+     one. It is therefore an upper bound on segment loss in the hub-to-client
+     direction, measured above the radio (frames the 802.11 layer retried
+     and delivered are not in it), summed over every session; a client
+     presents it as a resent share ("4 % resent"), never as packet loss.
+     `link.retries` is the radio's own count and sits below TCP: frames it
+     retried may still have arrived. A client MUST NOT present one hop as
+     the established cause on this evidence alone; "network delay" is the
+     verdict the evidence supports.
+  12. **`link.resent`.** Of the TCP segments the hub sent on the
      connections of its WebSocket binding (§13.2), every session together,
-     that occupy sequence space (payload, SYN or FIN), each retransmission
-     counted again; a pure ACK, a RST or a keepalive is never counted, since
-     its loss is invisible to the sender. `link.tcp_resent` counts the
-     segments among those that were retransmissions, for any reason the
-     hub's TCP resent them (retransmission timeout, fast retransmit, a
-     SYN-ACK resent); a zero-window probe is not a retransmission. Only the
-     binding's own connections count: a host-wide counter (a general-purpose
-     operating system's TCP statistics) is not these roles, and a hub whose
-     stack keeps per-connection counters only (Linux `tcp_info`) adds a
-     closing connection's totals into its own before the socket goes. The
-     figure a client shows is `Δlink.tcp_resent / Δlink.tcp_sent` over a
-     trailing window of its choosing, both differences modulo 2^32, null
-     when `Δlink.tcp_sent` is 0; informative default ten consecutive
-     snapshots. Why the hub: it sends the bulk of a session's bytes (STATE
-     at up to 50 Hz), so its TCP is the one that resends, and over TCP a
-     lost frame is a resend and a delay, never a gap, so no other number on
-     the wire says how much the link is losing now. Inclusion test: every
-     hub whose binding rides TCP has a TCP sender that knows what it resent.
-  13. **No radio retry roles.** A hub that can read its radio's transmit
-     retry and failure counters has a closer figure for the air link; the
-     reference cannot (its radio is a coprocessor whose firmware exposes
-     none), so none is registered here (open question 12).
+     over a trailing window, the share that were retransmissions, in percent
+     at scale 100 (wire 0..10000); 65535 = no reading (nothing sent in the
+     window). A segment counts when it occupies sequence space (payload, SYN
+     or FIN), a resend counting again; a pure ACK, a RST, a keepalive or a
+     zero-window probe never counts. A resend is any the hub's TCP made:
+     retransmission timeout, fast retransmit, a SYN-ACK resent. The window
+     is at least 5 s and the hub's to choose (the reference: 10 s); a
+     trailing window, as item 4's, because each snapshot must stand alone.
+     Only the binding's own connections count: a host-wide counter (a
+     general-purpose operating system's TCP statistics) is not this role.
+     Why the hub: it sends the bulk of a session's bytes (STATE at up to
+     50 Hz), so its TCP is the one that resends, and over TCP a lost frame
+     is a resend and a delay, never a gap. Registry test: every hub's
+     binding is a WebSocket over TCP (§13.2), so more than half have it; a
+     BLE-only hub declares no field, never a zero.
+  13. **`link.retries`.** Of the frames the hub's radio transmitted over a
+     trailing window, the share it had to retry, in percent at scale 100,
+     65535 = no reading; window as item 12. It is the air link's own figure,
+     below TCP. Registry test: most hubs are WiFi stations and every WiFi
+     radio retries; a wired or BLE-only hub, or one whose radio does not
+     expose the counters, declares no field, never a zero. The reference
+     cannot read them (its radio is a coprocessor whose firmware exposes no
+     retry counter) and declares none (open question 12).
+  14. **Power: `telemetry.power.bus` narrowed, `telemetry.power.draw`
+     added.** `telemetry.power.bus` said "DC bus voltage or power", two
+     quantities under one role. It becomes the system (DC bus) voltage,
+     volts (`v`, 9); `telemetry.power.draw` is the total power the machine
+     draws from that bus, watts (`w`, 11). Narrowed in place under the
+     pre-tag rule (§5.4) rather than renamed: every declared use already
+     means voltage (the reference's 0x1010 `bus_mV`, unit V), so the
+     narrowing changes no byte and no reader's behavior, while a rename
+     would burn the string and move every reader for nothing. Registry
+     test: every powered machine has a supply voltage and a draw, so more
+     than half can measure both or could; specific rails fail it (not
+     guaranteed present, and board layouts vary too much) and stay
+     device-defined fields. A hub that measures neither declares no field.
+  15. **Who shows them.** A conformant renderer (RENDERING.md §1), whatever
+     its class (§12), SHOULD surface `link.rssi`, `link.resent` and
+     `link.retries` where it shows the link's health. A client that is not a
+     renderer (a bridge or a streaming-application plugin, §1) MAY ignore
+     them.
 - **Client behavior (informative; Phosphor's classifier, ph-9t5l
   section 3).** An episode opens when `stream.starved` increments (or the
   client clipped a late span itself). Evidence window: 1 s before the edge
@@ -11234,8 +11267,8 @@ say exactly which, future-us will want the receipts.*
   warns, below -82 acts), a hub WiFi drop on each `link.drops` increment,
   late plans above 6 per minute from `plan.late`, a fault from any nonzero
   `health.fault` (label: the field's group, then the option or bit label),
-  the top bar's machine loss as item 12's share over the last ten
-  snapshots, and hub memory falling more than 20 % over 30 min from
+  the top bar's machine half (`link.resent`, `link.retries`, `link.rssi`,
+  read as published), and hub memory falling more than 20 % over 30 min from
   `telemetry.heap_block`. Without the roles (an older hub), NETWORK falls
   back to the client's CLOCK one-way-delay proxy and is marked "likely".
   Under H14, Phosphor's network-cutout short line says "network delay", not
@@ -11244,16 +11277,20 @@ say exactly which, future-us will want the receipts.*
   layout unpinned): `rssi` gains `link.rssi` and reads 0 after a drop;
   `motor_fault` gains `health.fault` with group "Motor power" and clears
   when the switch leaves `faulted` (open question 3), and a change publishes
-  at once; appended `tcp_sent` u32 and `tcp_resent` u32 (bytes 16..23,
-  `link.tcp_sent`, `link.tcp_resent`), then `link_drops` u32 (`link.drops`)
-  and `heap_block` u32 (`telemetry.heap_block`, internal RAM's largest free
-  block): 16 to 32 B. The TCP pair is counted by lwIP's segment output hook
+  at once; appended `resent` u16 (bytes 16..17, `link.resent`, scope
+  window, 10 s), then `link_drops` u32 (`link.drops`) and `heap_block` u32
+  (`telemetry.heap_block`, internal RAM's largest free block): 16 to 26 B.
+  `resent` is counted by lwIP's segment output hook
   (`LWIP_HOOK_TCP_OUT_ADD_TCPOPTS` through `ESP_IDF_LWIP_HOOK_FILENAME`): a
   segment on the binding's port that starts before the pcb's `snd_nxt` is a
-  resend (lwIP advances `snd_nxt` only forward, and neither the timeout nor
-  the fast path rewinds it), and probes in the persist state are skipped.
-  lwIP's own MIB2 `tcpretranssegs` is not used: it counts the fast path
-  only. Cost 10 B of BSS, no `LWIP_STATS`.
+  resend (lwIP advances `snd_nxt` only forward; neither the timeout nor the
+  fast path rewinds it), probes in the persist state are skipped; lwIP's
+  MIB2 `tcpretranssegs` is not used, since it counts the fast path only.
+  Cost 10 B of BSS and an 11-slot window in the hub's PSRAM, no
+  `LWIP_STATS`. No `link.retries` (item 13). `power` 0x1010: `bus_mV` keeps
+  `telemetry.power.bus` (unit id `v`) and gains `draw_w10` u16 (W, scale
+  10, `telemetry.power.draw`); the entry stays undeclared on this board
+  (open question 14).
   `kinetic-diag` 0x1111 (1 Hz, background): appended `arrival_lead_ms` i16
   (`stream.arrival_lead`), `stream_late` u32, `stream_starved` u32,
   `late_plans` u32 (`plan.late`): 72 to 86 B. The new counters carry
@@ -11271,13 +11308,14 @@ say exactly which, future-us will want the receipts.*
   The hub's half of link health (signal, drops, faults, memory) is found by
   role on any machine, and the numbers the reference hub already computes
   stop dying in a clamp or a rate-limited log line.
-- **Cons.** Ten roles, one unit id, one scope value and one honesty
-  clause. 30 bytes on two reference layouts. The resent share is a
-  transport-level proxy, not the radio's frame loss (H14). `stream.starved` also counts a
+- **Cons.** Eleven roles and a narrowed note, one unit id, one scope
+  value and one honesty clause. 24 bytes on two reference layouts, 2 more
+  on `power` where declared. `link.resent` is a transport-level proxy, not
+  the radio's frame loss (H14). `stream.starved` also counts a
   stream that ends moving (see the sixth open question). Arrival lead
   includes the hub's own receive queueing.
 - **Cost.** By file:
-  - Valence, landing: `spec/registry/registry.yaml` (`field_roles` +10,
+  - Valence, landing: `spec/registry/registry.yaml` (`field_roles` +11, `telemetry.power.bus` note narrowed to voltage,
     `unit_ids` 26 `dbm`, `value_scopes` 3 `boot`); `spec/SPEC.md` §8.8 (one
     bullet for the health roles, a clause on the `plan.*` bullet for
     `plan.late`, the `health.fault` per-group sentence in "Role
@@ -11302,21 +11340,26 @@ say exactly which, future-us will want the receipts.*
     order with `brakeEngine`; both into the motion census);
     `flagship_p4/src/system/MotorSwitch` (the fault clears on recovery);
     `flagship_p4/src/system/TcpTally.h`, `ValenceTcpTally.cpp`,
-    `ValenceTcpHook.h` and the lwip hook lines in `src/CMakeLists.txt` (the
-    TCP pair);
+    `ValenceTcpHook.h` and the lwip hook lines in `src/CMakeLists.txt`
+    (`link.resent`); the 0x1010 `power` layout (`bus_mV` unit id, `draw_w10`)
+    and, on a ruling, its packer;
     the native catalog layout tests (the two sizes).
-  - Phosphor: `src/model/roles.js` (ten `ROLE` entries);
-    `src/model/linkstats.js` (the loss readout, `machine.stats.link`);
+  - Phosphor: `src/model/roles.js` (eleven `ROLE` entries; the
+    `telemetry.power.bus` label becomes "Bus voltage");
+    `src/model/linkstats.js` (the top bar's `machine.stats.link`); the two
+    readers of `telemetry.power.bus`, `src/model/health/health.svelte.js`
+    (the Machine card's bus list) and `src/ui/ChannelHeat.svelte` (the
+    channel tip's readings), each also reading `telemetry.power.draw`;
     `src/model/machine.svelte.js` (subscribe the entries carrying the roles,
     found by role, at background priority); the health model (new, ph-9t5l
     phase 2: bind the roles, diff the counters, re-baseline on `boot_id` and
     `meta.reset_gen`, the classifier's NETWORK and HUB deciders, conditions
     L12, L13, M1 to M3); the Health page's Link and Machine cards;
     `test/health.test.mjs` (the role-backed rows of the classify table).
-- **Wire impact.** Ten field roles (strings, no numbers), one unit id
+- **Wire impact.** Eleven field roles and one narrowed role note (strings, no numbers), one unit id
   (`dbm` 26), one scope value (`boot` 3), one honesty clause. No frame,
   CBOR key, channel, limit or vector. The reference hub's `hub-status`
-  grows 16 to 32 B and `kinetic-diag` 72 to 86 B; its etag moves.
+  grows 16 to 26 B and `kinetic-diag` 72 to 86 B; its etag moves.
 - **Open questions.**
   1. Placement: the roles bind by role, so the channel is the hub's choice.
      Default: the reference puts the link roles, `health.fault` and
@@ -11348,16 +11391,29 @@ say exactly which, future-us will want the receipts.*
      original brief said `telemetry.heap`.
   9. `plan.late` sits one suffix from `plan.latency` (RFC-059). Default:
      keep it; the notes tell them apart. Alternative: `plan.overruns`.
-  10. Segments or bytes for the TCP pair. Default segments: TCP's own loss
-     accounting counts segments, and a byte count overweights large frames.
+  10. `link.resent`'s shape. Default: a share over a hub-chosen trailing
+     window of at least 5 s, u16 percent at scale 100, 65535 for no
+     reading: one role, readable as published by any renderer.
+     Alternative: two since-boot counters (sent, resent) read by
+     difference, conflation-proof as item 1's counters are, at the cost of
+     a second role and client-side windowing.
   11. The window opening after a zero-window episode: the reference sends
      the probed byte again inside its first full segment, which starts
      below `snd_nxt` and counts as one resend per episode. Default: accept
      (bounded at one per episode, and a client whose receive window stays
      shut is itself a link symptom).
-  12. Radio retry roles (`link.tx_frames`, `link.tx_retries`) for hubs with
-     a native radio. Default not registered: no hub publishes them yet, and
-     the reference cannot without new radio firmware.
+  12. Register `link.retries` with no publisher yet. Default yes (operator,
+     2026-10-10: the three link values pass the registry test); the
+     reference publishes it when its radio firmware exposes the counters.
+  13. Narrow `telemetry.power.bus` in place or rename it
+     (`telemetry.power.voltage`). Default narrow, for the reasons in item
+     14.
+  14. The reference's `power` 0x1010 is gated off by `boardFeatures()`
+     (operator ruling 2026-09-21, no current sensor) and has no packer,
+     while the flagship carries an INA228/INA237 whose reads are owned by
+     the motor-switch task. Default: unchanged until the operator rules on
+     declaring it (and on the twin, which would then need a power model or
+     a different etag).
 
 ---
 
