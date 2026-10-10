@@ -955,18 +955,30 @@ def decode_motion_state(payload):
     return out
 
 
-PLAN_STRIP_STRUCT = struct.Struct("<BBHHHhII")   # flags, style, start, end, cur, vel, dur_us, elapsed_us
+PLAN_STRIP_STRUCT = struct.Struct("<BBiiihII")   # flags, style, start, end, cur, vel, dur_us, elapsed_us
+# registry `packed_field_types` -> struct codes; bitfield8 reads as u8.
+PACKED_STRUCT_CODES = {0: "B", 1: "b", 2: "H", 3: "h", 4: "I", 5: "i", 6: "f", 7: "B"}
 PLAN_STYLES = {0: "idle", 1: "waveform", 2: "chase", 3: "settle"}
 
 
-def decode_plan_strip(payload):
-    """0x1110 plan-strip: the planner's CURRENT SEGMENT (legacy :81 0x04
-    INTERP). Positions are normalized *10000, velocity *1000 -- the engine's
-    own domain, where 1.0 is the whole stroke window."""
-    if len(payload) < PLAN_STRIP_STRUCT.size:
+def decode_plan_strip(payload, layout=None):
+    """0x1110 plan-strip: the planner's CURRENT SEGMENT. Positions are
+    normalized *10000, velocity *1000 -- the engine's own domain, where 1.0 is
+    the whole stroke window. Each field is read at the type `layout` (the
+    catalog entry's layout list) declares, since a hub may carry positions as
+    u16 or as i32; without a layout, i32 positions."""
+    st = PLAN_STRIP_STRUCT
+    if layout:
+        try:
+            st = struct.Struct("<" + "".join(PACKED_STRUCT_CODES[f[CAT_F["type"]]] for f in layout[:8]))
+        except (KeyError, TypeError):
+            raise ValueError("plan-strip(0x1110) layout declares a type this decoder cannot read")
+        if len(layout) < 8:
+            raise ValueError("plan-strip(0x1110) layout declares %d fields (need >= 8)" % len(layout))
+    if len(payload) < st.size:
         raise ValueError("plan-strip(0x1110) payload too short: %d bytes (need >= %d)"
-                          % (len(payload), PLAN_STRIP_STRUCT.size))
-    flags, style, start, end, cur, vel, dur, elapsed = PLAN_STRIP_STRUCT.unpack_from(payload, 0)
+                          % (len(payload), st.size))
+    flags, style, start, end, cur, vel, dur, elapsed = st.unpack_from(payload, 0)
     return {
         "active": bool(flags & 1), "live_mode": bool(flags & 2), "grad_mode": bool(flags & 4),
         "style": PLAN_STYLES.get(style, "?%d" % style),
@@ -2306,7 +2318,8 @@ def _run_session(ws, args):
         bad("plan_strip", "plan-strip(0x1110) STATE never observed")
     else:
         try:
-            d = decode_plan_strip(plan)
+            layout = _catalog_entries(catalog_bytes).get(CH_PLAN_STRIP, {}).get(CAT_E["layout"])
+            d = decode_plan_strip(plan, layout)
             ok("plan_strip", "plan-strip(0x1110) decodes (%d B): style=%s active=%s "
                "start=%.3f end=%.3f cur=%.3f vel=%.3f dur=%dus elapsed=%dus"
                % (len(plan), d["style"], d["active"], d["start"], d["end"], d["cur"],
