@@ -11793,7 +11793,9 @@ say exactly which, future-us will want the receipts.*
 
 - **Status:** DRAFT (2026-10-10). Molecule rfc-mol-hyc (rfc-lifecycle);
   fresh-eyes review folded the same day (rfc-mol-06d: 2 blockers, 7
-  should-fix, 13 nits). Amends RFC-103 (SPEC §9.7, landed) in place before
+  should-fix, 13 nits); Cost revised the same day to the reference's
+  build (Nucleus feat/osc-amp-mm ad42bb0, fw 0.1.41, catalog etag
+  a51bc15705a2890a; val-6y7). Amends RFC-103 (SPEC §9.7, landed) in place before
   the first tag, and reverses RFC-103 open question 2 (ruled 2026-10-07:
   amplitude is a share of the travel window). Independent of RFC-110 (at
   its gate): either may land first; where both edit one paragraph or
@@ -11826,8 +11828,7 @@ say exactly which, future-us will want the receipts.*
      ceiling** is `osc.amplitude`'s catalog `max`, which that field MUST
      declare with `min` `0`, as `osc.amplitude.out_min` and
      `osc.amplitude.out_max` MUST declare the same `min` and `max` (§8.8):
-     the largest peak the hub renders, its own choice from what its machine
-     does, as `osc_max_hz` is. A hub whose catalog carries a
+     the largest peak the hub accepts, its own choice. A hub whose catalog carries a
      `geometry.max_travel` field with a `max` SHOULD declare a ceiling no
      more than half that `max`, the largest peak any window could hold.
      `osc.amplitude` is clamped to `0` .. the ceiling and nothing else: a
@@ -11958,20 +11959,33 @@ say exactly which, future-us will want the receipts.*
   `clients/js/generated/registry_vocab.js` (`tools/gen_registry_header.py`),
   `docs-site/docs/reference/registry/catalog-vocabulary.md`
   (`gen_docs_tables.py`) and `docs-site/docs/spec/channels.md`
-  (`gen_spec_pages.py`). No golden vector moves. Nucleus (val-): the
+  (`gen_spec_pages.py`). No golden vector moves. Nucleus (val-6y7, built
+  on feat/osc-amp-mm, ad42bb0, fw 0.1.41, etag a51bc15705a2890a): the
   0x3140 intent and 0x1140 twin declare the four fields `mm`, `unit_id` 0,
   `min` 0, `max` = the ceiling, with `default` and `step` in millimeters;
-  the delegate clamps to the ceiling, not `1`; the arbiter converts by
-  `span()` (the rail under `_rail_frame`), inbound at each take, drive
-  point and reframe (the `1.0f` caps in `takeOscillator` and `drivePoint`
-  become the ceiling over the span, and `reseedEngine` keeps the
-  millimeters instead of fading to the new share), outbound for
-  `osc.amplitude_effective` on the 0x1140 twin; the ceiling chosen on the
-  bench. Kinetic: `Oscillator::rescale(k)` also scales the held drive
-  points' amplitudes by `k`, as it does the envelope; otherwise none (the
-  stage keeps its frame units; the hub converts at its boundary, and a
-  changed amplitude rides the envelope without a pass through rest).
-  Phosphor: no product code (the generic card follows the catalog's unit
+  the delegate clamps to the ceiling, not `1`; the arbiter runs the
+  oscillator stage in rail millimeters: `fillStrip()` converts the plan it
+  reads to millimeters and hands `render()` the input set's ceilings and
+  the backstop's window in millimeters, and the amplitude, the drive points
+  and `osc.amplitude_effective` are millimeters throughout, so nothing
+  converts by the window span in either direction and `reseedEngine()` no
+  longer restates the plan buffer or calls `Oscillator::rescale()`. A span
+  conversion at the hub was rejected: `Oscillator::drive()` cannot replace
+  a point nearer than its drive lead (156 ms) past the head and `rescale()`
+  leaves held points alone, so every window move under a V8 stream would
+  play the old window's scale for up to a lead plus a fade (a window grown
+  5x asks 5x the swing, bounded only by the ceilings); in millimeters a
+  window move changes nothing the stage holds. Reference defaults: the
+  ceiling `OSC_MAX_AMPLITUDE_MM` = 1000 mm, half of `max_rail`'s catalog
+  `max` of 2000 mm, the SHOULD bound of item 1, not measured on a bench;
+  the factory `osc.amplitude` 5 mm, the old `0.01` share at the factory
+  500 mm window; the factory `osc.amplitude.out_max` 20 mm, so a full V8
+  asks 20 mm, about what the factory 1200 mm/s speed ceiling lets a 10 Hz
+  sine keep (2π · 10 Hz · 20 mm is 1257 mm/s), where the old `1.0` share
+  saturated above V8 `0.04`. Kinetic: none (the stage is unit-agnostic:
+  the plan, the ceilings, the window and the amplitude need only share one
+  unit; its header's "window units" describes the old caller, not a
+  constraint). Phosphor: no product code (the generic card follows the catalog's unit
   and `max`; the player sends norms); `test/fleet/home-osc.test.mjs`
   writes `osc.amplitude` `0.1` as a tenth of the window and is restated in
   millimeters.
