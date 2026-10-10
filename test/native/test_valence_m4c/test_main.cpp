@@ -18,6 +18,7 @@
 //   M4C-34..36  THE POTATO FLOOR. Zero-crypto clients must be untouched by all
 //               of the above. If these fail, the weight covenant is broken and
 //               the milestone is wrong regardless of what else passes.
+//   M4C-38      rfc-ei6: the signature deadline holds across the u32 µs wrap.
 //
 // Native (host-side, hardware-free): InProcessLink + ManualClock + XorShift32
 // + ScriptedCrypto, doctest's bundled main(), same harness shape as
@@ -1539,4 +1540,35 @@ TEST_CASE("M4C-37: stored identity for the floor is still 24 bytes — instance_
     // persists nothing new. A client that OPTS IN to hub verification persists
     // one more thing, and exactly one: the 33-byte SEC1 public key.
     CHECK(kTrustPubkeyMaxBytes == 33);
+}
+
+TEST_CASE("M4C-38 (rfc-ei6): a signature asked for past the microsecond wrap gets the full hub_sig_timeout_ms") {
+    constexpr uint32_t kNearWrapUs = 0xFFFF0000u;  // 65.536 ms before the u32 µs wrap
+    Catalog32 catalog;
+    makeM4cCatalog(catalog);
+    ManualClock clock(kNearWrapUs);
+    XorShift32 hubRng(5040);
+    M4cDelegate hubDel;
+    auto hubCrypto = makeCrypto(0x71);
+    Hub hub(catalog, clock, hubRng, hubDel, hubCrypto);
+    InProcessLink link(clock, hubRng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+
+    XorShift32 clientRng(6040);
+    M4cClientDelegate cDel;
+    auto clientCrypto = makeCrypto(0x71);
+    ClientIdentity id = makeIdentity(40, false);
+    Client client(id, link.endpointB(), clock, clientRng, cDel, clientCrypto);
+    client.setHubPublicKey(std::span<const std::byte>(clientCrypto.pubkey));
+    client.requestHubSignature(true);
+    client.addSubscriptionWish(channels::safety, 0.0f, Priority::critical);
+    pumpNoSigner(hub, clock, client, 100);
+    REQUIRE(clock.nowUs() < kNearWrapUs);  // wrapped once
+
+    REQUIRE(client.connect());
+    pumpNoSigner(hub, clock, client, int(limits::hub_sig_timeout_ms) - 1);
+    CHECK(client.hubAuthState() == HubAuthState::Pending);
+    pumpNoSigner(hub, clock, client, 1);
+    CHECK(client.hubAuthState() == HubAuthState::Timeout);
 }

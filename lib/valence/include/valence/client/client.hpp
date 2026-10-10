@@ -276,7 +276,15 @@ private:
     IRandom& _rng;
     ClientDelegate& _delegate;
     ICrypto& _crypto;
-    MonotonicMs _monoMs;  // wrap-safe ms derivation for all deadline bookkeeping (§7.2)
+    // Wrap-safe ms (§7.2). Advanced ONLY by the constructor and update(): an
+    // extra advance() from a fresh clock read can leave update()'s nowUs
+    // behind it, which MonotonicMs reads as a ~71.6 min jump forward.
+    MonotonicMs _monoMs;
+    // ms as of the latest update(), seeded at construction: the ONE base for
+    // every deadline and timestamp set outside update(). Do not use
+    // _clock.nowMs() there: nowUs / 1000 jumps 4294967 -> 0 at each u32 µs
+    // wrap (~71.6 min) and stops comparing against update()'s deadlines.
+    uint32_t _lastUpdateMs = 0;
     ClientSessionState _state = ClientSessionState::CLOSED;
 
     static constexpr size_t kMaxPendingIntents = 8;

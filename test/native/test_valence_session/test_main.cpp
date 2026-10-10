@@ -8,8 +8,8 @@
 // docs/valence/SPEC.md.
 //
 // Suite ids: S-xx = session lifecycle, I-xx = intent/echo/nack, E-04 = ESTOP
-// repeat-until-latched under loss. Each maps to one behavioral requirement in
-// the M4 milestone brief.
+// repeat-until-latched under loss, W-01 = Client timers across the u32 µs wrap.
+// Each maps to one behavioral requirement in the M4 milestone brief.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
@@ -899,4 +899,83 @@ TEST_CASE("P-01: Client::update() tightens PING cadence to holding_control after
     CHECK(ctrlHeader->type == uint8_t(FrameType::PING));  // holding a source: pinged already
 
     CHECK_FALSE(linkIdle.endpointA().read().has_value());  // idle: still well under 1 s, nothing sent yet
+}
+
+// ---- rfc-ei6 ----------------------------------------------------------------
+// One ms base for every Client timer (§7.2). The calls that run outside
+// update() (initiateEstop, connect, sendIntent, runProbe) stamp the ms update()
+// keeps; nowUs / 1000 restarts at every u32 µs wrap (~71.6 min), so a deadline
+// stamped with it no longer compares against update()'s.
+
+namespace {
+
+struct ClientWrites {
+    int estops = 0;
+    int pings = 0;
+};
+
+// Drains everything the client has written to the hub side of the link.
+ClientWrites drainClientWrites(ITransport& hubSide) {
+    ClientWrites w;
+    while (auto fb = hubSide.read()) {
+        const auto b = fb->bytes();
+        if (b.size() == kEstopFrameBytes && b[0] == kEstopMagicByte) {
+            ++w.estops;
+            continue;
+        }
+        const auto h = fb->header();
+        if (h && h->type == uint8_t(FrameType::PING)) ++w.pings;
+    }
+    return w;
+}
+
+}  // namespace
+
+TEST_CASE("W-01 (rfc-ei6): a client up past the microsecond wrap paces ESTOP repeats and PINGs on update()'s clock") {
+    constexpr uint32_t kNearWrapUs = 0xFFFF0000u;  // 65.536 ms before the u32 µs wrap
+    Catalog32 catalog;
+    conformance::buildMiniCatalog(catalog);
+    ManualClock clock(kNearWrapUs);
+    XorShift32 hubRng(1903);
+    TestHubDelegate hubDelegate;
+    Hub hub(catalog, clock, hubRng, hubDelegate);
+    hubDelegate.hub = &hub;
+    InProcessLink link(clock, hubRng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    XorShift32 rng(4244);
+    TestClientDelegate delegate;
+    Client client(makeIdentity(93, false), link.endpointB(), clock, rng, delegate);
+    client.addSubscriptionWish(0x0003, 0.0f, Priority::critical);  // its retained STATE ends CATALOG_READY re-sends
+    REQUIRE(client.connect());
+    pump(hub, clock, {&client}, 100);
+    REQUIRE(clock.nowUs() < kNearWrapUs);  // wrapped once
+    REQUIRE(client.state() == ClientSessionState::LIVE);
+    drainClientWrites(link.endpointA());
+
+    // Only the client ticks from here, so everything it writes stays on the
+    // link to be counted.
+    SUBCASE("ESTOP repeats every estop_repeat_interval_ms, not on the next tick") {
+        client.initiateEstop(safety_causes::user);
+        CHECK(drainClientWrites(link.endpointA()).estops == 1);
+        for (uint32_t ms = 1; ms < limits::estop_repeat_interval_ms; ++ms) {
+            CAPTURE(ms);
+            clock.advanceUs(1000);
+            client.update(clock.nowUs());
+            REQUIRE(drainClientWrites(link.endpointA()).estops == 0);
+        }
+        clock.advanceUs(1000);
+        client.update(clock.nowUs());
+        CHECK(drainClientWrites(link.endpointA()).estops == 1);
+        CHECK_FALSE(client.estopSendFailed());
+    }
+    SUBCASE("an idle session PINGs once per ping_interval_idle_ms, not every tick") {
+        int pings = 0;
+        for (int i = 0; i < 300; ++i) {  // 3 s in 10 ms ticks
+            clock.advanceUs(10000);
+            client.update(clock.nowUs());
+            pings += drainClientWrites(link.endpointA()).pings;
+        }
+        CHECK(pings >= 2);
+        CHECK(pings <= 3);
+    }
 }

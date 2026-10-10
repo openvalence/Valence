@@ -45,7 +45,11 @@ inline bool isAllZero(std::span<const std::byte> b) {
 
 inline Client::Client(const ClientIdentity& id, ITransport& transport, IClock& clock, IRandom& rng,
                        ClientDelegate& delegate, ICrypto& crypto)
-    : _id(id), _t(transport), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto) {}
+    : _id(id), _t(transport), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto) {
+    // Seeded here, not by the first update(): an application may connect() or
+    // initiateEstop() before it ever ticks.
+    _lastUpdateMs = _monoMs.advance(_clock.nowUs());
+}
 
 inline bool Client::addSubscriptionWish(uint16_t channel_id, float rate_hz, Priority prio) {
     if (_wishCount >= kMaxWishes) return false;
@@ -172,7 +176,7 @@ inline bool Client::connect() {
     // The clock on "is this machine going to prove itself?" starts when the ask
     // leaves, not when WELCOME lands — a hub that never answers at all is the
     // case this is here to catch.
-    if (_hubAuth == HubAuthState::Pending) _sigDeadlineMs = _clock.nowMs() + limits::hub_sig_timeout_ms;
+    if (_hubAuth == HubAuthState::Pending) _sigDeadlineMs = _lastUpdateMs + limits::hub_sig_timeout_ms;
 
     setState(ClientSessionState::HELLO_SENT);
     return true;
@@ -196,7 +200,8 @@ inline void Client::disconnect() {
 
 inline void Client::update(uint32_t nowUs) {
     // NOT nowUs / 1000 — see MonotonicMs in util/serial_arithmetic.hpp.
-    uint32_t nowMs = _monoMs.advance(nowUs);
+    const uint32_t nowMs = _monoMs.advance(nowUs);
+    _lastUpdateMs = nowMs;
     while (auto fb = _t.read()) {
         handleFrame(*fb, nowMs);
     }
@@ -236,7 +241,7 @@ inline bool Client::sendFrame(FrameType type, uint16_t channel, std::span<const 
     if (payload.size() > buf.size() - pos) return false;
     if (!payload.empty()) std::memcpy(buf.data() + pos, payload.data(), payload.size());
     bool ok = _t.write(std::span<const std::byte>(buf.data(), pos + payload.size()));
-    if (ok) _lastTxMs = _clock.nowMs();
+    if (ok) _lastTxMs = _lastUpdateMs;
     return ok;
 }
 
@@ -745,7 +750,7 @@ inline void Client::sendCatalogReady(std::span<const std::byte> etag) {
         // Pending until the hub demonstrably opened the data plane, i.e. until
         // the first STATE frame lands (handleState clears this).
         _readyPending = true;
-        _lastReadySendMs = _clock.nowMs();
+        _lastReadySendMs = _lastUpdateMs;
         ++_readyAttempts;
     }
 }
@@ -843,10 +848,10 @@ inline void Client::initiateEstop(uint8_t cause) {
     size_t n = encodeEstop(f, std::span<std::byte>(buf));
     if (n > 0) {
         _t.write(std::span<const std::byte>(buf.data(), n));
-        _lastTxMs = _clock.nowMs();
+        _lastTxMs = _lastUpdateMs;
     }
     _estopAttempts = 1;
-    _lastEstopSendMs = _clock.nowMs();
+    _lastEstopSendMs = _lastUpdateMs;
 }
 
 inline void Client::pumpEstopRepeat(uint32_t nowMs) {
@@ -1056,7 +1061,7 @@ inline bool Client::runProbe() {
     if (!sendFrame(FrameType::PROBE, 0, std::span<const std::byte>())) return false;
 
     _probeActive = true;
-    _probeStartMs = _clock.nowMs();
+    _probeStartMs = _lastUpdateMs;
     _probeBytesReceived = 0;
     _probeFramesReceived = 0;
     _probeMaxIndexSeen = 0;
