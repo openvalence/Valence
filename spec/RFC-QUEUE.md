@@ -549,6 +549,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [107](#rfc-107) | Trial writes: a hub may refuse a trial per key, the refusal names why, the client falls back to a durable write | Draft | open |
 | [108](#rfc-108) | Kinetic²'s tuning set: smoothness, handle floor and maximum trim as planner settings, unread settings retired; the render budget is the hub's | Landed | closed |
 | [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
+| [110](#rfc-110) | Oscillator drives amended: silence hands back the card's values, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -9922,6 +9923,27 @@ say exactly which, future-us will want the receipts.*
     unreachable" does not hold (kin-8ck, not landed). Wire-visible: a last
     rest knot can be reported `knot_trimmed` where it ran back before.
 
+    (xi) 2026-10-09: the oscillator's continuous drive (Kinetic 725d448,
+    kin-kzq4; Nucleus 3c5987c, val-o9r). Driven mode is a phase-continuous
+    sine whose frequency and amplitude follow drive points, the frequency
+    integrated into the phase and its slew paid for in the yield's budget.
+    A point lands no nearer than the drive lead past the render head (156 ms
+    at a 1 ms step: one fade of 150 ms and the stencils) and replaces every
+    point at or after its time, so the budget spent on the look-ahead never
+    changes; nothing is asked 500 ms past the last point; 64 points are
+    held and an excess point is counted. The continuous path is sine only:
+    shapes and dwells stay on the fixed path, which latches at rest. Two
+    wire-visible items went to RFC-110 (items 4 and 5): the osc-drive
+    grant's `schedule_latency_us` is the drive lead, and the driven tail
+    past the hub's commitment is a prediction a later point may change, up
+    or down (6 ms at a 1 ms step at every frequency: the driven path always
+    fades over its longest fade, 150 ms, inside the 156 ms lead).
+    Met on the way, for promise 1: the reference reads `schedule_latency_us`
+    on its samples entries as the least notice a point needs to land on its
+    stamp, where §5.4 calls it a fixed delay after the stamp (RFC-110 open
+    question 1); and a lead above half the lead cap (156 of 250 ms) cannot
+    follow §5.4's half-cap advice and still land on its stamps.
+
 ---
 
 <a id="rfc-106"></a>
@@ -11242,5 +11264,280 @@ say exactly which, future-us will want the receipts.*
      original brief said `telemetry.heap`.
   9. `plan.late` sits one suffix from `plan.latency` (RFC-059). Default:
      keep it; the notes tell them apart. Alternative: `plan.overruns`.
+
+---
+
+<a id="rfc-110"></a>
+## RFC-110 -- Oscillator drives amended: silence hands back the card's values, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency
+
+- **Status:** DRAFT (2026-10-09). Molecule rfc-mol-ys2 (rfc-lifecycle);
+  fresh-eyes review folded the same day (rfc-mol-8if: 2 blockers, 10
+  should-fix, 12 nits). Amends RFC-103 (SPEC §9.7, landed) in place before
+  the first tag; items 4 and 5 are the RFC-105 log items of Kinetic
+  kin-kzq4. Nucleus is implementing items 1 and 2 ahead of the ruling; item
+  3 as relayed is in fw 0.1.36. Next: the operator's ruling.
+- **Origin.** Nucleus val-o9r: the hub side of the drives landed in
+  3c5987c (fw 0.1.36, Kinetic 725d448 pinned in af50061: drives and bounds
+  on 0x3140/0x1140, the 0x2140 `osc-drive` stream, Kinetic's driven mode,
+  `schedule_latency_us` = `kOscDriveLeadUs` 156 ms). Its notes carry two
+  operator rulings of 2026-10-09, as relayed: (1) "8/9 should be wired by
+  default either way": both drives default to `axis`, a live `osc.drive`
+  stream drives (and may enable the oscillator for its duration), and with
+  no live stream `axis` falls back to the parameter's field so the card
+  works by hand; (2) coordinator pick, veto-able: while any drive is bound
+  the hub renders a sine and 0x1140 reports `shape` = `sine`, because
+  Kinetic's driven mode is sine only. Three sentences of §9.7 stand in the
+  way and are proposed verbatim there. Kinetic kin-kzq4 (closed, 725d448)
+  owes RFC-105 two items: the grant's declared latency and the driven
+  tail's status. The idle-rail slot follows the operator's ruling of
+  2026-10-09 on rfc-ns5c item 3 (the oscillator shares the jog slot).
+- **Problem.** As written, §9.7 and the ruled defaults disagree in three
+  places, and the stream's timing is unstated. (a) An `axis`-driven
+  parameter reads `0` once its stream is quiet, and the text says nothing
+  for a stream never published; with the factory default `axis` on both
+  drives, a user who enables the oscillator by hand gets nothing, and the
+  twin shows `enabled` true, a frequency and an amplitude, and `active`
+  false with no visible reason. (b) Nothing renders unless `osc.enabled` is
+  set, so a player must write the user's switch, restore it when it stops,
+  and cannot restore it when it dies: the deadman clears it at the session's
+  end, not at the stream's. (c) §9.7 lets any shape and dwells ride a drive;
+  Kinetic's continuous path is a phase-continuous sine whose frequency
+  slews, while shape, frequency and dwells of the fixed path latch only at
+  rest through a fade, so a driven square would fade out at every change.
+  (d) §9.7 does not say what the `osc.drive` grant's `schedule_latency_us`
+  means, so a player cannot know how far ahead a point must arrive. (e) A
+  client drawing the hub's driven oscillation cannot know which part of it
+  is committed.
+- **Proposal.** All five are text: no number, key, field, byte or vector
+  changes. Positions are in §9.7 unless named.
+  1. **Silence hands back the card's values.** The external axis: the
+     sentence "It carries no `input.target`, so it is never motion input
+     and never owns the rail." becomes "It carries no `input.target`, so it
+     is never motion input; it holds a `control-owner` slot only as the
+     oscillator it renders does on an idle rail (Ownership)." The last
+     sentence, "Once the stream has been quiet for
+     `stream_quiet_release_ms`, an `axis`-driven parameter reads `0`:
+     silence ends the oscillation as silence stills every stream.", becomes
+     "An `osc.drive` stream is **live** from its first accepted bundle
+     until `stream_quiet_release_ms` has passed since its newest sample's
+     stamp, or until its publishing session ends by any §6.9 door or goes
+     `STALE` (§6.6). Liveness is per publishing session: the stream is live
+     while any session's publication is, the newest accepted sample drives,
+     and a session's end ends only its own. With no live `osc.drive` stream
+     (none published, or no longer live), an `axis`-driven parameter reads
+     its own field's value, as `fixed` does: silence ends a stream's drive,
+     never the hand-set oscillation." Registry: `osc_drives` 3 `axis`, "0
+     once the stream has been quiet for stream_quiet_release_ms" becomes
+     "with no live stream (§9.7), the parameter's own field's value, as
+     fixed"; `channel_roles` `osc.drive`, "Carries no input.target, so it is
+     never motion input and never owns the rail." becomes "Carries no
+     input.target, so it is never motion input; it holds a control-owner
+     slot only as the oscillator it renders does on an idle rail (§9.7).",
+     and "Quiet for stream_quiet_release_ms, an axis-driven
+     parameter reads 0." becomes "With no live stream, an axis-driven
+     parameter reads its own field's value, as fixed does; a live stream
+     renders the oscillator while a drive is axis (§9.7)";
+     `osc.frequency.drive` and `osc.amplitude.drive`, after "axis = the
+     osc.drive stream's frequency [amplitude] field", gain "(its own
+     field's value with no live stream)".
+     *Argument.* Under the ruled default the card is dead by hand, which is
+     the bug the ruling names. Silence still ends what the stream did: with
+     item 2, an oscillation the stream alone started stops with it, and
+     one the user enabled by hand keeps the values the user set, which is
+     what was asked. The quiet clock runs from the newest stamp, as the
+     reference measures it (`MotionArbiter::oscStreamLive`, Kinetic
+     `kDriveQuietUs`), because a drive point is stamped up to the lead cap
+     ahead and an arrival-based clock would end the stream before its last
+     point played. The hand-off between the stream's values and the
+     field's is the hub's to render inside the ceilings (the reference
+     passes through rest). *A client sees:* the drive select, the fields
+     and `osc.active` agree with what renders whenever no stream is live;
+     no hidden zero. *Pick:* accept, with the liveness definition.
+  2. **A live stream renders.** The external axis gains, after item 1's
+     text: "A live `osc.drive` stream renders the oscillator while either
+     parameter's drive is `axis`, whether or not `osc.enabled` is set, and
+     `osc.active` reads as Telemetry states. For that duration the
+     oscillator is enabled in every other respect (Ownership); it ends
+     when the stream stops being live. The hub never writes `osc.enabled`
+     for a stream. The `osc.drive` entry's `access` is at least the
+     oscillator intent's and its `osc.enabled` field's (`control` at
+     minimum)." Telemetry: `osc.active` (bool: "enabled and rendering a
+     nonzero amplitude this instant" becomes "enabled, or rendered by a
+     live `osc.drive` stream, and rendering a nonzero amplitude this
+     instant"). Ownership and safety: "when the session that last set
+     `osc.enabled` ends by any §6.9 door, the deadman included," becomes
+     "when the session that last set `osc.enabled` ends by any §6.9 door or
+     goes `STALE` (§6.6), the deadman included,", since §6.9 counts the
+     deadman as STALE, not teardown. Scripts: "A player publishes those two
+     axes as the `osc.drive` stream with `shape` fixed at `sine` and drives
+     nothing else of the oscillator from a script." becomes "A player
+     publishes those two axes as the `osc.drive` stream and writes nothing
+     of the oscillator's intent, `osc.enabled` and `osc.shape` included:
+     the stream renders it, as a sine (Driven parameters); whether a script
+     drives it at all is `osc.frequency.drive` and `osc.amplitude.drive`,
+     the user's to set." Registry `field_roles`: `osc.enabled` "the
+     oscillator runs" becomes "the oscillator runs by hand; a live
+     osc.drive stream renders it while a drive is axis, whether or not this
+     is set (§9.7)"; `osc.active` "the oscillator is enabled and rendering"
+     becomes "the oscillator is enabled or rendered by a live osc.drive
+     stream, and rendering".
+     *Argument.* The alternative, a player writing `osc.enabled`, is a
+     second writer of the user's switch, and a switch left on when the
+     player dies with its session open. The stream's own liveness is the
+     scope it needs. Two refinements on the relayed sentence: the stream
+     renders only while a drive is `axis`, so a user who sets both drives
+     to `fixed` (or `speed`, `position`) has opted out of a script's
+     oscillation and a stream cannot switch the oscillator on at the
+     card's values; and liveness ends with the publishing session, so
+     §9.7's "no oscillation outlives the hand that enabled it" holds when
+     the hand is a stream (without it the reference would keep rendering
+     held points until the quiet window had passed the newest stamp, under
+     a second after a deadman). The floor clause keeps the stream from
+     granting a power the intent's floor withholds; the reference declares
+     0x2140 at `control` already. On an idle rail the stream-rendered
+     oscillator shares the jog slot under the 2026-10-09 ruling (rfc-ns5c
+     item 3: it never blocks another source; a home cycle is refused while
+     it oscillates). *A client sees:* `osc.enabled` false and `osc.active`
+     true while a stream drives, which §9.7 already tells it to show as
+     oscillating; a client that shows `osc.enabled` as "on" is wrong
+     there. *Pick:* accept with both refinements.
+  3. **A driven oscillator is a sine.** At the end of Driven parameters:
+     "While either parameter is driven by a live input (`speed` or
+     `position`, or `axis` with a live `osc.drive` stream) the oscillator
+     renders a sine, and its STATE twin and a write's echo report
+     `osc.shape` = `sine` and `osc.dwell_crest` = `osc.dwell_trough` = `0`;
+     the values written are kept and take effect again when neither
+     parameter is. The kept values are configuration: a write to one
+     advances `cfg_gen` though its echo reads `sine` or `0`, and the
+     reported values changing when a drive goes live or stops being live
+     is a hub-side change, published on the STATE twin with `cfg_gen`
+     advanced (§4.2). A write carrying `osc.shape` or a dwell while a drive
+     is live replaces the kept value, so a client writes only the keys its
+     user changed." Registry `field_roles`: `osc.shape` gains "A sine while
+     a drive is live (§9.7)."; `osc.dwell_crest` and `osc.dwell_trough`
+     each gain "0 while a drive is live (§9.7)."
+     *Argument.* §9.7 defines a shape and its dwells over a period at one
+     frequency; under a frequency that changes inside a period neither a
+     square's edges nor a dwell has a defined place, so two hubs would
+     render them differently and no client could draw either. A sine is
+     defined by its phase alone. This widens RFC-103's ruling of
+     2026-10-05 ("Scripts drive it as sine only") from scripts to every
+     drive, `speed` and `position` included, because each is continuous.
+     The clamp is §9.3's clamp-and-echo; refusing the write instead would
+     leave a stream's start to rewrite state anyway. Two refinements on
+     the relayed sentence ("While either drive is bound (not fixed) the
+     oscillator renders a sine and its STATE twin reports osc.shape = sine;
+     shape and dwells take effect again when both drives are fixed."):
+     "bound" follows item 1, so `axis` with no live stream counts as
+     `fixed`, because as relayed the ruled default (`axis`, `axis`) makes
+     every hub a sine by default and the card's shape select snap back to
+     `sine` for a user who never touched a drive; and the dwells report
+     `0`, because the driven sine renders none and a twin reporting them is
+     the dishonesty the rule exists to remove. In the reference a stream's
+     start and end then switch the kernel between its driven and fixed
+     paths through rest: a fade out and a fade in, up to 150 ms each. A
+     player's section with a non-sine kept shape advances `cfg_gen` at its
+     start and end; a sine one does not. *A client sees:* the twin names
+     what plays; the kept shape is not visible while a drive is live and
+     returns, published, when it ends. *Pick:* accept with both
+     refinements and the widening to every drive (Nucleus 0.1.36's
+     `oscShapeRendered()` tests `drive != fixed` and reports the dwells as
+     written: two changes there).
+  4. **The drive lead is the grant's latency.** The external axis gains,
+     after "its bundles are timed as any `samples`-kind c2h bundle (§5.4)":
+     "A hub's grant of it MUST carry `schedule_latency_us` (§5.4), at most
+     the lead cap: the least notice a point needs for its change to begin
+     at its stamp; a point arriving with less notice begins that long
+     after the hub took it in. The change completes within the hub's fade.
+     A player stamps each point at the instant it describes and sends it
+     to arrive at least the declared latency before its stamp and no
+     further ahead than the lead cap. That send-ahead is its lead (§5.4),
+     not a second one on top, and §5.4's advice to schedule no further
+     than half the cap yields to the declared latency here." The reference
+     declares its drive lead, 156 ms at its 1 ms step (one fade of 150 ms
+     and the stencils the yield reads): a point lands no nearer than that
+     past the render head, so the budget already spent on the look-ahead
+     never changes. An amplitude fall lands by its stamp; a rise or a
+     frequency change completes 150 ms after it.
+     *Argument.* Without it a player cannot land the oscillation on its
+     media. The half-cap clause is needed because 156 ms exceeds §5.4's
+     125 ms advice, which a player could not follow and still land on its
+     stamps; it leaves 94 ms for network delay and jitter under the 250 ms
+     cap. The no-double-lead clause is needed because §5.4 calls the key
+     a fixed delay and says to lead media by it, and a player that also
+     delayed its media by it would be 156 ms off (open question 1).
+     *A client sees:* one more grant whose key it reads instead of
+     hardcoding (§5.4 already forbids a per-hub constant). *Pick:* accept;
+     the general meaning is open question 1.
+  5. **The driven tail is a prediction.** At the end of The external axis:
+     "A hub renders a drive ahead of the instant executing, so a later
+     point may still change, up or down, the amplitude it rendered past
+     its commitment (the reference: 6 ms past the instant executing at its
+     1 ms step, at every frequency, because its driven path always fades
+     over its longest fade, 150 ms, inside a 156 ms lead); a client drawing
+     a driven oscillation draws that tail as a prediction." Informative.
+     *Argument.* A client drawing the hub's curve (§9.6's free-knot rule
+     promises a sample-for-sample match for segments) would otherwise take
+     the tail as committed. `osc.amplitude_effective` stays exact: it is
+     this instant's. *Pick:* accept as one informative sentence.
+- **Pros.** The card works by hand under the ruled defaults; a player
+  touches only its stream; every value a client reads names what renders;
+  the declared lead lets a player land on its stamps; no wire bytes move.
+- **Cons.** While a drive is live the kept shape and dwells are not on the
+  wire (the twin reports what plays), and a client writing a whole entry
+  from its shadow overwrites them. `osc.enabled` no longer alone says
+  whether the oscillator may run: a client reads `osc.active`. The
+  reference pays a pass through rest at each stream start and end (item
+  3).
+- **Cost.** SPEC §9.7: The external axis (items 1, 2, 4, 5), Driven
+  parameters (3), Telemetry, Ownership and safety, Scripts (2). §4.2 and
+  §9.3 apply unchanged (item 3). §5.4's Declared scheduling latency
+  paragraph is not edited; item 4 states this entry's reading of it until
+  open question 1 settles it. Registry notes only: `osc_drives` 3,
+  `channel_roles` `osc.drive`, `field_roles` `osc.enabled`, `osc.active`,
+  `osc.shape`, `osc.dwell_crest`, `osc.dwell_trough`,
+  `osc.frequency.drive`, `osc.amplitude.drive`; regenerate the headers. No
+  golden vector moves. Nucleus (val-o9r): items 1 and 2 in progress (the
+  working tree's `oscStreamLive` already measures from the newest stamp);
+  liveness ending with the publishing session or STALE; item 3's two
+  refinements and the `cfg_gen` rule; item 4 landed in 3c5987c. Phosphor:
+  the funscript player (not yet built) writes no intent, reads the grant's
+  latency, shows `osc.active`, draws the driven tail as a prediction.
+- **Wire impact.** None in bytes. Semantics only: the value an
+  `axis`-driven parameter reads with no live stream, when the oscillator
+  renders, what the twin and the echo report for shape and dwells while a
+  drive is live and the `cfg_gen` advances that follow, the minimum
+  `access` of the `osc.drive` entry, and the presence and meaning of key
+  49 on its grant.
+- **Open questions.**
+  1. §5.4 defines `schedule_latency_us` as "the hub's declared fixed delay
+     between a sample's time (segments: `t_base + t_off`; samples: the
+     sample's own stamp, its arrival time) and the start of its
+     execution", and on a `samples` grant "how far behind a sample's
+     arrival time the commanded curve passes through it". The reference
+     reads it, on both its `samples` entries, as the least notice a point
+     needs to land on its stamp ("A samples point is reached at its stamp
+     once it arrives a planning interval ahead",
+     `ValenceDevice::scheduleLatencyUs`). The two agree for a client that
+     stamps at its send time and differ for one that stamps ahead. Item 4
+     states the least-notice meaning for this entry; the general sentence
+     is RFC-105 promise 1's to settle (owner: rfc-105). Pick: least notice.
+  2. Item 3 reports what plays in `osc.shape` and the dwells, while
+     `osc.amplitude` reports what was asked beside
+     `osc.amplitude_effective`. The symmetric alternative is three
+     effective fields on the twin, which would also keep a whole-entry
+     write from overwriting the kept values. Pick: report what plays; no
+     new fields.
+  3. Answered: the idle-rail slot is the jog slot (operator ruling
+     2026-10-09 on rfc-ns5c item 3), and item 2 makes a stream-rendered
+     oscillator hold it as an enabled one does.
+  4. Drive points the reference cannot hold (64 at most) are counted and
+     logged, not published. Owner: rfc-109, whose health roles are where a
+     client would learn of it (the 2026-10-09 ruling that every
+     degradation tells the user).
+  5. Defaults: ruling (1) wires V8/V9 by default on the reference. Should
+     §9.7 say both drives SHOULD default to `axis`, so a third-party hub
+     plays a script's oscillation without setup? Pick: yes, one SHOULD in
+     Driven parameters (the operator's call).
 
 ---
