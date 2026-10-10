@@ -9898,6 +9898,30 @@ say exactly which, future-us will want the receipts.*
     the instant allows. The saw's flyback overshot the window bound by 1.7%;
     every shape is normalized to a peak of 1. Wire-visible: none.
 
+    (x) 2026-10-09: a rest end, a flush count, the terminal rule (Kinetic
+    3fe2051, 27cce4a; kin-6da, kin-g1f, kin-vz1, kin-8ck). The window's last
+    knot at rest whose corner ramp found no room ended in its piece's
+    acceleration, and the brake from v = 0 ran back past the knot: 51 to 91 of
+    4000 random scripts per smoothness, up to 0.32 of the window, reported
+    only as a settle. The judge now reads that end as the acceleration step to
+    rest, so the slack passes trim the knot until the ramp lands at rest; 0 to
+    2 runs per smoothness still end that way, each reported
+    `piece_over_ceiling`. A flush whose only knot lay inside the reaction
+    horizon committed through it and returned 0; the count now includes that
+    knot, so a caller that re-reads the newest knot on a count reads the
+    committed one. A knot timed at or before the origin is reached one tick
+    after it (the span floor). The bench's 9 of 200 `piece_over_ceiling` on a
+    0.8 Hz segment sine are the holds Nucleus inserts when a bundle's stamp
+    misses the newest knot by 1 to 2.5 ms, jerk 2 to 4 times over on that
+    short piece to rest; the report is correct, the hub's tile window is the
+    open item (Nucleus val-llu). Capping an angle whenever its zero stroke is
+    illegal halves the terminal rule's use (2458 to 1306 final-round uses over
+    the property suite) but cannot retire it: 1021 of the rest are at a knot
+    at rest, a hold illegal only by the corner ramps' room, with no angle to
+    cap; RFC-106's "bounding every angle up front is what would make it
+    unreachable" does not hold (kin-8ck, not landed). Wire-visible: a last
+    rest knot can be reported `knot_trimmed` where it ran back before.
+
 ---
 
 <a id="rfc-106"></a>
