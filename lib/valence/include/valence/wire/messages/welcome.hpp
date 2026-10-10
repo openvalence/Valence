@@ -145,6 +145,9 @@ struct WelcomeLimits {
     // key is omitted, so a hub that leaves them 0 stays byte-identical.
     uint32_t max_sessions = 0;
     uint32_t sessions_in_use = 0;
+    // RFC-103 (§9.7): the highest frequency the hub's oscillator renders, Hz,
+    // sub-map key 7 (float). 0 = no oscillator, and the key is omitted.
+    float osc_max_hz = 0.0f;
 };
 
 // RFC-016(a): the WELCOME `identity` (37) sub-map — registered and specified
@@ -257,8 +260,9 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
     const bool hasPerFrame = m.limits_info.max_subscriptions_per_frame > 0;
     const bool hasMaxSessions = m.limits_info.max_sessions > 0;
     const bool hasInUse = m.limits_info.sessions_in_use > 0;
+    const bool hasOsc = m.limits_info.osc_max_hz > 0.0f;
     w.key(CborKey::limits).mapHeader(3 + uint32_t(hasPerFrame) + uint32_t(hasMaxSessions) +
-                                     uint32_t(hasInUse));
+                                     uint32_t(hasInUse) + uint32_t(hasOsc));
     w.key(uint64_t(welcome_limits_subkeys::max_frame)).uintVal(m.limits_info.max_frame);
     w.key(uint64_t(welcome_limits_subkeys::max_subscriptions)).uintVal(m.limits_info.max_subscriptions);
     w.key(uint64_t(welcome_limits_subkeys::retained_pending)).uintVal(m.limits_info.retained_pending);
@@ -272,6 +276,7 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
     if (hasInUse) {
         w.key(uint64_t(welcome_limits_subkeys::sessions_in_use)).uintVal(m.limits_info.sessions_in_use);
     }
+    if (hasOsc) w.key(uint64_t(welcome_limits_subkeys::osc_max_hz)).f32Val(m.limits_info.osc_max_hz);
 
     w.key(CborKey::roles).uintVal(m.roles);
     w.key(CborKey::deadman_ms).uintVal(m.deadman_ms);
@@ -420,6 +425,12 @@ inline Result<WelcomeMsg, DecodeError> decodeWelcome(std::span<const std::byte> 
                             auto vv = r.readUint();
                             if (!vv) return Ret::err(vv.error());
                             m.limits_info.sessions_in_use = uint32_t(vv.value());
+                            break;
+                        }
+                        case welcome_limits_subkeys::osc_max_hz: {
+                            auto vv = r.readF32();
+                            if (!vv) return Ret::err(vv.error());
+                            m.limits_info.osc_max_hz = vv.value();
                             break;
                         }
                         default: {

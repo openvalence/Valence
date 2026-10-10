@@ -1391,6 +1391,7 @@ TEST_CASE("SI-21: oversized SUBSCRIBE answers NACK SUBSCRIBE_REJECTED; WELCOME a
     // RFC-055: the admission picture rides the same limits sub-map.
     CHECK(w->limits_info.max_sessions == kHubMaxSessions);
     CHECK(w->limits_info.sessions_in_use == 1);
+    CHECK(w->limits_info.osc_max_hz == 0.0f);  // no oscillator: key 7 omitted
     writeCatalogReady(ep, std::span<const std::byte>(w->catalog_etag));
     tickAndDrain(hub, clock, ep);
 
@@ -1881,4 +1882,47 @@ TEST_CASE("SI-98c: a stream source without the stream kind keeps today's rule: r
     for (int i = 0; i < 7; ++i) tickAndDrain(hub, clock, link.endpointB(), 100000);
     REQUIRE(del.ownership.size() == 2);
     CHECK(del.ownership[1].reason == 3);  // deadman-release
+}
+
+// ---- rfc-ns5c (RFC-103) -----------------------------------------------------
+// osc_max_hz (WELCOME limits key 7, float) rides only on a hub whose delegate
+// renders an oscillator, and round-trips exactly.
+TEST_CASE("SI-ns5c: WELCOME limits carry osc_max_hz (key 7) only from a delegate with an oscillator") {
+    WelcomeMsg m{};
+    m.limits_info.max_frame = 512;
+    std::array<std::byte, 600> plain{}, osc{};
+    const size_t nPlain = encodeWelcome(m, std::span<std::byte>(plain));
+    m.limits_info.osc_max_hz = 20.0f;
+    const size_t nOsc = encodeWelcome(m, std::span<std::byte>(osc));
+    REQUIRE(nPlain > 0);
+    REQUIRE(nOsc > 0);
+    CHECK(nOsc == nPlain + 6);  // key 7 (1 B) + an f32 (5 B)
+    auto back = decodeWelcome(std::span<const std::byte>(osc.data(), nOsc));
+    REQUIRE(back);
+    CHECK(back.value().limits_info.osc_max_hz == 20.0f);
+    auto none = decodeWelcome(std::span<const std::byte>(plain.data(), nPlain));
+    REQUIRE(none);
+    CHECK(none.value().limits_info.osc_max_hz == 0.0f);
+
+    class OscDelegate final : public HubDelegate {
+    public:
+        Result<IntentValueMap, NackCode> applyIntent(uint16_t, const IntentValueMap& r, AccessLevel, bool&) override {
+            return Result<IntentValueMap, NackCode>::ok(r);
+        }
+        void onEstop(uint8_t, uint8_t) override {}
+        float oscMaxHz() override { return 20.0f; }
+    };
+    Catalog32 cat;
+    makeStreamCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(2121);
+    OscDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    writeHello(link.endpointB(), 0x22, /*withToken=*/true, {});
+    auto w = findWelcome(tickAndDrain(hub, clock, link.endpointB()));
+    REQUIRE(w.has_value());
+    CHECK(w->limits_info.osc_max_hz == 20.0f);
 }

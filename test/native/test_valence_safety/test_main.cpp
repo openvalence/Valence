@@ -234,6 +234,7 @@ public:
     std::vector<uint8_t> refuseOps;
     std::vector<uint8_t> acceptedOps;   // safety ops the delegate actually applied
     std::set<uint16_t> refuseChannels;  // every intent on these is refused SOURCE_CONFLICT
+    std::vector<uint32_t> intentSessions;  // hub->intentSession() seen by each applyIntent
     std::string_view refuseDetail;      // §16.1 detail for those refusals
 
     std::vector<uint8_t> deadmanStopped;
@@ -255,6 +256,7 @@ public:
 
     Result<IntentValueMap, NackCode> applyIntent(uint16_t channel_id, const IntentValueMap& requested, AccessLevel,
                                                   bool& cfgChanged) override {
+        if (hub) intentSessions.push_back(hub->intentSession());
         if (refuseChannels.count(channel_id) != 0) return Result<IntentValueMap, NackCode>::err(NackCode::SOURCE_CONFLICT);
         if (channel_id == 0x0005) {
             uint8_t op = 0;
@@ -1954,4 +1956,18 @@ TEST_CASE("val-u8a: an intent the delegate refuses keeps no source it took; one 
         CHECK(rig.delA.nacks.empty());
         CHECK(u32At(rig.owners(), 2 * kPairBytes + 1) == rig.a->sessionId());
     }
+}
+
+TEST_CASE("rfc-ns5c: the delegate learns which session's intent it is applying; nobody's outside one") {
+    OwnerRig rig;
+    CHECK(rig.hub->intentSession() == 0);
+    REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+    rig.step();
+    REQUIRE(rig.b->sendIntent(kGenCh, makeSpeedIntent(2.0f), std::nullopt, /*takeover=*/true).has_value());
+    rig.step();
+    const auto& seen = rig.hubDelegate.intentSessions;
+    REQUIRE(seen.size() >= 2);
+    CHECK(seen[seen.size() - 2] == rig.a->sessionId());
+    CHECK(seen.back() == rig.b->sessionId());
+    CHECK(rig.hub->intentSession() == 0);
 }

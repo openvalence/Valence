@@ -107,6 +107,15 @@ public:
     // Roster visibility (§16.2) — optional.
     virtual void onSessionJoined(uint32_t session_id) { (void)session_id; }
     virtual void onSessionLeft(uint32_t session_id) { (void)session_id; }
+    // RFC-042: the session went STALE (silence, the deadman, a transport
+    // loss), after its sources were released. It may revive or be torn down
+    // later (onSessionLeft). §9.7: an oscillator enabled by this session
+    // stops here, the deadman included.
+    virtual void onSessionStale(uint32_t session_id) { (void)session_id; }
+    // RFC-103 (§9.7): the highest frequency this hub's oscillator renders, Hz,
+    // from the hub's own measurement; WELCOME limits key 7. 0 = no oscillator,
+    // and the key is omitted.
+    virtual float oscMaxHz() { return 0.0f; }
 
     // ---- M5 safety hooks (§11) — defaults keep source-free delegates valid.
     // Map an INTENT channel to a control source id (nullopt = no source
@@ -389,6 +398,12 @@ public:
     // going through a session at all. The view stays valid for the hub's
     // whole lifetime; its bytes move only inside catalogChanged().
     std::span<const std::byte> catalogEtag() const { return _etag; }
+
+    // The session whose INTENT the delegate is being asked about, valid inside
+    // every delegate call handleIntent makes (applyIntent, applyTrialIntent,
+    // admitsUnderPause, onSourceOwnership, ...); 0 anywhere else. §9.7: lets a
+    // delegate clear osc.enabled only for the session that set it.
+    uint32_t intentSession() const { return _intentSession; }
 
     // ---- RFC-077: live catalog change (§8.6) -------------------------------
     enum class CatalogChange : uint8_t {
@@ -1001,6 +1016,7 @@ private:
     // the honest answer. A caller that sets `has_intent_seq` itself wins.
     uint16_t _dispatchSeq = 0;
     bool _dispatchSeqValid = false;
+    uint32_t _intentSession = 0;  // see intentSession()
 
     // ---- Safety word state (§11.1, RFC-085): bit0 ESTOP, bit3 PAUSE — the
     // exact bitfield the `safety` (0x0003) STATE layout publishes.

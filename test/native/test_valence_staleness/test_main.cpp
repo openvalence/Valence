@@ -129,6 +129,8 @@ public:
         ownership.emplace_back(source_id, owner_session);
     }
     void onDeadmanStop(uint8_t source_id) override { deadmanStopped.push_back(source_id); }
+    std::vector<uint32_t> staled;  // onSessionStale, in order
+    void onSessionStale(uint32_t session_id) override { staled.push_back(session_id); }
 };
 
 // ---- raw frame helpers, same shape as the other M4/M5 suites ----------------
@@ -301,6 +303,9 @@ TEST_CASE("STALE-01: silence past the idle window marks a non-owning session STA
     CHECK(hub.sessionBySlot(0)->state == HubSessionState::STALE);
     CHECK(hub.sessionBySlot(0)->session_id == w.session_id);
     CHECK_FALSE(findGoodbye(allReplies).has_value());
+    // rfc-ns5c: the delegate hears it once, with the session (§9.7's deadman door).
+    REQUIRE(del.staled.size() == 1);
+    CHECK(del.staled[0] == w.session_id);
 }
 
 // ---- STALE-02 ---------------------------------------------------------------

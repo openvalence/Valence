@@ -705,6 +705,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     // RFC-055: the admission picture; the admitted session counts itself.
     w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
     w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
+    w.limits_info.osc_max_hz = _delegate.oscMaxHz();
     // RFC-016(a): identity travels when the application declared one.
     if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
         w.has_identity = true;
@@ -951,6 +952,7 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, Acce
     // RFC-055: the admission picture; the admitted session counts itself.
     w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
     w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
+    w.limits_info.osc_max_hz = _delegate.oscMaxHz();
     if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
         w.has_identity = true;
         w.identity.product = _idProduct;
@@ -1639,6 +1641,11 @@ inline AccessLevel Hub::requiredAccessFor(const CatalogEntry& entry, const Inten
 }
 
 inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, uint32_t nowMs) {
+    struct IntentSessionScope {
+        uint32_t& at;
+        ~IntentSessionScope() { at = 0; }
+    } intentScope{_intentSession};
+    _intentSession = slot.session.session_id;
     auto res = decodeIntent(payload);
     if (!res) {
         NackMsg n;
@@ -3847,6 +3854,7 @@ inline void Hub::markStale(Slot& slot, uint32_t nowMs, uint8_t reason) {
     slot.session.state = HubSessionState::STALE;
     slot.session.staleSinceMs = nowMs;
     emitSessionEvent(session_events::session_stale, slot.session.session_id, nowMs);
+    _delegate.onSessionStale(slot.session.session_id);
 }
 
 // Path A resumption (§6.6 "any received frame is proof of life", RFC-042):
