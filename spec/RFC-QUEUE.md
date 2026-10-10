@@ -551,7 +551,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
 | [110](#rfc-110) | Oscillator drives amended: silence hands back the card, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency, home waits for it | Draft | open |
 | [111](#rfc-111) | INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name | Draft | open |
-| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, clamped to fit and reported, the center never shifted | Draft | open |
+| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -11789,14 +11789,15 @@ say exactly which, future-us will want the receipts.*
 ---
 
 <a id="rfc-112"></a>
-## RFC-112 -- Oscillator amplitude in millimeters: a static peak the window never rescales, clamped to fit and reported, the center never shifted
+## RFC-112 -- Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted
 
-- **Status:** DRAFT (2026-10-10). Molecule rfc-mol-hyc (rfc-lifecycle).
-  Amends RFC-103 (SPEC §9.7, landed) in place before the first tag, and
-  reverses RFC-103 open question 2 (ruled 2026-10-07: amplitude is a share
-  of the travel window). Independent of RFC-110 (at its gate): either may
-  land first; where both edit one paragraph or registry note they edit
-  different clauses. Next: fresh-eyes review, then the operator's ruling.
+- **Status:** DRAFT (2026-10-10). Molecule rfc-mol-hyc (rfc-lifecycle);
+  fresh-eyes review folded the same day (rfc-mol-06d: 2 blockers, 7
+  should-fix, 13 nits). Amends RFC-103 (SPEC §9.7, landed) in place before
+  the first tag, and reverses RFC-103 open question 2 (ruled 2026-10-07:
+  amplitude is a share of the travel window). Independent of RFC-110 (at
+  its gate): either may land first; where both edit one paragraph or
+  registry note they edit different clauses. Next: the operator's ruling.
 - **Origin.** Operator, 2026-10-10: "I think the oscillator offset needs to
   be static, not window driven." Read here as the peak displacement: §9.7
   makes `osc.amplitude` "a share of the travel window", so resizing or
@@ -11806,65 +11807,71 @@ say exactly which, future-us will want the receipts.*
   `MotionArbiter::reseedEngine`, Kinetic `Oscillator::rescale`). Open
   question 1 records the other reading.
 - **Problem.** A vibration's strength is its size in millimeters. With the
-  amplitude a window share, the same card or the same script's V8 plays
+  amplitude a window share, the same setting or the same script's V8 plays
   three times larger on a 150 mm window than on a 50 mm one, and narrowing
-  the stroke to protect a toy turns the vibration down with it. RFC-103
-  chose the share for portability; the portable part is the script's
-  norm on the `osc.drive` stream, and a share on the card makes every
-  window change a change of feel.
+  the window lowers the vibration with it. RFC-103 chose the share for
+  portability; the portable part is the script's norm on the `osc.drive`
+  stream, which this RFC keeps.
 - **Proposal.** Text only: no number, key, byte or vector changes. The
-  four amplitude fields change unit, so a hub's catalog `unit`, `unit_id`
-  and `max` on them change and its etag flips. Positions are in §9.7
-  unless named.
+  four amplitude fields change unit, so a hub's catalog `unit`, `unit_id`,
+  `max`, `default` and `step` on them change and its etag flips. Positions
+  are in §9.7 unless named.
   1. **The amplitude is a length.** The intent: "`osc.amplitude` (f32, a
      share of the travel window, `0` .. `1`: the **peak** displacement from
      the planned position, so the swing is twice it; a client shows
-     millimeters);" becomes "`osc.amplitude` (f32, millimeters, `unit` `mm`,
-     `unit_id` 0: the **peak** displacement from the planned position, so
-     the swing is twice it; `0` .. the amplitude ceiling);". After
-     "`osc.frequency` is clamped to it." add: "**The amplitude ceiling** is
-     `osc.amplitude`'s catalog `max` (§8.8): the largest peak the hub
-     renders, its own choice from what its machine does, as `osc_max_hz`
-     is. A hub carrying `geometry.max_travel` SHOULD declare no more than
-     half that field's catalog `max`, the largest peak any window could
-     hold. `osc.amplitude` is clamped to `0` .. the ceiling and nothing
-     else: a length is static, and no window move or resize, travel
-     change or direction flip (§9.6) rescales or rewrites it."
-     *Argument.* The bound must be static because a catalog `max` is: a
-     write clamped to the live `geometry.max_travel` (the reference's
-     `max_rail`) would depend on write order and never recover when the
-     rail grows, and the runtime bounds (the window, the ceilings) already
-     act at render (item 2). No new WELCOME key: frequency carries
-     `osc_max_hz` because its number is measured on a bench, and its
-     catalog `max` equals it; the amplitude's catalog `max` is already the
-     hub's declaration, and a key would be a second home for one number.
-     *Pick:* the catalog `max`, the hub's choice, at most half the travel's.
+     millimeters);" becomes "`osc.amplitude` (f32, mm: the **peak**
+     displacement from the planned position, so the swing is twice it;
+     `0` .. the amplitude ceiling);". After "A hub without an oscillator
+     carries neither the entry nor the key." add: "**The amplitude
+     ceiling** is `osc.amplitude`'s catalog `max`, which that field MUST
+     declare with `min` `0`, as `osc.amplitude.out_min` and
+     `osc.amplitude.out_max` MUST declare the same `min` and `max` (§8.8):
+     the largest peak the hub renders, its own choice from what its machine
+     does, as `osc_max_hz` is. A hub whose catalog carries a
+     `geometry.max_travel` field with a `max` SHOULD declare a ceiling no
+     more than half that `max`, the largest peak any window could hold.
+     `osc.amplitude` is clamped to `0` .. the ceiling and nothing else: a
+     length is static, and no window move or resize, travel change or
+     direction flip (§9.6) rescales or rewrites it."
+     *Argument.* The bound must be static because a catalog `max` is (§8.6
+     fixes core and device entries per boot): a write clamped to the live
+     `geometry.max_travel` (the reference's `max_rail`) would depend on
+     write order and never recover when the rail grows, and the runtime
+     bounds (the window, the ceilings) already act at render (item 2). No
+     new WELCOME key: frequency carries `osc_max_hz` because its number is
+     measured on a bench, and its catalog `max` equals it; the amplitude's
+     catalog `max` is already the hub's declaration, and a key would be a
+     second home for one number. The MUST is new because `max` is
+     otherwise optional, and an undeclared ceiling leaves the clamp
+     undefined.
+     *Pick:* the catalog `max`, declared, the hub's choice, at most half
+     the travel's.
   2. **The window narrows it, never moves it.** The sum, and who yields:
-     "its amplitude is bounded by the planned position's distance to either
-     bound, never cut at the bound," becomes "the peak it renders is the
-     written one bounded by the planned position's distance to either
-     bound, never cut at the bound,". After "an oscillation outside the
-     window is never wanted." add: "**The center never moves**: a swing
-     wider than the room the carriage has is narrowed about the planned
-     position, never shifted to fit, so a planned position at a bound
-     renders nothing. The window bounds the room, not the size: moving or
-     resizing it changes what renders only where the room falls short of
-     the written peak, and `osc.amplitude_effective` reports what renders.
-     The written amplitude is a request, not a promise: the window and the
+     the sentence "its amplitude is bounded by the planned position's
+     distance to either bound, never cut at the bound," stands (it names no
+     unit). After "an oscillation outside the window is never wanted." add:
+     "**The center never moves**: a swing wider than the room about the
+     planned position is narrowed about it, never shifted to fit, so a
+     planned position at a bound renders nothing. The window bounds the
+     room, not the size: moving or resizing it changes what renders only
+     where the room falls short of the asked peak (`osc.amplitude`, or its
+     drive's output), and `osc.amplitude_effective` reports what renders.
+     The asked amplitude is a request, not a promise: the window and the
      ceilings may narrow it to nothing."
      *Argument.* This is RFC-103's window rule in millimeters plus the one
-     case a share hid: a share above `0.5` never fits about any
-     position, and a length larger than the room is now an ordinary state
-     of the card. Shifting the center to keep the full swing was the
+     case a share hid: a share above `0.5` never fits about any position,
+     and a length larger than the room is now an ordinary state of the
+     setting. Shifting the center to keep the full swing was the
      alternative and is rejected: the planned position is the owning
      source's command, and moving it is the hub moving the rail on its own
-     initiative, a displaced endpoint under a stroke and an unrequested
-     jog on an idle rail. Refusing the write is no answer either: the
-     window moves at runtime, after the write was accepted.
+     initiative, a displaced endpoint under a stroke and an unrequested jog
+     on an idle rail. Refusing the write is no answer either: the window
+     moves at runtime, after the write was accepted. The plan's `clamped`
+     flag is untouched (open question 2).
      *Honesty:* the echo and the twin's `osc.amplitude` say what was asked;
      `osc.amplitude_effective` says what plays; a client that shows only
      the first over a narrowed swing presents a size the machine is not
-     playing (§9.7 Telemetry already binds it to show what renders).
+     playing (§9.7 Telemetry carries the field for it).
      *Pick:* narrow to fit, report on `osc.amplitude_effective`, never
      re-center.
   3. **The amplitude drive's outputs are lengths.** Driven parameters,
@@ -11872,13 +11879,15 @@ say exactly which, future-us will want the receipts.*
      "`osc.amplitude.out_min` and `osc.amplitude.out_max` are millimeters
      in `osc.amplitude`'s range; every `in_min` and `in_max` keeps its
      drive's unit." The external axis, after "each mapped through its own
-     parameter's bounds.": "The stream's `amplitude` is a share of the
-     card's map, never a length: `osc.amplitude.out_min` .. `out_max`
-     makes it millimeters." Scripts gains, at its end: "V8 is the stream's
-     `amplitude`, so a script plays the same millimeters on every window
-     of a hub whose card is unchanged."
+     parameter's bounds.": "The stream's `amplitude` is a norm, never a
+     length: `osc.amplitude`'s map (`in_min` .. `in_max` onto `out_min` ..
+     `out_max`) makes it millimeters." Scripts, after "this paragraph is
+     the reservation's home.": "V8 is the stream's `amplitude`, so a script
+     asks the same millimeters on every window of a hub whose amplitude map
+     is unchanged; the window may narrow what renders (The sum, and who
+     yields)."
      *Argument.* A funscript axis is a norm authored with no knowledge of
-     any machine, so it stays one on the wire; the card's out bounds say
+     any machine, so it stays one on the wire; the map's out bounds say
      once per machine what V8 = 1 means. `speed` (in `telemetry.velocity`'s
      unit) and `position` (in `telemetry.target`'s) map their inputs to
      millimeters the same way; `position`'s input bounds were already
@@ -11889,29 +11898,32 @@ say exactly which, future-us will want the receipts.*
   4. **The twin, the echo and the registry.** Telemetry:
      "`osc.amplitude_effective` (f32, window share: the amplitude the
      ceilings and the window left after shaping, `0` while inactive)"
-     becomes "`osc.amplitude_effective` (f32, millimeters: the peak the
-     ceilings and the window left after shaping, `0` while inactive)". The
-     STATE twin mirrors `osc.amplitude`, `osc.amplitude.out_min` and
-     `osc.amplitude.out_max` in millimeters. The echo reports the written
-     value clamped to the catalog bounds only (§9.3); `cfg_gen` advances
-     iff a written value changed (§4.2), so a window change, which writes
-     nothing, advances nothing, and `osc.amplitude_effective`, which is
-     telemetry, moves without it. Registry `field_roles`:
-     `osc.amplitude` "f32, a share of the travel window, 0 .. 1: the PEAK
-     displacement from the planned position (the swing is twice it). The
-     client shows millimeters." becomes "f32, mm: the PEAK displacement
-     from the planned position (the swing is twice it), 0 .. the field's
-     catalog max, the hub's amplitude ceiling (§9.7). Static: no window,
-     travel or flip change rescales or rewrites it.";
-     `osc.amplitude.drive` "the output clamped into 0 .. 1." becomes "the
-     output clamped into 0 .. osc.amplitude's catalog max, mm.";
-     `osc.amplitude.out_min` and `osc.amplitude.out_max` "f32, window
-     share," becomes "f32, mm, in osc.amplitude's range,";
-     `osc.amplitude_effective` "STATE f32, window share: the amplitude"
-     becomes "STATE f32, mm: the peak"; each of the five notes' prefix
-     "RFC-103:" becomes "RFC-103, RFC-112:". `channel_roles` `osc.drive`:
-     "amplitude (f32, 0 .. 1)" becomes "amplitude (f32, 0 .. 1, a norm,
-     never a length)". Regenerate the headers.
+     becomes "`osc.amplitude_effective` (f32, mm: the peak the ceilings
+     and the window left after shaping, `0` while inactive)". Registry
+     `field_roles`: `osc.amplitude` "f32, a share of the travel window,
+     0 .. 1: the PEAK displacement from the planned position (the swing is
+     twice it). The client shows millimeters." becomes "f32, mm: the PEAK
+     displacement from the planned position (the swing is twice it), 0 ..
+     the field's catalog max, which it MUST declare: the hub's amplitude
+     ceiling (§9.7). Static: no window, travel or flip change rescales or
+     rewrites it."; `osc.amplitude.drive` "the output clamped into
+     0 .. 1." becomes "the output clamped into 0 .. osc.amplitude's
+     catalog max, mm."; `osc.amplitude.out_min` and `osc.amplitude.out_max`
+     "f32, window share," becomes "f32, mm, in osc.amplitude's range (the
+     same min and max),"; `osc.amplitude_effective` "STATE f32, window
+     share: the amplitude" becomes "STATE f32, mm: the peak".
+     `channel_roles` `osc.drive`: "amplitude (f32, 0 .. 1)" becomes
+     "amplitude (f32, 0 .. 1, a norm, never a length)". Each of the six
+     notes' prefix "RFC-103:" becomes "RFC-103, RFC-112:". Regenerate
+     the four generated views that carry the note text (Cost).
+     *Argument.* No new SPEC sentence for the twin or the echo: the twin
+     mirrors `osc.amplitude`, `osc.amplitude.out_min` and
+     `osc.amplitude.out_max` in millimeters, with the same `max` as the
+     intent (they carry `setting_key`, §8.8); the echo reports the written
+     value clamped to the catalog bounds only (§9.3, §8.8 stored versus
+     effective); `cfg_gen` advances iff a written value changed (§4.2), so
+     a window change, which writes nothing, advances nothing, and
+     `osc.amplitude_effective`, which is telemetry, moves without it.
      *A client sees:* the same keys, roles and f32 bytes with `mm` units;
      a catalog-driven client renders them as any mm field.
      *Pick:* accept.
@@ -11919,56 +11931,78 @@ say exactly which, future-us will want the receipts.*
      strike of "a client shows millimeters". A client renders
      `osc.amplitude` and the out bounds as mm numerics over `0` .. the
      ceiling, labeled as a peak, and shows `osc.amplitude_effective`
-     beside the written value so a narrowed swing is visible; it never
+     beside the asked value so a narrowed swing is visible; it never
      converts through the window. With RFC-110: the hand-back (its item 1)
-     returns the card's millimeters, the same size whatever the window did
+     returns the field's millimeters, the same size whatever the window did
      while the stream ran; the driven sine (its item 3) takes its size
      from the out bounds in millimeters; the driven tail (its item 5) is
      drawn in millimeters; its open question 2's split (`osc.amplitude`
      asked, `osc.amplitude_effective` playing) is the one this RFC uses.
      *Pick:* accept.
 - **Pros.** A vibration keeps its strength through every window change;
-  a script's V8 means one size per machine, set once on the card; the
-  wire carries the unit the operator thinks in; the reference loses a
-  fade on every window change.
-- **Cons.** Reverses a ruling three days old. The card no longer
-  shrinks with the window, so a written peak can exceed the room and
+  a script's V8 means one size per machine, set once on the map; the wire
+  carries the unit the operator thinks in; the reference no longer fades
+  the oscillation on a window change.
+- **Cons.** Reverses a ruling three days old. The setting no longer
+  shrinks with the window, so an asked peak can exceed the room and
   render narrowed or not at all (item 2 makes that visible, never
   silent). A pre-release client that reads the old share would misread
   millimeters; the reference client renders from the catalog and has no
-  such code. A hub must pick an amplitude ceiling.
+  such code. A hub must declare an amplitude ceiling.
 - **Cost.** SPEC §9.7: The intent (1), The sum (2), Driven parameters, The
   external axis and Scripts (3), Telemetry (4). Registry notes only:
   `field_roles` `osc.amplitude`, `osc.amplitude.drive`,
   `osc.amplitude.out_min`, `osc.amplitude.out_max`,
-  `osc.amplitude_effective`; `channel_roles` `osc.drive`; regenerate the
-  headers and the docs site. No golden vector moves. Nucleus (val-): the
+  `osc.amplitude_effective`; `channel_roles` `osc.drive`. Regenerate
+  `lib/valence/include/valence/generated/registry_constants.hpp` and
+  `clients/js/generated/registry_vocab.js` (`tools/gen_registry_header.py`),
+  `docs-site/docs/reference/registry/catalog-vocabulary.md`
+  (`gen_docs_tables.py`) and `docs-site/docs/spec/channels.md`
+  (`gen_spec_pages.py`). No golden vector moves. Nucleus (val-): the
   0x3140 intent and 0x1140 twin declare the four fields `mm`, `unit_id` 0,
-  `max` = the ceiling; the delegate clamps to the ceiling, not `1`; the
-  arbiter divides millimeters by the window span into the engine's frame
-  at each take, drive point and reframe, where `reseedEngine` today lets
-  the oscillation fade to the new window's share; defaults restated in
-  millimeters; the ceiling chosen on the bench. Kinetic: none (the stage
-  keeps window units; the hub converts at its boundary, and a changed
-  amplitude rides the envelope without a pass through rest). Phosphor:
-  none in code; the generic card follows the catalog's unit and `max`.
+  `min` 0, `max` = the ceiling, with `default` and `step` in millimeters;
+  the delegate clamps to the ceiling, not `1`; the arbiter converts by
+  `span()` (the rail under `_rail_frame`), inbound at each take, drive
+  point and reframe (the `1.0f` caps in `takeOscillator` and `drivePoint`
+  become the ceiling over the span, and `reseedEngine` keeps the
+  millimeters instead of fading to the new share), outbound for
+  `osc.amplitude_effective` on the 0x1140 twin; the ceiling chosen on the
+  bench. Kinetic: `Oscillator::rescale(k)` also scales the held drive
+  points' amplitudes by `k`, as it does the envelope; otherwise none (the
+  stage keeps its frame units; the hub converts at its boundary, and a
+  changed amplitude rides the envelope without a pass through rest).
+  Phosphor: no product code (the generic card follows the catalog's unit
+  and `max`; the player sends norms); `test/fleet/home-osc.test.mjs`
+  writes `osc.amplitude` `0.1` as a tenth of the window and is restated in
+  millimeters.
 - **Wire impact.** None in bytes. Semantics: the unit of `osc.amplitude`,
   `osc.amplitude.out_min`, `osc.amplitude.out_max` and
   `osc.amplitude_effective` (window share to millimeters), and with it the
-  catalog `unit`, `unit_id` and `max` of those fields (the etag changes).
+  catalog `unit`, `unit_id`, `max`, `default` and `step` of those fields
+  (the etag changes); `min` and `max` become mandatory on three of them.
   The `osc.drive` stream is unchanged.
 - **Open questions.**
   1. Did "offset" mean the oscillation's center at idle? On an idle rail
      the oscillator swings about the rest position, which a window change
-     can move (a shrink past the parked carriage brings it inside), and a
-     carriage parked at a bound has no room, so it renders nothing. A
-     static center would be a card position in millimeters that the idle
-     oscillator first moves the carriage to: the oscillator becomes a
-     motion source that plans its own move, which then needs the jog
-     ceilings, a refusal when the center is outside the window or the hub
-     is unhomed, and a rule for yielding the center when a source takes
+     can move (on the reference, a shrink past the parked carriage brings
+     it inside), and a carriage parked at a bound has no room, so it
+     renders nothing. A static center would be a position in millimeters
+     that the idle oscillator first moves the carriage to: the oscillator
+     becomes a motion source that plans its own move, which then needs the
+     jog ceilings, a refusal when the center is outside the window or the
+     hub is unhomed, and a rule for yielding the center when a source takes
      the rail. It can be made safe with those, but it is a new job; jogging
      to the spot and then enabling does it today. Pick: not proposed; the
      center stays the planned position (the operator's call).
+  2. The `clamped` flag. §9.7 Telemetry sets `plan.flags` bit2 where
+     shaping cut the amplitude, and `plan_flags` bit2 already names the
+     window; the reference sets it on a window cut too. A peak larger than
+     the room makes that more frequent, and §8.8 calls a plan with bit2
+     set infeasible and keeps the byte zero while no plan is in flight (an
+     idle rail). The alternative: the window's narrowing is reported on
+     `osc.amplitude_effective` alone, and bit2 is set only where the
+     ceilings cut the oscillation. Pick: unchanged here; the alternative is
+     a `plan.flags` question for its own entry if the operator wants it.
+     Owner: the operator at this gate.
 
 ---
