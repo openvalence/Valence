@@ -1961,6 +1961,7 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         refuseIntent(slot, m, NackCode::SOURCE_CONFLICT, "rail owned by a source", nowMs);
         return;
     }
+    std::optional<uint8_t> takenNow;  // a source this intent acquired or took over
     if (mappedSource) {
         uint8_t source = *mappedSource;
         bool takeoverFlag = m.has_takeover && m.takeover;
@@ -1980,10 +1981,12 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         if (acq == SourceOwnershipTable::AcquireResult::Acquired) {
             _delegate.onSourceOwnership(source, slot.session.session_id, /*reason=*/0);
             publishControlOwnerStateIfPresent();
+            takenNow = source;
         } else if (acq == SourceOwnershipTable::AcquireResult::TakenOver) {
             _delegate.onSourceOwnership(source, slot.session.session_id, /*reason=*/1);
             publishControlOwnerStateIfPresent();
             emitTakeoverEvent(source, slot.session.session_id, nowMs);
+            takenNow = source;
         }
         // AlreadyOwner: idempotent re-activation, nothing to notify.
         markSourceActive(source, nowMs, _clock.nowUs(), limits::stream_quiet_release_ms);
@@ -1996,6 +1999,14 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
                          : _delegate.applyIntent(m.channel_id, requested, slot.session.role, cfgChanged);
 
     if (!applied) {
+        // §11.4: a refused intent activated nothing, so it keeps no source it
+        // took for itself (val-u8a). A source it already owned stays owned. A
+        // takeover is released, not handed back: the displaced session was
+        // told, and re-activates an unowned source without takeover.
+        if (takenNow && _ownership.release(*takenNow, slot.session.session_id)) {
+            _delegate.onSourceOwnership(*takenNow, 0, /*reason=*/2);
+            publishControlOwnerStateIfPresent();
+        }
         NackMsg n;
         n.code = applied.error();
         n.has_intent_id = true;

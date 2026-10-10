@@ -233,6 +233,7 @@ public:
     // NOTHING for it.
     std::vector<uint8_t> refuseOps;
     std::vector<uint8_t> acceptedOps;   // safety ops the delegate actually applied
+    std::set<uint16_t> refuseChannels;  // every intent on these is refused SOURCE_CONFLICT
     std::string_view refuseDetail;      // §16.1 detail for those refusals
 
     std::vector<uint8_t> deadmanStopped;
@@ -254,6 +255,7 @@ public:
 
     Result<IntentValueMap, NackCode> applyIntent(uint16_t channel_id, const IntentValueMap& requested, AccessLevel,
                                                   bool& cfgChanged) override {
+        if (refuseChannels.count(channel_id) != 0) return Result<IntentValueMap, NackCode>::err(NackCode::SOURCE_CONFLICT);
         if (channel_id == 0x0005) {
             uint8_t op = 0;
             for (uint32_t i = 0; i < requested.count; ++i) {
@@ -1895,4 +1897,61 @@ TEST_CASE("RFC-085/RFC-098: a jog is refused SOURCE_CONFLICT while a generator o
     REQUIRE(rig.hubDelegate.ownershipEvents.size() == 2);
     CHECK(rig.hubDelegate.ownershipEvents[1].source == 0);
     CHECK(rig.hubDelegate.ownershipEvents[1].owner == rig.b->sessionId());
+}
+
+TEST_CASE("val-u8a: an intent the delegate refuses keeps no source it took; one it already owned stays") {
+    OwnerRig rig;
+    using Ev = SafetyHubDelegate::OwnershipEvent;
+    const auto& ev = rig.hubDelegate.ownershipEvents;
+    const auto is = [](const Ev& e, uint8_t source, uint32_t owner, uint8_t reason) {
+        return e.source == source && e.owner == owner && e.reason == reason;
+    };
+
+    SUBCASE("acquired, then refused: released, and the next session's move is accepted") {
+        rig.hubDelegate.refuseChannels.insert(kJogCh);
+        REQUIRE(rig.a->sendIntent(kJogCh, makeSpeedIntent(100.0f)).has_value());
+        rig.step();
+        REQUIRE(rig.delA.nacks.size() == 1);
+        CHECK(rig.delA.nacks[0].code == NackCode::SOURCE_CONFLICT);
+        REQUIRE(ev.size() == 2);
+        CHECK(is(ev[0], 0, rig.a->sessionId(), 0));
+        CHECK(is(ev[1], 0, 0, 2));
+        CHECK(u32At(rig.owners(), 1) == 0);
+
+        rig.hubDelegate.refuseChannels.clear();
+        REQUIRE(rig.b->sendIntent(kJogCh, makeSpeedIntent(200.0f)).has_value());  // no takeover flag
+        rig.step();
+        CHECK(rig.delB.nacks.empty());
+        CHECK(u32At(rig.owners(), 1) == rig.b->sessionId());
+    }
+    SUBCASE("already owned, then refused: still owned") {
+        REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+        rig.step();
+        REQUIRE(ev.size() == 1);
+        rig.hubDelegate.refuseChannels.insert(kGenCh);
+        REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(2.0f)).has_value());
+        rig.step();
+        REQUIRE(rig.delA.nacks.size() == 1);
+        CHECK(ev.size() == 1);
+        CHECK(u32At(rig.owners(), 2 * kPairBytes + 1) == rig.a->sessionId());
+    }
+    SUBCASE("taken over, then refused: released, and the displaced session re-activates without takeover") {
+        REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+        rig.step();
+        rig.hubDelegate.refuseChannels.insert(kGenCh);
+        REQUIRE(rig.b->sendIntent(kGenCh, makeSpeedIntent(2.0f), std::nullopt, /*takeover=*/true).has_value());
+        rig.step();
+        REQUIRE(rig.delB.nacks.size() == 1);
+        CHECK(rig.delB.nacks[0].code == NackCode::SOURCE_CONFLICT);
+        REQUIRE(ev.size() == 3);
+        CHECK(is(ev[1], 2, rig.b->sessionId(), 1));
+        CHECK(is(ev[2], 2, 0, 2));
+        CHECK(u32At(rig.owners(), 2 * kPairBytes + 1) == 0);
+
+        rig.hubDelegate.refuseChannels.clear();
+        REQUIRE(rig.a->sendIntent(kGenCh, makeSpeedIntent(1.0f)).has_value());
+        rig.step();
+        CHECK(rig.delA.nacks.empty());
+        CHECK(u32At(rig.owners(), 2 * kPairBytes + 1) == rig.a->sessionId());
+    }
 }
