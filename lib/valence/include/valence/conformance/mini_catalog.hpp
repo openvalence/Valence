@@ -26,8 +26,8 @@ namespace valence::conformance {
 // Fills `c` with the frozen fixture (out-param: a catalog is tens of KiB and
 // is never returned by value). Returns c.ok() — false only if `c`'s
 // capacities are too small, which for Catalog32 cannot happen.
-template <size_t E, size_t L, size_t S, size_t B, size_t T>
-inline bool buildMiniCatalog(BasicCatalog<E, L, S, B, T>& c) {
+template <size_t E, size_t L, size_t S, size_t B, size_t T, size_t F>
+inline bool buildMiniCatalog(BasicCatalog<E, L, S, B, T, F>& c) {
     c.clear();
 
     // -- 0x0003 "safety" — STATE, critical, on-change; bitfield8 + u8/u32/u16

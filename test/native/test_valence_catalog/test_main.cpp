@@ -150,6 +150,23 @@ TEST_CASE("K-01: mini-catalog deterministic encoding") {
     CHECK(std::equal(buf1.begin(), buf1.begin() + n1, buf3.begin()));
 }
 
+// rfc-68e: the fixture builds into any capacity set, a safe pool of another
+// size included (a no-accessory hub sets 0, Nucleus 360), with K-01's bytes.
+TEST_CASE("K-01b (rfc-68e): the fixture builds into a catalog of any safe-pool size, byte-identical") {
+    Catalog32 base;
+    REQUIRE(conformance::buildMiniCatalog(base));
+    std::array<std::byte, 2048> want{};
+    const size_t nWant = encodeCatalog(base, want);
+    REQUIRE(nWant == 805);
+
+    BasicCatalog<32, 200, 48, 128, 4, 0> noSafe;
+    REQUIRE(conformance::buildMiniCatalog(noSafe));
+    std::array<std::byte, 2048> got{};
+    const size_t nGot = encodeCatalog(noSafe, got);
+    REQUIRE(nGot == nWant);
+    CHECK(std::equal(want.begin(), want.begin() + nWant, got.begin()));
+}
+
 // ---- K-02 -------------------------------------------------------------------
 // etag computation over K-01 bytes: exact 8-byte value (pinned),
 // changes when catalog content changes, stable across re-encode.

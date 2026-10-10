@@ -34,9 +34,12 @@ ROOT = Path(__file__).resolve().parent.parent
 # Re-pinned 2026-09-21 by RFC-060 (the Valence rename): the fixtures' ENCODED
 # BYTES are unchanged -- only their header comments' paths and the protocol
 # name in prose moved, which is what these two hashes cover.
+# mini_catalog.hpp re-pinned 2026-10-09 by operator ruling 2026-10-03
+# (rfc-68e): buildMiniCatalog takes the sixth capacity (SafeSlots). Content
+# and encoded bytes are unchanged (K-01 805 B, K-02 8C5D68F41AD0325E).
 FROZEN_SHA256 = {
     "lib/valence/include/valence/conformance/mini_catalog.hpp":
-        "6613fea1cfa92e0de327dca17498bd18da64dd1e280ed0e2ed15ae6eaec3a228",
+        "2b39df4116c5c7b5ecb0ba7fce35b87dda322393f76f143b7e367d6e6210ad7f",
     "spec/vectors/fixtures/mini-catalog.yaml":
         "7576f08b5c190a5c720b5ec09a1fe3476fc97d3e0f11ba417720c953d2cfe44e",
 }
