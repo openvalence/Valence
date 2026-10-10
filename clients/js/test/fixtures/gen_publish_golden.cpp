@@ -40,11 +40,15 @@ static std::vector<std::byte> frame(FrameType t, uint16_t ch, uint16_t seq, std:
 int main() {
     std::array<std::byte, 512> buf{};
 
-    // HELLO carrying two publish wishes: a plain one and one with burst.
+    // HELLO carrying two publish wishes: a plain one and one with burst, and
+    // the `catalog` wish every client carries (RFC-077), as Client::connect adds it.
     HelloMsg h;
     h.client_kind = "test";
     h.client_name = "golden";
     for (int i = 0; i < 8; ++i) h.instance_id[i] = std::byte(i + 1);
+    h.subscriptions_count = 1;
+    h.subscriptions[0] = SubscriptionWish{.channel_id = channels::catalog, .rate_hz = 0.0f,
+                                          .priority = uint8_t(Priority::normal)};
     h.publishes_count = 2;
     h.publishes[0] = PublishWish{.channel_id = 0x2100, .rate_hz = 50.0f};
     h.publishes[1] = PublishWish{.channel_id = 0x2101, .rate_hz = 20.0f, .has_burst = true, .burst = 40.0f};

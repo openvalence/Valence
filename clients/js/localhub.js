@@ -49,7 +49,7 @@ import { cbUint, cbInt, cbBool, cbF32, cbTstr, cbBstr, cbArray, cbMap, cbDecodeF
 import {
   FRAME, K, IDENTITY_K, BLOB_K, BLOB_NS, WELCOME_LIMITS_K, ACCESS, CHANNEL_CLASS, PACKED, PACKED_SIZE,
   CBOR_FIELD, NACK, SAFETY_OP, SAFETY_OP_ROLE_EXEMPT, SAFETY_CAUSE, SAFETY_EVENT_KIND, FIELD_ROLE, ACTION_TAG,
-  LIMITS, PROTO_VER, WS_SUBPROTOCOL, CH_SAFETY, CH_SAFETY_INTENTS, CH_SAFETY_EVENTS, CH_SETTINGS_TRIAL,
+  LIMITS, PROTO_VER, WS_SUBPROTOCOL, CH_CATALOG, CH_SAFETY, CH_SAFETY_INTENTS, CH_SAFETY_EVENTS, CH_SETTINGS_TRIAL,
   encodeFrame, parseFrames, crc32, ESTOP_FRAME_BYTES,
 } from './frames.js';
 import { decodeCatalog, decodePacked, schemaByKey, canUseOption } from './catalog.js';
@@ -180,6 +180,17 @@ export function createLocalHub(o) {
     if (e.cls !== CHANNEL_CLASS.STATE || !e.layout) continue;
     const s = o.snapshots && o.snapshots[e.id];
     snaps.set(e.id, s ? Uint8Array.from(s) : defaultSnapshot(e));
+  }
+  // `catalog` (0x0001) announces this catalog's own etag, chunk count and
+  // entry count (registry layout), never layout defaults: a client refetches
+  // on any other etag (§8.6).
+  if (snaps.has(CH_CATALOG)) {
+    const meta = new Uint8Array(12);
+    meta.set(etag);
+    const dv = new DataView(meta.buffer);
+    dv.setUint16(8, Math.ceil(catalogBytes.length / CHUNK), true);
+    dv.setUint16(10, entries.length, true);
+    snaps.set(CH_CATALOG, meta);
   }
   const seqs = new Map(); // channel -> STATE seq (§7.3)
   const items = new Map(); // storeId * 256 + slot -> item document bytes

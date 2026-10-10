@@ -42,7 +42,7 @@ function refusal(name, fn, code) {
 
 // ---- golden bytes (gen_publish_golden.cpp output) ---------------------------
 const G = {
-  HELLO_FRAME: '0000000000003A00A501010264746573740366676F6C64656E044801020304050607080B82A20CFA424800000F192100A30CFA41A000000F192101182AFA42200000',
+  HELLO_FRAME: '0000000000004700A601010264746573740366676F6C64656E044801020304050607080A81A30CFA000000000D010F010B82A20CFA424800000F192100A30CFA41A000000F192101182AFA42200000',
   PUBLISH_FRAME: '1800000000001500A10B81A30CFA41A000000F192101182AFA42200000',
   GRANT_PUBLISH_PAYLOAD: 'A2182380182481A30EFA41A000000F192101182AFA42200000',
   GRANT_EMPTY_PAYLOAD: 'A2182380182480',
@@ -126,7 +126,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
   });
   s.connect();
   FakeWS.last.open();
-  check('HELLO with publish wishes (plain + burst) == C++ encodeHello', FakeWS.last.sent[0], G.HELLO_FRAME);
+  check('HELLO with publish wishes (plain + burst) and the catalog wish == C++ encodeHello', FakeWS.last.sent[0], G.HELLO_FRAME);
 
   // WELCOME from the C++ encoder: granted_publishes (36) adopted.
   let evt = null;

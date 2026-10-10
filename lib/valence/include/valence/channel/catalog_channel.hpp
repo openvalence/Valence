@@ -3,7 +3,7 @@
 // Every client MUST subscribe to it (RFC-077); a live change re-publishes it
 // carrying the new etag.
 //
-// Layout, the registry note's "etag, chunk count, entry count" in that order:
+// Layout per the registry (RFC-097):
 //
 //   offset  type  field        meaning
 //   0       u32   etag_lo      etag bytes 0..3, read as a little-endian u32
@@ -13,9 +13,9 @@
 //
 // The first 8 payload bytes ARE the etag in wire order. `packed_field_types`
 // has no 8-byte type, so the etag rides two u32 halves, the precedent the
-// pending-pairing instance id set (trust_channels.hpp). The registry pins the
-// content, not these types: addCatalogChannel() and encodeCatalogMeta() below
-// must agree, and the hub publishes only through the latter.
+// pending-pairing instance id set (trust_channels.hpp). addCatalogChannel()
+// and encodeCatalogMeta() below must agree, and the hub publishes only through
+// the latter.
 #pragma once
 
 #include <array>

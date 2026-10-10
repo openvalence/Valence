@@ -37,7 +37,15 @@
  * Events (register with .on(name, cb)):
  *   'open'         ()                              — socket connected
  *   'welcome'      (welcomeInfo)                   — handshake complete
- *   'catalog'      (entries, channelMap, meta)     — catalog adopted (cached or fetched)
+ *   'catalog'      (entries, channelMap, meta)     — catalog adopted (cached or fetched);
+ *                                                      fires again when a live change is
+ *                                                      refetched (RFC-077, §8.6): re-render in
+ *                                                      place, subscribe() what appeared
+ *   'withdrawn'    (channelId)                      -- RFC-077: a granted channel left the
+ *                                                      catalog; its grant is gone
+ *   'degraded'     ({kind, etag, declaredTotalBytes, capBytes}) -- a grown catalog over
+ *                                                      the reassembly cap: the session stays
+ *                                                      LIVE on its old catalog (§8.5(a))
  *   'ready'        ({etag, cached})                — readiness declared/inherited
  *   'live'         ()                              — SYNCING → LIVE (§2.2)
  *   'grant'        (grants[])                      — subscription grants applied
@@ -85,7 +93,7 @@ import {
   FRAME, FRAME_NAME, K, IDENTITY_K, TRUST_K, WELCOME_LIMITS_K, PRIORITY, WS_SUBPROTOCOL,
   PROTO_VER, LIMITS, nackName, GOODBYE_CODE,
   CBOR_FIELD, CHANNEL_CLASS, SAFETY_OP, SAFETY_CAUSE,
-  CH_SAFETY, CH_SAFETY_INTENTS, CH_SETTINGS_TRIAL, CH_CONTROL_OWNER,
+  CH_CATALOG, CH_SAFETY, CH_SAFETY_INTENTS, CH_SETTINGS_TRIAL, CH_CONTROL_OWNER,
   CH_MOVE, CH_CONFIG_SET, CH_PATTERN_CMD, CH_MODES_SET, CH_HOME,
   encodeFrame, parseFrames, encodeEstopFrame, ESTOP_FRAME_BYTES,
   STREAM_KIND, HEADER_BYTES, encodeBundle, BLOB_NS, NACK, decodeSafetySnapshot,
@@ -304,6 +312,12 @@ export function createSession(opts = {}) {
     throw new RangeError('createSession: ' + subscribeWishes.length + ' subscription wishes, HELLO carries at most ' +
       LIMITS.max_subscriptions_per_frame + '; subscribe() the rest once LIVE');
   }
+  // RFC-077 (§8.6): every client MUST subscribe to `catalog`. A hub that does
+  // not declare it omits the wish without a NACK (§6.2). Skipped only when the
+  // caller's own wishes fill the HELLO.
+  const helloWishes = subscribeWishes.some((w) => w[0] === CH_CATALOG) ||
+    subscribeWishes.length >= LIMITS.max_subscriptions_per_frame
+    ? subscribeWishes : [...subscribeWishes, [CH_CATALOG, 0, PRIORITY.normal]];
   const publishWishes = opts.publishes || [];
 
   // ---- listener registry --------------------------------------------------
@@ -372,6 +386,12 @@ export function createSession(opts = {}) {
   // gets a few requests, not a loop. Mirrors Client::kMaxCatalogRestarts.
   let catalogRestarts = 0;
   const CATALOG_RESTARTS_MAX = 3;
+  // RFC-077 (§8.6): a ready client refetches a grown catalog in the background
+  // and stays LIVE; the hub keeps serving it on its old etag meanwhile (§6.4).
+  let refetching = false; // a background catalog transfer is in flight
+  let resyncing = false; // NOT_READY while LIVE: the hub revoked readiness (§4.2 rule 3)
+  let refusedEtag = null; // a grown catalog over the reassembly cap is never asked for again
+  let declaredUnverified = false; // the declared catalog did not verify against the hub's etag
 
   // RFC-015 readiness bookkeeping (mirrors Client::pumpCatalogReady)
   let readyPending = false;
@@ -455,7 +475,7 @@ export function createSession(opts = {}) {
     ];
     if (liveToken) pairs.push([K.token, cbBstr(liveToken)]);
     if (cachedCatalog) pairs.push([K.catalog_etag, cbBstr(cachedCatalog.etag)]);
-    if (subscribeWishes.length) pairs.push([K.subscriptions, encodeSubscriptionWishes(subscribeWishes)]);
+    if (helloWishes.length) pairs.push([K.subscriptions, encodeSubscriptionWishes(helloWishes)]);
     if (publishWishes.length) pairs.push([K.publishes, encodePublishWishes(publishWishes)]);
     // RFC-038: ask for a browser-honest deadman window. The hub clamps into
     // [deadman_min_ms, deadman_max_ms] and echoes the APPLIED value on the
@@ -708,6 +728,41 @@ export function createSession(opts = {}) {
   }
 
   /**
+   * RFC-077 (§8.6): `catalog` (0x0001) announces the hub's etag; its first 8
+   * bytes are the etag (registry layout). A change starts a background refetch.
+   */
+  function noteCatalogAnnouncement(payload) {
+    if (payload.length < LIMITS.etag_bytes) return; // not the registry's 0x0001 layout
+    const announced = payload.slice(0, LIMITS.etag_bytes);
+    state.catalogEtag = announced;
+    if (state.readyEtag && bytesEqual(announced, state.readyEtag)) {
+      // The hub serves what this client declared: verified by the hub's own
+      // word, even when the transfer could only be checked against an etag
+      // that had already moved.
+      if (declaredUnverified && catalogBytes) catalogStore.save(host, announced, catalogBytes);
+      declaredUnverified = false;
+      return;
+    }
+    // Only a client holding a catalog refetches. A first transfer in flight is
+    // restarted by the hub's abort NACK instead, and a refetch in flight the
+    // same way when the etag moves again.
+    if (!autoCatalog || !catalogEntries || catalogInFlight) return;
+    if (refusedEtag && bytesEqual(announced, refusedEtag)) return;
+    refetching = true;
+    catalogRestarts = 0;
+    requestCatalog();
+  }
+
+  /** A background refetch given up: the session stays on its old etag (§8.5(a) degraded). */
+  function endRefetch() {
+    blob.reset();
+    catalogInFlight = false;
+    refetching = false;
+    // Mid re-sync, the held etag is declared again: stale is degraded, never silent.
+    if (resyncing) sendCatalogReady(state.readyEtag);
+  }
+
+  /**
    * §8.4/RFC-050: this client is the RECEIVER of the catalog blob, so it owes
    * the hub one BLOB_DONE per concluded reassembly. Best-effort and idempotent
    * by contract -- nothing upstream blocks on it, so a failed send needs no
@@ -722,6 +777,9 @@ export function createSession(opts = {}) {
     if (!blob.active || blob.complete()) return;
     if (blob.timedOut(nowMs)) {
       sendBlobDone(BLOB_DONE_STATUS.ABORTED); // say so before starting over (sd-3qu)
+      // A refetch is not restarted: a LIVE session has no READY_TIMEOUT to
+      // bound the loop. The next announcement asks again.
+      if (refetching) { endRefetch(); return; }
       requestCatalog();
       return; // abandon → restart from scratch
     }
@@ -770,6 +828,26 @@ export function createSession(opts = {}) {
     // never lights up.
   }
 
+  /**
+   * §8.6: a grown catalog over the reassembly cap. A LIVE client MAY stay on
+   * its old etag, degraded (§8.5(a)), instead of GOODBYE BLOB_REFUSED: the
+   * byte-identical rule keeps everything it already knew exact. The refusal is
+   * still said (§4.5), and this etag is not asked for again.
+   */
+  function refuseRefetch(declaredTotalBytes) {
+    const info = {
+      kind: 'blob_refused',
+      etag: state.catalogEtag,
+      declaredTotalBytes,
+      capBytes: blob.maxTotalBytes,
+    };
+    log('warn', 'grown catalog refused, staying on the old one', info);
+    refusedEtag = state.catalogEtag;
+    sendBlobDone(BLOB_DONE_STATUS.ABORTED);
+    endRefetch();
+    emit('degraded', info);
+  }
+
   function handleBlobChunk(payload) {
     const h = parseBlobChunk(payload);
     if (!h) return;
@@ -777,10 +855,15 @@ export function createSession(opts = {}) {
     // namespace routes to the store fetch it belongs to (or is dropped).
     if (h.ns !== BLOB_NS.catalog) { handleStoreChunk(h); return; }
     if (h.chunkCount === 0 || h.chunkIndex >= h.chunkCount) return;
+    if (!catalogInFlight) return; // not asked for, or the rest of a transfer already refused
 
     const now = Date.now();
     if (!blob.active || blob.chunkCount !== h.chunkCount || blob.totalBytes !== h.totalBytes) {
-      if (h.totalBytes > blob.maxTotalBytes) { refuseBlob(h.totalBytes); return; }
+      if (h.totalBytes > blob.maxTotalBytes) {
+        if (refetching) refuseRefetch(h.totalBytes);
+        else refuseBlob(h.totalBytes);
+        return;
+      }
       if (!blob.begin(h, now)) return; // malformed header (chunkCount/totalBytes 0): not a cap refusal
     }
     if (!blob.insert(h, now)) return;
@@ -789,10 +872,20 @@ export function createSession(opts = {}) {
     const bytes = blob.assembled().slice();
     blob.reset();
     catalogInFlight = false;
-    catalogRestarts = 0;
 
     const digest = catalogEtag(bytes, LIMITS.etag_bytes);
     const verified = !!state.catalogEtag && bytesEqual(digest, state.catalogEtag);
+    // RFC-077: a refetch checks against an etag the hub announced, so a miss is
+    // a torn transfer, not a choice to run degraded; it starts over while the
+    // restart budget lasts.
+    if (!verified && refetching && catalogRestarts < CATALOG_RESTARTS_MAX) {
+      sendBlobDone(BLOB_DONE_STATUS.HASH_MISMATCH);
+      catalogRestarts++;
+      requestCatalog();
+      return;
+    }
+    catalogRestarts = 0;
+    refetching = false;
     // BEFORE adoption, and deliberately: BLOB_DONE closes the TRANSFER ("what
     // arrived, and did it verify"), CATALOG_READY declares ADOPTION. A decode
     // failure below returns without a READY, so reporting the transfer here is
@@ -807,6 +900,7 @@ export function createSession(opts = {}) {
     // Only cache what actually verified (a mismatch means we hold something the
     // hub did not send; caching it would poison every later fast path).
     if (verified) catalogStore.save(host, state.catalogEtag, bytes);
+    declaredUnverified = !verified;
     sendCatalogReady(verified ? state.catalogEtag : digest);
     checkLiveTransition();
   }
@@ -1316,6 +1410,10 @@ export function createSession(opts = {}) {
     readyPending = false;
     readyAttempts = 0;
     catalogRestarts = 0;
+    refetching = false;
+    resyncing = false;
+    refusedEtag = null;
+    declaredUnverified = false;
     blob.reset();
     const matched = !!(cachedCatalog && state.catalogEtag &&
       bytesEqual(cachedCatalog.etag, state.catalogEtag));
@@ -1356,6 +1454,7 @@ export function createSession(opts = {}) {
   }
 
   function checkLiveTransition() {
+    if (resyncing) return; // handleState returns a re-sync to LIVE, not leftover counts
     if (state.phase !== SESSION_STATE.SYNCING) return;
     if (!catalogEntries) return;
     if (adoptedChannels.size < requiredRetained) return;
@@ -1398,6 +1497,12 @@ export function createSession(opts = {}) {
     // the CATALOG_READY re-declaration loop stops here.
     readyPending = false;
     state.ready = true;
+    // A re-sync returns to LIVE on the first STATE after the hub reopens.
+    if (resyncing && !refetching && state.phase === SESSION_STATE.SYNCING) {
+      resyncing = false;
+      setPhase(SESSION_STATE.LIVE);
+    }
+    if (header.channel === CH_CATALOG) noteCatalogAnnouncement(payload);
 
     const layout = layoutFor(header.channel);
     let decoded;
@@ -1464,8 +1569,27 @@ export function createSession(opts = {}) {
     // across the move would splice two encodings into one.
     if (code === NACK.CHUNK_UNAVAILABLE && catalogInFlight) {
       if (catalogRestarts < CATALOG_RESTARTS_MAX) { catalogRestarts++; requestCatalog(); }
+      else if (refetching) endRefetch();
       else { blob.reset(); catalogInFlight = false; }
       return;
+    }
+    // RFC-077 (§8.6): unsolicited, one per withdrawn grant. The channel may
+    // come back in the grown catalog; it delivers nothing until subscribed.
+    if (code === NACK.CHANNEL_WITHDRAWN) {
+      state.grants.delete(ch);
+      state.grantedPublishes.delete(ch);
+      pubTx.delete(ch);
+      emit('withdrawn', ch);
+      return;
+    }
+    // §4.2 rule 3, §6.4: the hub revoked readiness over a change outside the
+    // user space. SYNCING until the first STATE after it reopens; a refetch in
+    // flight declares on completion, otherwise the held etag is declared again.
+    if (code === NACK.NOT_READY && state.phase === SESSION_STATE.LIVE) {
+      resyncing = true;
+      state.ready = false;
+      setPhase(SESSION_STATE.SYNCING);
+      if (!refetching) sendCatalogReady(state.readyEtag);
     }
 
     // ---- correlation, best evidence first ---------------------------------
