@@ -551,7 +551,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
 | [110](#rfc-110) | Oscillator drives amended: silence hands back the card, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency, home waits for it | Draft | open |
 | [111](#rfc-111) | INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name | Draft | open |
-| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Draft | open |
+| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Accepted | open |
 | [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 
 
@@ -11979,15 +11979,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-112"></a>
 ## RFC-112 -- Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted
 
-- **Status:** DRAFT (2026-10-10). Molecule rfc-mol-hyc (rfc-lifecycle);
-  fresh-eyes review folded the same day (rfc-mol-06d: 2 blockers, 7
-  should-fix, 13 nits); Cost revised the same day to the reference's
-  build (Nucleus feat/osc-amp-mm ad42bb0, fw 0.1.41, catalog etag
-  a51bc15705a2890a; val-6y7). Amends RFC-103 (SPEC §9.7, landed) in place before
-  the first tag, and reverses RFC-103 open question 2 (ruled 2026-10-07:
-  amplitude is a share of the travel window). Independent of RFC-110 (at
-  its gate): either may land first; where both edit one paragraph or
-  registry note they edit different clauses. Next: the operator's ruling.
+- **Status:** ACCEPTED by the operator 2026-10-11 ("112 go") with two amendments written in as items 6 and 7: caps on frequency and peak ("a max value for frequency and offset is fine"), and sine only, the shape option removed ("sine is the only pattern that does anything ... leaving it as sine only, and removing the option"). Open questions 1 and 2 at their picks. Amends RFC-103 (SPEC §9.7, landed) in place before the first tag (§5.4). Molecule rfc-mol-hyc.
 - **Origin.** Operator, 2026-10-10: "I think the oscillator offset needs to
   be static, not window driven." Read here as the peak displacement: §9.7
   makes `osc.amplitude` "a share of the travel window", so resizing or
@@ -12127,6 +12119,71 @@ say exactly which, future-us will want the receipts.*
      from the out bounds in millimeters; the driven tail (its item 5) is
      drawn in millimeters; its open question 2's split (`osc.amplitude`
      asked, `osc.amplitude_effective` playing) is the one this RFC uses.
+     *Pick:* accept.
+  6. **Caps on frequency and peak** (amendment at acceptance, operator
+     2026-10-11: "a max value for frequency and offset is fine"; the
+     offset is the peak displacement, `osc.amplitude`, the Origin's
+     reading). Item 1's sentence "A hub whose catalog carries a
+     `geometry.max_travel` field with a `max` SHOULD declare a ceiling no
+     more than half that `max`, the largest peak any window could hold." is
+     replaced by: "**The caps.** `osc_max_hz` and the amplitude ceiling cap
+     what the oscillator is asked. A hub SHOULD choose both from what its
+     factory input ceilings let a sine render, never from its travel: a
+     sine of peak `A` at frequency `f` needs speed `Aω`, acceleration `Aω²`
+     and jerk `Aω³` (`ω = 2πf`), so the peak that yielding first (below)
+     leaves falls as `1/f` to `1/f³`, above some frequency nothing worth
+     asking renders, and a peak larger than the speed ceiling holds at the
+     low end of the band is a stroke, not an oscillation." The frequency
+     map's out bounds stay clamped to `osc_max_hz`, the amplitude map's to
+     the amplitude ceiling (item 1).
+     *The curve.* Under the reference's factory input set (1200 mm/s,
+     100,000 mm/s², 2·10⁷ mm/s³) the largest sine peak, min(v/ω, a/ω²,
+     j/ω³), is 19.1 mm at 10 Hz, 6.3 mm at 20 Hz, 2.8 mm at 30 Hz, 0.65 mm
+     at 50 Hz and 0.08 mm at 100 Hz; the yield-first budget renders about
+     three quarters of that (about 14 mm at 10 Hz, 4.7 mm at 20 Hz). The
+     measured drive follows pulses at about 30,000 mm/s² (Nucleus
+     docs/drive-bench-2026-10-07.md), which holds 0.84 mm of peak at 30 Hz.
+     *Reference caps.* `OSC_MAX_HZ` 100 to **30 Hz**: the highest frequency
+     at which the factory set still renders about 2 mm of peak and the
+     drive still follows near a millimeter; above it the swing is under a
+     millimeter, and at 100 Hz V9's upper two thirds (the frequency map's
+     `out_max` is the cap) asked for under 2 mm of peak.
+     `OSC_MAX_AMPLITUDE_MM` 1000 to **20 mm**: the peak the factory speed
+     ceiling holds at 10 Hz (2π · 10 Hz · 20 mm is 1257 mm/s), already the
+     factory V8 full scale, 40 mm of swing on the 267.7 mm measured rail; a
+     larger peak at a few hertz is a stroke the generators plan under their
+     own ceilings. Both are reference choices, not registry constants;
+     the reference's factory `osc.amplitude` stays 5 mm and its amplitude
+     map's `out_max` 20 mm.
+     *Pick:* the SHOULD above; the reference at 30 Hz and 20 mm.
+  7. **Sine only** (amendment at acceptance, operator 2026-10-11: "sine is
+     the only pattern that does anything ... leaving it as sine only, and
+     removing the option"). §9.7's intent drops `osc.shape` and "a square
+     with dwells is a pulse-width control"; the Shapes paragraph becomes
+     "**The waveform.** The oscillator renders a sine (`-cos`): every
+     period starts at the trough, rising. With a dwell, each half renders
+     as a rest-to-rest quintic, so a hold is reached at rest in
+     acceleration: a dwelled sine is the one square-ness the oscillator
+     renders. There is no shape select (RFC-112): the `osc.shape` role and
+     the `osc_shapes` table are retired pre-tag, never reissued." §8's
+     `osc.*` list drops `osc.shape`; Scripts drops "with `shape` fixed at
+     `sine`". Registry, under §5.4's pre-tag amendment: the `osc.shape`
+     role is removed and its string burned in a comment (as `advgen.mode`,
+     RFC-093); the `osc_shapes` table keeps its four rows, each `status:
+     retired`, numbers never reissued (as `curve_families`, RFC-106); the
+     `osc.dwell_crest` note loses the saw sentence and `osc.dwell_trough`'s
+     pulse-width sentence becomes "A dwelled sine is the oscillator's one
+     square-ness."
+     *Argument.* Only the sine renders as asked: a square's edges and a
+     saw's flyback are jerk-limited quintics that the yield-first budget
+     narrows toward the same smoothed swing, so the select offered choices
+     that play alike or not at all. The dwells stay: a held crest or trough
+     is the square-ness the planner renders band-limited.
+     *Wire impact.* The reference's 0x3140 intent and 0x1140 twin lose
+     field key 4 (`shape`); the key is not reissued in those layouts, and
+     the etag moves. The reference planner (Kinetic) keeps its shape code
+     as a standalone library; the hub always asks it for a sine, so
+     kinetic.pin does not move (its removal is a Kinetic bead).
      *Pick:* accept.
 - **Pros.** A vibration keeps its strength through every window change;
   a script's V8 means one size per machine, set once on the map; the wire
