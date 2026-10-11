@@ -566,8 +566,9 @@ def page_catalog_vocabulary(reg: dict, reg_display: str) -> str:
     table(p, ["Value", "Family", "Notes"], rows)
 
     p("## Oscillator shapes\n\n")
-    p("The `osc.shape` select of the hub-side oscillator (RFC-103, SPEC §9.7). "
-      "Every period starts at the trough, rising.\n\n")
+    p("Retired pre-tag by RFC-112 with the `osc.shape` role that selected "
+      "them: the oscillator renders a sine only (SPEC §9.7). The numbers are "
+      "never reissued.\n\n")
     rows = [[code(k), code(reg["osc_shapes"][k]["name"]),
              cell(reg["osc_shapes"][k].get("note", ""))]
             for k in sorted(reg["osc_shapes"])]
