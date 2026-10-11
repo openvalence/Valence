@@ -3046,6 +3046,10 @@ role is never an error.</p>
 <td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> uptime</td>
 </tr>
 <tr>
+<td><code>telemetry.sample_time</code></td>
+<td>RFC-113 (§9.1, §7.2): the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> time at which every other field of the same layout was sampled: u32 microseconds (unit_ids 24 us), wrapping under §7.2's <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> rule. At most one per layout, and only on a periodic <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> (max_rate_hz &gt; 0): on an on-change <abbr title="A named, numbered, typed data flow declared in the catalog.">channel</abbr> a fresh stamp makes every refresh a change and defeats <abbr title="Keeping at most one queued unsent frame per channel and subscriber, so a newer snapshot replaces an older one.">conflation</abbr>. An accessory declaration (§17.1.1) MUST NOT carry it: an accessory runs no CLOCK. Consumed, never drawn as a value: a declaration ranks it diagnostic. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD time the snapshot by it, through its CLOCK offset, rather than by its arrival.</td>
+</tr>
+<tr>
 <td><code>identity.name</code></td>
 <td>the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME identity.hub_name.</td>
 </tr>
@@ -3219,23 +3223,19 @@ role is never an error.</p>
 </tr>
 <tr>
 <td><code>osc.frequency</code></td>
-<td>RFC-103: f32, Hz, 0 .. WELCOME limits osc_max_hz (key 7), <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr>. The moving part of one cycle takes 1 / frequency; dwells stretch the period beyond it. Driven by osc.frequency.drive.</td>
+<td>RFC-103, RFC-112: f32, Hz, 0 .. WELCOME limits osc_max_hz (key 7), <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr>: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s frequency cap, chosen from what its input ceilings let a sine render (§9.7). The moving part of one cycle takes 1 / frequency; dwells stretch the period beyond it. Driven by osc.frequency.drive.</td>
 </tr>
 <tr>
 <td><code>osc.amplitude</code></td>
-<td>RFC-103: f32, a share of the travel window, 0 .. 1: the PEAK displacement from the planned position (the swing is twice it). The <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> shows millimeters. What the ceilings and the window leave of it is osc.amplitude_effective. Driven by osc.amplitude.drive.</td>
-</tr>
-<tr>
-<td><code>osc.shape</code></td>
-<td>RFC-103: select over osc_shapes (0 sine, 1 square, 2 saw, 3 saw_reverse); the wire value is the table value. Every period starts at the trough, rising; every shape is band-limited by construction (§9.7).</td>
+<td>RFC-103, RFC-112: f32, mm: the PEAK displacement from the planned position (the swing is twice it), 0 .. the field's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> max, which it MUST declare: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s amplitude ceiling, chosen from what its input ceilings let a sine render (§9.7). Static: no window, travel or flip change rescales or rewrites it. What the ceilings and the window leave of it is osc.amplitude_effective. Driven by osc.amplitude.drive.</td>
 </tr>
 <tr>
 <td><code>osc.dwell_crest</code></td>
-<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle (1 / frequency) held at the crest, added to it as RFC-095's dwells add to a stroke, so the period becomes (1 + dwell_crest + dwell_trough) / frequency and the moving halves keep their speed. A dwelled sine renders its halves as rest-to-rest quintics. The saw shapes ignore both dwells (a saw arrives at its extremes moving).</td>
+<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle (1 / frequency) held at the crest, added to it as RFC-095's dwells add to a stroke, so the period becomes (1 + dwell_crest + dwell_trough) / frequency and the moving halves keep their speed. A dwelled sine renders its halves as rest-to-rest quintics.</td>
 </tr>
 <tr>
 <td><code>osc.dwell_trough</code></td>
-<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle held at the trough, as osc.dwell_crest. A square with dwells is a pulse-width control.</td>
+<td>RFC-103: f32, two decimals, 0 = no hold: the share of the moving cycle held at the trough, as osc.dwell_crest. A dwelled sine is the oscillator's one square-ness (RFC-112).</td>
 </tr>
 <tr>
 <td><code>osc.frequency.drive</code></td>
@@ -3259,7 +3259,7 @@ role is never an error.</p>
 </tr>
 <tr>
 <td><code>osc.amplitude.drive</code></td>
-<td>RFC-103: select over osc_drives: what sets osc.amplitude, as osc.frequency.drive; axis = the osc.drive stream's amplitude field; the output <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> into 0 .. 1.</td>
+<td>RFC-103, RFC-112: select over osc_drives: what sets osc.amplitude, as osc.frequency.drive; axis = the osc.drive stream's amplitude field; the output <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> into 0 .. osc.amplitude's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> max, mm.</td>
 </tr>
 <tr>
 <td><code>osc.amplitude.in_min</code></td>
@@ -3271,11 +3271,11 @@ role is never an error.</p>
 </tr>
 <tr>
 <td><code>osc.amplitude.out_min</code></td>
-<td>RFC-103: f32, window share, the amplitude at in_min</td>
+<td>RFC-103, RFC-112: f32, mm, in osc.amplitude's range (the same min and max), the amplitude at in_min</td>
 </tr>
 <tr>
 <td><code>osc.amplitude.out_max</code></td>
-<td>RFC-103: f32, window share, the amplitude at in_max</td>
+<td>RFC-103, RFC-112: f32, mm, in osc.amplitude's range (the same min and max), the amplitude at in_max</td>
 </tr>
 <tr>
 <td><code>osc.active</code></td>
@@ -3283,7 +3283,7 @@ role is never an error.</p>
 </tr>
 <tr>
 <td><code>osc.amplitude_effective</code></td>
-<td>RFC-103: <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> f32, window share: the amplitude the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit2 <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> (RFC-100) is set.</td>
+<td>RFC-103, RFC-112: <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> f32, mm: the peak the ceilings and the window left after shaping (the oscillator yields first), 0 while inactive. Where shaping cut it, plan.flags bit2 <abbr title="Replacing a requested value with the nearest value the machine's limits allow.">clamped</abbr> (RFC-100) is set.</td>
 </tr>
 <tr>
 <td><code>store.slot</code></td>
@@ -3354,7 +3354,7 @@ field. The same doctrine applies: unknown roles render generically.</p>
 </tr>
 <tr>
 <td><code>osc.drive</code></td>
-<td>RFC-103: c2h samples-kind <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> entry, the external axis driving the oscillator. The role fixes the layout: amplitude (f32, 0 .. 1) then frequency (f32, 0 .. 1), each mapped through its parameter's own bounds where that parameter's drive is axis. Carries no input.target, so it is never motion input and never owns the rail. Quiet for stream_quiet_release_ms, an axis-driven parameter reads 0. The reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr> names its entry osc-drive.</td>
+<td>RFC-103, RFC-112: c2h samples-kind <abbr title="A channel class carrying timestamped sample bundles, in either direction.">STREAM</abbr> entry, the external axis driving the oscillator. The role fixes the layout: amplitude (f32, 0 .. 1, a norm, never a length) then frequency (f32, 0 .. 1), each mapped through its parameter's own bounds where that parameter's drive is axis. Carries no input.target, so it is never motion input and never owns the rail. Quiet for stream_quiet_release_ms, an axis-driven parameter reads 0. The reference <abbr title="The single authoritative endpoint of one machine.">hub</abbr> names its entry osc-drive.</td>
 </tr>
 </tbody>
 </table>
@@ -3503,7 +3503,7 @@ intermediate steps. A <abbr title="Any endpoint that establishes a session with 
 </tbody>
 </table>
 <h2 id="oscillator-shapes">Oscillator shapes<a class="headerlink" href="#oscillator-shapes" title="Link to this section">#</a></h2>
-<p>The <code>osc.shape</code> select of the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-side oscillator (RFC-103, SPEC §9.7). Every period starts at the trough, rising.</p>
+<p>Retired pre-tag by RFC-112 with the <code>osc.shape</code> role that selected them: the oscillator renders a sine only (SPEC §9.7). The numbers are never reissued.</p>
 <table>
 <thead>
 <tr>
@@ -3516,22 +3516,22 @@ intermediate steps. A <abbr title="Any endpoint that establishes a session with 
 <tr>
 <td><code>0</code></td>
 <td><code>sine</code></td>
-<td>-cos: trough at phase 0, crest at the half cycle. With a dwell, each half is a rest-to-rest <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr>.</td>
+<td>RETIRED pre-tag by RFC-112: the select is gone; the sine is the oscillator's only <abbr title="The planner mode that turns one timed segment into one quintic over exactly the commanded duration.">waveform</abbr>. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>1</code></td>
 <td><code>square</code></td>
-<td>a rising <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr> edge at phase 0, the crest held, a falling edge at the half cycle, the trough held; with dwells, a pulse-width control</td>
+<td>RETIRED pre-tag by RFC-112: a dwelled sine is the one square-ness. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
 <td><code>saw</code></td>
-<td>a linear rise over most of the period, then a <abbr title="A fifth-order polynomial trajectory matched to position, velocity and acceleration at both ends.">quintic</abbr> flyback whose slope matches the ramp at both ends. Ignores the dwells.</td>
+<td>RETIRED pre-tag by RFC-112. Never emitted, never reused.</td>
 </tr>
 <tr>
 <td><code>3</code></td>
 <td><code>saw_reverse</code></td>
-<td>saw mirrored in time: the flyback rises, the ramp falls. Ignores the dwells.</td>
+<td>RETIRED pre-tag by RFC-112. Never emitted, never reused.</td>
 </tr>
 </tbody>
 </table>

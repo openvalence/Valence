@@ -2780,15 +2780,15 @@
 
 <h1 id="s7">7. Time and Sequencing <em>(normative)</em><a class="headerlink" href="#s7" title="Link to this section">#</a></h1>
 <h2 id="s7-1">7.1 Clock: the hub is the timebase<a class="headerlink" href="#s7-1" title="Link to this section">#</a></h2>
-<p>All protocol timestamps are <strong>hub time</strong>: microseconds (streams) or milliseconds (state/events) since hub boot. Clients never send their own clock in data frames; they <em>convert</em> using an offset learned from CLOCK exchanges.</p>
+<p>All protocol timestamps are <strong>hub time</strong>: microseconds (streams and <code>telemetry.sample_time</code>) or milliseconds (other STATE and EVENT times) since hub boot. Clients never send their own clock in data frames; they <em>convert</em> using an offset learned from CLOCK exchanges.</p>
 <p>CLOCK (<code>0x05</code>, raw, 13 bytes, unchanged from the port-81 ancestor): the client sends <code>0x05</code> + <code>t0:u32</code> (client µs); the hub <strong>MUST</strong> reply <code>0x05</code> + <code>t0:u32</code> (echo) + <code>t1:u32</code> (hub µs at receipt) + <code>t2:u32</code> (hub µs at send). The client computes <code>offset = ((t1 − t0) + (t2 − t3))/2</code> and <code>RTT = (t3 − t0) − (t2 − t1)</code>, with <code>t3</code> = client µs at reply receipt.</p>
 <p>Answering CLOCK is a hub obligation, not an option: a hub that ignores it leaves every streaming client's timestamps uncorrected while the wire carries no signal that anything is wrong.</p>
-<p>Clients holding stream subscriptions or publications SHOULD resync every <code>clock_resync_interval_s</code> (10 s) and on every RTT spike &gt; 2× median; drift between resyncs is assumed linear and ignored (µs-class drift over 10 s is below sample-offset resolution).</p>
+<p>Clients holding stream subscriptions or publications, or timing STATE by a <code>telemetry.sample_time</code> field, SHOULD resync every <code>clock_resync_interval_s</code> (10 s) and on every RTT spike &gt; 2× median; drift between resyncs is assumed linear and ignored (µs-class drift over 10 s is below sample-offset resolution).</p>
 <p>CLOCK exchanges MUST NOT traverse buffering relays unless the relay performs timestamp correction (<a href="../transports/#s14-3">§14.3</a>); a relay that cannot correct MUST drop CLOCK frames, forcing clients behind it to rely on WELCOME's coarse bootstrap (informative accuracy: ±bundle-interval).</p>
 <h2 id="s7-2">7.2 Timestamp formats and wraparound<a class="headerlink" href="#s7-2" title="Link to this section">#</a></h2>
 <ul>
 <li><strong>STREAM:</strong> <code>t_base</code> u32 hub-µs (wraps every ~71.6 min) + per-sample u16 µs offsets. Wraparound rule: samples are always near-now; a receiver interprets <code>t_base</code> in the ±35.8 min window around its current hub-time estimate. Ancient or far-future values indicate a missed resync, not time travel — resync, don't extrapolate.</li>
-<li><strong>STATE/EVENT:</strong> u32 hub-ms (wraps ~49.7 days) with the same nearest-window rule.</li>
+<li><strong>STATE/EVENT:</strong> u32 hub-ms (wraps ~49.7 days) with the same nearest-window rule, except a <code>telemetry.sample_time</code> field: u32 hub-µs under the STREAM rule above.</li>
 <li><code>boot_id</code> (<a href="../session/#s6-1">§6.1</a>) fences all of it: a new <code>boot_id</code> voids all prior timestamps, seqs, and offsets.</li>
 <li><strong>Scheduled moments</strong> (<code>datetime.*</code> field roles, RFC-083): whole seconds of hub time since boot, never Unix epoch. A hub needs no RTC and no network time source to offer a schedule; the client converts to wall time with its CLOCK offset, and a moment stored before a <code>boot_id</code> change is void, so the client re-arms it.</li>
 </ul>
