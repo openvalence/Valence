@@ -1217,6 +1217,7 @@ export const FIELD_ROLE = {
   telemetry_power_bus: 'telemetry.power.bus',  // DC bus voltage or power
   telemetry_temp: 'telemetry.temp',  // a temperature reading; the field's own name/unit says which
   telemetry_uptime: 'telemetry.uptime',  // hub uptime
+  telemetry_sample_time: 'telemetry.sample_time',  // RFC-113 (§9.1, §7.2): the hub time at which every other field of the same layout was sampled: u3
   identity_name: 'identity.name',  // the writable machine-name setting (RFC-026 tier 2, str16/str32). Its READ-ONLY twin is WELCOME i
   meta_enabled_mask: 'meta.enabled_mask',  // RFC-009.4: a bitfield8 field whose bit i gates the i-th setting-annotated field of the SAME layo
   meta_trial_pending: 'meta.trial_pending',  // RFC-099 (§8.8): a bitfield8 field whose bit i marks the i-th setting-annotated field of the SAME

@@ -491,6 +491,8 @@ Each earned by a documented field regression in the reference client. A client c
 14. Render each safety pair as ONE control with two states (RFC-085): pause/resume, override/return, estop/release. There is no separate clear, release or resume button anywhere. Release is a press-and-hold of the e-stop control (SHOULD, 3 s recommended); resume and return take no gate.
 15. Label the e-stop control from the hub's declaration (RFC-085, SPEC §11.2): `estop_cuts_power` true renders **E-Stop**; false or absent renders **Halt**. A client MUST NOT render "E-Stop" on a hub that declared false or declared nothing (H1 made testable).
 
+A client SHOULD time a snapshot carrying a `telemetry.sample_time` field by that field through its CLOCK offset (SPEC §7.1); without the field, before a CLOCK reply, or at an implausible age, arrival time is the fallback (RFC-113).
+
 A host that loads substituted widgets keeps these laws only under §10.2's containment rules.
 
 **The Phosphor Tier-0 renderer is the REFERENCE renderer for this section** — every law above was earned there first.

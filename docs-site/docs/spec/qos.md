@@ -31,6 +31,7 @@ A grant is `{channel_id, granted_rate_hz (14), priority (13)}` for subscriptions
 - **Unsolicited GRANT** (same frame, hub-initiated) re-states current grants whenever the hub changes them: a new high-priority client joined and the pie re-split; the probe justified a raise; sustained congestion forced a cut. Clients MUST comply immediately and SHOULD reflect grant changes in their UI — a scope view showing 60 Hz when granted 20 is lying, and [§1.2-1](foundations.md#s1-2) applies to meta-state too.
 - A PUBLISH ([§6.7](session.md#s6-7)) is answered with a GRANT carrying `granted_publishes` **even when nothing was granted**; an empty result is the answer, not silence.
 - Grant changes never apply to the never-shed set; its rate is intrinsic.
+- A rate-0 grant on a periodic channel is delivered at that channel's `max_rate_hz` ([§9.1](channels.md#s9-1)); a client displaying grants reads it so.
 
 ## 10.3 Congestion signals are per-binding {#s10-3}
 

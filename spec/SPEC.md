@@ -560,20 +560,20 @@ Codes of note: `NORMAL_CLOSURE` (clean voluntary teardown, either direction), `S
 
 ### 7.1 Clock: the hub is the timebase
 
-All protocol timestamps are **hub time**: microseconds (streams) or milliseconds (state/events) since hub boot. Clients never send their own clock in data frames; they *convert* using an offset learned from CLOCK exchanges.
+All protocol timestamps are **hub time**: microseconds (streams and `telemetry.sample_time`) or milliseconds (other STATE and EVENT times) since hub boot. Clients never send their own clock in data frames; they *convert* using an offset learned from CLOCK exchanges.
 
 CLOCK (`0x05`, raw, 13 bytes, unchanged from the port-81 ancestor): the client sends `0x05` + `t0:u32` (client µs); the hub **MUST** reply `0x05` + `t0:u32` (echo) + `t1:u32` (hub µs at receipt) + `t2:u32` (hub µs at send). The client computes `offset = ((t1 − t0) + (t2 − t3))/2` and `RTT = (t3 − t0) − (t2 − t1)`, with `t3` = client µs at reply receipt.
 
 Answering CLOCK is a hub obligation, not an option: a hub that ignores it leaves every streaming client's timestamps uncorrected while the wire carries no signal that anything is wrong.
 
-Clients holding stream subscriptions or publications SHOULD resync every `clock_resync_interval_s` (10 s) and on every RTT spike > 2× median; drift between resyncs is assumed linear and ignored (µs-class drift over 10 s is below sample-offset resolution).
+Clients holding stream subscriptions or publications, or timing STATE by a `telemetry.sample_time` field, SHOULD resync every `clock_resync_interval_s` (10 s) and on every RTT spike > 2× median; drift between resyncs is assumed linear and ignored (µs-class drift over 10 s is below sample-offset resolution).
 
 CLOCK exchanges MUST NOT traverse buffering relays unless the relay performs timestamp correction (§14.3); a relay that cannot correct MUST drop CLOCK frames, forcing clients behind it to rely on WELCOME's coarse bootstrap (informative accuracy: ±bundle-interval).
 
 ### 7.2 Timestamp formats and wraparound
 
 - **STREAM:** `t_base` u32 hub-µs (wraps every ~71.6 min) + per-sample u16 µs offsets. Wraparound rule: samples are always near-now; a receiver interprets `t_base` in the ±35.8 min window around its current hub-time estimate. Ancient or far-future values indicate a missed resync, not time travel — resync, don't extrapolate.
-- **STATE/EVENT:** u32 hub-ms (wraps ~49.7 days) with the same nearest-window rule.
+- **STATE/EVENT:** u32 hub-ms (wraps ~49.7 days) with the same nearest-window rule, except a `telemetry.sample_time` field: u32 hub-µs under the STREAM rule above.
 - `boot_id` (§6.1) fences all of it: a new `boot_id` voids all prior timestamps, seqs, and offsets.
 - **Scheduled moments** (`datetime.*` field roles, RFC-083): whole seconds of hub time since boot, never Unix epoch. A hub needs no RTC and no network time source to offer a schedule; the client converts to wall time with its CLOCK offset, and a moment stored before a `boot_id` change is void, so the client re-arms it.
 
@@ -841,7 +841,8 @@ STATE channels carry **idempotent full snapshots** of a coherent group of fields
 - **MTU rule:** a STATE payload MUST fit `min_transport_payload` (242 B) unfragmented. This is a *catalog design constraint*: a state group that does not fit is split into multiple channels at catalog-design time (and, if they are settings, given the same `category` so they render as one tab — §8.8). Conformance tooling SHOULD flag violations mechanically, since layout size is statically known.
 - **Retained value:** the hub keeps the latest value of every STATE channel and MUST push it immediately upon grant — connect, re-subscribe, reconnect — subject only to the readiness gate (§6.4). This is the device-shadow primitive; it is what "page load adopts device state" compiles to.
 - **Conflation:** the hub maintains at most a depth-1 queue per (channel, subscriber) — a newer snapshot replaces a queued unsent one. Subscribers therefore see the freshest state their link can carry, never a backlog. Newest-wins by seq on receive (§7.3).
-- **Rate:** `granted_rate_hz` is a *ceiling* on push frequency. On-change channels (rate 0) push at most once per change, conflated. Periodic channels push at `min(grant, change rate)`.
+- **Rate:** `granted_rate_hz` is a *ceiling* on push frequency. On an on-change channel (`max_rate_hz` 0) a subscriber is pushed at most once per change, conflated. On a periodic channel it is pushed at `min(pace, change rate)`, where pace is the grant, or `max_rate_hz` under a rate-0 grant. A rate-0 grant is echoed as 0. A hub SHOULD keep a periodic channel's retained value current on every tick it pushes on and pace only per grant: a publication schedule of its own beats against every grant at another rate (RFC-113).
+- **Sample time:** a periodic STATE layout MAY carry one `telemetry.sample_time` field, the hub time (u32 µs, §7.2) at which every other field of the same layout was sampled. Only on a periodic channel (`max_rate_hz` > 0): on an on-change channel a fresh stamp makes every refresh a change and defeats conflation. An accessory declaration (§17.1.1) MUST NOT carry it. It is consumed, never drawn as a value; a client SHOULD time the snapshot by it, through its CLOCK offset (§7.1), rather than by its arrival (RFC-113).
 - **Bitfields:** flag-word channels use `bitfield8` fields with catalog-enumerated bit meanings. A latched safety word is still a full snapshot like everything else.
 - **First push after a grant is never shed** (§10.4). A subscriber's very first snapshot is what takes it from READY to LIVE; shedding it would strand the session.
 
@@ -1218,6 +1219,7 @@ A grant is `{channel_id, granted_rate_hz (14), priority (13)}` for subscriptions
 - **Unsolicited GRANT** (same frame, hub-initiated) re-states current grants whenever the hub changes them: a new high-priority client joined and the pie re-split; the probe justified a raise; sustained congestion forced a cut. Clients MUST comply immediately and SHOULD reflect grant changes in their UI — a scope view showing 60 Hz when granted 20 is lying, and §1.2-1 applies to meta-state too.
 - A PUBLISH (§6.7) is answered with a GRANT carrying `granted_publishes` **even when nothing was granted**; an empty result is the answer, not silence.
 - Grant changes never apply to the never-shed set; its rate is intrinsic.
+- A rate-0 grant on a periodic channel is delivered at that channel's `max_rate_hz` (§9.1); a client displaying grants reads it so.
 
 ### 10.3 Congestion signals are per-binding
 
