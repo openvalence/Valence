@@ -552,7 +552,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [110](#rfc-110) | Oscillator drives amended: silence hands back the card, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency, home waits for it | Draft | open |
 | [111](#rfc-111) | INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name | Draft | open |
 | [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Draft | open |
-| [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Draft | open |
+| [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 
 
 <a id="rfc-001"></a>
@@ -12212,14 +12212,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-113"></a>
 ## RFC-113 -- Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling
 
-- **Status:** DRAFT (2026-10-11). Molecule rfc-mol-3vb (rfc-lifecycle);
-  fresh-eyes review folded the same day (rfc-mol-ww1: 2 blockers, 7
-  should-fix, 6 nits); next: the operator's ruling (rfc-mol-5z2). Items 1
-  and 3 and item 2 can be ruled on separately.
-  Coded as if accepted on branches (operator rule: code as if the RFC exists,
-  adapt the RFC): Valence fix/judder 478527e (the library half of item 2),
-  Nucleus fix/judder e137035 (0x1100 `t_us`, fw 0.1.43), Phosphor lp/judder
-  30d262a (the client half of items 1 and 3). Nothing merged.
+- **Status:** LANDED 497c1a6 (2026-10-11); the library half 478527e. ACCEPTED by the operator 2026-10-11 as drafted ("113 yes ... I don't see anything worth changing, 15x smoother is amazing"): field name `telemetry.sample_time` and unit `us` kept, the pacing rule kept, every open question at its pick. Consumer beads: Nucleus val-7f5 (e137035, fw 0.1.43), Phosphor ph-6k43 (30d262a). Molecule rfc-mol-3vb.
 - **Origin.** Phosphor ph-6k43 and Nucleus val-7f5, 2026-10-11: the rail's
   comet judders. Measured on valencesim, 0x1100 granted 50 Hz: every fifth
   position sample covered about two sample periods (5.5 mm, then 14 mm, at
