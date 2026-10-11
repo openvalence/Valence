@@ -2651,6 +2651,7 @@ inline void Hub::pumpStatePacing(Slot& slot, uint32_t nowMs) {
         auto retained = _retained.get(sub.channel_id);
         if (!retained) continue;  // nothing published for this channel yet
 
+        sub.ceiling_hz = entry->maxRateHz;
         PushRecord* pr = findOrCreatePushRecord(slot, sub.channel_id);
         bool changePending = (pr == nullptr) || !pr->valid || seqIsNewer(retained->seq, pr->lastSeq);
 

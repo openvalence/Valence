@@ -47,6 +47,12 @@ struct SubscriptionEntry {
     uint16_t channel_id = 0;
     float granted_rate_hz = 0.0f;   // ceiling, §10.2; 0 = on-change only (§9.1)
     Priority priority = Priority::normal;
+    // The channel's catalog max_rate_hz, which the hub sets before each check.
+    // A rate-0 grant on a periodic channel is paced at it, so a publisher may
+    // refresh the retained value on every tick and the hub's pacing stays the
+    // only pacing: a publisher paced on its own schedule beats against every
+    // grant at another rate (bd val-7f5). 0 on an on-change channel.
+    float ceiling_hz = 0.0f;
 
     // Pacing state. `everPushed` false means "granted but nothing has been
     // pushed to it yet" — which dueForPush() treats as unconditionally due,
@@ -67,16 +73,16 @@ struct SubscriptionEntry {
     // §9.1 rate-ceiling + on-change semantics:
     //   - not yet pushed since grant -> due now (push-on-grant, see above).
     //   - no change pending -> never due (nothing new to conflate/send).
-    //   - rate_hz == 0 (on-change only) -> due immediately once changed.
-    //   - rate_hz > 0 -> due on the schedule: periodic channels push at
-    //     min(grant, change rate) per §9.1, the grant met on average and
-    //     never exceeded.
+    //   - rate_hz == 0 on an on-change channel -> due immediately once changed.
+    //   - rate_hz > 0, or 0 on a periodic channel (ceiling_hz) -> due on the
+    //     schedule: periodic channels push at min(grant, change rate) per
+    //     §9.1, the grant met on average and never exceeded.
     // Time comparison goes through util/serial_arithmetic.hpp's timeReached
     // (wrap-safe hub-ms, §7.2) — no inline `now >= deadline` here.
     bool dueForPush(uint32_t nowMs, bool changePending) const {
         if (!everPushed) return true;
         if (!changePending) return false;
-        if (granted_rate_hz <= 0.0f) return true;
+        if (!(paceHz() > 0.0f)) return true;
         return timeReached(nowMs, dueMs);
     }
 
@@ -97,11 +103,16 @@ struct SubscriptionEntry {
         dueFracUs = uint16_t(frac);
     }
 
-    // One grant period in µs, rounded UP so the schedule never runs above the
+    // The rate the schedule runs at: the grant, or the ceiling under a rate-0
+    // grant; 0 for on-change.
+    float paceHz() const { return granted_rate_hz > 0.0f ? granted_rate_hz : ceiling_hz; }
+
+    // One pacing period in µs, rounded UP so the schedule never runs above the
     // grant; 0 for on-change. Clamped: the rate is a client's wish.
     uint32_t grantPeriodUs() const {
-        if (!(granted_rate_hz > 0.0f)) return 0;
-        const float us = std::ceil(1.0e6f / granted_rate_hz);
+        const float hz = paceHz();
+        if (!(hz > 0.0f)) return 0;
+        const float us = std::ceil(1.0e6f / hz);
         return us < 4.0e9f ? uint32_t(us) : 4000000000u;
     }
 };

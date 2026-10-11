@@ -262,11 +262,12 @@ TEST_CASE("SubscriptionEntry::dueForPush: rate 10Hz due at most every 100ms") {
 // A hub checks dueForPush on its own tick, a change always pending, and
 // counts the pushes over 6 s (bd val-7ur). `tickUs` is the hub's period and
 // `jitterUs` a late wake on every other tick.
-static int pushesIn6s(float rateHz, uint32_t tickUs, uint32_t jitterUs) {
+static int pushesIn6s(float rateHz, uint32_t tickUs, uint32_t jitterUs, float ceilingHz = 0.0f) {
     SubscriptionTable<> table;
     REQUIRE(table.upsert(0x1100, rateHz, Priority::elevated));
     SubscriptionEntry* e = table.find(0x1100);
     REQUIRE(e != nullptr);
+    e->ceiling_hz = ceilingHz;
     e->markPushed(0);  // the push-on-grant, not counted
     int n = 0;
     for (uint64_t k = 1; k * tickUs <= 6000000u; ++k) {
@@ -288,6 +289,17 @@ TEST_CASE("SubscriptionEntry pacing delivers the granted rate on a coarse hub ti
     }
     // Never above the grant either: a 1 ms tick at 60 Hz is not 62.5 Hz.
     CHECK(std::abs(pushesIn6s(60.0f, 1000, 0) - 360) <= 1);
+}
+
+// A publisher that refreshes its retained value every tick leaves the hub's
+// schedule the only pacing (bd val-7f5): a rate-0 grant on a periodic channel
+// runs at the catalog ceiling, a grant under it at the grant, and an
+// on-change channel (ceiling 0) pushes every change.
+TEST_CASE("SubscriptionEntry pacing: a rate-0 grant on a periodic channel runs at the catalog ceiling") {
+    CHECK(std::abs(pushesIn6s(0.0f, 5000, 0, 60.0f) - 360) <= 1);
+    CHECK(std::abs(pushesIn6s(0.0f, 5000, 1500, 45.0f) - 270) <= 1);
+    CHECK(std::abs(pushesIn6s(50.0f, 5000, 0, 60.0f) - 300) <= 1);
+    CHECK(pushesIn6s(0.0f, 5000, 0, 0.0f) == 1200);
 }
 
 TEST_CASE("SubscriptionEntry pacing: a stalled hub resumes at the rate, never a burst") {
