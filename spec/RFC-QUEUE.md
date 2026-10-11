@@ -551,7 +551,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [109](#rfc-109) | Health roles: link, stream arrival, late plans, faults and heap, so a client can say why the motion paused | Draft | open |
 | [110](#rfc-110) | Oscillator drives amended: silence hands back the card, a live stream renders, a driven oscillator is a sine, the drive lead is the grant's latency, home waits for it | Draft | open |
 | [111](#rfc-111) | INTENT capacity: an INTENT entry is written whole in one intent, and an over-capacity intent is refused by name | Draft | open |
-| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Accepted | open |
+| [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Landed | closed |
 | [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 
 
@@ -11979,7 +11979,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-112"></a>
 ## RFC-112 -- Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted
 
-- **Status:** ACCEPTED by the operator 2026-10-11 ("112 go") with two amendments written in as items 6 and 7: caps on frequency and peak ("a max value for frequency and offset is fine"), and sine only, the shape option removed ("sine is the only pattern that does anything ... leaving it as sine only, and removing the option"). Open questions 1 and 2 at their picks. Amends RFC-103 (SPEC §9.7, landed) in place before the first tag (§5.4). Molecule rfc-mol-hyc.
+- **Status:** LANDED 65ac2fd (2026-10-11). ACCEPTED by the operator 2026-10-11 ("112 go") with two amendments written in as items 6 and 7: caps on frequency and peak ("a max value for frequency and offset is fine"), and sine only, the shape option removed ("sine is the only pattern that does anything ... leaving it as sine only, and removing the option"). Open questions 1 and 2 at their picks. Amends RFC-103 (SPEC §9.7, landed) in place before the first tag (§5.4). Consumer beads: Nucleus val-6y7, Phosphor ph-0xia, Kinetic kin-itch (the dead shapes, through kinetic-change). Molecule rfc-mol-hyc.
 - **Origin.** Operator, 2026-10-10: "I think the oscillator offset needs to
   be static, not window driven." Read here as the peak displacement: §9.7
   makes `osc.amplitude` "a share of the travel window", so resizing or
