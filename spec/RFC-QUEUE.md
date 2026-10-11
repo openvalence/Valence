@@ -12213,7 +12213,9 @@ say exactly which, future-us will want the receipts.*
 ## RFC-113 -- Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling
 
 - **Status:** DRAFT (2026-10-11). Molecule rfc-mol-3vb (rfc-lifecycle);
-  next: the fresh-eyes review (rfc-mol-ww1), then the operator's ruling.
+  fresh-eyes review folded the same day (rfc-mol-ww1: 2 blockers, 7
+  should-fix, 6 nits); next: the operator's ruling (rfc-mol-5z2). Items 1
+  and 3 and item 2 can be ruled on separately.
   Coded as if accepted on branches (operator rule: code as if the RFC exists,
   adapt the RFC): Valence fix/judder 478527e (the library half of item 2),
   Nucleus fix/judder e137035 (0x1100 `t_us`, fw 0.1.43), Phosphor lp/judder
@@ -12238,47 +12240,65 @@ say exactly which, future-us will want the receipts.*
   smoothing recovers the true spacing; Phosphor re-spaces arrivals to an even
   schedule, which is wrong whenever the true spacing is not even.
 
-  Second, §9.1 leaves a rate-0 grant on a periodic channel undefined: "0 =
-  on-change" with no ceiling, so a hub that refreshes a periodic channel's
+  Second, §9.1 leaves a rate-0 grant on a periodic channel undefined: its
+  Rate bullet says periodic channels push at `min(grant, change rate)`, which
+  reads as never under a grant of 0, while §8.1's "0.0 = on-change only" is
+  about the catalog's `max_rate_hz`, not a grant. The reference hub treats a
+  rate-0 grant as on-change with no ceiling, so a hub that refreshes a periodic channel's
   retained value every tick pushes it to such a subscriber at the tick rate,
   above the catalog's `max_rate_hz`. The reference device avoided that by
   pacing its publications, which is the alias above.
 - **Proposal.**
     1. **The role.** Register field role `telemetry.sample_time`: "the hub time
     (§7.1) at which every other field of the same layout was sampled: u32
-    microseconds (unit_id `us`), wrapping under §7.2's STREAM rule. At most one
-    per layout. A client SHOULD time the snapshot by it, through its CLOCK
-    offset, rather than by its arrival." §7.2's STATE bullet gains: "A STATE
-    layout MAY carry its sample instant in a `telemetry.sample_time` field: u32
-    hub-µs, interpreted as STREAM's `t_base` is." §7.1's resync sentence gains
-    "or timing STATE by a `telemetry.sample_time` field" after "Clients holding
-    stream subscriptions or publications".
+    microseconds (unit_ids 24 `us`), wrapping under §7.2's STREAM rule. At
+    most one per layout, and only on a periodic STATE channel (`max_rate_hz` >
+    0): on an on-change channel a fresh stamp makes every refresh a change and
+    defeats conflation. An accessory declaration (§17.1.1) MUST NOT carry it:
+    an accessory runs no CLOCK. Consumed, never drawn as a value. A client
+    SHOULD time the snapshot by it, through its CLOCK offset, rather than by
+    its arrival." §7.1's first sentence becomes "microseconds (streams and
+    `telemetry.sample_time`) or milliseconds (other STATE and EVENT times)".
+    §7.2's STATE bullet becomes "STATE/EVENT: u32 hub-ms ..., except a
+    `telemetry.sample_time` field: u32 hub-µs under the STREAM rule above."
+    §7.1's resync sentence gains "or timing STATE by a `telemetry.sample_time`
+    field" after "Clients holding stream subscriptions or publications".
     *Argument.* A field, not a header change: STATE frames keep their 8-byte
     header, a hub that does not need it pays nothing, and the catalog already
     says which layouts carry it. µs, not §7.2's STATE ms: a 15 ms gap
-    quantized to whole ms is off by up to 3 %, the same four bytes buy
+    measured as the difference of two whole-ms stamps is off by up to nearly
+    1 ms, about 6.7 %, the same four bytes buy
     exactness, and the STREAM rule is one conversion path a client already has.
-    *Registry 50 % rule.* Any machine that publishes a moving quantity at a
-    rate (position, speed, force, a sensor) has the problem, and a renderer of
-    any of them draws it over time, so a majority of machines would carry it
-    on their telemetry channel; the role is device-neutral. Open question 2
-    asks whether it belongs in the registry at all.
-    2. **A rate-0 grant on a periodic channel.** §9.1's Rate bullet gains: "A
-    rate-0 grant on a periodic channel (`max_rate_hz` > 0) is paced at
-    `max_rate_hz`: the grant echoed stays 0, and no subscriber is pushed above
-    the catalog ceiling. A hub SHOULD keep a periodic channel's retained value
-    current on every tick it pushes on and pace only per grant: a publication
-    schedule of its own beats against every grant at another rate."
+    *Registry 50 % rule.* RENDERING law 6 forbids binding by field name, so a
+    role is the only form a client can use at all. Denominator: hubs that
+    publish a periodic telemetry channel. Each of those draws a moving
+    quantity over time, so more than half would carry it; simple PWM boards
+    and accessories with on-change STATE would not, and need not.
+    *Alternative considered:* an h2c STREAM twin of the telemetry (§9.2 lists
+    "telemetry h2c"), which already carries hub-µs `t_base`/`t_off`. STATE plus
+    a field keeps the retained adopt-on-connect (§9.1) and one census per
+    frame; a STREAM twin is a second source for one quantity, with
+    decimation and bundle-span limits of its own.
+    2. **A rate-0 grant on a periodic STATE channel.** §9.1's Rate bullet is
+    replaced: "**Rate:** `granted_rate_hz` is a ceiling on push frequency. On
+    an on-change channel (`max_rate_hz` 0) a subscriber is pushed at most once
+    per change, conflated. On a periodic channel it is pushed at min(pace,
+    change rate), where pace is the grant, or `max_rate_hz` under a rate-0
+    grant. A rate-0 grant is echoed as 0. A hub SHOULD keep a periodic
+    channel's retained value current on every tick it pushes on and pace only
+    per grant: a publication schedule of its own beats against every grant at
+    another rate." §10.2 gains: "A rate-0 grant on a periodic channel is
+    delivered at that channel's `max_rate_hz` (§9.1); a client displaying
+    grants reads it so."
     *Argument.* The ceiling is the catalog's promise; on-change with no
     ceiling on a channel that changes every tick is not a meaningful grant.
-    Echoing 0 keeps the wish's meaning (as fast as the channel goes) and needs
-    no GRANT change. The SHOULD names the alias that caused the bug; it is
-    implementation guidance, so it could also go to an informative note.
-    3. **Rendering.** RENDERING.md §13 gains a law after law 8: "Time a
-    snapshot that carries a `telemetry.sample_time` field by that field
-    through the CLOCK offset (SPEC §7.1), never by its arrival; without the
-    field, or before a CLOCK reply, arrival time is the fallback." SHOULD
-    strength, not MUST: the fallback is still conformant.
+    Echoing 0 keeps the wish's meaning (as fast as the channel goes). The
+    SHOULD names the alias that caused the bug.
+    3. **Rendering.** RENDERING.md §13 gains a paragraph after law 15, outside
+    the MUST list so no law is renumbered: "A client SHOULD time a snapshot
+    carrying a `telemetry.sample_time` field by that field through its CLOCK
+    offset (SPEC §7.1); without the field, before a CLOCK reply, or at an
+    implausible age, arrival time is the fallback."
 - **Pros.** Removes the link's arrival jitter from every renderer that uses
   it, on any binding (the WiFi clumping that Phosphor's telebuf re-spacing
   approximates, and BLE notification batching). Makes a device's own uneven
@@ -12298,13 +12318,22 @@ say exactly which, future-us will want the receipts.*
   and 0x1110 every hub tick, the P4 census refresh runs on a schedule; test
   VD-EVEN. Phosphor 30d262a: machine.svelte.js dates a sample by the field
   through the filtered CLOCK offset (motion.js), telebuf stores it as is.
+  Coupling: e137035 drops Nucleus's own pacing of 0x1100 and 0x1110, so it
+  needs `valence.pin` at 478527e or later (the operator's bump), or a rate-0
+  subscriber gets 200 Hz; if item 2 is rejected, Nucleus keeps its own pacing
+  and the beat, and item 1 alone still dates every sample correctly.
   Measured on valencesim, 50 Hz grant, travel CV near peak speed at
   15/45/100 %: wasm 0.389/0.383/0.375 to 0.032/0.036/0.017; comet head judder
   p95 (frame speed against its neighbors) 0.771/0.783/1.160 to
-  0.045/0.051/0.075, of which arrival dating alone reaches 0.073/0.192/0.141.
-  P4 unmeasured (fw 0.1.43 built, not flashed).
-- **Wire impact.** One registry `field_roles` entry (a string, no number). No
-  frame, key, limit or vector changes. Device catalogs that adopt it append a
+  0.045/0.051/0.075; with item 2 alone (arrival dating): 0.073/0.192/0.141.
+  valencesim runs over loopback, so the WiFi clumping that motivates item 1
+  is unmeasured; the P4 is unmeasured (fw 0.1.43 built, not flashed).
+- **Wire impact.** One registry `field_roles` entry (a string, no number);
+  `gen_registry_header.py` regenerates `registry_constants.hpp`,
+  `registry_vocab.js` and the docs-site `catalog-vocabulary.md`. No frame,
+  key, limit or golden-vector changes. The 4 B count against §9.1's 242 B
+  STATE fit. Bench (`hub/bench`) and valencesim get item 2 through the
+  library; `localhub.js` publishes nothing periodic. Device catalogs that adopt it append a
   field, so their etag moves (the designed re-fetch). §9.1 behavior change for
   rate-0 grants on periodic channels only. Text: SPEC §7.1, §7.2, §9.1;
   RENDERING §13.
@@ -12315,10 +12344,18 @@ say exactly which, future-us will want the receipts.*
     6 forbids binding by name, so a client can use it only through a role.
     *Pick:* the role.
     3. Should plan-strip channels like Nucleus 0x1110 carry it too? Their
-    `plan.elapsed` already anchors the plan in time. *Pick:* not in this RFC.
+    `plan.elapsed` already anchors the plan in time. *Pick:* not in this RFC;
+    none planned.
     4. Item 2's SHOULD in normative text or an informative note? *Pick:*
     normative SHOULD; the alias is an interop bug a second hub would repeat.
     5. Should GRANT echo the ceiling for a rate-0 wish on a periodic channel?
-    *Pick:* no; 0 keeps its meaning and no client changes.
+    Neither choice changes a frame. *Pick:* no; 0 keeps the wish's meaning.
+    6. Name and unit: `telemetry.sample_time` with `us`, or `meta.sample_time`
+    (matching `meta.enabled_mask`'s "of the same layout") with a hub-time unit
+    the way RFC-086's `hub_s` (25) serves seconds? The `telemetry.*` namespace
+    also invites the `<role>.peak` convention (§8.8). *Pick:*
+    `telemetry.sample_time` and `us`, the role carrying the hub-time meaning;
+    the reference uses it, and a rename costs one string in Nucleus and
+    Phosphor. Owner: the operator's ruling.
 
 ---
