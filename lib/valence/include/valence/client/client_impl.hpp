@@ -352,6 +352,7 @@ inline void Client::handleWelcome(std::span<const std::byte> payload, uint32_t n
     _roles = AccessLevel(w.roles);
     _hubEtag = w.catalog_etag;
     _nonce = w.nonce;  // §12.2: needed for a subsequent PAIR_REQ's pin_proof
+    _estopCutsPower = w.has_identity && w.identity.has_estop_cuts_power && w.identity.estop_cuts_power;
 
     for (auto& g : _grants) g = GrantEntry{};
     for (uint32_t i = 0; i < w.grants_count && i < kMaxGrants; ++i) {

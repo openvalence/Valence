@@ -2004,6 +2004,19 @@ TEST_CASE("CL-01: halt, pause, resume and release drive the safety pairs") {
     CHECK(rig.del.nacks.empty());
 }
 
+TEST_CASE("CL-01b: estopCutsPower() reports WELCOME identity, false by default") {
+    SafetyRig plain(/*withToken=*/true, 62);
+    CHECK_FALSE(plain.client->estopCutsPower());
+    SafetyRig rig(/*withToken=*/true, 63);
+    rig.hub->setEstopCutsPower(true);
+    rig.client->disconnect();
+    rig.step(4);
+    REQUIRE(rig.client->connect());
+    rig.step(12);
+    REQUIRE(rig.client->state() == ClientSessionState::LIVE);
+    CHECK(rig.client->estopCutsPower());
+}
+
 TEST_CASE("CL-02: a full pending table never blocks pause; it does block resume") {
     SafetyRig rig(/*withToken=*/true);
     int sent = 0;

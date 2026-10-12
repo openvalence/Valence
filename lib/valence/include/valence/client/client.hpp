@@ -201,6 +201,10 @@ public:
     std::optional<uint16_t> pause();
     std::optional<uint16_t> resume();
     std::optional<uint16_t> release();
+    // WELCOME identity `estop_cuts_power` (§11.2 H1): label the latched stop
+    // "E-Stop" only when true, "Halt" otherwise (RENDERING.md law 15). False
+    // until a WELCOME declares it.
+    bool estopCutsPower() const { return _estopCutsPower; }
 
     ClientSessionState state() const;
     uint32_t sessionId() const;
@@ -340,7 +344,8 @@ private:
     };
     std::array<Wish, kMaxWishes> _wishes{};
     size_t _wishCount = 0;
-    bool _wishesAfterHello = false;  // a wish added while HELLO_SENT: re-send the list on WELCOME
+    bool _wishesAfterHello = false;
+    bool _estopCutsPower = false;  // a wish added while HELLO_SENT: re-send the list on WELCOME
 
     std::array<std::byte, limits::etag_bytes> _cachedEtag{};   // all-zero = none (§6.7)
     std::array<std::byte, limits::etag_bytes> _hubEtag{};
