@@ -122,6 +122,7 @@ inline bool Client::connect() {
     _estopSendFailed = false;
     _holdingSource = false;  // §6.8: a new session never inherits ownership
     _wishesAfterHello = false;  // this HELLO carries every wish standing now
+    _lastRxMs = _lastUpdateMs;  // a new link starts fresh, not as old as the last one
 
     // ---- M4c: the RFC-029 trust state, reset per session --------------------
     _hubAuth = HubAuthState::NotRequested;

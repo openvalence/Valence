@@ -205,6 +205,11 @@ public:
     // "E-Stop" only when true, "Halt" otherwise (RENDERING.md law 15). False
     // until a WELCOME declares it.
     bool estopCutsPower() const { return _estopCutsPower; }
+    // ms since the last frame arrived, as of the latest update(): the link
+    // health a remote shows beside its stop control (RENDERING.md law 8). The
+    // hub answers every PING, so a live link never ages past about
+    // limits::ping_interval_idle_ms plus one round trip.
+    uint32_t rxAgeMs() const { return _lastUpdateMs - _lastRxMs; }
 
     ClientSessionState state() const;
     uint32_t sessionId() const;

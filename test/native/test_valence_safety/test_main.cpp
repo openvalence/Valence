@@ -2017,6 +2017,17 @@ TEST_CASE("CL-01b: estopCutsPower() reports WELCOME identity, false by default")
     CHECK(rig.client->estopCutsPower());
 }
 
+TEST_CASE("CL-01c: rxAgeMs() stays near the PING cadence while the hub answers, and grows when it is silent") {
+    SafetyRig rig(/*withToken=*/true, 64);
+    for (int i = 0; i < 3000; ++i) rig.step(1);  // ~3 s of 1 ms rounds: PING/PONG keeps it fresh
+    CHECK(rig.client->rxAgeMs() <= limits::ping_interval_idle_ms + 20);
+    for (int i = 0; i < 3000; ++i) {
+        rig.clock.advanceUs(1000);
+        rig.client->update(rig.clock.nowUs());  // the hub never runs: silence
+    }
+    CHECK(rig.client->rxAgeMs() >= 2900);
+}
+
 TEST_CASE("CL-02: a full pending table never blocks pause; it does block resume") {
     SafetyRig rig(/*withToken=*/true);
     int sent = 0;
