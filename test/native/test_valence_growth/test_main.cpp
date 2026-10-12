@@ -18,6 +18,9 @@
 // 200 layout fields on top of the fixed ones. This suite is its own program,
 // so the capacity flags hold for every translation unit in it.
 #define VALENCE_CATALOG_LAYOUT_FIELDS 320
+// GR-08 tests the over-budget path with a 24 KB client (the hub's 32 KB
+// catalog scratch cannot exceed the default budget).
+#define VALENCE_CLIENT_CATALOG_CHUNKS 128
 #include <doctest/doctest.h>
 
 #include "valence/channel/catalog_channel.hpp"

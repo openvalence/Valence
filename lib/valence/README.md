@@ -51,7 +51,7 @@ for (;;) { hub.update(clock.nowUs()); client.update(clock.nowUs()); /* pace */ }
 For an embedded remote, the client also provides:
 
 - `ClientDelegate::onCatalog`: the reassembled catalog bytes, before LIVE. Decode them into a `BasicCatalog` sized for your hubs.
-- `VALENCE_CLIENT_CATALOG_CHUNKS`: the reassembly budget, 128 chunks (24 KB) by default. The buffer is inline in `Client`, so on an MCU allocate the `Client` from heap (PSRAM is fine), never on a task stack.
+- `VALENCE_CLIENT_CATALOG_CHUNKS`: the reassembly budget, 192 chunks (36 KB) by default. The buffer is inline in `Client`, so on an MCU allocate the `Client` from heap (PSRAM is fine), never on a task stack.
 - `Client::subscribe()`: SUBSCRIBE in the middle of a session.
 - `halt()`, `pause()`, `resume()` and `release()`: the safety pairs on `safety-intents`.
 - `EstopDatagramSender` (`client/estop_datagram.hpp`): the RFC-053 sessionless ESTOP. You supply the UDP send function.

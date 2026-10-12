@@ -38,13 +38,13 @@
 
 // The Client's catalog reassembly budget in BLOB_CHUNK payloads (§8.4):
 // VALENCE_CLIENT_CATALOG_CHUNKS * limits::catalog_chunk_payload bytes, held
-// INLINE in every Client. 128 chunks is 24,576 B; a measured Nucleus catalog
-// is 15.8 KB. Set it as a build flag identically for every translation unit
+// INLINE in every Client. 192 chunks is 36,864 B; the Nucleus 0.1.44 catalog
+// measured 28,611 B (valencesim, 2026-10-11). Set it as a build flag identically for every translation unit
 // (a per-file #define gives two TUs two Client layouts: ODR).
 // Constraint: on an MCU allocate the Client from heap (PSRAM is fine; nothing
 // here is DMA), never on a task stack.
 #ifndef VALENCE_CLIENT_CATALOG_CHUNKS
-#define VALENCE_CLIENT_CATALOG_CHUNKS 128
+#define VALENCE_CLIENT_CATALOG_CHUNKS 192
 #endif
 
 namespace valence {
