@@ -12414,10 +12414,11 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-114"></a>
 ## RFC-114 -- Pair control gestures: a double press approves the one pending configure ask, a 5 s hold demotes every client to watch
 
-- **Status:** DRAFT (2026-10-12). Molecule rfc-mol-ijx (rfc-lifecycle); next: the
-  fresh-eyes review, then the operator's ruling. The code is built as if
-  accepted (operator rule "write the code like the RFC exists"): Valence,
-  Nucleus and Phosphor branches named under Cost.
+- **Status:** DRAFT (2026-10-12). Molecule rfc-mol-ijx (rfc-lifecycle);
+  fresh-eyes review folded the same day (rfc-mol-vsa: 2 blockers, 8
+  should-fix, 9 nits, all taken); next: the operator's ruling. The code is
+  built as if accepted (operator rule "write the code like the RFC exists"):
+  the branches are named under Cost.
 - **Origin.** Operator, 2026-10-12, on the P4 bench (fw 0.1.45): push-to-pair
   granted Phosphor only `control`, because the hub already had a `configure`
   owner (§12.3 grant rule). The P4 log shows PAIR pressed several times 0.3 to
@@ -12431,12 +12432,12 @@ say exactly which, future-us will want the receipts.*
   An owner standing at the machine with a second phone, or whose only
   configure client is lost, has no way to say "this client, configure" with
   the hub's own button. RFC-079's config mode grants `configure` regardless,
-  but only at boot and only over BLE, which a WiFi-only hub (Nucleus) lacks.
-  Making a double press open a window that grants `configure` to whoever
-  knocks first would let any client on the LAN race the owner for the
-  hub's highest tier. And there is no gesture that takes trust back: an owner
-  who lent the machine out must revoke each device from a `configure`
-  session, and a lost configure client cannot be revoked by anyone.
+  but only at boot, over BLE or USB serial, and the reference hub implements
+  neither yet. A double press that opened a `configure` window would let any
+  client on the LAN race the owner for the hub's highest tier. And no gesture
+  takes trust back: an owner who lent the machine out must revoke each device
+  from a `configure` session, and a lost configure client cannot be revoked
+  by anyone.
 - **Alternatives.** (1) A double press opens a `configure` window (the
   operator's first wording): rejected by the operator's second ruling,
   because the first knock wins, whoever sent it. (2) BLE config mode on every
@@ -12447,129 +12448,163 @@ say exactly which, future-us will want the receipts.*
     1. **Several `configure` tokens coexist.** No change of rule: §12.3's last
     paragraph already lets a `configure` session grant `configure`, and
     `paired_devices_max` (8) bounds the ledger as a whole, not per tier. §12.3's
-    grant rule gains one sentence saying so: "Any number of ledger entries
-    may hold `configure`, up to `paired_devices_max`."
-    2. **A knock may name the tier it asks for.** PAIR_REQ gains the optional
-    key `roles` (23), the payload key WELCOME, GRANT and PAIR_GRANT already
-    use for a tier: "PAIR_REQ: the tier this knock asks for. Absent, or
-    `watch`, names none and the approver picks. A value above `configure` is
-    refused PAIRING_DENIED." A knock that names a tier is granted that tier by
-    an open presence window only when the window grants at least that much (a
-    knock asking `control` in a window that grants `configure` gets `control`);
-    a knock asking more than the window grants does not consume the window, it
+    grant rule gains one sentence: "Any number of ledger entries may hold
+    `configure`, up to `paired_devices_max`."
+    2. **A knock may name the tier it asks for.** A bare PAIR_REQ gains the
+    optional key `roles` (23), the payload key WELCOME, GRANT and PAIR_GRANT
+    already use for a tier: "PAIR_REQ, bare knocks only: the tier this knock
+    asks for. Absent, or `watch`, names none and the approver picks. A value
+    above `configure` is refused PAIRING_DENIED. Ignored beside `pin_proof`."
+    An open presence window grants a knock that names a tier only when the
+    window grants at least that much, and then grants the tier asked (a knock
+    asking `control` in a window that grants `configure` gets `control`); a
+    knock asking more than the window grants does not consume the window, it
     joins the pending list like any knock. The pending knock records the
     asked tier, and the `knocked` pairing event's `role` body carries it (it
-    carried `watch` before), so every `watch` session sees a configure ask
-    arrive. `pair_approve` is unchanged: the approver still names the role.
+    carried `watch` before), so a `watch` session connected at the time sees
+    a configure ask arrive. `pair_approve` is unchanged: the approver still
+    names the role. An ask is not a promise: a hub that predates this ignores
+    `roles`, and a window may grant less, so a client reads its tier from
+    PAIR_GRANT `roles`.
     3. **A double press of the pairing control approves one configure ask.**
     Two presses, the second beginning within `pairing_double_press_ms` (600)
     of the first's release, with no third press inside the same interval
     (three or more is no gesture). It is a physical-presence proof of the
     strength of RFC-079's boot hold, at runtime and on any transport. It
     approves at `configure` the one pending knock that asked for `configure`
-    and has not expired (`pairing_window_default_s`), and delivers PAIR_GRANT
-    on that knock's own session (knocks are session-bound already, §12.3a). The
-    ledger entry records `pairing_mode` push_to_pair, since presence at the
-    machine approved it. With zero such knocks, or more than one, it approves
-    nothing; a hub with indicator hardware SHOULD show the refusal, and SHOULD
-    log why. Two asks approve neither, so a rival client cannot race the one
-    at the machine; the owner denies or waits out the stranger and presses
-    again. A double press opens no window.
+    and has not expired (`pairing_window_default_s`), whoever sent it: ask
+    first, then press. PAIR_GRANT goes to that knock's own session (a knock
+    dies with its session, §6.6); a knock whose session has ended is dropped
+    as `expired` and approves nothing. The ledger entry records
+    `pairing_mode` push_to_pair, since presence at the machine approved it.
+    When the ledger is full and the asker has no entry, the least recently
+    seen `watch` entry is revoked (`revoked` event) to make room; a ledger full
+    of higher tiers refuses. With zero such asks, or more than one, the press
+    approves nothing. A hub with indicator hardware SHOULD show when exactly
+    one `configure` ask is pending and SHOULD show a refusal, and SHOULD log
+    why. Two asks approve neither, so a second client cannot slip in beside
+    the one at the machine. A double press opens no window.
     4. **A single press is unchanged.** It opens the single-grant presence
-    window for `pairing_window_default_s` (120 s), granting `configure` when
-    no `configure` token exists and the hub's default (`control`) otherwise.
-    The window stays single-grant, and a press while it is open does not
-    extend it.
+    window for `pairing_window_default_s` (120 s), granting `configure` on an
+    unclaimed hub (item 6) and the hub's default (`control`) otherwise. A press
+    while the window is open does not extend it.
     5. **A long hold of the pairing control demotes every client.** A press
     held `pairing_demote_hold_ms` (5000) fires at that mark while still held,
     so the indicator answers without waiting for the release; it never also
     counts as a press or a double press, and its release is nothing. It (a)
     lowers every trust-ledger entry above `watch` to `watch`, keeping the
-    entries, so the roster still names who was paired and revocation stays
-    an absence (§12.6); (b) denies every pending knock; (c) closes the PIN
-    and presence windows; (d) ends every session above `watch` with GOODBYE
-    SESSION_EVICTED through the full teardown, so each released source settles
-    as on any session end, and a generator stops unless `source.background_run`
-    says otherwise (§11.4); its client reconnects at what its token now proves,
-    `watch`. (e) A hub that vouches a tier outside the ledger, such as the
-    RFC-029 §4 `/uitoken` mint, MUST vouch for nobody above `watch` until a
-    `configure` ledger entry exists again; otherwise a demoted browser mints
-    its `control` back on reconnect. PAUSE and ESTOP stay role-exempt (§12.2),
-    so a demoted client can still stop the machine. Recovery: a client asks
-    `configure`, the owner double-presses.
-    6. **Window and ask state stay in band.** The `window_opened` event
-    already carries the tier the window grants in `role` (the reference hub
-    sends it today); the `knocked` event now carries the asked tier. No STATE
-    field is added: 0x000A needs `configure` to read, and the events are
-    `watch`-visible, which is who needs them.
-    7. **A hub without a pairing button** keeps the power-cycle gesture, which
-    opens the window at the default grant only; the double press and the hold
-    need a pairing control, and a buttonless hub's owner reaches the same ends
+    entries, so the roster still names who was paired, revocation stays an
+    absence (§12.6), and the hub stays claimed (item 6); (b) drops every
+    pending knock, publishing `denied`; a `recognized_pending` re-approval is
+    dropped, not revoked, and its entry is demoted like the rest; (c) closes
+    the PIN and presence windows; (d) ends every session above `watch` with
+    GOODBYE SESSION_EVICTED through the full teardown, so each released source
+    settles as on any session end, and a generator stops unless
+    `source.background_run` says otherwise (§11.3, released per §11.4); its
+    client reconnects at what its token now proves, `watch`. A session whose
+    tier its transport grants (§12.9) comes back at that tier. (e) A hub that
+    vouches a tier outside the ledger, the §12.8 served-page token, MUST vouch
+    for nobody above `watch` while the ledger holds entries and none is
+    `configure`; derived from the ledger, this holds across reboots. The mint
+    MAY refuse; a hub that mints anyway admits the token at `watch`. PAUSE and
+    ESTOP stay role-exempt (§12.2), so a demoted client can still stop the
+    machine. Recovery: a client asks `configure`, the owner double-presses.
+    6. **Factory-fresh means an empty ledger.** §12.3(c)'s "zero `configure`
+    tokens exist" becomes "the trust ledger is empty". Without this, a demote
+    would leave the hub unclaimed: every boot and every single press would
+    open a window granting `configure` to the first knock from anyone on the
+    LAN, the race this RFC rejects. A ledger holding only `control` or
+    `watch` entries is claimed; its owner returns by the double press, or by
+    revoking every entry from a `configure` session. RFC-079's config mode is
+    unchanged.
+    7. **Window and ask state stay in band.** The `window_opened` event
+    carries the tier the window grants in `role`, made normative here (the
+    reference hub sends it today); the `knocked` event carries the asked tier.
+    No STATE field is added: 0x000A needs `configure` to read, and the events
+    are `watch`-visible. A session that connects later does not see earlier
+    asks (events are not replayed, §9.4), which is why the hub's own
+    indicator carries the one-ask state.
+    8. **A hub without a pairing button** keeps the power-cycle gesture, which
+    opens the window at the item 4 grant; the double press and the hold need
+    a pairing control, and a buttonless hub's owner reaches the same ends
     through `pair_approve`, `revoke` and `evict` (§12.7).
-    8. **Factory reset.** §12.3 requires that wiping the token store be a
-    harder gesture than opening pairing. The demote does not wipe the store:
-    entries and configuration remain, and it grants nothing. It is harder than
-    a press (five held seconds, deliberate), and it widens no physical-access
-    power, because presence at the machine already reaches `configure` through
-    the double press. It is a partial trust reset that satisfies the clause.
-    The full wipe stays reserved for a still harder gesture: a hold of at least
-    10 s, a boot-time sequence distinct from RFC-079's boot hold, or the
-    attached console. This RFC builds none of them.
-- **Pros.** The owner at the machine grants `configure` to exactly the client
-  in their hand, with no window anyone else can win, and several owners
-  coexist as §12.3 always allowed. A lost or lent-out configure client has a
-  physical remedy that does not cost the machine's configuration. One new
-  optional key, already registered. The power-cycle gesture and RFC-079 are
-  untouched.
+    9. **Factory reset.** §12.3 requires that wiping the token store be a
+    harder gesture than opening pairing. The demote wipes nothing: entries and
+    configuration remain, the hub stays claimed, and it grants nothing. It is
+    harder than a press (five held seconds, deliberate). It is a partial trust
+    reset that satisfies the clause. The full wipe stays a harder gesture, not
+    built here.
+- **Pros.** The owner at the machine grants `configure` to the client in
+  their hand, with no window, and with a second ask blocking rather than
+  winning; several owners coexist as §12.3 always allowed. A lost or lent-out
+  configure client has a physical remedy that keeps the machine's
+  configuration, and the remedy survives a reboot. One new optional key,
+  already registered. The power-cycle gesture and RFC-079 are untouched.
 - **Cons.** A single press waits `pairing_double_press_ms` before it acts, to
-  know no second press follows. After a demote no `configure` token exists, so
-  the factory-fresh rule applies again: a single press, or a power-on boot,
-  opens a window that grants `configure`. That matches §12.3 (possession is
-  root), but an owner who holds Pair should re-claim before walking away.
-  A jammed button demotes everyone at 5 s: the safe direction, and recoverable
-  from the console. A ledger already full of `watch` entries refuses a new
-  device's grant until one is revoked.
-- **Cost.** Library (Valence feat/pair-double): PAIR_REQ `roles`, the asked
-  tier on a pending knock, `Hub::approvePendingConfigure()`,
+  know no second press follows. A jammed button demotes everyone at 5 s: the
+  safe direction, and the button must be repaired before a double press can
+  restore an owner. A hub whose ledger holds only demoted entries no longer
+  reclaims itself on a press; its owner needs the double press.
+  **HONESTY CLAUSE (H12):** a LAN client that keeps its own `configure` ask
+  pending (a re-knock refreshes it) blocks every double press. With a
+  `configure` session left, `pair_deny` clears it; with none, the remedy is
+  taking that client off the network, then asking again.
+- **Cost.** Valence feat/pair-double: PAIR_REQ `roles`, the asked tier on a
+  pending knock, `Hub::approvePendingConfigure()`,
   `Hub::configureRequestsPending()`, `Hub::demoteAllToWatch()`,
+  `PairingManager::claimed()` and `dropOldestWatch()`,
   `Client::sendPairKnock(AccessLevel)`, JS `sendPairReq({role})`, tests
-  M4B-40..42. Firmware (Nucleus feat/pair-double): PAIR's gesture core
-  (ButtonGesture.h `PairButton`), the bindings, `/uitoken` withheld after a
-  demote, the status pixel's Session look, tests. Phosphor (lp/pairdouble):
-  "Ask configure", the window's tier, the double-press and rival-ask lines.
-  At landing: the SPEC text below, two registry limits, codegen.
-- **Wire impact.** PAIR_REQ: optional key 23 `roles` (an existing payload
-  key; a hub that predates this ignores it under §4.3, and the knock is a
-  bare one). pairing-events `knocked`: the `role` body is the asked tier,
-  `watch` when none. Registry `limits`: `pairing_double_press_ms: 600`,
-  `pairing_demote_hold_ms: 5000`. SPEC §12.3: the grant rule's coexistence
-  sentence, mode (c)'s pairing-control gestures (items 3 to 5), the knock's
-  asked tier in (a), item 8's factory-reset sentence; §12.6: a demoted entry
-  is kept at `watch`; RFC-029 §4's mint withheld after a demote. No new frame,
-  channel, STATE field, NACK code or field number; golden vectors unchanged
-  (no existing encoding changes bytes).
+  M4B-40..43. Nucleus feat/pair-double: PAIR's gesture core (ButtonGesture.h
+  `PairButton`), the bindings, the claimed-at-boot rule, the served-page token
+  withheld while ownerless, the status pixel's Session look, tests. Phosphor
+  lp/pairdouble: "Ask configure", the window's tier, the double-press and
+  rival-ask lines. At landing: the SPEC text below, two registry limits,
+  codegen.
+- **Wire impact.** PAIR_REQ: optional key 23 `roles` on a bare knock (an
+  existing payload key; a hub that predates this ignores it under §4.3, and
+  the knock is a bare one). Registry notes: payload key 23 gains the PAIR_REQ
+  meaning; `pairing_event_kinds` `knocked` and `pairing_body` `role` say the
+  role is the asked tier on `knocked` and the granted tier on
+  `window_opened`; NACK PAIRING_DENIED gains "a knock asked a tier above
+  configure"; SESSION_EVICTED gains "the pairing control's demote hold".
+  Registry `limits`: `pairing_double_press_ms: 600`,
+  `pairing_demote_hold_ms: 5000`. SPEC §12.3: the coexistence sentence, the
+  knock's asked tier in (a), mode (c)'s pairing-control gestures (items 3 to
+  5), factory-fresh as an empty ledger (item 6), item 9's sentence; §12.6: a
+  demoted entry is kept at `watch`; §12.8: the token withheld while the
+  ledger has entries and no `configure`. Client obligation: read the tier
+  from PAIR_GRANT, never from the ask. No new frame, channel, STATE field,
+  NACK code or field number; golden vectors unchanged (no existing encoding
+  changes bytes).
 - **Open questions.** Each has a pick, for the operator's ruling.
     1. Demote keeps entries at `watch` or revokes them? Pick: keep. The roster
-    stays honest about who was paired, and the owner can revoke each after.
+    stays honest about who was paired, the hub stays claimed (item 6), and
+    the owner can revoke each after.
     2. Demoted sessions evicted, or re-tiered in place by a GRANT carrying
-    `roles`? Pick: evict. Roles resolve at admission (§12.3 revoke note);
+    `roles`? Pick: evict. Roles resolve at admission (§12.7's revoke note);
     subscriptions, trials and a blob cursor admitted at the old tier would
     each need pruning in place, and teardown already ends all of them
     together. The client reconnects in about a second.
     3. A dedicated GOODBYE code (DEMOTED) instead of SESSION_EVICTED? Pick:
     no; a client reads its new tier from WELCOME.
-    4. After a demote, should the hub stay "claimed" so a single press keeps
-    granting `control`? Pick: no; §12.3's factory-fresh rule is the
-    definition, and adding a claimed bit is new state.
+    4. After a demote, does the hub stay claimed? Pick: yes, by item 6
+    (reversed from the first draft on review: an unclaimed hub reopens the
+    race on every boot).
     5. Three or more presses: no gesture. Pick: yes (a third press neither
     repeats nor upgrades anything).
     6. Interval: 600 ms, measured between debounced edges; the operator's own
     presses were 300 to 600 ms apart. Hold: 5 s, below the reference hub's
     30 s stuck-button cutoff.
-    7. Should a double press also re-approve a `recognized_pending` configure
+    7. A full ledger at a presence approval: revoke the least recently seen
+    `watch` entry. Pick: yes; without it a demote of eight entries locks the
+    owner out.
+    8. The served-page token while ownerless: refuse the mint, or admit at
+    `watch`? Pick: either is conformant; the reference hub admits at `watch`
+    (the mint runs on another task than the ledger).
+    9. Should a double press also re-approve a `recognized_pending` configure
     device (RFC-029 tripwire)? Pick: no for now; it asks nothing.
-    8. Should 0x000A's slots carry the asked tier for the approver's list?
-    Pick: no; the `knocked` event carries it, and a slot layout change moves
-    a packed STATE every client decodes.
+    10. Should 0x000A's slots carry the asked tier for the approver's list?
+    Pick: no; the `knocked` event carries it, and a slot layout change moves a
+    packed STATE every client decodes.
 
 ---

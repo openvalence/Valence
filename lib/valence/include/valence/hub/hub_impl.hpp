@@ -3191,6 +3191,11 @@ inline Hub::PresenceApproval Hub::approvePendingConfigure() {
         publishPendingPairingState(nowMs);
         return PresenceApproval::knocker_gone;
     }
+    std::array<std::byte, limits::instance_id_bytes> dropped{};
+    if (_pairing.findByInstance(inst) == nullptr && _pairing.entryCount() >= PairingManager::kMaxPaired &&
+        _pairing.dropOldestWatch(dropped)) {
+        emitPairingEvent(pairing_events::revoked, dropped, {}, 0, AccessLevel::watch, {}, nowMs);
+    }
     // Ledger pairing_mode push_to_pair: presence at the machine approved it.
     if (!issuePairGrant(*joiner, inst, AccessLevel::configure, pairing_modes::push_to_pair, nowMs))
         return PresenceApproval::ledger_full;

@@ -3,7 +3,7 @@
 //
 // PAIR_REQ (client -> hub), CBOR map, keys ascending: instance_id(4),
 // [roles(23)], [pin_proof(28)]. `roles` is the tier a knock asks for
-// (RFC-114 draft); absent, the knock names none and the approver picks. `pin_proof` = HMAC-SHA256(key = PIN ASCII, message =
+// (RFC-114 draft), read on a bare knock only; absent, it names none. `pin_proof` = HMAC-SHA256(key = PIN ASCII, message =
 // WELCOME's 8-byte nonce) truncated to 16 bytes (§12.2) — this codec only
 // carries the 16 bytes, it does not compute the HMAC.
 //
@@ -110,8 +110,7 @@ inline Result<PairReqMsg, DecodeError> decodePairReq(std::span<const std::byte> 
             case uint64_t(CborKey::roles): {
                 auto v = r.readUint();
                 if (!v) return Ret::err(v.error());
-                if (v.value() > 0xFF) return Ret::err(DecodeError::Malformed);
-                m.roles = uint8_t(v.value());
+                m.roles = uint8_t(v.value() > 0xFF ? 0xFF : v.value());   // out of range: refused by the hub
                 m.has_roles = true;
                 break;
             }

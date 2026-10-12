@@ -234,18 +234,22 @@ public:
     void openPresenceWindow(uint32_t nowMs);
     void closePresenceWindow();
     bool presenceWindowOpen(uint32_t nowMs) const;
-    // THE FACTORY-FRESH RULE (RFC-027.2(c)): zero configure tokens in the
-    // ledger means nobody has claimed this machine yet, so whoever unboxed and
-    // powered it possesses it and the window grants `configure`. Once a
-    // configure token exists, possession is no longer proof of ownership and
-    // the window drops to the configured default (`control`), with
-    // knock-and-approve doing the rest.
+    // THE FACTORY-FRESH RULE (RFC-027.2(c), narrowed by the RFC-114 draft): an
+    // EMPTY ledger means nobody has claimed this machine yet, so whoever
+    // unboxed and powered it possesses it and the window grants `configure`.
+    // A ledger holding any entry is claimed, even when a demote left no
+    // `configure` among them: the window grants the configured default
+    // (`control`), and a double press approves a configure ask.
     AccessLevel presenceGrantRole() const;
+    bool claimed() const { return entryCount() != 0; }
     void setPresenceDefaultRole(AccessLevel r) { _presenceDefaultRole = r; }
     bool hasConfigureToken() const;
     // Every entry above `watch` drops to `watch`; entries are kept, so the
     // roster still names who was paired (RFC-114 draft). Returns how many.
     size_t demoteAllToWatch();
+    // Frees the least recently seen `watch` entry, so a presence-approved
+    // grant fits a full ledger. False when none is `watch`.
+    bool dropOldestWatch(std::array<std::byte, limits::instance_id_bytes>& dropped);
 
     // Which `pairing_modes` bits this hub is offering RIGHT NOW — the value
     // WELCOME advertises in `trust`.pairing_modes, re-evaluated per session so
@@ -473,8 +477,20 @@ inline size_t PairingManager::demoteAllToWatch() {
     return n;
 }
 
+inline bool PairingManager::dropOldestWatch(std::array<std::byte, limits::instance_id_bytes>& dropped) {
+    PairedEntry* oldest = nullptr;
+    for (auto& e : _entries) {
+        if (e.used && e.role == AccessLevel::watch && (oldest == nullptr || e.lastSeen < oldest->lastSeen)) oldest = &e;
+    }
+    if (oldest == nullptr) return false;
+    dropped = oldest->instance_id;
+    *oldest = PairedEntry{};
+    touch();
+    return true;
+}
+
 inline AccessLevel PairingManager::presenceGrantRole() const {
-    return hasConfigureToken() ? _presenceDefaultRole : AccessLevel::configure;
+    return claimed() ? _presenceDefaultRole : AccessLevel::configure;
 }
 
 inline uint8_t PairingManager::offeredModes(uint32_t nowMs) const {

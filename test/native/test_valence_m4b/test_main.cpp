@@ -1938,4 +1938,43 @@ TEST_CASE("M4B-42 (RFC-114): demote-all lowers every token, evicts every session
     // The token now proves watch.
     auto again = connectSession(hub, clock, a.endpointB(), 2, 0, {}, {}, "m4b-test", &token);
     CHECK(again.roles == uint8_t(AccessLevel::watch));
+
+    // Still claimed: a presence window grants the default, not configure.
+    CHECK(hub.pairing().claimed());
+    hub.openPresenceWindow();
+    writeKnock(w.endpointB(), 3);
+    auto g = findPairGrant(tickAndDrain(hub, clock, w.endpointB()));
+    REQUIRE(g.has_value());
+    CHECK(g->roles == uint8_t(AccessLevel::control));
+}
+
+TEST_CASE("M4B-43 (RFC-114): a presence approval on a full ledger frees the least recently seen watch entry") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4043);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    std::array<std::byte, limits::token_bytes> tok{};
+    for (uint8_t i = 0; i < PairingManager::kMaxPaired; ++i) {
+        hub.pairing().setWallClockSeconds(100u + i);
+        REQUIRE(hub.pairing().grant(instanceOf(uint8_t(0x40 + i)), AccessLevel::configure, pairing_modes::push_to_pair,
+                                    rng, tok) != nullptr);
+    }
+    hub.demoteAllToWatch();
+    REQUIRE(hub.pairing().entryCount() == PairingManager::kMaxPaired);
+
+    InProcessLink a(clock, rng);
+    REQUIRE(hub.attachTransport(a.endpointA()));
+    REQUIRE(a.endpointB().open());
+    connectSession(hub, clock, a.endpointB(), 2, 0, {});
+    writeAsk(a.endpointB(), 2, AccessLevel::configure);
+    tickAndDrain(hub, clock, a.endpointB());
+    CHECK(hub.approvePendingConfigure() == Hub::PresenceApproval::approved);
+    auto g = findPairGrant(tickAndDrain(hub, clock, a.endpointB()));
+    REQUIRE(g.has_value());
+    CHECK(g->roles == uint8_t(AccessLevel::configure));
+    CHECK(hub.pairing().entryCount() == PairingManager::kMaxPaired);
+    CHECK(hub.pairing().findByInstance(instanceOf(0x40)) == nullptr);   // the oldest went
+    CHECK(hub.pairing().findByInstance(instanceOf(0x41)) != nullptr);
 }

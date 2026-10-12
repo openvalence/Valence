@@ -616,20 +616,22 @@ public:
     // button. Both act at the hub's current time and publish their own edges.
     //
     // approvePendingConfigure(): a double press. Grants `configure` to the ONE
-    // fresh pending knock that asked for it, over that knock's own session.
-    // Zero or several such knocks approve nothing, so a second knocker cannot
-    // race the one at the machine.
+    // fresh pending knock that asked for it, whoever sent it, over that knock's
+    // own session. Zero or several such knocks approve nothing. A full ledger
+    // frees its least recently seen `watch` entry for it.
     enum class PresenceApproval : uint8_t { approved, none_pending, several_pending, knocker_gone, ledger_full };
     PresenceApproval approvePendingConfigure();
     // Fresh pending knocks that asked for `configure`: 1 means a double press
     // would approve. For an indicator; the answer can change by the next tick.
     size_t configureRequestsPending() const;
-    // demoteAllToWatch(): a long hold. Every ledger entry drops to `watch`,
-    // every pending knock is denied, both windows close, and every session
-    // above `watch` is evicted (SESSION_EVICTED) through the full teardown, so
-    // its sources release as any session end releases them; it reconnects at
-    // what its token now proves. A role the DELEGATE vouches for
-    // (validateToken) is the delegate's to withhold.
+    // demoteAllToWatch(): a long hold. Every ledger entry drops to `watch` and
+    // stays (the hub stays claimed), every pending knock is dropped as
+    // `denied` (a re-approval is not revoked), both windows close, and every
+    // session above `watch` is evicted (SESSION_EVICTED) through the full
+    // teardown, so its sources release as any session end releases them; it
+    // reconnects at what its token now proves. A role the DELEGATE vouches for
+    // (validateToken) is the delegate's to withhold while the hub is claimed
+    // and has no `configure` entry.
     struct DemoteCount {
         size_t tokens = 0;
         size_t sessions = 0;
