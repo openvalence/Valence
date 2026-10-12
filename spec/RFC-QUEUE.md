@@ -554,6 +554,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [112](#rfc-112) | Oscillator amplitude in millimeters: a static peak the window never rescales, narrowed to fit and reported, the center never shifted | Landed | closed |
 | [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 | [114](#rfc-114) | Pair control gestures: a double press approves the one pending configure ask, a 5 s hold demotes every client to watch | Draft | open |
+| [115](#rfc-115) | Segment lead: a lookahead sender stamps up to its horizon less 100 ms | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -12606,5 +12607,109 @@ say exactly which, future-us will want the receipts.*
     10. Should 0x000A's slots carry the asked tier for the approver's list?
     Pick: no; the `knocked` event carries it, and a slot layout change moves a
     packed STATE every client decodes.
+
+---
+
+<a id="rfc-115"></a>
+## RFC-115 -- Segment lead: a lookahead sender stamps up to its horizon less 100 ms
+
+- **Status:** DRAFT (2026-10-12). Molecule rfc-mol-mvo (rfc-lifecycle);
+  fresh-eyes review folded the same day (rfc-mol-aao: 0 blockers, 10
+  should-fix, 6 nits, all taken); next: the operator's ruling. The code is
+  built as if accepted (operator rule "write the code like the RFC exists"):
+  Phosphor lane lp/netrobust (ph-kl6k), Nucleus branch fix/net-robust
+  (val-jyu).
+- **Origin.** Operator, 2026-10-12: "perhaps we look at making things slightly
+  more network robust?", after the phone on a clean AP still showed "Motion
+  paused 166 ms · WiFi delay 110 ms". Measured the same day against the P4
+  (fw 0.1.49) from a control-tier client streaming 100 ms segments while WSL
+  netem blacked out the client-to-hub direction for 200, 400 and 700 ms:
+  at a 125 ms lead every blackout of 200 ms or more put the commanded curve
+  5 to 10 mm off the authored line for 40 to 120 ms; at a 900 ms lead
+  (horizon 1000) no blackout up to 700 ms moved it (worst 1.9 mm, the clean
+  floor). TCP does not deliver a lost segment before its retransmission
+  timeout (about 200 ms from a Linux or Android client, 300 ms from Windows;
+  the reference hub's lwIP measured 1.0 to 1.5 s before Nucleus val-jyu),
+  so the sender's lead is where a stall can be absorbed.
+- **Problem.** §5.4: "Clients SHOULD schedule no further ahead than half that
+  budget." The half comes from RFC-014, which codified one plugin's private
+  120 ms against a 250 ms clamp; RFC-087 kept it as a SHOULD against the
+  granted horizon. For a `segments` stream the margin only has to cover the
+  client's hub-clock error and the bundle's transit, because a bundle stamped
+  past now plus the horizon is moved earlier whole (RFC-090). At the 1000 ms
+  step the half gives up 400 ms of stall tolerance against a 900 ms lead.
+  Two adjacent rules also matter more at a long lead: §5.4's supersede text
+  says a seeking player sends "fresh segments stamped from now plus its lead",
+  which flushes nothing before now plus the lead, and §11.1 never says PAUSE
+  discards scheduled segments (the reference does: Kinetic engine.hpp
+  `brake()` clears the timeline), so a hub may play stale schedule after
+  `resume`.
+- **Alternatives.** (1) Keep the half and raise `schedule_horizon_max_ms` to
+  2000: the same lead at twice the horizon, but the hub's quiet-release window
+  (§11.4, RFC-098) and the reference's Kinetic² expectation (ValenceDevice.cpp
+  `expect_us`, the larger of the quiet window and the horizon) double too, a
+  64-knot timeline holds 1.28 s at 50 Hz, and a new select step is a registry
+  and firmware change. (2) Leave the spec and let the client break the SHOULD:
+  the next implementer reads the half as the rule.
+- **Proposal.**
+    1. §5.4's lead-cap paragraph: "Clients SHOULD schedule no further ahead
+    than half that budget" becomes "On a `samples` stream a client SHOULD
+    schedule no further ahead than half that budget. On a `segments` stream a
+    client SHOULD stamp no start further ahead than the grant's schedule
+    horizon less 100 ms, measured on the hub clock of its best CLOCK exchange
+    (§7.1, the least round trip), and MAY stamp any lead below that. A client
+    whose clock error exceeds the margin has its bundles moved earlier whole,
+    each by a different amount (RFC-090), and each supersede cuts the tail of
+    the one before: it lowers its lead instead."
+    2. §5.4's schedule-horizon paragraph adds, after "a lookahead player on
+    poor WiFi fills bundles toward a larger advertised horizon and sends fewer
+    frames": "and leads by up to the horizon less 100 ms; a stall shorter than
+    its lead less the hub's reaction horizon (RFC-105) does not change the
+    motion. Such a player SHOULD wish a `burst` (§10.5) of at least twice its
+    lead's worth of segments, since a seek re-sends a whole lead and an
+    overdrawn bundle is dropped whole, its supersede with it."
+    3. §5.4's supersede paragraph: "A player that seeks sends fresh segments
+    stamped from now plus its lead" becomes "A player that stops or seeks
+    sends a bundle whose first start is now (plus `schedule_latency_us`), so
+    every later segment is replaced".
+    4. §11.1, PAUSE: add "Latching PAUSE discards every scheduled,
+    not-yet-started segment of every source; `resume` never plays a
+    schedule that predates the latch."
+    5. §11.5 invariant 1 ("settles to rest on its own within its deadman
+    window") gains: "or, for a `segments` stream, within its scheduled lead,
+    at most the grant's schedule horizon".
+    6. The registry note on `max_future_schedule_ms` ("Recommended client
+    lookahead <= half of this") is reworded to match item 1.
+- **Pros.** Stall tolerance from text: 125 ms to 150 ms at the default
+  horizon, 500 ms to 900 ms at 1000. No frame, key, number or firmware
+  change. An interactive source is untouched: the horizon is a cap, never a
+  delay, and a jog or a live input keeps its own short lead.
+- **Cons.** A vanished or hung player plays out up to its lead before the
+  machine settles, 900 ms at the 1000 ms step (item 5). On the reference hub
+  the last free knot is reached moving under the Kinetic² expectation and the
+  starvation brake stops the axis (solver.hpp renderRun, at most 0.5·v·h past
+  the knot, held to the travel window); at a 900 ms lead the newest knot sits
+  about 100 ms before the expectation's end instead of 500 ms, so renderRun
+  falls back to the knot's last span, which is harmless. The lead assumes a
+  hub's timeline holds horizon × granted rate knots: the reference holds 64
+  and grants 50/s; a hub granting more than about 71/s at a 900 ms lead
+  would refuse knots (no depth is discoverable until RFC-049(c)).
+- **Cost.** SPEC §5.4 (three sentences), §11.1 (one), §11.5 (one clause),
+  one registry note. Phosphor: `leadCapMs()` in src/model/motion.js (horizon
+  less `LEAD_MARGIN_MS` 100, never under half), a 2 s `burst` wish on the
+  segments grant, tests, FUNSCRIPT.md D2 (ph-kl6k, lane lp/netrobust). The
+  reference hub already discards on PAUSE and needs nothing; its factory
+  horizon moving to 1000 ms (val-jyu) is a device default outside this RFC.
+- **Registry impact.** One note reworded (item 6); no number.
+- **Wire impact.** None: no frame, key or limit value changes.
+- **Conformance impact.** Item 4 is a new hub MUST, already true of the
+  reference; a PAUSE checklist line ("a segment scheduled before the latch
+  never runs after `resume`").
+- **Compatibility.** A client that keeps the half lead stays conforming. A hub
+  clamps any lead to its horizon, as today.
+- **Open questions.**
+    1. A registry limit for the 100 ms (`segment_lead_margin_ms`) instead of
+    prose? Proposed: prose, since it is a client recommendation with no hub
+    behavior; a limit would only be read by clients.
 
 ---
