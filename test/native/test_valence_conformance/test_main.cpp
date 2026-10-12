@@ -199,6 +199,72 @@ TEST_CASE("M2b: RFC-009 annotation coherence") {
     }
 }
 
+TEST_CASE("rfc-tcmf: a string over a catalog.cddl cap is caught before a client rejects the catalog") {
+    // 24 bytes is the cap; 25 is what Nucleus shipped as a card heading.
+    static constexpr std::string_view k24 = "Library / Presets ......";
+    static constexpr std::string_view k25 = "Library / Pattern presets";
+    static_assert(k24.size() == 24 && k25.size() == 25);
+    auto build = [](Catalog32& c) {
+        c.clear();
+        c.addEntry({.id = 0x0080, .name = "presets",
+                    .cls = ChannelClass::STATE, .dir = Direction::h2c,
+                    .access = AccessLevel::watch, .maxRateHz = 0.0f,
+                    .defaultPriority = Priority::normal});
+        c.addLayoutField({.name = "count", .type = PackedFieldType::u8, .unit = "", .scale = 1.0f, .group = k24});
+        c.addEntry({.id = 0x0081, .name = "preset-cmd",
+                    .cls = ChannelClass::INTENT, .dir = Direction::c2h,
+                    .access = AccessLevel::control, .maxRateHz = 0.0f,
+                    .defaultPriority = Priority::normal});
+        c.addSchemaField({.name = "op", .type = CborFieldType::uint_t, .unit = "", .group = k24});
+    };
+    static Catalog32 c;
+    build(c);
+    REQUIRE(c.ok());
+    REQUIRE(checkCatalog(c).ok());
+
+    SUBCASE("a layout field group") {
+        c.layoutPool[0].group = k25;
+        auto r = checkCatalog(c);
+        CHECK(r.has(ViolationKind::StringOutOfRange));
+        CHECK(r.violations[0].channel_id == 0x0080);
+    }
+    SUBCASE("a schema field group") {
+        c.schemaPool[0].group = k25;
+        auto r = checkCatalog(c);
+        CHECK(r.has(ViolationKind::StringOutOfRange));
+        CHECK(r.violations[0].channel_id == 0x0081);
+    }
+    SUBCASE("a field name, unit and role") {
+        c.layoutPool[0].name = k25;
+        CHECK(checkCatalog(c).has(ViolationKind::StringOutOfRange));
+        build(c);
+        c.layoutPool[0].unit = "123456789";
+        CHECK(checkCatalog(c).has(ViolationKind::StringOutOfRange));
+        build(c);
+        c.schemaPool[0].role = k25;
+        CHECK(checkCatalog(c).has(ViolationKind::StringOutOfRange));
+    }
+    SUBCASE("the entry's role and category label") {
+        c.entries[0].role = k25;
+        CHECK(checkCatalog(c).has(ViolationKind::StringOutOfRange));
+        build(c);
+        c.entries[1].categoryLabel = k25;
+        CHECK(checkCatalog(c).has(ViolationKind::StringOutOfRange));
+    }
+    SUBCASE("the decoder agrees: the 25-byte group is Malformed, the 24-byte one decodes") {
+        static std::array<std::byte, 4096> buf{};
+        auto decodes = [&] {
+            const size_t n = encodeCatalog(c, buf);
+            REQUIRE(n > 0);
+            static Catalog32 out;
+            return bool(decodeCatalog(std::span<const std::byte>(buf.data(), n), out));
+        };
+        CHECK(decodes());
+        c.layoutPool[0].group = k25;
+        CHECK_FALSE(decodes());
+    }
+}
+
 TEST_CASE("M2b: EntryTooLarge needs the scratch overload and fires at the cap") {
     static const char kLongDesc[] =
         "A deliberately long description, so that a wide entry blows the "

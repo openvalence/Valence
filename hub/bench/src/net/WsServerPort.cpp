@@ -5,6 +5,10 @@
 
 #include <cstring>
 
+#ifndef IXWEBSOCKET_BENCH_NONBLOCKING_SEND
+#error "IXWebSocket is unpatched: write() would block the hub thread. Delete build/_deps/ixwebsocket-* and reconfigure."
+#endif
+
 namespace bench {
 
 // ---- ValenceBenchWsTransport ---------------------------------------------------
@@ -17,9 +21,17 @@ void ValenceBenchWsTransport::onOpen(ix::WebSocket* ws, const std::string& peer)
     _openEvt = true;
     _closeEvt = false;
     _closeHeld = false;
+    _closeRequested = false;
+    _rxSeen = true;
     _muted = false;
+    _sendFailed = false;
     _rxHead = _rxTail = _rxCount = 0;
     _rxDrops = 0;
+}
+
+void ValenceBenchWsTransport::noteRx() {
+    std::lock_guard<std::mutex> lk(_m);
+    _rxSeen = true;
 }
 
 void ValenceBenchWsTransport::onClose() {
@@ -31,7 +43,7 @@ void ValenceBenchWsTransport::onClose() {
 void ValenceBenchWsTransport::pushRx(const void* data, size_t len) {
     if (len == 0 || len > valence::kFrameBufferCapacity) return;
     std::lock_guard<std::mutex> lk(_m);
-    _muted = false;
+    _rxSeen = true;
     if (_rxCount == kRxRingDepth) {
         ++_rxDrops;
         return;
@@ -43,21 +55,36 @@ void ValenceBenchWsTransport::pushRx(const void* data, size_t len) {
     ++_rxCount;
 }
 
+void ValenceBenchWsTransport::muteLocked() {
+    if (_muted) return;
+    _muted = true;
+    _mutedSinceMs = _nowMs ? *_nowMs : 0;
+}
+
 bool ValenceBenchWsTransport::write(std::span<const std::byte> frame) {
     std::lock_guard<std::mutex> lk(_m);
     if (!_ws || _muted) return false;
     if (_ws->bufferedAmount() > kMuteBufferedBytes) {
-        _muted = true;
-        _mutedSinceMs = _nowMs ? *_nowMs : 0;
+        muteLocked();
         return false;
     }
     auto info = _ws->sendBinary(std::string(reinterpret_cast<const char*>(frame.data()), frame.size()));
     if (!info.success) {
-        _muted = true;
-        _mutedSinceMs = _nowMs ? *_nowMs : 0;
+        _sendFailed = true;
+        muteLocked();
         return false;
     }
     return true;
+}
+
+bool ValenceBenchWsTransport::stalledOut(uint32_t nowMs) {
+    std::lock_guard<std::mutex> lk(_m);
+    if (!_muted) return false;
+    if (!_sendFailed && _ws && _ws->bufferedAmount() <= kMuteBufferedBytes / 2) {
+        _muted = false;
+        return false;
+    }
+    return nowMs - _mutedSinceMs > kStallEvictMs;
 }
 
 std::optional<valence::FrameBuffer> ValenceBenchWsTransport::read() {
@@ -71,9 +98,21 @@ std::optional<valence::FrameBuffer> ValenceBenchWsTransport::read() {
 
 void ValenceBenchWsTransport::close() { requestClose(); }
 
-void ValenceBenchWsTransport::requestClose() {
+bool ValenceBenchWsTransport::requestClose() {
     std::lock_guard<std::mutex> lk(_m);
+    if (_closeRequested) return false;
+    _closeRequested = true;
     if (_ws) _ws->close();
+    return true;
+}
+
+bool ValenceBenchWsTransport::idleOut(uint32_t nowMs) {
+    std::lock_guard<std::mutex> lk(_m);
+    if (_rxSeen) {
+        _rxSeen = false;
+        _lastRxMs = nowMs;
+    }
+    return !_closeRequested && nowMs - _lastRxMs > kIdleReapMs;
 }
 
 bool ValenceBenchWsTransport::consumeOpenEvent() {
@@ -110,6 +149,7 @@ void ValenceBenchWsTransport::reap() {
     _peer.clear();
     _rxHead = _rxTail = _rxCount = 0;
     _muted = false;
+    _sendFailed = false;
 }
 
 std::string ValenceBenchWsTransport::peer() const {
@@ -186,8 +226,15 @@ void ValenceBenchWsPort::onMessage(std::shared_ptr<ix::ConnectionState> state, i
             _slots[slot].pushRx(msg->str.data(), msg->str.size());
             break;
         }
+        case ix::WebSocketMessageType::Ping:
+        case ix::WebSocketMessageType::Pong: {
+            std::lock_guard<std::mutex> lk(_mapM);
+            auto it = _slotById.find(id);
+            if (it != _slotById.end()) _slots[it->second].noteRx();
+            break;
+        }
         default:
-            break;  // Ping/Pong/Fragment/Error -- transport-level, nothing to do
+            break;  // Fragment/Error -- transport-level, nothing to do
     }
 }
 
@@ -216,10 +263,13 @@ void ValenceBenchWsPort::loop(uint32_t nowMs) {
             s.reap();
         }
 
-        if (_attached[i] && s.muted() && nowMs - s.mutedSinceMs() > ValenceBenchWsTransport::kStallEvictMs) {
-            if (_log) _log->logf('W', "ws: slot %u stalled >%ums -- disconnecting", i,
-                                 unsigned(ValenceBenchWsTransport::kStallEvictMs));
-            s.requestClose();
+        if (!_attached[i]) continue;
+        if (s.idleOut(nowMs) && s.requestClose() && _log) {
+            _log->logf('W', "ws: slot %u silent >%ums -- reaping", i, unsigned(ValenceBenchWsTransport::kIdleReapMs));
+        }
+        if (s.stalledOut(nowMs) && s.requestClose() && _log) {
+            _log->logf('W', "ws: slot %u stalled >%ums -- disconnecting", i,
+                       unsigned(ValenceBenchWsTransport::kStallEvictMs));
         }
     }
 }

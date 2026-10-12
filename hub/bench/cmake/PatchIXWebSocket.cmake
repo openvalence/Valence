@@ -43,3 +43,30 @@ if(NOT C MATCHES "bench-subprotocol-echo")
     file(WRITE ${F} "${C}")
     message(STATUS "bench: patched IXWebSocket server handshake (subprotocol echo)")
 endif()
+
+# Upstream's SERVER connections send in blocking mode (connectToSocket sets
+# _blockingSend): sendBinary() returns only once the socket took every byte,
+# with no timeout. A peer that stops reading then holds the caller forever,
+# and the caller is the hub thread (bd val-ni0). Non-blocking mode is
+# upstream's own client default: sendBinary() queues, the connection thread
+# drains, bufferedAmount() reports the backlog WsServerPort mutes on. The
+# define lets WsServerPort refuse to build against an unpatched tree.
+set(F "ixwebsocket/IXWebSocketTransport.cpp")
+file(READ ${F} C)
+if(NOT C MATCHES "bench-nonblocking-send")
+    set(ANCHOR [[        _useMask = false;
+        _blockingSend = true;]])
+    set(PATCHED [[        _useMask = false;
+        _blockingSend = false;  // bench-nonblocking-send]])
+    string(FIND "${C}" "${ANCHOR}" AT)
+    if(AT EQUAL -1)
+        message(FATAL_ERROR "bench: IXWebSocket server send anchor not found")
+    endif()
+    string(REPLACE "${ANCHOR}" "${PATCHED}" C "${C}")
+    file(WRITE ${F} "${C}")
+    set(H "ixwebsocket/IXWebSocketServer.h")
+    file(READ ${H} HC)
+    string(REPLACE "#pragma once" "#pragma once\n#define IXWEBSOCKET_BENCH_NONBLOCKING_SEND 1" HC "${HC}")
+    file(WRITE ${H} "${HC}")
+    message(STATUS "bench: patched IXWebSocket server sends to non-blocking")
+endif()

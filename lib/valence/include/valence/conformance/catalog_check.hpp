@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 #include "valence/channel/catalog.hpp"
 #include "valence/wire/catalog_codec.hpp"
@@ -35,6 +36,12 @@ enum class ViolationKind : uint8_t {
                           //   the retired setting_categories vocabulary (same wire key).
     SettingChannelMissing, // RFC-009: a field carrying setting_key is unwritable without the
                            //   entry's setting_channel naming the INTENT it writes through.
+    StringOutOfRange,      // catalog.cddl size caps the decoder enforces: a field name
+                           //   (1..24), unit (0..8), group or role (1..24 when present), a
+                           //   bit, option or event_kind label (1..24 when present), or the
+                           //   entry's category_label or role (1..24 when present).
+                           //   decodeCatalog rejects the WHOLE catalog as Malformed, so one
+                           //   long card heading costs a conforming client every channel.
 };
 
 struct Violation {
@@ -124,6 +131,27 @@ inline ConformanceReport checkCatalog(const BasicCatalog<E, L, S, B, T, F>& c,
                     break;
                 }
             }
+        }
+
+        // ---- catalog.cddl string caps ----------------------------------------
+        {
+            const auto bad = [](std::string_view v, size_t lo, size_t hi) { return v.size() < lo || v.size() > hi; };
+            const auto badOpt = [&](std::string_view v) { return !v.empty() && bad(v, 1, 24); };
+            const auto badLabels = [&](std::span<const std::string_view> ls, bool allowEmpty) {
+                for (std::string_view l : ls)
+                    if (allowEmpty ? badOpt(l) : bad(l, 1, 24)) return true;
+                return false;
+            };
+            bool out = badOpt(e.categoryLabel) || badOpt(e.role) || badLabels(c.eventKindLabels(e), true);
+            for (const LayoutField& f : layout) {
+                out = out || bad(f.name, 1, 24) || f.unit.size() > 8 || badOpt(f.group) || badOpt(f.role) ||
+                      badLabels(c.bitLabels(f), true) || badLabels(c.optionLabels(f), false);
+            }
+            for (const SchemaField& f : schema) {
+                out = out || bad(f.name, 1, 24) || f.unit.size() > 8 || badOpt(f.group) || badOpt(f.role) ||
+                      badLabels(c.optionLabels(f), false);
+            }
+            if (out) r.add(ViolationKind::StringOutOfRange, e.id);
         }
 
         // ---- §8.1 / RFC-028 per-entry byte cap ------------------------------
