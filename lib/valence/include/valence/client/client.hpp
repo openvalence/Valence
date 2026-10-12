@@ -266,6 +266,10 @@ public:
     // only channel to a client that owns no token yet. Do not knock and
     // disconnect.
     bool sendPairKnock();
+    // A knock naming the tier it asks for (RFC-114 draft). Asking `configure`
+    // waits for an approval: a configure session, or a double press of the
+    // hub's pairing control.
+    bool sendPairKnock(AccessLevel ask);
     // §6.4: sends PROBE and starts measuring the hub's burst; a PROBE_REPORT
     // is sent automatically once probe_max_duration_ms has elapsed (from
     // update()). Returns false when not LIVE or the send fails.

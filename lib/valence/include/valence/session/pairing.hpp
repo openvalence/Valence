@@ -80,6 +80,9 @@ struct PendingKnock {
     uint32_t session_id = 0;   // the live session that knocked (see below)
     uint32_t expiresAtMs = 0;  // wrap-safe deadline, §7.2
     uint8_t mode = pairing_modes::knock_approve;
+    // The tier the knock asked for (PAIR_REQ `roles`, RFC-114 draft); watch
+    // means it named none. Only a `configure` ask is approvable at the machine.
+    AccessLevel asked = AccessLevel::watch;
     BoundedString<kLedgerKindMaxBytes> kind{};
     BoundedString<kLedgerNameMaxBytes> name{};
     BoundedString<kLedgerVersionMaxBytes> version{};
@@ -240,6 +243,9 @@ public:
     AccessLevel presenceGrantRole() const;
     void setPresenceDefaultRole(AccessLevel r) { _presenceDefaultRole = r; }
     bool hasConfigureToken() const;
+    // Every entry above `watch` drops to `watch`; entries are kept, so the
+    // roster still names who was paired (RFC-114 draft). Returns how many.
+    size_t demoteAllToWatch();
 
     // Which `pairing_modes` bits this hub is offering RIGHT NOW — the value
     // WELCOME advertises in `trust`.pairing_modes, re-evaluated per session so
@@ -454,6 +460,17 @@ inline bool PairingManager::hasConfigureToken() const {
         if (e.used && e.role == AccessLevel::configure) return true;
     }
     return false;
+}
+
+inline size_t PairingManager::demoteAllToWatch() {
+    size_t n = 0;
+    for (auto& e : _entries) {
+        if (!e.used || e.role == AccessLevel::watch) continue;
+        e.role = AccessLevel::watch;
+        ++n;
+    }
+    if (n != 0) touch();
+    return n;
 }
 
 inline AccessLevel PairingManager::presenceGrantRole() const {

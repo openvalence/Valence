@@ -611,6 +611,31 @@ public:
     // Whether bare knocks are accepted at all (RFC-027 mode (a)). Default true.
     void setKnockApproveEnabled(bool on);
 
+    // ---- RFC-114 draft: the pairing control's two stronger gestures ---------
+    // The application calls these on its gesture; the library never reads a
+    // button. Both act at the hub's current time and publish their own edges.
+    //
+    // approvePendingConfigure(): a double press. Grants `configure` to the ONE
+    // fresh pending knock that asked for it, over that knock's own session.
+    // Zero or several such knocks approve nothing, so a second knocker cannot
+    // race the one at the machine.
+    enum class PresenceApproval : uint8_t { approved, none_pending, several_pending, knocker_gone, ledger_full };
+    PresenceApproval approvePendingConfigure();
+    // Fresh pending knocks that asked for `configure`: 1 means a double press
+    // would approve. For an indicator; the answer can change by the next tick.
+    size_t configureRequestsPending() const;
+    // demoteAllToWatch(): a long hold. Every ledger entry drops to `watch`,
+    // every pending knock is denied, both windows close, and every session
+    // above `watch` is evicted (SESSION_EVICTED) through the full teardown, so
+    // its sources release as any session end releases them; it reconnects at
+    // what its token now proves. A role the DELEGATE vouches for
+    // (validateToken) is the delegate's to withhold.
+    struct DemoteCount {
+        size_t tokens = 0;
+        size_t sessions = 0;
+    };
+    DemoteCount demoteAllToWatch();
+
     // ---- M4b: RFC-029 item 2, the CLIENT-CHANGE TRIPWIRE policy -------------
     // A paired device whose granted role is AT OR BELOW this level auto-rekeeps
     // when its reported `client_ver` changes; anything above it is SUSPENDED to

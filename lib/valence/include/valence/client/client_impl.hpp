@@ -987,6 +987,17 @@ inline bool Client::sendPairKnock() {
     return sendFrame(FrameType::PAIR_REQ, 0, std::span<const std::byte>(buf.data(), n));
 }
 
+inline bool Client::sendPairKnock(AccessLevel ask) {
+    PairReqMsg m{};
+    m.instance_id = _id.instance_id;
+    m.has_roles = true;
+    m.roles = uint8_t(ask);
+    std::array<std::byte, 64> buf{};
+    size_t n = encodePairReq(m, std::span<std::byte>(buf));
+    if (n == 0) return false;
+    return sendFrame(FrameType::PAIR_REQ, 0, std::span<const std::byte>(buf.data(), n));
+}
+
 inline void Client::handlePairGrant(std::span<const std::byte> payload) {
     auto res = decodePairGrant(payload);
     if (!res) return;

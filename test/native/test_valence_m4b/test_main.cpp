@@ -1741,3 +1741,201 @@ TEST_CASE("M4B-39 (rfc-904): an ESTOP latched on a stalled link past the wrap pa
     CHECK(repeatAfterMs(limits::never_shed_stall_eviction_ms - 2) == HubSessionState::LIVE);
     CHECK(repeatAfterMs(1) == HubSessionState::STALE);  // RFC-051: parked at 2 s
 }
+
+// ---- RFC-114 draft: a knock that asks, the double press, the demote hold ----
+
+namespace {
+
+void writeAsk(ITransport& ep, uint8_t idByte, AccessLevel ask) {
+    PairReqMsg m{};
+    m.instance_id = instanceOf(idByte);
+    m.has_roles = true;
+    m.roles = uint8_t(ask);
+    std::array<std::byte, 64> buf{};
+    size_t n = encodePairReq(m, std::span<std::byte>(buf));
+    REQUIRE(n > 0);
+    writeFrame(ep, FrameType::PAIR_REQ, 0, std::span<const std::byte>(buf.data(), n));
+}
+
+bool sawGoodbye(const std::vector<DecodedReply>& replies, NackCode code) {
+    for (const auto& r : replies) {
+        if (r.type != FrameType::GOODBYE) continue;
+        auto g = decodeGoodbye(std::span<const std::byte>(r.payload));
+        if (g && g.value().code == code) return true;
+    }
+    return false;
+}
+
+class OwnershipDelegate final : public HubDelegate {
+public:
+    int releases = 0;
+    AccessLevel validateToken(std::span<const std::byte>, std::span<const std::byte>, bool) override {
+        return AccessLevel::watch;
+    }
+    Result<IntentValueMap, NackCode> applyIntent(uint16_t, const IntentValueMap& requested, AccessLevel,
+                                                 bool&) override {
+        return Result<IntentValueMap, NackCode>::ok(requested);
+    }
+    std::optional<uint8_t> sourceForChannel(uint16_t channel_id) override {
+        if (channel_id == kMotionCh) return uint8_t(1);
+        return std::nullopt;
+    }
+    void onSourceOwnership(uint8_t, uint32_t owner, uint8_t) override {
+        if (owner == 0) ++releases;
+    }
+    void onEstop(uint8_t, uint8_t) override {}
+};
+
+// Pairs instance `idByte` through a presence window over `ep`; returns its token.
+std::array<std::byte, limits::token_bytes> pairByWindow(Hub& hub, ManualClock& clock, ITransport& ep,
+                                                         uint8_t idByte) {
+    connectSession(hub, clock, ep, idByte, 0, allSubs());
+    hub.openPresenceWindow();
+    writeKnock(ep, idByte);
+    auto g = findPairGrant(tickAndDrain(hub, clock, ep));
+    REQUIRE(g.has_value());
+    return g->token;
+}
+
+size_t configureEntries(const Hub& hub) {
+    size_t n = 0;
+    for (size_t i = 0; i < hub.pairing().entryCount(); ++i) {
+        const auto* e = hub.pairing().entry(i);
+        if (e != nullptr && e->role == AccessLevel::configure) ++n;
+    }
+    return n;
+}
+
+}  // namespace
+
+TEST_CASE("M4B-40 (RFC-114): a knock asking configure does not spend a control window; it queues and says so") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4040);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink a(clock, rng), b(clock, rng), c(clock, rng);
+    for (InProcessLink* l : {&a, &b, &c}) {
+        REQUIRE(hub.attachTransport(l->endpointA()));
+        REQUIRE(l->endpointB().open());
+    }
+    pairByWindow(hub, clock, a.endpointB(), 2);   // a configure owner exists now
+    REQUIRE(hub.pairing().hasConfigureToken());
+
+    connectSession(hub, clock, b.endpointB(), 3, 0, allSubs());
+    hub.openPresenceWindow();
+    writeAsk(b.endpointB(), 3, AccessLevel::configure);
+    auto replies = tickAndDrain(hub, clock, b.endpointB());
+    CHECK_FALSE(findPairGrant(replies).has_value());
+    CHECK(hub.presenceWindowOpen());   // still there for a knock it can serve
+    CHECK(hub.configureRequestsPending() == 1);
+    bool sawAsk = false;
+    for (const auto& e : collectEvents(replies, channels::pairing_events)) {
+        if (e.event_kind == pairing_events::knocked)
+            sawAsk = bodyU64(e, pairing_body::role) == uint64_t(AccessLevel::configure);
+    }
+    CHECK(sawAsk);
+
+    // A knock asking control is served by that window, at control.
+    connectSession(hub, clock, c.endpointB(), 4, 0, {});
+    writeAsk(c.endpointB(), 4, AccessLevel::control);
+    auto g = findPairGrant(tickAndDrain(hub, clock, c.endpointB()));
+    REQUIRE(g.has_value());
+    CHECK(g->roles == uint8_t(AccessLevel::control));
+    CHECK_FALSE(hub.presenceWindowOpen());
+}
+
+TEST_CASE("M4B-41 (RFC-114): the double press approves exactly one fresh configure ask, over its own session") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4041);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink owner(clock, rng), asker(clock, rng), bare(clock, rng), rival(clock, rng);
+    for (InProcessLink* l : {&owner, &asker, &bare, &rival}) {
+        REQUIRE(hub.attachTransport(l->endpointA()));
+        REQUIRE(l->endpointB().open());
+    }
+    pairByWindow(hub, clock, owner.endpointB(), 2);
+
+    SUBCASE("none pending approves nothing") {
+        CHECK(hub.approvePendingConfigure() == Hub::PresenceApproval::none_pending);
+    }
+    SUBCASE("one pending lands on the session that asked, not the other knocker") {
+        connectSession(hub, clock, asker.endpointB(), 3, 0, allSubs());
+        connectSession(hub, clock, bare.endpointB(), 4, 0, {});
+        writeAsk(asker.endpointB(), 3, AccessLevel::configure);
+        writeKnock(bare.endpointB(), 4);
+        tickAndDrain(hub, clock, asker.endpointB());
+        tickAndDrain(hub, clock, bare.endpointB());
+        CHECK(hub.configureRequestsPending() == 1);
+        CHECK(hub.approvePendingConfigure() == Hub::PresenceApproval::approved);
+        auto g = findPairGrant(tickAndDrain(hub, clock, asker.endpointB()));
+        REQUIRE(g.has_value());
+        CHECK(g->roles == uint8_t(AccessLevel::configure));
+        CHECK_FALSE(findPairGrant(tickAndDrain(hub, clock, bare.endpointB())).has_value());
+        CHECK(hub.pairing().pending().count() == 1);   // the bare knock still waits
+        CHECK(configureEntries(hub) == 2);              // configure owners coexist
+    }
+    SUBCASE("two pending approve nothing, so a rival cannot race the real one") {
+        connectSession(hub, clock, asker.endpointB(), 3, 0, {});
+        connectSession(hub, clock, rival.endpointB(), 5, 0, {});
+        writeAsk(asker.endpointB(), 3, AccessLevel::configure);
+        writeAsk(rival.endpointB(), 5, AccessLevel::configure);
+        tickAndDrain(hub, clock, asker.endpointB());
+        tickAndDrain(hub, clock, rival.endpointB());
+        CHECK(hub.approvePendingConfigure() == Hub::PresenceApproval::several_pending);
+        CHECK_FALSE(findPairGrant(tickAndDrain(hub, clock, asker.endpointB())).has_value());
+        CHECK_FALSE(findPairGrant(tickAndDrain(hub, clock, rival.endpointB())).has_value());
+    }
+    SUBCASE("a stale ask, past the window, approves nothing") {
+        connectSession(hub, clock, asker.endpointB(), 3, 0, {});
+        writeAsk(asker.endpointB(), 3, AccessLevel::configure);
+        tickAndDrain(hub, clock, asker.endpointB());
+        for (int i = 0; i < 121; ++i) pingTick(hub, clock, asker.endpointB(), 1'000'000);
+        CHECK(hub.configureRequestsPending() == 0);
+        CHECK(hub.approvePendingConfigure() == Hub::PresenceApproval::none_pending);
+    }
+}
+
+TEST_CASE("M4B-42 (RFC-114): demote-all lowers every token, evicts every session above watch, releases its sources") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4042);
+    OwnershipDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink a(clock, rng), w(clock, rng);
+    REQUIRE(hub.attachTransport(a.endpointA()));
+    REQUIRE(hub.attachTransport(w.endpointA()));
+    REQUIRE(a.endpointB().open());
+    REQUIRE(w.endpointB().open());
+    const auto token = pairByWindow(hub, clock, a.endpointB(), 2);   // configure, in place
+    connectSession(hub, clock, w.endpointB(), 3, 0, {});            // a plain watcher
+
+    IntentMsg m{};
+    m.channel_id = kMotionCh;
+    m.intent_id = 1;
+    m.value_count = 1;
+    m.value[0] = IntentValueField{1, IntentValue::ofF32(5.0f)};
+    std::array<std::byte, 128> buf{};
+    const size_t n = encodeIntent(m, std::span<std::byte>(buf));
+    writeFrame(a.endpointB(), FrameType::INTENT, kMotionCh, std::span<const std::byte>(buf.data(), n));
+    tickAndDrain(hub, clock, a.endpointB());
+    REQUIRE(del.releases == 0);
+
+    const Hub::DemoteCount d = hub.demoteAllToWatch();
+    CHECK(d.tokens == 1);
+    CHECK(d.sessions == 1);
+    CHECK(del.releases == 1);   // the owner's source released on the teardown path
+    CHECK(sawGoodbye(tickAndDrain(hub, clock, a.endpointB()), NackCode::SESSION_EVICTED));
+    CHECK_FALSE(sawGoodbye(tickAndDrain(hub, clock, w.endpointB()), NackCode::SESSION_EVICTED));
+    CHECK_FALSE(hub.pairing().hasConfigureToken());
+    CHECK(hub.pairing().entryCount() == 1);   // kept, at watch
+
+    // The token now proves watch.
+    auto again = connectSession(hub, clock, a.endpointB(), 2, 0, {}, {}, "m4b-test", &token);
+    CHECK(again.roles == uint8_t(AccessLevel::watch));
+}

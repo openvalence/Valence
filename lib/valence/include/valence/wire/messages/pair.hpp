@@ -2,7 +2,8 @@
 // that turns a watch session into a control session.
 //
 // PAIR_REQ (client -> hub), CBOR map, keys ascending: instance_id(4),
-// [pin_proof(28)]. `pin_proof` = HMAC-SHA256(key = PIN ASCII, message =
+// [roles(23)], [pin_proof(28)]. `roles` is the tier a knock asks for
+// (RFC-114 draft); absent, the knock names none and the approver picks. `pin_proof` = HMAC-SHA256(key = PIN ASCII, message =
 // WELCOME's 8-byte nonce) truncated to 16 bytes (§12.2) — this codec only
 // carries the 16 bytes, it does not compute the HMAC.
 //
@@ -53,6 +54,8 @@ struct PairReqMsg {
     // only reports which shape arrived.
     bool has_pin_proof = false;
     std::array<std::byte, kPinProofBytes> pin_proof{};
+    bool has_roles = false;
+    uint8_t roles = 0;  // an AccessLevel; the hub refuses one past configure
 };
 
 struct PairGrantMsg {
@@ -66,8 +69,9 @@ struct PairGrantMsg {
 // Encodes into `out`; returns bytes written, or 0 on any failure.
 inline size_t encodePairReq(const PairReqMsg& m, std::span<std::byte> out) {
     CborWriter w(out);
-    w.mapHeader(m.has_pin_proof ? 2 : 1);
+    w.mapHeader(1 + (m.has_roles ? 1 : 0) + (m.has_pin_proof ? 1 : 0));
     w.key(CborKey::instance_id).bstrVal(std::span<const std::byte>(m.instance_id));
+    if (m.has_roles) w.key(CborKey::roles).uintVal(m.roles);
     if (m.has_pin_proof) w.key(CborKey::pin_proof).bstrVal(std::span<const std::byte>(m.pin_proof));
     return w.size();
 }
@@ -101,6 +105,14 @@ inline Result<PairReqMsg, DecodeError> decodePairReq(std::span<const std::byte> 
                 if (v.value().size() != m.pin_proof.size()) return Ret::err(DecodeError::Malformed);
                 std::memcpy(m.pin_proof.data(), v.value().data(), m.pin_proof.size());
                 m.has_pin_proof = true;
+                break;
+            }
+            case uint64_t(CborKey::roles): {
+                auto v = r.readUint();
+                if (!v) return Ret::err(v.error());
+                if (v.value() > 0xFF) return Ret::err(DecodeError::Malformed);
+                m.roles = uint8_t(v.value());
+                m.has_roles = true;
                 break;
             }
             default: {

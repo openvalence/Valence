@@ -1109,11 +1109,18 @@ export function createSession(opts = {}) {
    * RFC-015 readiness gate that INTENT is held behind — a knock needs no
    * catalog.
    *
+   * `opts.role` names the tier the knock asks for (RFC-114 draft, key 23).
+   * A `configure` ask never spends a window that grants less: it waits for a
+   * configure session's approval or a double press of the hub's Pair control.
+   *
+   * @param {{role?: number}} [opts]
    * @returns {boolean} true iff the frame was actually written to the socket
    */
-  function sendPairReq() {
+  function sendPairReq(opts = {}) {
     if (!state.welcomed) return false;
-    return sendFrame(FRAME.PAIR_REQ, 0, cbMap([[K.instance_id, cbBstr(instanceId)]]));
+    const fields = [[K.instance_id, cbBstr(instanceId)]];
+    if (opts.role != null) fields.push([K.roles, cbUint(opts.role)]);
+    return sendFrame(FRAME.PAIR_REQ, 0, cbMap(fields));
   }
 
   /**

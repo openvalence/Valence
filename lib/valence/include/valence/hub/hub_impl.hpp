@@ -3159,6 +3159,68 @@ inline void Hub::openPresenceWindow() {
     publishPendingPairingState(nowMs);
 }
 
+inline size_t Hub::configureRequestsPending() const {
+    size_t n = 0;
+    for (size_t i = 0; i < kPendingSlots; ++i) {
+        const PendingKnock* k = _pairing.pending().at(i);
+        if (k != nullptr && k->used && k->asked == AccessLevel::configure && !timeReached(_lastUpdateMs, k->expiresAtMs))
+            ++n;
+    }
+    return n;
+}
+
+inline Hub::PresenceApproval Hub::approvePendingConfigure() {
+    const uint32_t nowMs = _lastUpdateMs;
+    const size_t n = configureRequestsPending();
+    if (n == 0) return PresenceApproval::none_pending;
+    if (n > 1) return PresenceApproval::several_pending;
+    std::array<std::byte, limits::instance_id_bytes> inst{};
+    uint32_t sessionId = 0;
+    for (size_t i = 0; i < kPendingSlots; ++i) {
+        const PendingKnock* k = _pairing.pending().at(i);
+        if (k == nullptr || !k->used || k->asked != AccessLevel::configure || timeReached(nowMs, k->expiresAtMs))
+            continue;
+        inst = k->instance_id;
+        sessionId = k->session_id;
+    }
+    // Bound to the session that asked: the grant goes there or nowhere.
+    Slot* joiner = findSlotBySession(sessionId);
+    if (joiner == nullptr || joiner->transport == nullptr) {
+        _pairing.pending().remove(inst);
+        emitPairingEvent(pairing_events::expired, inst, {}, pairing_modes::knock_approve, AccessLevel::watch, {}, nowMs);
+        publishPendingPairingState(nowMs);
+        return PresenceApproval::knocker_gone;
+    }
+    // Ledger pairing_mode push_to_pair: presence at the machine approved it.
+    if (!issuePairGrant(*joiner, inst, AccessLevel::configure, pairing_modes::push_to_pair, nowMs))
+        return PresenceApproval::ledger_full;
+    return PresenceApproval::approved;
+}
+
+inline Hub::DemoteCount Hub::demoteAllToWatch() {
+    const uint32_t nowMs = _lastUpdateMs;
+    DemoteCount d{};
+    d.tokens = _pairing.demoteAllToWatch();
+    for (size_t i = 0; i < kPendingSlots; ++i) {
+        const PendingKnock* k = _pairing.pending().at(i);
+        if (k == nullptr || !k->used) continue;
+        const std::array<std::byte, limits::instance_id_bytes> inst = k->instance_id;
+        const uint8_t mode = k->mode;
+        _pairing.pending().remove(inst);
+        emitPairingEvent(pairing_events::denied, inst, {}, mode, AccessLevel::watch, {}, nowMs);
+    }
+    _pairing.closeWindow();
+    closePresenceWindow();
+    for (auto& slot : _slots) {
+        if (!slot.session.occupied() || slot.session.role == AccessLevel::watch) continue;
+        evictSlot(slot, NackCode::SESSION_EVICTED, nowMs);
+        ++d.sessions;
+    }
+    publishPendingPairingState(nowMs);
+    publishPairedRosterState();
+    return d;
+}
+
 inline void Hub::closePresenceWindow() {
     const uint32_t nowMs = _lastUpdateMs;
     if (!_pairing.presenceWindowOpen(nowMs)) return;
@@ -3344,11 +3406,21 @@ inline void Hub::handleKnock(Slot& slot, const PairReqMsg& m, uint32_t nowMs) {
         return;
     }
 
+    // RFC-114 draft: the tier the knock asks for. Asking `watch` asks nothing.
+    if (m.has_roles && m.roles > uint8_t(AccessLevel::configure)) {
+        NackMsg n;
+        n.code = NackCode::PAIRING_DENIED;
+        sendNackTracked(slot, n, nowMs);
+        return;
+    }
+    const AccessLevel asked = m.has_roles ? AccessLevel(m.roles) : AccessLevel::watch;
+
     // (c) PUSH-TO-PAIR first: a presence window is a stronger claim than a
     // queued approval, and it is SINGLE-GRANT — consuming it here is what makes
-    // "the first knock in the window" literally true.
-    if (_pairing.presenceWindowOpen(nowMs)) {
-        const AccessLevel role = _pairing.presenceGrantRole();
+    // "the first knock in the window" literally true. A knock asking more than
+    // the window grants does not spend it on less; it queues for an approval.
+    if (_pairing.presenceWindowOpen(nowMs) && uint8_t(asked) <= uint8_t(_pairing.presenceGrantRole())) {
+        const AccessLevel role = asked != AccessLevel::watch ? asked : _pairing.presenceGrantRole();
         _pairing.closePresenceWindow();
         _presenceWasOpen = false;
         if (!issuePairGrant(slot, inst, role, pairing_modes::push_to_pair, nowMs)) {
@@ -3385,6 +3457,7 @@ inline void Hub::handleKnock(Slot& slot, const PairReqMsg& m, uint32_t nowMs) {
         sendNackTracked(slot, n, nowMs);
         return;
     }
+    k->asked = asked;
     k->kind.assign(slot.session.clientKind.view());
     k->name.assign(slot.session.clientName.view());
     if (slot.session.hasClientVer) k->version.assign(slot.session.clientVer.view());
@@ -3394,8 +3467,9 @@ inline void Hub::handleKnock(Slot& slot, const PairReqMsg& m, uint32_t nowMs) {
     // denied, and silence in between — the joiner has one button and nothing to
     // render an interim status on. Everything an OPERATOR needs is published
     // instead, on 0x000A and 0x000B.
-    emitPairingEvent(pairing_events::knocked, inst, k->name.view(), k->mode, AccessLevel::watch,
-                     k->version.view(), nowMs);
+    // The event's role is the tier asked for, so any watch session can see a
+    // second configure ask that would block a double press.
+    emitPairingEvent(pairing_events::knocked, inst, k->name.view(), k->mode, asked, k->version.view(), nowMs);
     publishPendingPairingState(nowMs);
 }
 
@@ -3659,10 +3733,10 @@ inline void Hub::trackCriticalSend(Slot& slot, bool sendOk, uint32_t nowMs) {
 }
 
 // Reserved for genuine ends: admin evict (session_admin_ops::evict),
-// duplicate-LIVE-instance eviction and goodbyeAll() — never for slow-consumer
+// duplicate-LIVE-instance eviction, goodbyeAll() and demoteAllToWatch() — never for slow-consumer
 // stalls (trackCriticalSend() parks instead, RFC-051). Admin evict and
 // duplicate-instance handling inline this same GOODBYE+teardownSession shape
-// rather than calling it; goodbyeAll() is its one caller.
+// rather than calling it; goodbyeAll() and demoteAllToWatch() call it.
 inline void Hub::evictSlot(Slot& slot, NackCode code, uint32_t nowMs) {
     if (slot.session.occupied()) {
         GoodbyeMsg gb;
