@@ -20,6 +20,7 @@
 #include <doctest/doctest.h>
 
 #include "valence/client/client.hpp"
+#include "valence/client/estop_datagram.hpp"
 #include "valence/conformance/mini_catalog.hpp"
 #include "valence/core/clock.hpp"
 #include "valence/core/rng.hpp"
@@ -1970,4 +1971,105 @@ TEST_CASE("rfc-ns5c: the delegate learns which session's intent it is applying; 
     CHECK(seen[seen.size() - 2] == rig.a->sessionId());
     CHECK(seen.back() == rig.b->sessionId());
     CHECK(rig.hub->intentSession() == 0);
+}
+
+// ---- client-lib: the safety helpers (§11.1, §11.2) --------------------------
+TEST_CASE("CL-01: halt, pause, resume and release drive the safety pairs") {
+    SafetyRig rig(/*withToken=*/true);
+
+    REQUIRE(rig.client->pause().has_value());
+    rig.step();
+    CHECK(rig.hub->safetyWord() == safety_bits::PAUSE);
+    CHECK(rig.client->pauseLatched());
+
+    REQUIRE(rig.client->resume().has_value());
+    rig.step();
+    CHECK(rig.hub->safetyWord() == 0);
+
+    rig.client->halt();
+    rig.step();
+    CHECK((rig.hub->safetyWord() & safety_bits::ESTOP) != 0);
+    REQUIRE(rig.client->safetyWord().has_value());
+    CHECK((*rig.client->safetyWord() & safety_bits::ESTOP) != 0);
+    CHECK_FALSE(rig.client->estopSendFailed());
+
+    REQUIRE(rig.client->release().has_value());
+    rig.step();
+    CHECK((rig.hub->safetyWord() & safety_bits::ESTOP) == 0);
+    CHECK(rig.hub->pauseLatched());  // release lands in PAUSE, never in motion
+
+    REQUIRE(rig.client->resume().has_value());
+    rig.step();
+    CHECK(rig.hub->safetyWord() == 0);
+    CHECK(rig.del.nacks.empty());
+}
+
+TEST_CASE("CL-02: a full pending table never blocks pause; it does block resume") {
+    SafetyRig rig(/*withToken=*/true);
+    int sent = 0;
+    while (rig.client->sendIntent(0x0084, makeSpeedIntent(10.0f)).has_value()) ++sent;
+    REQUIRE(sent == 8);
+    CHECK_FALSE(rig.client->resume().has_value());
+    REQUIRE(rig.client->pause().has_value());
+    rig.step();
+    CHECK(rig.hub->pauseLatched());
+}
+
+TEST_CASE("CL-03: a watch session's helpers: halt and pause go out, resume and release are refused") {
+    SafetyRig rig(/*withToken=*/false, 61);
+    REQUIRE(rig.client->pause().has_value());
+    rig.step();
+    CHECK(rig.hub->pauseLatched());
+    REQUIRE(rig.client->resume().has_value());
+    rig.step();
+    REQUIRE_FALSE(rig.del.nacks.empty());
+    CHECK(rig.del.nacks.back().code == NackCode::NOT_CONTROLLER);
+    CHECK(rig.hub->pauseLatched());
+    rig.client->halt();
+    rig.step();
+    CHECK((rig.hub->safetyWord() & safety_bits::ESTOP) != 0);
+}
+
+// ---- client-lib: RFC-053's sessionless sender --------------------------------
+namespace {
+struct DatagramSink {
+    std::vector<std::vector<std::byte>> sent;
+    bool fail = false;
+    static bool send(void* ctx, std::span<const std::byte> d) {
+        auto* self = static_cast<DatagramSink*>(ctx);
+        if (self->fail) return false;
+        self->sent.emplace_back(d.begin(), d.end());
+        return true;
+    }
+};
+}  // namespace
+
+TEST_CASE("CL-04: EstopDatagramSender spends the whole budget on one seq, then a new initiation moves the seq") {
+    DatagramSink sink;
+    EstopDatagramSender tx(&DatagramSink::send, &sink, 0xFFFE);
+    tx.initiate(safety_causes::user, uint8_t(AccessLevel::watch), 1000);
+    CHECK(tx.active());
+    CHECK(tx.seq() == 0xFFFF);
+    CHECK(sink.sent.size() == 1);
+    tx.update(1049);
+    CHECK(sink.sent.size() == 1);
+    for (uint32_t t = 1050; t <= 4000; t += 10) tx.update(t);
+    CHECK_FALSE(tx.active());
+    CHECK(sink.sent.size() == limits::estop_repeat_max);
+    CHECK(tx.sent() == limits::estop_repeat_max);
+    for (const auto& d : sink.sent) {
+        CHECK(d == sink.sent.front());
+        auto f = decodeEstop(std::span<const std::byte>(d));
+        REQUIRE(f);
+        CHECK(f.value().seq == 0xFFFF);
+        CHECK(f.value().cause == safety_causes::user);
+        CHECK(f.value().origin == uint8_t(AccessLevel::watch));
+    }
+
+    tx.initiate(safety_causes::user, uint8_t(AccessLevel::control), 5000);
+    CHECK(tx.seq() == 1);  // 16-bit wrap skips 0
+    sink.fail = true;
+    for (uint32_t t = 5000; t <= 0xFFFFFFFFu - 1 && tx.active(); t += 50) tx.update(t);
+    CHECK(tx.failed() == limits::estop_repeat_max - 1);
+    CHECK(tx.sent() == 1);
 }

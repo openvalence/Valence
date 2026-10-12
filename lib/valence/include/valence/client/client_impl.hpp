@@ -57,6 +57,32 @@ inline bool Client::addSubscriptionWish(uint16_t channel_id, float rate_hz, Prio
     return true;
 }
 
+inline bool Client::subscribe(uint16_t channel_id, float rate_hz, Priority prio) {
+    Wish* w = nullptr;
+    for (size_t i = 0; i < _wishCount; ++i) {
+        if (_wishes[i].channel_id == channel_id) w = &_wishes[i];
+    }
+    if (w == nullptr) {
+        if (_wishCount >= kMaxWishes) return false;
+        w = &_wishes[_wishCount++];
+    }
+    *w = Wish{channel_id, rate_hz, prio};
+    if (_state == ClientSessionState::HELLO_SENT) {
+        _wishesAfterHello = true;
+        return true;
+    }
+    if (_state != ClientSessionState::SYNCING && _state != ClientSessionState::LIVE) return true;
+    SubscribeMsg m{};
+    m.subscriptions_count = 1;
+    m.subscriptions[0].channel_id = channel_id;
+    m.subscriptions[0].rate_hz = rate_hz;
+    m.subscriptions[0].priority = uint8_t(prio);
+    std::array<std::byte, 64> buf{};
+    const size_t n = encodeSubscribe(m, std::span<std::byte>(buf));
+    if (n == 0) return false;
+    return sendFrame(FrameType::SUBSCRIBE, 0, std::span<const std::byte>(buf.data(), n));
+}
+
 inline void Client::setCachedEtag(std::span<const std::byte, limits::etag_bytes> etag) {
     std::copy(etag.begin(), etag.end(), _cachedEtag.begin());
 }
@@ -95,6 +121,7 @@ inline bool Client::connect() {
     _estopActive = false;
     _estopSendFailed = false;
     _holdingSource = false;  // §6.8: a new session never inherits ownership
+    _wishesAfterHello = false;  // this HELLO carries every wish standing now
 
     // ---- M4c: the RFC-029 trust state, reset per session --------------------
     _hubAuth = HubAuthState::NotRequested;
@@ -361,6 +388,10 @@ inline void Client::handleWelcome(std::span<const std::byte> payload, uint32_t n
     if (_presentationMode == presentation_modes::proof && _id.hasToken) sendAuthProof();
 
     setState(ClientSessionState::SYNCING);
+    if (_wishesAfterHello) {
+        _wishesAfterHello = false;
+        resendSubscriptionWishes();
+    }
     checkLiveTransition();
     (void)nowMs;
 }
@@ -681,6 +712,7 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
         }
         _catalogReady = true;
         _refetching = false;
+        _delegate.onCatalog(bytes, match);
 
         // §8.4/RFC-015: the hash IS the acknowledgment — declare which
         // catalog this client now operates against so the hub opens its data
@@ -792,6 +824,12 @@ inline void Client::handlePing(std::span<const std::byte> payload) {
 inline std::optional<uint16_t> Client::sendIntent(uint16_t channel_id, const IntentValueMap& values,
                                                    std::optional<uint16_t> preconditionCfgGen, bool takeover,
                                                    bool trial) {
+    return sendIntentImpl(channel_id, values, preconditionCfgGen, takeover, trial, false);
+}
+
+inline std::optional<uint16_t> Client::sendIntentImpl(uint16_t channel_id, const IntentValueMap& values,
+                                                       std::optional<uint16_t> preconditionCfgGen, bool takeover,
+                                                       bool trial, bool roleExempt) {
     if (_state != ClientSessionState::LIVE) return std::nullopt;
     // RFC-029 item 1, NORMATIVE: "a clone fails the signature; the client MUST
     // surface 'this is not your machine' and withhold intents". WITHHELD HERE,
@@ -802,7 +840,10 @@ inline std::optional<uint16_t> Client::sendIntent(uint16_t channel_id, const Int
     // to sign, and a client that froze during that window would make every
     // signing hub feel broken.
     if (_hubAuth == HubAuthState::Mismatch || _hubAuth == HubAuthState::Timeout) return std::nullopt;
-    if (_pendingCount >= kMaxPendingIntents) return std::nullopt;
+    // A full pending table never blocks a role-exempt safety op (§11.1, §11.2):
+    // it goes out untracked instead.
+    const bool track = _pendingCount < kMaxPendingIntents;
+    if (!track && !roleExempt) return std::nullopt;
 
     IntentMsg m{};
     m.channel_id = channel_id;
@@ -824,7 +865,7 @@ inline std::optional<uint16_t> Client::sendIntent(uint16_t channel_id, const Int
     if (!sendFrame(FrameType::INTENT, channel_id, std::span<const std::byte>(buf.data(), n))) return std::nullopt;
 
     uint16_t id = _nextIntentId;
-    _pending[_pendingCount++] = id;
+    if (track) _pending[_pendingCount++] = id;
     ++_nextIntentId;
     if (_nextIntentId == 0) _nextIntentId = 1;  // monotonic per session; avoid 0 on the (distant) wrap
     return id;
@@ -878,6 +919,25 @@ inline void Client::pumpEstopRepeat(uint32_t nowMs) {
 }
 
 inline bool Client::estopSendFailed() const { return _estopSendFailed; }
+
+// ---- safety helpers (§11.1, §11.2) ------------------------------------------
+
+inline std::optional<uint16_t> Client::sendSafetyOp(uint8_t op) {
+    IntentValueMap v{};
+    v.count = 1;
+    v.fields[0] = {1, IntentValue::ofU64(op)};
+    const bool exempt = op == safety_ops::pause || op == safety_ops::estop;
+    return sendIntentImpl(channels::safety_intents, v, std::nullopt, false, false, exempt);
+}
+
+inline void Client::halt(uint8_t cause) {
+    initiateEstop(cause);
+    if (_state == ClientSessionState::LIVE) sendSafetyOp(safety_ops::estop);
+}
+
+inline std::optional<uint16_t> Client::pause() { return sendSafetyOp(safety_ops::pause); }
+inline std::optional<uint16_t> Client::resume() { return sendSafetyOp(safety_ops::resume); }
+inline std::optional<uint16_t> Client::release() { return sendSafetyOp(safety_ops::release); }
 
 // ---- Accessors --------------------------------------------------------------
 

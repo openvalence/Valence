@@ -67,4 +67,5 @@
 #include "valence/session/shedding.hpp"
 #include "valence/hub/hub.hpp"
 #include "valence/client/client.hpp"
+#include "valence/client/estop_datagram.hpp"
 // M5: deadman policy dispatch, takeover, shedding, pairing, probe — done.

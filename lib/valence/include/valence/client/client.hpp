@@ -36,6 +36,17 @@
 #include "valence/wire/raw/blob_done.hpp"
 #include "valence/wire/raw/probe.hpp"
 
+// The Client's catalog reassembly budget in BLOB_CHUNK payloads (§8.4):
+// VALENCE_CLIENT_CATALOG_CHUNKS * limits::catalog_chunk_payload bytes, held
+// INLINE in every Client. 128 chunks is 24,576 B; a measured Nucleus catalog
+// is 15.8 KB. Set it as a build flag identically for every translation unit
+// (a per-file #define gives two TUs two Client layouts: ODR).
+// Constraint: on an MCU allocate the Client from heap (PSRAM is fine; nothing
+// here is DMA), never on a task stack.
+#ifndef VALENCE_CLIENT_CATALOG_CHUNKS
+#define VALENCE_CLIENT_CATALOG_CHUNKS 128
+#endif
+
 namespace valence {
 
 // ---- M4c (RFC-029 item 1): what this client believes about the MACHINE ------
@@ -111,11 +122,20 @@ public:
     // (RFC-029 item 6's proof presentation). The client has already re-sent its
     // standing subscription wishes if the role went UP.
     virtual void onRolesChanged(AccessLevel roles) { (void)roles; }
+
+    // A catalog transfer concluded (§8.4). `encoded` is the §8.1 encoding:
+    // decode it with decodeCatalog into a BasicCatalog sized for the hubs the
+    // application talks to. `verified` false means its hash missed the hub's
+    // etag (§8.5 degraded). Valid only during the call: copy what you keep.
+    // Fires before the LIVE transition it enables. Not fired when HELLO's
+    // cached etag matched: the application holds those bytes already.
+    virtual void onCatalog(std::span<const std::byte> encoded, bool verified) { (void)encoded; (void)verified; }
 };
 
 class Client {
 public:
     static constexpr size_t kMaxWishes = 16;
+    static constexpr size_t kCatalogBudgetBytes = ChunkReassembler<VALENCE_CLIENT_CATALOG_CHUNKS>::kMaxTotalBytes;
 
     // `crypto` (M4c addition, additive with a default) is the seam RFC-029's
     // verification rides: the library is std-headers-only and will never
@@ -160,6 +180,27 @@ public:
     // or limits::estop_repeat_max attempts exhaust (then estopSendFailed()).
     void initiateEstop(uint8_t cause);
     bool estopSendFailed() const;
+
+    // ---- client-lib additions -----------------------------------------------
+    // Mid-session SUBSCRIBE (§6.2): adds the wish, or updates the one standing
+    // for `channel_id`, and sends SUBSCRIBE for it now once WELCOME has landed;
+    // during HELLO_SENT the whole list is re-sent when WELCOME lands; while
+    // CLOSED it rides the next HELLO. False when kMaxWishes is full or the
+    // send fails.
+    bool subscribe(uint16_t channel_id, float rate_hz, Priority prio);
+
+    // The safety pairs on `safety-intents` 0x0005 (§11.1, §11.2; registry
+    // safety_intent_ops). halt() latches ESTOP: the raw frame repeated until
+    // the latch is seen (initiateEstop), plus the `estop` op when LIVE. pause
+    // and estop are role-exempt (§12.2) and are sent even when the pending
+    // table is full (untracked then). resume and release need `control`;
+    // never send either on the client's own initiative (§11.1), only on a
+    // deliberate user action. Each returns the intent_id, nullopt when not
+    // LIVE or the send failed.
+    void halt(uint8_t cause = safety_causes::user);
+    std::optional<uint16_t> pause();
+    std::optional<uint16_t> resume();
+    std::optional<uint16_t> release();
 
     ClientSessionState state() const;
     uint32_t sessionId() const;
@@ -299,6 +340,7 @@ private:
     };
     std::array<Wish, kMaxWishes> _wishes{};
     size_t _wishCount = 0;
+    bool _wishesAfterHello = false;  // a wish added while HELLO_SENT: re-send the list on WELCOME
 
     std::array<std::byte, limits::etag_bytes> _cachedEtag{};   // all-zero = none (§6.7)
     std::array<std::byte, limits::etag_bytes> _hubEtag{};
@@ -332,7 +374,7 @@ private:
     bool _catalogReady = true;
 
     // Catalog transfer (§8.4).
-    ChunkReassembler<64> _chunkReassembler;
+    ChunkReassembler<VALENCE_CLIENT_CATALOG_CHUNKS> _chunkReassembler;
     uint16_t _catalogChunkCount = 0;
     size_t _catalogReqSentCount = 0;
 
@@ -455,6 +497,10 @@ private:
     void pumpCatalogReady(uint32_t nowMs);                   // re-declare until STATE flows
     void checkLiveTransition();
     void pumpEstopRepeat(uint32_t nowMs);
+    std::optional<uint16_t> sendIntentImpl(uint16_t channel_id, const IntentValueMap& values,
+                                           std::optional<uint16_t> preconditionCfgGen, bool takeover, bool trial,
+                                           bool roleExempt);
+    std::optional<uint16_t> sendSafetyOp(uint8_t op);
     ShadowEntry* findOrCreateShadow(uint16_t channel_id);
     void setState(ClientSessionState s);
 };

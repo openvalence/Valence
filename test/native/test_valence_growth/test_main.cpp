@@ -14,6 +14,10 @@
 // Suite ids: GR-xx.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+// GR-08 needs a catalog over the Client's 24 KB budget: two bulky accessories,
+// 200 layout fields on top of the fixed ones. This suite is its own program,
+// so the capacity flags hold for every translation unit in it.
+#define VALENCE_CATALOG_LAYOUT_FIELDS 320
 #include <doctest/doctest.h>
 
 #include "valence/channel/catalog_channel.hpp"
@@ -112,7 +116,7 @@ void addAccessory(Catalog32& c, uint16_t k, bool wide = false) {
 }
 
 // An accessory whose declaration alone outgrows the library Client's
-// reassembly budget (ChunkReassembler<64>): ten STATE entries of ten fields,
+// reassembly budget at 64 chunks: ten STATE entries of ten fields,
 // each field carrying a long tooltip.
 void addBulkyAccessory(Catalog32& c, uint16_t k) {
     static constexpr std::string_view kNames[] = {"bulk-a", "bulk-b", "bulk-c", "bulk-d", "bulk-e",
@@ -385,6 +389,14 @@ public:
     void onEcho(uint16_t, const IntentValueMap&, uint16_t) override {}
     void onNack(const NackMsg& n) override { nackLog.push_back(n); }
     void onPendingDropped(uint16_t) override {}
+    std::vector<Bytes> catalogs;
+    std::vector<bool> catalogVerified;
+    std::vector<size_t> statesAtCatalog;  // states.size() when each catalog arrived
+    void onCatalog(std::span<const std::byte> encoded, bool verified) override {
+        catalogs.emplace_back(encoded.begin(), encoded.end());
+        catalogVerified.push_back(verified);
+        statesAtCatalog.push_back(states.size());
+    }
 
     // True when LIVE was reached and never left afterwards.
     bool liveThroughout() const {
@@ -828,8 +840,9 @@ TEST_CASE("GR-08: a client over its reassembly budget stays LIVE, degraded") {
     const Etag e0 = toEtag(hub.catalogEtag());
 
     addBulkyAccessory(cat, 1);
+    addBulkyAccessory(cat, 2);
     REQUIRE(hub.catalogChanged() == Hub::CatalogChange::UserSpace);
-    REQUIRE(hub.catalogEncodedBytes() > ChunkReassembler<64>::kMaxTotalBytes);
+    REQUIRE(hub.catalogEncodedBytes() > Client::kCatalogBudgetBytes);
     const Etag e1 = toEtag(hub.catalogEtag());
     pump(hub, clock, {&client}, 120);
 
@@ -1038,4 +1051,86 @@ TEST_CASE("GR-11: an unencodable change keeps the etag, refuses transfers, and r
     CHECK(hub.catalogEncodedBytes() == len0);
     const Bytes back = fetchCatalog(hub, clock, ep);
     CHECK(sha8(std::span<const std::byte>(back)) == e0);
+}
+
+// ---- client-lib: catalog hand-off, budget, mid-session SUBSCRIBE --------------
+TEST_CASE("CL-05: the Client hands the verified catalog to the app before LIVE, and not on an etag match") {
+    Catalog32 cat;
+    buildFixed(cat);
+    addAccessory(cat, 0);
+    addBulkyAccessory(cat, 1);  // over the old 64-chunk budget, inside the new one
+    ManualClock clock;
+    XorShift32 rng(7801);
+    GrowthHubDelegate del;
+    Hub hub(cat, clock, rng, del);
+    REQUIRE(hub.catalogEncodedBytes() > 64 * limits::catalog_chunk_payload);
+    REQUIRE(hub.catalogEncodedBytes() <= Client::kCatalogBudgetBytes);
+    CHECK(Client::kCatalogBudgetBytes >= 24 * 1024);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    XorShift32 crng(8901);
+    GrowthClientDelegate cd;
+    Client client(clientId(5), link.endpointB(), clock, crng, cd);
+    REQUIRE(client.connect());
+    pump(hub, clock, {&client}, 60);
+    REQUIRE(client.state() == ClientSessionState::LIVE);
+    REQUIRE(cd.catalogs.size() == 1);
+    CHECK(cd.catalogVerified[0]);
+    CHECK(sha8(std::span<const std::byte>(cd.catalogs[0])) == toEtag(hub.catalogEtag()));
+    const auto live = std::find(cd.states.begin(), cd.states.end(), ClientSessionState::LIVE);
+    CHECK(size_t(live - cd.states.begin()) >= cd.statesAtCatalog[0]);  // the catalog came first
+    Catalog32 decoded;
+    REQUIRE(decodeCatalog(std::span<const std::byte>(cd.catalogs[0]), decoded));
+    CHECK(decoded.count == cat.count);
+
+    client.disconnect();
+    pump(hub, clock, {&client}, 5);
+    const Etag e = toEtag(client.readyEtag());
+    client.setCachedEtag(std::span<const std::byte, limits::etag_bytes>(e));
+    REQUIRE(client.connect());
+    pump(hub, clock, {&client}, 20);
+    REQUIRE(client.state() == ClientSessionState::LIVE);
+    CHECK(cd.catalogs.size() == 1);
+    CHECK(client.catalogReqCount() == 1);
+}
+
+TEST_CASE("CL-06: subscribe() works mid-session, during HELLO_SENT, and updates instead of duplicating") {
+    Catalog32 cat;
+    buildFixed(cat);
+    addAccessory(cat, 0);
+    ManualClock clock;
+    XorShift32 rng(7802);
+    GrowthHubDelegate del;
+    Hub hub(cat, clock, rng, del);
+    const std::array<std::byte, 1> level{std::byte{9}};
+    REQUIRE(hub.publishState(sliceId(0, 2), std::span<const std::byte>(level)));
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    XorShift32 crng(8902);
+    GrowthClientDelegate cd;
+    Client client(clientId(6), link.endpointB(), clock, crng, cd);
+    REQUIRE(client.addSubscriptionWish(kSafetyCh, 0.0f, Priority::critical));
+    REQUIRE(client.connect());
+    REQUIRE(client.subscribe(sliceId(0, 1), 0.0f, Priority::normal));  // HELLO already left
+    pump(hub, clock, {&client}, 20);
+    REQUIRE(client.state() == ClientSessionState::LIVE);
+    const HubSession* s = hub.sessionBySlot(0);
+    REQUIRE(s != nullptr);
+    CHECK(s->subs.find(sliceId(0, 1)) != nullptr);
+    CHECK(s->subs.find(sliceId(0, 2)) == nullptr);
+
+    REQUIRE(client.subscribe(sliceId(0, 2), 10.0f, Priority::normal));
+    pump(hub, clock, {&client}, 10);
+    CHECK(s->subs.find(sliceId(0, 2)) != nullptr);
+    CHECK(cd.statesFor(sliceId(0, 2)) >= 1);  // the retained value arrives on grant
+    const size_t subs = s->subs.size();
+
+    REQUIRE(client.subscribe(sliceId(0, 2), 5.0f, Priority::normal));  // an update, not a second wish
+    pump(hub, clock, {&client}, 10);
+    CHECK(s->subs.size() == subs);
+    CHECK(client.grantedRateHz(sliceId(0, 2)).has_value());
+    CHECK(cd.nackLog.empty());
+    CHECK(cd.liveThroughout());
 }
