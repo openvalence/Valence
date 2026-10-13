@@ -1,7 +1,8 @@
 // valence-net -- the saved-network list and the join rule (RFC-116, amending
 // SPEC §13.9): up to saved_networks_max credentials in list order, the edits
 // the provisioning ops make, the persisted byte form, and the order a station
-// tries them in.
+// tries them in; and the networks a scan heard as the two visible-networks
+// channels carry them (RFC-118).
 // Constraints:
 // - CREDENTIALS NEVER LEAVE THROUGH THIS TYPE. Nothing here logs, and the one
 //   accessor that yields a passphrase is passphrase(), which a station calls to
@@ -14,11 +15,14 @@
 //   the list. 0 is never an id.
 // - Hardware-free and heap-free; the platform scan and join stay in each
 //   firmware.
-// - TODO(RFC-116): the wire numbers in `draft` move to the generated
-//   registry_constants.hpp when the RFC lands.
-// See: SPEC.md §8.8 (Secrets), §13.9; RFC-QUEUE.md RFC-116
+// - Heard SSIDs (VisibleNetworks) are configure-only on the wire like saved
+//   ones; nothing here logs them either.
+// - TODO(RFC-116, RFC-118): the wire numbers in `draft` move to the generated
+//   registry_constants.hpp when the RFCs land.
+// See: SPEC.md §8.8 (Secrets), §9.1, §13.9; RFC-QUEUE.md RFC-116, RFC-118
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +48,13 @@ inline constexpr uint8_t key_generation = 8;
 inline constexpr uint16_t nack_live_network = 0x0308;
 inline constexpr size_t saved_networks_max = 4;
 inline constexpr int join_near_tie_db = 3;
+// RFC-118
+inline constexpr uint8_t op_net_scan = 5;
+inline constexpr uint16_t ch_visible_networks = 0x0019;        // STATE, configure
+inline constexpr uint16_t ch_visible_networks_more = 0x001A;   // STATE, configure
+inline constexpr uint32_t scan_min_interval_ms = 10000;       // joined: on demand, at most this often
+inline constexpr uint32_t scan_offchannel_max_ms = 200;       // joined: longest visit off the home channel
+inline constexpr uint32_t scan_offline_period_ms = 3000;      // not joined: rescan this often for a configure session
 }  // namespace draft
 
 // 0x000F's own schema keys (registry core_channels 0x000F).
@@ -277,10 +288,13 @@ private:
     uint8_t _lastId = 0;
 };
 
-// One BSSID a scan heard.
+// One BSSID a scan heard. `secured`: joining it takes a passphrase (an OWE
+// network does not). A station leaves out what a passphrase cannot join
+// (802.1X enterprise) before it gets here.
 struct Sighting {
     std::string_view ssid;
     int8_t rssi;
+    bool secured = true;
 };
 
 // The join rule (RFC-116): the visible saved networks first, strongest first,
@@ -318,5 +332,102 @@ inline size_t joinOrder(const SavedNetworks& list, std::span<const Sighting> hea
         if (!placed[i]) order[k++] = uint8_t(i);
     return k;
 }
+
+// The networks one scan heard, as RFC-118 publishes them: one row per SSID at
+// its strongest BSSID, hidden (empty) SSIDs left out, strongest first with ties
+// by SSID bytes, at most kRows. Rows 0..6 are visible-networks (0x0019), rows
+// 7..13 visible-networks-more (0x001A).
+class VisibleNetworks {
+public:
+    static constexpr size_t kPerChannel = 7;
+    static constexpr size_t kRows = 2 * kPerChannel;
+    // scan u8, count u8, secured bitfield8, saved bitfield8, rssi i8 x7, ssid str32 x7
+    static constexpr size_t kChannelBytes = 4 + kPerChannel * (1 + kSsidMax);
+    static_assert(kChannelBytes <= limits::min_transport_payload, "SPEC 9.1: a STATE layout fits 242 B");
+    static_assert(kPerChannel <= 8, "one bitfield8 per mask");
+
+    // Replaces the rows with one finished scan's and advances scan(): finished
+    // scans since boot, mod 256, skipping 0 (0 = none yet).
+    void take(std::span<const Sighting> heard) {
+        wipeBytes(_r.data(), sizeof _r);
+        _n = 0;
+        for (const Sighting& s : heard) {
+            if (s.ssid.empty() || s.ssid.size() > kSsidMax || s.ssid.find('\0') != std::string_view::npos) continue;
+            const Row c = row(s);
+            size_t at = _n;
+            for (size_t i = 0; i < _n; ++i)
+                if (_r[i].view() == s.ssid) at = i;
+            if (at < _n) {
+                if (s.rssi > _r[at].rssi) _r[at] = c;
+                continue;
+            }
+            if (_n < kRows) {
+                _r[_n++] = c;
+                continue;
+            }
+            size_t weakest = 0;
+            for (size_t i = 1; i < _n; ++i)
+                if (before(_r[weakest], _r[i])) weakest = i;
+            if (before(c, _r[weakest])) _r[weakest] = c;
+        }
+        std::sort(_r.begin(), _r.begin() + _n, before);
+        _scan = _scan == 0xFF ? 1 : uint8_t(_scan + 1);
+    }
+
+    size_t count() const { return _n; }
+    uint8_t scan() const { return _scan; }
+    std::string_view ssid(size_t i) const { return i < _n ? _r[i].view() : std::string_view{}; }
+    int8_t rssi(size_t i) const { return i < _n ? _r[i].rssi : kRssiUnseen; }
+    bool secured(size_t i) const { return i < _n && _r[i].secured; }
+
+    // Channel `which` (0: visible-networks, 1: visible-networks-more). A row
+    // is `saved` when `list` holds its SSID. Rows past count read -128 and an
+    // empty SSID.
+    void pack(size_t which, const SavedNetworks& list, std::span<std::byte, kChannelBytes> out) const {
+        std::fill(out.begin(), out.end(), std::byte{0});
+        const size_t first = which * kPerChannel;
+        const size_t n = first < _n ? std::min(kPerChannel, _n - first) : 0;
+        uint8_t secure = 0;
+        uint8_t saved = 0;
+        for (size_t i = 0; i < kPerChannel; ++i) {
+            out[4 + i] = std::byte(uint8_t(i < n ? _r[first + i].rssi : kRssiUnseen));
+            if (i >= n) continue;
+            const Row& r = _r[first + i];
+            if (r.secured) secure = uint8_t(secure | (1u << i));
+            if (list.find(r.view())) saved = uint8_t(saved | (1u << i));
+            std::memcpy(out.data() + 4 + kPerChannel + i * kSsidMax, r.ssid.data(), r.len);
+        }
+        out[0] = std::byte(_scan);
+        out[1] = std::byte(uint8_t(n));
+        out[2] = std::byte(secure);
+        out[3] = std::byte(saved);
+    }
+
+private:
+    struct Row {
+        std::array<char, kSsidMax> ssid{};
+        uint8_t len = 0;
+        int8_t rssi = kRssiUnseen;
+        bool secured = false;
+        std::string_view view() const { return {ssid.data(), len}; }
+    };
+    static Row row(const Sighting& s) {
+        Row r;
+        std::memcpy(r.ssid.data(), s.ssid.data(), s.ssid.size());
+        r.len = uint8_t(s.ssid.size());
+        r.rssi = s.rssi;
+        r.secured = s.secured;
+        return r;
+    }
+    // The publication order: stronger first, then SSID bytes ascending.
+    static bool before(const Row& a, const Row& b) {
+        if (a.rssi != b.rssi) return a.rssi > b.rssi;
+        return a.view() < b.view();
+    }
+
+    std::array<Row, kRows> _r{};
+    size_t _n = 0;
+    uint8_t _scan = 0;
+};
 
 }  // namespace valence::net

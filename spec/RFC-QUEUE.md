@@ -557,6 +557,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [115](#rfc-115) | Segment lead: a lookahead sender stamps up to its horizon less 100 ms | Draft | open |
 | [116](#rfc-116) | Saved networks: up to four WiFi networks per hub, the join rule, list ops on 0x000F, names to configure only | Draft | open |
 | [117](#rfc-117) | Offline BLE: a hub off WiFi advertises BLE by itself, and a single Pair press approves the one configure ask | Draft | open |
+| [118](#rfc-118) | Visible networks: a configure-only scan op on 0x000F and the networks the hub hears, on two STATE channels | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -12946,5 +12947,78 @@ say exactly which, future-us will want the receipts.*
   on the radio the station shares, unmeasured; proposed 30 s, to be measured
   on the P4 bench (Nucleus feat/ble-config). (3) The v2 verification code of
   H15. Owner: the operator's ruling.
+
+---
+
+<a id="rfc-118"></a>
+## RFC-118 -- Visible networks: a configure-only scan op on 0x000F and the networks the hub hears, on two STATE channels
+
+- **Status:** DRAFT (2026-10-13). Molecule rfc-mol-0ku (rfc-lifecycle); next: the fresh-eyes review, then the operator's ruling. The code is built as if accepted (operator rule "write the code like the RFC exists"); the branches are named under Cost. Builds on RFC-116 (DRAFT) and amends its item 7.
+- **Origin.** Operator, 2026-10-13, after using the saved-networks card and BLE setup: "that worked great, however, hide all the extra boxes behind an advanced mode, start by showing available networks, then an advanced or custom at the bottom, ie phone". A phone's WiFi picker opens on the networks in range; a Valence client cannot draw one, because no hub says what it hears. Then, on the scan policy: "there wouldn't be a live connection in configure mode, and the machine can't exactly do anything else in that mode": a hub with no WiFi link scans freely; only a hub on WiFi needs the gentle rules. The BLE setup flow is the primary picker; the Network card on a connected hub is secondary.
+- **Problem.** RFC-116's networks (0x0017) carries a signal only for SAVED entries, and its item 7 says "the hub publishes no scan list". A client adding a network must have the user type its SSID exactly, with no way to show which networks the hub can reach from where it stands, which is the question a user setting up a machine actually has. The hub is the only party that can answer it: the client may be on another network, another room, or BLE.
+- **Alternatives.**
+    1. A periodic scan while a configure session is subscribed, in every state. Rejected for a joined hub: every scan disturbs the live link (item 3), and a subscription does not mean someone is looking (a client subscribes to every channel it may draw when it adopts the catalog). Taken for a hub with no link (item 2), where nothing is disturbed.
+    2. One STATE channel. §9.1's fit rule (242 B, `min_transport_payload`) holds 7 rows of a 32-byte SSID; the operator asked for about 12 to 16. §9.1 itself says a group that does not fit splits into channels, so two channels carry 14.
+    3. A STORE (§8.7): a blob transfer, a roster and a writer channel for about 500 bytes that are stale in seconds.
+    4. One EVENT per network heard. Not retained (§9.4), so a picker that opens shows nothing until the next scan, and a client that subscribes late never learns the last result.
+    5. An ECHO carrying the results. A read belongs in STATE (RFC-116 Alternative 2), and 14 SSIDs exceed one ECHO on BLE.
+    6. str16 SSIDs, to fit more rows: lossy, and an SSID is up to 32 bytes.
+    7. The list at watch, since beacons are public: rejected (item 5).
+- **Proposal.**
+    1. **The scan op.** `provisioning_ops` gains `scan` (5). It carries no fields beyond `op`. Gate: a configure session on any binding, the same row as save, remove and move (RFC-116 item 4). **Detection (MUST):** a client MUST NOT send `scan` to a hub whose 0x000F op select does not list it, or whose catalog does not declare 0x0019.
+    2. **The answer.** The hub answers at once with an ECHO carrying `op` and `generation` (RFC-116 key 8; a scan does not move it). The results arrive on the channels of item 4, not in the ECHO. When scans run depends on whether the hub is joined to a WiFi network:
+        - **Not joined** (config mode §13.4.1, RFC-117's offline BLE fallback, any hub with no association): there is no link to disturb and, in config mode, no motion. A `scan` runs as soon as the radio is free, with no rate limit and the radio's full dwell. While a configure session is present, the hub also rescans by itself every `scan_offline_period_ms` (3000), so the list stays fresh without a client asking. This is the BLE setup flow's case, the primary picker.
+        - **Joined** (a live hub on WiFi; the Network card on a connected machine, the secondary picker): on demand only. **Rate (MUST):** at most one scan per `scan_min_interval_ms` (10000); a `scan` asked sooner is accepted and runs once the interval has passed, and any number of asks inside one interval make one scan. The live-link rule of item 3 applies.
+        - **Motion (MUST), both states.** While motion runs (a plan, a stream source, homing, a return), `scan` is refused `BUSY` with detail "motion running" and no `retry_after_ms` (§16.1 makes it optional on `BUSY`); the client asks again once motion stops. A scan accepted or due before motion started waits until it stops.
+        - A scan that cannot start (a join in progress, the radio off) waits and runs when it can; it is not refused.
+        - A hub MAY also publish the results of its own scans, the join rule's all-channel scan of RFC-116 item 2 included.
+    3. **The live link (MUST, joined only).** While joined, the hub returns to its home channel between scanned channels and stays away at most `scan_offchannel_max_ms` (200) at a time, so a scan delays traffic by at most that much at a time and never drops the association. The reference hub (ESP-IDF on the C6 through esp_hosted) scans actively at 30 to 60 ms a channel with 100 ms back on the home channel between channels: about 2 s for 13 channels. Not joined, it uses the driver's default dwell.
+    4. **The channels.** visible-networks (0x0019) and visible-networks-more (0x001A): STATE, **configure**, category network (11), retained, each {scan u8, count u8, secured bitfield8, saved bitfield8, rssi0..rssi6 i8, ssid0..ssid6 str32} = 235 B.
+        - **Rows.** One row per SSID at its strongest BSSID; hidden SSIDs (empty) are left out, and so are networks a passphrase cannot join (802.1X enterprise). Strongest first, ties by SSID bytes ascending. The first 7 rows go on 0x0019, the next 7 on 0x001A; the rest are dropped. `count` is the rows in that channel.
+        - **Bits.** Bit *i* of `secured` is set when row *i* needs a passphrase (an OWE network does not). Bit *i* of `saved` is set when row *i*'s SSID is in the saved list (RFC-116 item 1).
+        - Rows past `count` read rssi -128 and an empty SSID.
+        - **scan** counts finished scans since boot, mod 256, skipping 0; 0 means no scan yet, with `count` 0. A client joins the two channels only when their `scan` match.
+        - **Publication.** Both channels publish after every finished scan and when the saved list changes (the `saved` bits move), at most once a second (`max_rate_hz` 1).
+        - BSSIDs, channels and security modes beyond `secured` are never published.
+        - The catalog states both sentinels (`scan` 0, and rows past `count` empty) in the fields' desc.
+    5. **Visibility: configure only.**
+        - A beacon is public, but the set of networks a hub hears is a location fingerprint: public wardriving databases resolve a handful of SSIDs to a street address. `watch` is the tier any client on the LAN gets without asking (§12.2), and the hub's place is not its business.
+        - Consistency with RFC-116 item 7: SSIDs the hub knows are configure-only. The `saved` bit on a watch channel would let a watch client recover saved names by intersecting what it can hear itself.
+        - Entry-level `access` gates SUBSCRIBE (§8.1, §8.6), as for 0x0018. Configure-only is a tier gate, not confidentiality: the rows cross WebSocket and BLE in cleartext (H4).
+        - RFC-116 item 7's last bullet ("The hub publishes no scan list") becomes: "The hub publishes the networks it hears only on 0x0019 and 0x001A, at configure (RFC-118); 0x0018 lists saved names, never heard ones."
+        - A client SHOULD NOT log SSIDs read from 0x0019 or 0x001A, and MAY show them.
+    6. **Joining from the list** is RFC-116's own ops, unchanged: on a credential binding, `wifi_join` with the row's SSID; on any binding, `save`, which stores without joining. A network the scan did not hear (a hidden SSID) is typed by hand into the same ops.
+- **Pros.**
+    - A client opens on what the hub can reach, strongest first, with the lock and saved marks a phone shows.
+    - No new frame type, NACK code or CBOR key: one op on an existing select and two STATE channels of a registered shape.
+    - Watch learns nothing new; configure learns only what it could already type.
+    - Retained STATE: a picker shows the last scan the moment it opens, then the fresh one.
+- **Cons.**
+    - Two channels and 36 layout fields for one list: the catalog grows by about 1.2 KB.
+    - A scan on a live link holds traffic up to 200 ms at a time for about 2 s; motion is the reason scans are refused while it runs.
+    - A hub with no link and a configure session scans every 3 s for as long as the session stays: radio time and power on a hub that has nothing else to do.
+    - Past 14 networks the weakest are not listed; a user can still type any SSID.
+    - On a joined hub the results lag the ask by up to 10 s plus the scan when a scan ran recently.
+    - Over WebSocket, picking a network still saves rather than joins: switching networks from a session that rides the current one would strand that session (RFC-116 open question 1).
+- **Cost.** Built as if accepted (2026-10-13):
+    - Valence feat/wifi-scan: lib/valence/include/valence/net/saved_networks.hpp gains VisibleNetworks (rows, order, the two channels' packed form) and `Sighting::secured`; suite test_valence_savednets SN-06..SN-08.
+    - Nucleus feat/wifi-scan, FIRMWARE_VERSION 0.1.54: NetworkDesk's scan op, both policies and the motion rule, and both channels; the Station task's scan with the dwell of item 3 when joined and the full dwell when not (the join rule's scans publish too); catalog entries 0x0019 and 0x001A; the valencesim twin's made-up neighborhood (a joined hub, so the joined policy); suites test_valence_device VD-NET-4..6.
+    - Phosphor lane wifipicker: the phone-style picker on the Network card and in Set up a machine; Advanced holds RFC-116's slot card.
+    - Garnet: a bead (its Setup screen scans locally and needs an on-screen keyboard for the passphrase).
+    - At landing: SPEC §13.9 (items 1 to 6, and RFC-116 item 7's amended bullet), the §1.5 H4 row naming heard SSIDs, and the registry changes below, then codegen.
+- **Wire impact.** Registry changes at landing:
+    - `provisioning_ops` 5 `scan`.
+    - core_channels 0x0019 `visible-networks` and 0x001A `visible-networks-more` (STATE, configure, 235 B, status active).
+    - core_channels 0x000F's note gains `scan`, its gate row and the detection rule.
+    - `limits` `scan_min_interval_ms: 10000`, `scan_offchannel_max_ms: 200` and `scan_offline_period_ms: 3000`.
+    - No new NACK code (`BUSY` with a detail), frame type or global CBOR key. Golden vectors are unchanged.
+- **Open questions.** Each has a pick, for the operator's ruling.
+    1. Joined, inside the interval: coalesce or refuse? Pick: coalesce (item 2); a refusal would make every client carry a retry timer for a list it wants anyway.
+    2. May a hub publish its own join-rule scans? Pick: yes; they are free and fresher.
+    3. 14 rows on two channels, or 7 on one? Pick: two (Alternative 2), per the "about 12 to 16" ruling.
+    4. Refuse at ask during motion, and hold an accepted scan until motion stops? Pick: yes to both.
+    5. A `switch` op so a WebSocket session can move the hub to a picked network? Pick: not here; it is RFC-116 open question 1, and a session riding the old network loses the hub when it moves.
+    6. Channel roles (RFC-116's review asked for roles on 0x0017 and 0x0018 so plugins bind by role)? Pick: decide with RFC-116's, as one set.
+    7. Not joined: should the self-driven rescan wait for a subscriber to 0x0019 rather than any configure session? Pick: any configure session; in config mode the only one is the session setting the machine up.
 
 ---
