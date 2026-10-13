@@ -578,6 +578,12 @@ inline constexpr uint8_t accessory_host = 1u << 2;  // RFC-075: this hub runs th
 inline constexpr uint8_t estop_latched = 1u << 3;  // RFC-075: this hub's safety snapshot (0x0003) shows ESTOP latched right now; an accessory hearing it enters safe_estop. The 1 Hz loss-recovery path for an accessory that missed every ESTOP repeat.
 }  // namespace beacon_flags
 
+namespace ble_adv_flags {
+inline constexpr uint8_t pairing_window_open = 1u << 0;  // a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag, ESP-NOW's equivalent)
+inline constexpr uint8_t ws_available = 1u << 1;  // the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected client SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME `ws_port`/`ipv4` (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway.
+inline constexpr uint8_t config_mode = 1u << 2;  // RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A client SHOULD mark the hub 'needs setup' and open on ui_categories 15 setup.
+}  // namespace ble_adv_flags
+
 namespace discover_reply_flags {
 inline constexpr uint8_t pairing_window_open = 1u << 0;  // a §12.3 association window is open right now (the 0x17 BEACON flag's meaning, plus the endpoint)
 inline constexpr uint8_t datagram_estop = 1u << 1;  // RFC-053 item 2b: this hub honors an ESTOP frame on this UDP port right now (the setting's live value), so a sessionless sender learns at setup whether its ESTOP will be heard; the BEACON bit1 mirror
@@ -819,5 +825,12 @@ inline constexpr uint32_t port = 22096;
 inline constexpr std::string_view magic = "VLNC";
 inline constexpr uint32_t reply_rate_limit_per_source_s = 1;
 }  // namespace udp_discovery
+
+namespace ble_identity {
+inline constexpr std::string_view service_uuid = "56414C45-4E43-4531-8000-000000000001";
+inline constexpr std::string_view write_char_uuid = "56414C45-4E43-4531-8000-000000000002";
+inline constexpr std::string_view notify_char_uuid = "56414C45-4E43-4531-8000-000000000003";
+inline constexpr uint32_t msd_company_id = 65535;
+}  // namespace ble_identity
 
 }  // namespace valence

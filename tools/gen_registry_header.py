@@ -229,6 +229,7 @@ def gen(reg: dict) -> str:
     emit_bits(p, reg["setting_flags"], "setting_flags")
     emit_bits(p, reg["pairing_modes"], "pairing_modes")
     emit_bits(p, reg["beacon_flags"], "beacon_flags")
+    emit_bits(p, reg["ble_adv_flags"], "ble_adv_flags")
     emit_bits(p, reg["discover_reply_flags"], "discover_reply_flags")
     emit_bits(p, reg["plan_flags"], "plan_flags")
 
@@ -251,7 +252,7 @@ def gen(reg: dict) -> str:
     p("};\n\n")
 
     # ---- Limits and the UDP discovery constants -----------------------------
-    for section in ("limits", "udp_discovery"):
+    for section in ("limits", "udp_discovery", "ble_identity"):
         p(f"namespace {section} {{\n")
         for key in reg[section]:  # preserve registry order — it groups related values
             v = reg[section][key]
