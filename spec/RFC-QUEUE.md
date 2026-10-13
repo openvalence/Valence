@@ -555,6 +555,8 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 | [114](#rfc-114) | Pair control gestures: a double press approves the one pending configure ask, a 5 s hold demotes every client to watch | Draft | open |
 | [115](#rfc-115) | Segment lead: a lookahead sender stamps up to its horizon less 100 ms | Draft | open |
+| [116](#rfc-116) | Saved networks: up to four WiFi networks per hub, the join rule, list ops on 0x000F, names to configure only | Draft | open |
+| [117](#rfc-117) | Offline BLE: a hub off WiFi advertises BLE by itself, and a single Pair press approves the one configure ask | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -12711,5 +12713,223 @@ say exactly which, future-us will want the receipts.*
     1. A registry limit for the 100 ms (`segment_lead_margin_ms`) instead of
     prose? Proposed: prose, since it is a client recommendation with no hub
     behavior; a limit would only be read by clients.
+
+---
+
+<a id="rfc-116"></a>
+## RFC-116 -- Saved networks: up to four WiFi networks per hub, the join rule, list ops on 0x000F, names to configure only
+
+- **Status:** DRAFT (2026-10-13). Molecule rfc-mol-jsf (rfc-lifecycle); next: the fresh-eyes review, then the operator's ruling. The code is built as if accepted (operator rule "write the code like the RFC exists"); the branches are named under Cost.
+- **Origin.** Operator, 2026-10-13, four rulings approved with "go": (1) up to 4 saved networks per device; (2) one all-channel scan, then the visible saved network with the strongest signal, with no priority setting ("priority to me is just which you try first, if they'd all connect equally as fast, then no priority"), where list order breaks only near-ties within about 3 dB and orders hidden networks; (3) saved SSIDs visible to configure sessions only, slot occupancy to everyone, passphrases to no one; (4) add, remove and reorder over WiFi at configure, with the live network protected, and first-time provisioning unchanged. Measured trigger: the P4 hub (Nucleus 0.1.50) stores one network (RFC-069), so it has to be reprovisioned over USB serial every time it moves between home and a phone hotspot.
+- **Problem.** §13.9 provisions exactly one network, by `wifi_join`, only on a credential binding. A hub that travels between sites must be reprovisioned at each move, and no session can see or edit what is stored. Three things are missing from the protocol: a list with an order, a rule for choosing from it, and a way to read the list without leaking credentials to `watch`.
+- **Alternatives.**
+    1. A per-entry priority field: rejected by ruling 2.
+    2. A `list` op whose ECHO carries the names. A read belongs in STATE (§9.1): an op answering with data would be a second home for the list, and other configure sessions would never learn of a change.
+    3. A field-level read gate. The schema language has none: §8.8 makes `access` a schema-field annotation only, and inventing one would touch every renderer. Entry-level `access` on a STATE channel already gates SUBSCRIBE (§12.2: `watch` subscribes to `watch`-access channels), and the paired-devices roster (0x000D) already relies on it. That is the smallest mechanism, and it exists.
+    4. A STORE (§8.7) for the list: a blob transfer, a roster and a writer channel for at most 4 × 33 bytes of names.
+    5. Keep RFC-069's rule that credentials cross only credential bindings: rejected by ruling 4 for the list ops; kept for `wifi_join`.
+- **Proposal.**
+    1. **The saved list.** A hub keeps up to `saved_networks_max` (4) networks in a user-chosen order, contiguous (entries 0 to count-1; a removal closes the gap). A hub MAY keep fewer and says how many in `networks.capacity`. The list persists across reboots. A hub upgrading from a single stored network makes it entry 0.
+    2. **The join rule (MUST, on boot and on every reconnect).** With two or more entries the hub scans every channel once, then tries entries in this order:
+        - the entries the scan heard, strongest first, an entry's signal being its strongest BSSID;
+        - where the strongest remaining entry is within `join_near_tie_db` (3 dB) of an entry earlier in the list, the earlier entry goes first, so the hub does not flap between two equal networks;
+        - then the entries the scan did not hear (a hidden network, or one out of range), in list order.
+
+       Within the chosen network the hub joins the strongest BSSID. A hub MAY skip an entry heard below its own signal floor. With a single entry the hub MAY connect without the extra scan. List order carries no other meaning, and there is no priority field.
+    3. **Ops on 0x000F.** `provisioning_ops` gains `save` (2), `remove` (3) and `move` (4). The channel's schema gains key 6 `slot` (uint, 0-based), key 7 `to` (uint) and key 8 `generation` (uint).
+        - `save {ssid, passphrase, slot?}`: `slot` names the entry to replace. Without it, the entry with the same SSID is replaced, else the network is appended; a full list is refused `INVALID_VALUE` ("list full"). The network is stored, not joined.
+        - `remove {slot}`, and `move {slot, to}` (take the entry out, reinsert it at `to`).
+        - An optional `generation` is a compare-and-set against `networks.generation`; a stale one is refused `CONFLICT`.
+        - Each answers at once: an ECHO carrying `op`, `slot` (and `to`), `true` for `ssid` and `passphrase` (§8.8 Secrets), and the new `generation`.
+        - `wifi_join` keeps its RFC-069 semantics. On success the joined network is stored as `save` would store it (`slot` honored), and its ECHO adds `slot`. A `wifi_join` that would have nowhere to be stored is refused `INVALID_VALUE` ("list full") before any join starts.
+    4. **The gate, one table.**
+        - `wifi_join`: unchanged from RFC-069. A credential binding (BLE GATT, serial, in-process), and an association window open or the hub factory-fresh; else `ACCESS_DENIED`.
+        - `save`, `remove`, `move`: a `configure` session on any binding.
+
+       There is no `list` op; reading is item 6.
+    5. **The live network (MUST).** On any binding other than BLE GATT, serial or in-process, the hub refuses with the new NACK `LIVE_NETWORK` (0x0308) both a `remove` of the entry it is joined through and a `save` that would overwrite that entry. The `detail` says why, e.g. "in use: the hub is joined through it". Either edit would strand the hub at its next reconnect, with nobody able to reach it over the network. On a credential binding both are allowed, because the person is at the machine. The current association then lasts until it drops, and the next join follows the list. `move` is always allowed.
+    6. **STATE.** Both channels are on-change and retained, in category `network` (11).
+        - **`networks` (0x0017, `watch`):** `{generation u16, capacity u8, count u8, live u8, rssi0..rssi3 i8}`, 9 B.
+            - `live` is the index of the entry the hub is joined through; 255 means none.
+            - `rssi<i>` is entry *i*'s strongest BSSID in the last scan; for the live entry it is the link's RSSI; -128 means not heard.
+            - `generation` moves on every list change.
+        - **`network-names` (0x0018, `configure`):** `{open bitfield8, ssid0..ssid3 str32}`, 129 B. Bit *i* of `open` is set when entry *i* has no passphrase.
+        - A client below `configure` cannot subscribe to 0x0018 (§12.2); a session demoted below `configure` is evicted (RFC-114), so its subscription ends with it.
+    7. **SSID visibility: an explicit change to RFC-069's "Never disclosed".**
+        - Passphrases stay absolute: no STATE, EVENT, log, NACK `detail`, diagnostic surface or ECHO value, at any tier.
+        - SSIDs gain exactly one home, `network-names`, readable at `configure` only. Everywhere else they stay undisclosed: logs name the entry index, the BSSID tail and the RSSI.
+        - `ssid` keeps the `secret` flag on 0x000F, so ECHO still answers `true` and no generic client mirrors it.
+        - "The hub publishes no scan list" stands: 0x0018 lists saved names, never heard ones.
+- **Pros.**
+    - A traveling hub joins whichever known network is present with no ceremony, and the operator manages the list from any configure client.
+    - No new frame type: one INTENT channel extended, two small STATE channels, one NACK code.
+    - Watch and control learn occupancy and signal, nothing more.
+    - The join rule is deterministic, so two hubs on the same list behave the same.
+- **Cons.**
+    - A `save` over WebSocket carries a passphrase in cleartext on the LAN (v1 transports are cleartext, H4). It is a different network's passphrase crossing the current one; accepted by ruling 4.
+    - With two or more entries, a reconnect costs one extra all-channel scan (about 1.5 to 3 s on 2.4 GHz) before the connect.
+    - The fixed 4-slot layout needs an append (§5.4) to grow.
+    - A WebSocket client cannot move the hub off its current network and then delete it; that needs a credential binding, or open question 1.
+- **Cost.** Built as if accepted (2026-10-13):
+    - Valence feat/saved-nets: `lib/valence/include/valence/net/saved_networks.hpp` (the list, its persisted form, `joinOrder`), suite `test_valence_savednets`.
+    - Nucleus feat/saved-nets, FIRMWARE_VERSION 0.1.51:
+        - `NetworkDesk.h`, the one gate for every binding, the list ops, the live refusal and both STATE channels;
+        - a Station task that owns every join;
+        - first-boot migration;
+        - catalog entries 0x000F, 0x0017 and 0x0018;
+        - the valencesim twin;
+        - suites `test_serial_provisioning` and `test_valence_device` VD-NET-1..3.
+    - Garnet main: the same list and rule on a remote's local screen.
+    - Phosphor lane savednets: the Network card's list.
+    - At landing: the SPEC §13.9 text (items 1 to 7), SPEC §8.8's Secrets paragraph pointing at item 7, and the registry changes listed under Wire impact, then codegen.
+- **Wire impact.** Registry changes at landing:
+    - `core_channels` 0x000F: status `reserved` → `active` (the reference hub declares it), and its note gains schema keys 6 `slot`, 7 `to` and 8 `generation`, the list ops and the live rule.
+    - New `core_channels` 0x0017 `networks` (STATE, watch, 9 B) and 0x0018 `network-names` (STATE, configure, 129 B).
+    - `provisioning_ops` 2 `save`, 3 `remove`, 4 `move`.
+    - `nack_codes` 0x0308 `LIVE_NETWORK`.
+    - `limits` `saved_networks_max: 4` and `join_near_tie_db: 3`.
+
+    0x0308 is the next free intent-range code; RFC-107's open question 2 floats the same number for `NOT_TRIALABLE`, so whichever lands first takes it and the other moves to 0x0309.
+
+    The `wifi_join` ECHO gains key 6. No new frame type and no new global CBOR key. Golden vectors are unchanged.
+- **Open questions.** Each has a pick, for the operator's ruling.
+    1. A confirm flow for removing the live network over WebSocket? Pick: none in v1; refuse with 0x0308. A later `switch` op (join entry *n* now, fall back on failure, answered after the hub is back) would let a WebSocket client move the hub and then remove the old entry.
+    2. Does removing the live entry over a credential binding disconnect at once? Pick: no; it applies at the next join.
+    3. A `list` op? Pick: no; the list is STATE (Alternative 2).
+    4. 0x0017's rate? Pick: on change, at most 1 Hz; RSSI moves with the hub's own liveness reading.
+    5. May a hub with one entry skip the scan? Pick: yes, so a single-network hub reconnects exactly as an RFC-069 hub does.
+    6. Category: 0x000F stays `setup` (RFC-079's commissioning surface), while 0x0017 and 0x0018 are `network`. Pick: yes; a dedicated renderer joins them by channel id, and the generic one shows each where it belongs.
+    7. Should `save` over WebSocket require the session to have authenticated by proof (RFC-029) rather than bearer token? Pick: no for v1; the tier is the gate, and the transport is cleartext either way.
+
+---
+
+<a id="rfc-117"></a>
+## RFC-117 -- Offline BLE: a hub off WiFi advertises BLE by itself, and a single Pair press approves the one configure ask
+
+- **Status:** DRAFT (2026-10-13). Molecule rfc-mol-1io (rfc-lifecycle); fresh-eyes review folded the same day (2 blockers, 8 should-fix, 4 nits,
+  all taken); next: the operator's ruling. Depends on RFC-114 (DRAFT): this
+  lands after it or with it. The code
+  is built as if accepted (operator rule "write the code like the RFC
+  exists"): branches under Cost.
+- **Origin.** Operator, 2026-10-13: "if it is unable to connect to wifi, you
+  can still find it on ble and connect, no need to explicitly select that
+  mode, just use a pair button press to auth". Amends
+  [RFC-079](#rfc-079) (config mode is no longer the only way BLE appears) and
+  [RFC-114](#rfc-114) (a single press approves on an offline hub).
+- **Problem.** A hub whose network went away (router replaced, password
+  changed, moved house) is unreachable until its owner reboots it holding
+  Pair, a gesture nobody remembers. And once reached over BLE, a claimed hub
+  grants `configure` only by a double press, a gesture that exists because a
+  LAN client could otherwise race the owner; an offline hub has no LAN, so the
+  race it guards against is not there, and §13.9's gate still refuses
+  `wifi_join` once the presence window has closed.
+- **Alternatives.** (1) Keep config mode as the only path (today): fails the
+  owner who does not know the gesture. (2) BLE always on: costs radio time and
+  RAM on every healthy hub, and puts an attack surface in range at all times;
+  rejected by the ruling ("on a hub that's healthy on WiFi, BLE stays off").
+  (3) Offline BLE with the RFC-114 double press: works, but asks for a gesture
+  whose only reason (a LAN rival) is absent offline.
+- **Proposal.**
+    1. **Offline fallback (hub, SHOULD where config mode is offered).**
+    "Offline" means the hub runs no reachable WebSocket listener on any
+    interface, the state `ws_available` clear already names. A hub offline
+    continuously for `offline_ble_after_ms` (30000, hub policy, not a registry
+    limit) since boot or since it went offline, or that holds no network
+    credentials at all (at once, no wait), starts BLE GATT (§13.4) by itself:
+    advertising with `ws_available` clear and `config_mode` clear, the
+    association window untouched. It keeps its station retrying meanwhile.
+    BLE stays up at least `offline_ble_dwell_ms` (60000, hub policy). It stops
+    once the hub is online **and** no BLE session is attached (none was, or
+    the client migrated to WS, §6.3, which is the hand-over confirmation), and,
+    with nobody ever connecting, once the hub has been online
+    `offline_ble_linger_ms` (300000, hub policy) with no BLE link; or when the
+    hub reboots. A hub healthy on WiFi never starts BLE unless config mode
+    was requested (§13.4.1). Config mode (RFC-079) is unchanged and remains
+    the explicit path.
+    2. **The single press approves offline.** While the hub is offline
+    (offline fallback or config mode), a single press of the pairing control
+    acts as RFC-114's double press: it approves at `configure` the one fresh
+    (unexpired, `pairing_window_default_s`) pending knock that asked for
+    `configure`, over that knock's own session; two or more such knocks
+    approve nothing (the press is refused, shown, logged). Only a knock that
+    arrived over a BLE GATT, serial or in-process binding is approvable this
+    way (MUST); a hub that cannot tell refuses the single press while any
+    session on another binding is occupied, parked ones included (§6.3,
+    RFC-042). With no such knock pending, offline, the press opens the
+    presence window only in config mode (§13.4.1, unchanged) or on an
+    unclaimed hub; a claimed hub out of config mode opens nothing, so a press
+    never hands `control` to whoever is in radio range. Online, RFC-114 is
+    unchanged: a single press opens the window, a double press approves, a
+    5 s hold demotes. The double press and the hold keep their meaning
+    offline. In config mode the window already grants the first knock
+    `configure` (§12.3), so a client there needs no press while the window is
+    open; the press approves an ask only after the window closed.
+    3. **Presence opens §13.9's gate, once, for the approved session.** A
+    presence approval (this item 2, or RFC-114's double press) lets the
+    session it approved, and no other, start one `wifi_join` within
+    `pairing_window_default_s`; the attempt consumes it, a failed join
+    included (the user presses again). §13.9's gate becomes: "a §12.3
+    association window is open; or this session was approved by a presence
+    gesture within `pairing_window_default_s` and has not yet used it; or the
+    trust ledger is empty (RFC-114 item 6)".
+    4. **Clients.** A client lists a hub whose advertisement carries
+    `config_mode`, or carries `ws_available` clear, as needing setup. Over
+    such a link it asks `configure` (PAIR_REQ `roles`, RFC-114) and, while the
+    ask is pending, tells the user to press Pair on the machine once.
+- **Security reasoning.** The press is a physical-presence proof (§12.3(c));
+  BLE range (about 10 m indoors, through walls) is not, which is why BLE alone
+  grants nothing above `watch` on a claimed hub. What an attacker within
+  radio range can do: knock. What it cannot do: press the button. The single
+  press approves exactly one fresh `configure` ask; a second ask in flight
+  makes the press refuse both, so a stranger who asks while the owner's ask is
+  pending blocks the owner rather than winning (H12's blocking clause applies;
+  offline, the remedy is moving the stranger out of range, or config mode).
+  The press binds to the asking session, never a later one, so a knock after
+  the press gets nothing, and item 3's gate term is bound to that one session
+  and single-use. The relaxation applies only offline, when no WebSocket
+  listener runs and so no LAN client can race, and only to asks over BLE,
+  serial or in-process. **HONESTY CLAUSE (H15):** the owner cannot see whose
+  ask is pending. A stranger in range who keeps a `configure` ask alive (a
+  re-knock refreshes it) wins any single press made while the owner's own ask
+  is not pending: a press out of habit, before the phone asked, or after the
+  owner's BLE link dropped (the owner's knock dies with its session). The
+  winner holds `configure` and, by item 3, may push a rogue network. Bounds:
+  the hub's indicator shows one pending ask as solid, and a client prompts for
+  the press only while its own ask is pending; press only when the phone says
+  so. A verification code shown on both ends would close this and is the
+  named v2 upgrade. H15 also covers factory-fresh: an empty-ledger hub that
+  starts BLE at once grants the first knock `configure` with no gesture
+  (§12.3(c)), so offline BLE widens "whoever powered it" to "whoever is in
+  radio range first". Credentials still move only on BLE or serial (§13.9) and
+  never leave the hub; the honesty clause on unencrypted BLE (H4, §12.9's
+  SHOULD for LE Secure Connections) is unchanged and is the residual risk: a
+  passive sniffer in range during provisioning can read the passphrase unless
+  the link is encrypted.
+- **Pros.** The owner of an offline machine finds it from the phone with no
+  boot gesture, and one press at the machine finishes the job. No wire change.
+  Healthy hubs pay nothing.
+- **Cons.** One gesture changes meaning with the network state; the indicator
+  must show which (the hub's pixel shows the pending ask). A hub on a flaky
+  network may flap BLE on and off: the 30 s wait and the WS confirmation
+  bound it. Offline, BLE advertises the hub's presence to anyone in range
+  until it is back on WiFi (part of H15's exposure).
+- **Cost.** Valence feat/ble-config: this entry and, at landing, the SPEC
+  sentences (§12.3 grant rule note, §13.4.1, §13.9 gate, and the client rule
+  "`ws_available` clear lists as needing setup" in §13.4.1 Clients and §13.7). Nucleus
+  feat/ble-config: the BLE GATT binding on the P4 (NimBLE over esp_hosted),
+  the offline trigger and config mode (hardware-free core, suite
+  `test_config_mode`), the press binding, the gate's presence term. Phosphor
+  lp/bleconfig: "Set up a machine" over BLE.
+- **Wire impact.** None. No new frame, key, flag or registry number:
+  `ws_available` and `config_mode` already exist (`ble_adv_flags`), and
+  `offline_ble_after_ms` is hub policy.
+- **Open questions.** (1) Should the offline fallback also open the
+  association window at BLE start, as config mode does? Proposed: no (a window
+  on a claimed hub grants only `control`, and the press does the rest).
+  Owner: the operator's ruling. (2) Is 30 s right for a hub whose router is
+  merely rebooting (often 60 to 90 s)? BLE up early costs advertising airtime
+  on the radio the station shares, unmeasured; proposed 30 s, to be measured
+  on the P4 bench (Nucleus feat/ble-config). (3) The v2 verification code of
+  H15. Owner: the operator's ruling.
 
 ---
