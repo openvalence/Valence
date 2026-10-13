@@ -12719,87 +12719,103 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-116"></a>
 ## RFC-116 -- Saved networks: up to four WiFi networks per hub, the join rule, list ops on 0x000F, names to configure only
 
-- **Status:** DRAFT (2026-10-13). Molecule rfc-mol-jsf (rfc-lifecycle); next: the fresh-eyes review, then the operator's ruling. The code is built as if accepted (operator rule "write the code like the RFC exists"); the branches are named under Cost.
+- **Status:** DRAFT (2026-10-13), review folded. Molecule rfc-mol-jsf (rfc-lifecycle); next: the operator's ruling (rfc-mol-fxi). The code is built as if accepted (operator rule "write the code like the RFC exists"); the branches are named under Cost.
 - **Origin.** Operator, 2026-10-13, four rulings approved with "go": (1) up to 4 saved networks per device; (2) one all-channel scan, then the visible saved network with the strongest signal, with no priority setting ("priority to me is just which you try first, if they'd all connect equally as fast, then no priority"), where list order breaks only near-ties within about 3 dB and orders hidden networks; (3) saved SSIDs visible to configure sessions only, slot occupancy to everyone, passphrases to no one; (4) add, remove and reorder over WiFi at configure, with the live network protected, and first-time provisioning unchanged. Measured trigger: the P4 hub (Nucleus 0.1.50) stores one network (RFC-069), so it has to be reprovisioned over USB serial every time it moves between home and a phone hotspot.
 - **Problem.** §13.9 provisions exactly one network, by `wifi_join`, only on a credential binding. A hub that travels between sites must be reprovisioned at each move, and no session can see or edit what is stored. Three things are missing from the protocol: a list with an order, a rule for choosing from it, and a way to read the list without leaking credentials to `watch`.
 - **Alternatives.**
     1. A per-entry priority field: rejected by ruling 2.
     2. A `list` op whose ECHO carries the names. A read belongs in STATE (§9.1): an op answering with data would be a second home for the list, and other configure sessions would never learn of a change.
-    3. A field-level read gate. The schema language has none: §8.8 makes `access` a schema-field annotation only, and inventing one would touch every renderer. Entry-level `access` on a STATE channel already gates SUBSCRIBE (§12.2: `watch` subscribes to `watch`-access channels), and the paired-devices roster (0x000D) already relies on it. That is the smallest mechanism, and it exists.
+    3. A field-level read gate. The schema language has none: §8.8 makes `access` a schema-field annotation only, and inventing one would touch every renderer. Entry-level `access` on a STATE channel already gates SUBSCRIBE (§8.1: the floor tier required to subscribe; §8.6: a SUBSCRIBE below it is refused `ACCESS_DENIED`), and the paired-devices roster (0x000D) already relies on it. That is the smallest mechanism, and it exists.
     4. A STORE (§8.7) for the list: a blob transfer, a roster and a writer channel for at most 4 × 33 bytes of names.
     5. Keep RFC-069's rule that credentials cross only credential bindings: rejected by ruling 4 for the list ops; kept for `wifi_join`.
+    6. Keep `secret` on `ssid` and narrow the `secret` bit to "never in STATE, except a channel whose RFC says so" (review B2). Rejected: the bit is the spec's one absolute rule that a value never leaves the hub, and a per-channel exception would make every secret field's guarantee depend on reading other RFCs. This RFC decides SSIDs are configure-readable, so the flag would be false; item 7 drops it.
+    7. On a full list, `wifi_join` replaces the least recently joined entry (review B1). Not chosen for v1: the hub would have to persist a join record per entry (a new version of the stored list, on hubs that already carry the current one). The last entry that is not live (item 3) needs no new state, and the ECHO names the slot it took.
 - **Proposal.**
-    1. **The saved list.** A hub keeps up to `saved_networks_max` (4) networks in a user-chosen order, contiguous (entries 0 to count-1; a removal closes the gap). A hub MAY keep fewer and says how many in `networks.capacity`. The list persists across reboots. A hub upgrading from a single stored network makes it entry 0.
+    1. **The saved list.** A hub keeps up to `saved_networks_max` (4) networks in a user-chosen order, contiguous (entries 0 to count-1; a removal closes the gap). A hub MAY keep fewer and says how many in `networks.capacity`. SSIDs in the list are unique. The list persists across reboots. A hub upgrading from a single stored network makes it entry 0.
     2. **The join rule (MUST, on boot and on every reconnect).** With two or more entries the hub scans every channel once, then tries entries in this order:
         - the entries the scan heard, strongest first, an entry's signal being its strongest BSSID;
         - where the strongest remaining entry is within `join_near_tie_db` (3 dB) of an entry earlier in the list, the earlier entry goes first, so the hub does not flap between two equal networks;
         - then the entries the scan did not hear (a hidden network, or one out of range), in list order.
 
-       Within the chosen network the hub joins the strongest BSSID. A hub MAY skip an entry heard below its own signal floor. With a single entry the hub MAY connect without the extra scan. List order carries no other meaning, and there is no priority field.
-    3. **Ops on 0x000F.** `provisioning_ops` gains `save` (2), `remove` (3) and `move` (4). The channel's schema gains key 6 `slot` (uint, 0-based), key 7 `to` (uint) and key 8 `generation` (uint).
-        - `save {ssid, passphrase, slot?}`: `slot` names the entry to replace. Without it, the entry with the same SSID is replaced, else the network is appended; a full list is refused `INVALID_VALUE` ("list full"). The network is stored, not joined.
+       Within the chosen network the hub joins the strongest BSSID. A hub MAY apply its own signal floor: an entry heard only below it is tried with the unheard entries, in list order, and `networks` still reports its RSSI. With a single entry the hub MAY connect without the extra scan. List order carries no other meaning, and there is no priority field.
+    3. **Ops on 0x000F.** `provisioning_ops` gains `save` (2), `remove` (3) and `move` (4). The channel's schema gains key 6 `slot` (uint, 0-based), key 7 `to` (uint) and key 8 `generation` (uint). The op select marks `remove` destructive (`destructive_options`, §8.8, RFC-063): it loses a passphrase no client can read back.
+        - **Detection (MUST).** A client MUST NOT send ops 2 to 4 to a hub whose 0x000F op select does not list them (as RFC-099 does for 0x0016). An older hub would answer `ACCESS_DENIED`, which reads as a tier problem; and a client that does not know `LIVE_NETWORK` treats it as its range's generic code, `CONFLICT` (§4.3), whose remedy (re-read, retry) cannot succeed.
+        - `save {ssid, passphrase, slot?}`: `slot` names the entry to replace. Without it, the entry with the same SSID is replaced, else the network is appended. The network is stored, not joined.
         - `remove {slot}`, and `move {slot, to}` (take the entry out, reinsert it at `to`).
-        - An optional `generation` is a compare-and-set against `networks.generation`; a stale one is refused `CONFLICT`.
-        - Each answers at once: an ECHO carrying `op`, `slot` (and `to`), `true` for `ssid` and `passphrase` (§8.8 Secrets), and the new `generation`.
-        - `wifi_join` keeps its RFC-069 semantics. On success the joined network is stored as `save` would store it (`slot` honored), and its ECHO adds `slot`. A `wifi_join` that would have nowhere to be stored is refused `INVALID_VALUE` ("list full") before any join starts.
+        - **Refusals, all `INVALID_VALUE` with this `detail`:** a full list on an append ("list full"); `slot` or `to` at or past `count` ("slot", "to"); a `slot` whose new SSID equals another entry's ("duplicate ssid"); an SSID empty or past 32 bytes ("ssid length"), or holding NUL ("ssid": a `str32` reader stops at NUL, §5.4, and a CBOR tstr is UTF-8 already); a passphrase neither empty, nor 8 to 63 printable ASCII, nor 64 hex digits ("passphrase length", "passphrase").
+        - **`generation`.** In the INTENT, key 8 is the generation the sender last read: optional, a compare-and-set against `networks.generation`, a stale one refused `CONFLICT` ("list changed"). In the ECHO, key 8 is the new generation. List edits do not move `cfg_gen` (§4.2): the list is not the settings snapshot `cfg_gen` versions, and like the rosters 0x0011 and 0x0014 it carries its own generation. `precondition` (30) still checks `cfg_gen` as on any INTENT; `CONFLICT`'s registry note widens from "cfg_gen CAS" to "a CAS (cfg_gen, or a channel's own generation)".
+        - Each answers at once with an ECHO carrying `op`, `slot` (and `to` for `move`), the new `generation`, and for `save` also `ssid` (its value, item 7) and `passphrase` as `true` (§8.8 Secrets). `remove` and `move` carry neither credential key.
+        - `wifi_join` keeps its RFC-069 gate and deferred answer, and is never refused for room. On success the joined network is stored: at `slot` if given, else over the entry with the same SSID, else appended; on a full list it replaces the last entry in list order that is not the one the hub is joined through. A list edited during the join (the slot removed, the SSID saved elsewhere) falls back to the same rule without `slot`. Its ECHO adds `slot`, naming the entry it took, so a client sees which network was replaced.
     4. **The gate, one table.**
-        - `wifi_join`: unchanged from RFC-069. A credential binding (BLE GATT, serial, in-process), and an association window open or the hub factory-fresh; else `ACCESS_DENIED`.
+        - `wifi_join`: unchanged from RFC-069. A credential binding (BLE GATT, serial, in-process), and §13.9's window term (an association window open or the hub factory-fresh); else `ACCESS_DENIED`.
         - `save`, `remove`, `move`: a `configure` session on any binding.
+        - An edit of the live entry (item 5): `wifi_join`'s own terms.
 
-       There is no `list` op; reading is item 6.
-    5. **The live network (MUST).** On any binding other than BLE GATT, serial or in-process, the hub refuses with the new NACK `LIVE_NETWORK` (0x0308) both a `remove` of the entry it is joined through and a `save` that would overwrite that entry. The `detail` says why, e.g. "in use: the hub is joined through it". Either edit would strand the hub at its next reconnect, with nobody able to reach it over the network. On a credential binding both are allowed, because the person is at the machine. The current association then lasts until it drops, and the next join follows the list. `move` is always allowed.
-    6. **STATE.** Both channels are on-change and retained, in category `network` (11).
+       There is no `list` op; reading is item 6. RFC-117 (DRAFT, BLE configure) widens §13.9's window term with a presence approval. Both RFCs edit the §13.9 Gate bullet, in either order; the second to land rebases its text on the first. Item 5 names the term by reference, so RFC-117's widening applies to it without an edit.
+    5. **The live network (MUST).** The hub refuses with the new NACK `LIVE_NETWORK` (0x0308) both a `remove` of the entry it is joined through and a `save` that would overwrite that entry, unless the edit arrives under `wifi_join`'s terms: a credential binding and §13.9's window term. The `detail` says why, e.g. "in use: the hub is joined through it". Either edit would strand the hub at its next reconnect. A WebSocket session cannot be near the machine to recover it, and a BLE session is not by itself presence (§12.3(c)); the window term is the presence proof, as it is for `wifi_join`. Under those terms both edits are allowed: the current association lasts until it drops, and the next join follows the list. `move` is always allowed.
+
+       §13.9 **No stranding** gains: "except an edit of the live entry made under `wifi_join`'s terms (RFC-116 item 5), whose effect waits for the next join". A `wifi_join` always stores what it joined (item 3), so the hub never runs on credentials it has not saved.
+    6. **STATE.** Both channels are retained, in category `network` (11), published on change at most once a second (`max_rate_hz` 1): a link RSSI that moves every liveness reading would otherwise defeat on-change conflation.
         - **`networks` (0x0017, `watch`):** `{generation u16, capacity u8, count u8, live u8, rssi0..rssi3 i8}`, 9 B.
             - `live` is the index of the entry the hub is joined through; 255 means none.
             - `rssi<i>` is entry *i*'s strongest BSSID in the last scan; for the live entry it is the link's RSSI; -128 means not heard.
-            - `generation` moves on every list change.
-        - **`network-names` (0x0018, `configure`):** `{open bitfield8, ssid0..ssid3 str32}`, 129 B. Bit *i* of `open` is set when entry *i* has no passphrase.
-        - A client below `configure` cannot subscribe to 0x0018 (§12.2); a session demoted below `configure` is evicted (RFC-114), so its subscription ends with it.
+            - The catalog states both sentinels in the fields' `desc`, so a generic client can say "not heard" rather than "-128 dBm".
+            - `generation` moves on every list change. It is not persisted: it starts at 0 each boot, and a client pairs it with `boot_id`.
+        - **`network-names` (0x0018, `configure`):** `{generation u16, open bitfield8, ssid0..ssid3 str32}`, 131 B. `generation` equals `networks.generation` for the same list, so a client pairs names with occupancy and `live` only when the two match. Bit *i* of `open` is set when entry *i* has no passphrase.
+        - A client below `configure` cannot subscribe to 0x0018 (§8.1, §8.6). Under RFC-114 (DRAFT) a session demoted below `configure` is evicted, so its subscription ends with it. Under the ratified revoke (§12.7) a live session keeps its tier, and its 0x0018 subscription, until it reconnects.
     7. **SSID visibility: an explicit change to RFC-069's "Never disclosed".**
         - Passphrases stay absolute: no STATE, EVENT, log, NACK `detail`, diagnostic surface or ECHO value, at any tier.
-        - SSIDs gain exactly one home, `network-names`, readable at `configure` only. Everywhere else they stay undisclosed: logs name the entry index, the BSSID tail and the RSSI.
-        - `ssid` keeps the `secret` flag on 0x000F, so ECHO still answers `true` and no generic client mirrors it.
+        - SSIDs gain two homes, both at `configure`: `network-names`, and the ECHO to the session that sent the op (§13.9 already excludes only "the ECHO of any other session"). Everywhere else they stay undisclosed: hub logs name the entry index (0-based, as on the wire), the BSSID tail and the RSSI.
+        - `ssid` loses the `secret` flag on 0x000F (Alternative 6). The `secret` bit's rule is unchanged and stays absolute. ECHO carries the SSID's value, as for any field (§9.3).
+        - Configure-only is a tier gate, not confidentiality: names cross WebSocket and BLE in cleartext like every other frame (H4). §1.5 H4 gains: "saved passphrases sent by `save` over WebSocket, and saved SSIDs on 0x0018, cross the LAN in cleartext".
+        - §13.9's client rule (MUST NOT log or persist the credentials beyond the attempt) covers passphrases absolutely. A client SHOULD NOT log SSIDs read from 0x0018 or from an ECHO, and MAY show them, which is what they are for.
         - "The hub publishes no scan list" stands: 0x0018 lists saved names, never heard ones.
 - **Pros.**
     - A traveling hub joins whichever known network is present with no ceremony, and the operator manages the list from any configure client.
     - No new frame type: one INTENT channel extended, two small STATE channels, one NACK code.
     - Watch and control learn occupancy and signal, nothing more.
     - The join rule is deterministic, so two hubs on the same list behave the same.
+    - An RFC-069-only client still provisions any hub, a full one included.
 - **Cons.**
     - A `save` over WebSocket carries a passphrase in cleartext on the LAN (v1 transports are cleartext, H4). It is a different network's passphrase crossing the current one; accepted by ruling 4.
     - With two or more entries, a reconnect costs one extra all-channel scan (about 1.5 to 3 s on 2.4 GHz) before the connect.
     - The fixed 4-slot layout needs an append (§5.4) to grow.
-    - A WebSocket client cannot move the hub off its current network and then delete it; that needs a credential binding, or open question 1.
-- **Cost.** Built as if accepted (2026-10-13):
-    - Valence feat/saved-nets: `lib/valence/include/valence/net/saved_networks.hpp` (the list, its persisted form, `joinOrder`), suite `test_valence_savednets`.
-    - Nucleus feat/saved-nets, FIRMWARE_VERSION 0.1.51:
-        - `NetworkDesk.h`, the one gate for every binding, the list ops, the live refusal and both STATE channels;
+    - A WebSocket client cannot move the hub off its current network and then delete it; that needs a credential binding with the window term, or open question 1.
+    - A `wifi_join` on a full list replaces an entry the user did not pick; the ECHO's `slot` says which.
+    - A generic client shows `remove` on the setup page beside a bare slot number, with the names on the network page (open question 6); a dedicated renderer joins them.
+- **Cost.** Built as if accepted (2026-10-13), review folded the same day:
+    - Valence feat/saved-nets: `lib/valence/include/valence/net/saved_networks.hpp` (the list with unique SSIDs, its persisted form, `joinOrder`, `joinTarget`), suite `test_valence_savednets` SN-01..05.
+    - Nucleus feat/saved-nets, FIRMWARE_VERSION 0.1.52:
+        - `NetworkDesk.h`: the one gate for every binding (`gate()`, `mayEditLive()`), the list ops, the live refusal and both STATE channels;
         - a Station task that owns every join;
         - first-boot migration;
-        - catalog entries 0x000F, 0x0017 and 0x0018;
+        - catalog entries 0x000F (`remove` destructive, `ssid` not secret), 0x0017 and 0x0018;
         - the valencesim twin;
         - suites `test_serial_provisioning` and `test_valence_device` VD-NET-1..3.
+        - Known gap: the credential-binding desk runs the hub's gates without its per-session rate limiter (§9.3); tracked by val-9u0.22, which moves the desk behind the hub delegate.
     - Garnet main: the same list and rule on a remote's local screen.
     - Phosphor lane savednets: the Network card's list.
-    - At landing: the SPEC §13.9 text (items 1 to 7), SPEC §8.8's Secrets paragraph pointing at item 7, and the registry changes listed under Wire impact, then codegen.
+    - At landing: the SPEC §13.9 text (items 1 to 7 and the No stranding exception), SPEC §8.8's Secrets paragraph pointing at item 7, the §1.5 H4 row, and the registry changes listed under Wire impact, then codegen.
 - **Wire impact.** Registry changes at landing:
-    - `core_channels` 0x000F: status `reserved` → `active` (the reference hub declares it), and its note gains schema keys 6 `slot`, 7 `to` and 8 `generation`, the list ops and the live rule.
-    - New `core_channels` 0x0017 `networks` (STATE, watch, 9 B) and 0x0018 `network-names` (STATE, configure, 129 B).
-    - `provisioning_ops` 2 `save`, 3 `remove`, 4 `move`.
-    - `nack_codes` 0x0308 `LIVE_NETWORK`.
+    - `core_channels` 0x000F: status `reserved` → `active` (the reference hub declares it). Its note gains schema keys 6 `slot`, 7 `to` and 8 `generation`, the list ops, the detection rule and the live rule; `ssid` loses `secret`; "Accepted only on BLE GATT, serial or in-process bindings" narrows to `wifi_join`; "Credentials never appear anywhere else" becomes "the passphrase never appears anywhere else; the SSID appears only on 0x0018 and in the sender's ECHO".
+    - New `core_channels` 0x0017 `networks` (STATE, watch, 9 B, status `active`) and 0x0018 `network-names` (STATE, configure, 131 B, status `active`).
+    - `provisioning_ops` 2 `save`, 3 `remove` (destructive), 4 `move`.
+    - `nack_codes` 0x0308 `LIVE_NETWORK`; 0x0300 `CONFLICT`'s note widens (item 3).
+    - `setting_flags` bit2 `secret`: rule unchanged; its note's example ("A WiFi password") stays accurate.
     - `limits` `saved_networks_max: 4` and `join_near_tie_db: 3`.
 
     0x0308 is the next free intent-range code; RFC-107's open question 2 floats the same number for `NOT_TRIALABLE`, so whichever lands first takes it and the other moves to 0x0309.
 
-    The `wifi_join` ECHO gains key 6. No new frame type and no new global CBOR key. Golden vectors are unchanged.
+    The `wifi_join` ECHO gains key 6, and carries `ssid` as its value instead of `true`. No new frame type and no new global CBOR key. Golden vectors are unchanged.
 - **Open questions.** Each has a pick, for the operator's ruling.
     1. A confirm flow for removing the live network over WebSocket? Pick: none in v1; refuse with 0x0308. A later `switch` op (join entry *n* now, fall back on failure, answered after the hub is back) would let a WebSocket client move the hub and then remove the old entry.
-    2. Does removing the live entry over a credential binding disconnect at once? Pick: no; it applies at the next join.
+    2. Does removing the live entry under `wifi_join`'s terms disconnect at once? Pick: no; it applies at the next join.
     3. A `list` op? Pick: no; the list is STATE (Alternative 2).
-    4. 0x0017's rate? Pick: on change, at most 1 Hz; RSSI moves with the hub's own liveness reading.
+    4. 0x0017's rate? Pick: on change, at most 1 Hz (item 6).
     5. May a hub with one entry skip the scan? Pick: yes, so a single-network hub reconnects exactly as an RFC-069 hub does.
-    6. Category: 0x000F stays `setup` (RFC-079's commissioning surface), while 0x0017 and 0x0018 are `network`. Pick: yes; a dedicated renderer joins them by channel id, and the generic one shows each where it belongs.
+    6. Category: 0x000F stays `setup` (RFC-079's commissioning surface), while 0x0017 and 0x0018 are `network`. Pick: yes; a dedicated renderer joins them by channel id, and the generic one shows each where it belongs, at the cost named under Cons.
     7. Should `save` over WebSocket require the session to have authenticated by proof (RFC-029) rather than bearer token? Pick: no for v1; the tier is the gate, and the transport is cleartext either way.
+    8. Which entry does a `wifi_join` on a full list replace? Pick: the last entry that is not live (item 3); least recently joined is Alternative 7.
 
 ---
 

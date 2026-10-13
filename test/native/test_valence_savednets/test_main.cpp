@@ -112,3 +112,17 @@ TEST_CASE("SN-04 the join rule: strongest visible, near tie to the earlier entry
     CHECK(r[1] == -60);
     CHECK(r[3] == -90);
 }
+
+TEST_CASE("SN-05 SSIDs stay unique; wifi_join always has a target, never the live entry") {
+    SavedNetworks l = abcd();
+    CHECK(l.save(std::size_t(0), "b", "password1").error == SavedNetworks::Error::duplicate);
+    CHECK(l.save(std::size_t(1), "b", "password2").ok);   // the entry's own SSID
+    CHECK(l.joinTarget(std::nullopt, "c", std::nullopt) == std::size_t(2));
+    CHECK(l.joinTarget(std::size_t(1), "new", std::nullopt) == std::size_t(1));
+    // full, no slot, a new SSID: the last entry, or the one before it when the last is live
+    CHECK(l.joinTarget(std::nullopt, "new", std::nullopt) == std::size_t(3));
+    CHECK(l.joinTarget(std::nullopt, "new", std::size_t(1)) == std::size_t(3));
+    CHECK(l.joinTarget(std::nullopt, "new", std::size_t(3)) == std::size_t(2));
+    REQUIRE(l.remove(3));
+    CHECK_FALSE(l.joinTarget(std::nullopt, "new", std::size_t(2)).has_value());   // room: append
+}
