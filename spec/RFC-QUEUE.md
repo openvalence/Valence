@@ -555,6 +555,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [113](#rfc-113) | Telemetry sample time: a hub-time stamp on a STATE snapshot, and rate-0 grants paced at the channel ceiling | Landed | closed |
 | [114](#rfc-114) | Pair control gestures: a double press approves the one pending configure ask, a 5 s hold demotes every client to watch | Draft | open |
 | [115](#rfc-115) | Segment lead: a lookahead sender stamps up to its horizon less 100 ms | Draft | open |
+| [117](#rfc-117) | Offline BLE: a hub off WiFi advertises BLE by itself, and a single Pair press approves the one configure ask | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -12711,5 +12712,102 @@ say exactly which, future-us will want the receipts.*
     1. A registry limit for the 100 ms (`segment_lead_margin_ms`) instead of
     prose? Proposed: prose, since it is a client recommendation with no hub
     behavior; a limit would only be read by clients.
+
+---
+
+<a id="rfc-117"></a>
+## RFC-117 -- Offline BLE: a hub off WiFi advertises BLE by itself, and a single Pair press approves the one configure ask
+
+- **Status:** DRAFT (2026-10-13). Molecule rfc-mol-1io (rfc-lifecycle); next: fresh-eyes review, then the operator's ruling. The code
+  is built as if accepted (operator rule "write the code like the RFC
+  exists"): branches under Cost.
+- **Origin.** Operator, 2026-10-13: "if it is unable to connect to wifi, you
+  can still find it on ble and connect, no need to explicitly select that
+  mode, just use a pair button press to auth". Amends
+  [RFC-079](#rfc-079) (config mode is no longer the only way BLE appears) and
+  [RFC-114](#rfc-114) (a single press approves on an offline hub).
+- **Problem.** A hub whose network went away (router replaced, password
+  changed, moved house) is unreachable until its owner reboots it holding
+  Pair, a gesture nobody remembers. And once reached over BLE, a claimed hub
+  grants `configure` only by a double press, a gesture that exists because a
+  LAN client could otherwise race the owner; an offline hub has no LAN, so the
+  race it guards against is not there, and §13.9's gate still refuses
+  `wifi_join` once the presence window has closed.
+- **Alternatives.** (1) Keep config mode as the only path (today): fails the
+  owner who does not know the gesture. (2) BLE always on: costs radio time and
+  RAM on every healthy hub, and puts an attack surface in range at all times;
+  rejected by the ruling ("on a hub that's healthy on WiFi, BLE stays off").
+  (3) Offline BLE with the RFC-114 double press: works, but asks for a gesture
+  whose only reason (a LAN rival) is absent offline.
+- **Proposal.**
+    1. **Offline fallback (hub, SHOULD where config mode is offered).** A
+    hub that has no IP address `offline_ble_after_ms` (30000, hub policy, not
+    a registry limit) after boot or after its link dropped, or that holds no
+    network credentials at all (at once, no wait), starts BLE GATT (§13.4) by
+    itself: advertising with `ws_available` clear and `config_mode` clear, the
+    association window untouched. It keeps its station retrying meanwhile.
+    BLE stops once the hub holds an IP **and** a client session is live over
+    the WebSocket binding (the client confirmed the hand-over), or when the
+    hub reboots. A hub healthy on WiFi never starts BLE unless config mode
+    was requested (§13.4.1). Config mode (RFC-079) is unchanged and remains
+    the explicit path.
+    2. **The single press approves offline.** While the hub has no IP (offline
+    fallback or config mode), a single press of the pairing control acts as
+    RFC-114's double press: it approves at `configure` the one fresh pending
+    knock that asked for `configure`, over that knock's own session; two or
+    more such knocks approve nothing (the press is refused, shown, logged).
+    With no such knock pending it does what a press always does (RFC-114
+    item 4: it opens the presence window). Online, RFC-114 is unchanged: a
+    single press opens the window, a double press approves, a 5 s hold
+    demotes. The double press and the hold keep their meaning offline.
+    3. **Presence opens §13.9's gate.** A presence approval (this item 2, or
+    RFC-114's double press) counts as an open association window for §13.9's
+    gate for `pairing_window_default_s`, so the client approved by the press
+    can push credentials without a second gesture. §13.9's sentence becomes:
+    "a §12.3 association window is open, a presence approval happened within
+    `pairing_window_default_s`, or the hub is factory-fresh".
+    4. **Clients.** A client lists a hub whose advertisement carries
+    `config_mode`, or carries `ws_available` clear, as needing setup. Over
+    such a link it asks `configure` (PAIR_REQ `roles`, RFC-114) and, while the
+    ask is pending, tells the user to press Pair on the machine once.
+- **Security reasoning.** The press is a physical-presence proof (§12.3(c));
+  BLE range (about 10 m indoors, through walls) is not, which is why BLE alone
+  never grants anything above `watch` here. What the attacker within radio
+  range can do: knock. What it cannot do: press the button. The single press
+  approves exactly one fresh `configure` ask; a second ask in flight makes the
+  press refuse both, so a stranger cannot slip in beside the owner, only block
+  them (H12's blocking clause applies unchanged; offline, the remedy is
+  walking the stranger out of range, or config mode, whose window grants the
+  first knock). The press binds to the asking session, never a later one,
+  so an attacker who knocks after the owner's press gets nothing. The
+  single-press relaxation applies only without an IP, when no LAN client
+  exists to race, and the ask must come over a binding the offline hub runs
+  (BLE or serial). Credentials still move only on BLE or serial (§13.9) and
+  never leave the hub; the honesty clause on unencrypted BLE (H4, §12.9's
+  SHOULD for LE Secure Connections) is unchanged and is the residual risk: a
+  passive sniffer in range during provisioning can read the passphrase unless
+  the link is encrypted.
+- **Pros.** The owner of an offline machine finds it from the phone with no
+  boot gesture, and one press at the machine finishes the job. No wire change.
+  Healthy hubs pay nothing.
+- **Cons.** One gesture changes meaning with the network state; the indicator
+  must show which (the hub's pixel shows the pending ask). A hub on a flaky
+  network may flap BLE on and off: the 30 s wait and the WS confirmation
+  bound it. **HONESTY CLAUSE (H14):** offline, BLE advertises the hub's
+  presence to anyone in range until it is back on WiFi.
+- **Cost.** Valence feat/ble-config: this entry and, at landing, the SPEC
+  sentences (§12.3 grant rule note, §13.4.1, §13.9 gate). Nucleus
+  feat/ble-config: the BLE GATT binding on the P4 (NimBLE over esp_hosted),
+  the offline trigger and config mode (hardware-free core, suite
+  `test_config_mode`), the press binding, the gate's presence term. Phosphor
+  lp/bleconfig: "Set up a machine" over BLE.
+- **Wire impact.** None. No new frame, key, flag or registry number:
+  `ws_available` and `config_mode` already exist (`ble_adv_flags`), and
+  `offline_ble_after_ms` is hub policy.
+- **Open questions.** (1) Should the offline fallback also open the
+  association window at BLE start, as config mode does? Proposed: no (a window
+  on a claimed hub grants only `control`, and the press does the rest).
+  (2) Is 30 s right for a hub whose router is merely rebooting (often 60 to
+  90 s)? BLE coming up early costs nothing but advertising; proposed 30 s.
 
 ---
