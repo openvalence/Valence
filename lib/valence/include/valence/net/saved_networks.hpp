@@ -93,12 +93,14 @@ inline void wipeBytes(void* p, size_t n) {
 class SavedNetworks {
 public:
     static constexpr size_t kCapacity = draft::saved_networks_max;
+    // joinTarget() always leaves the live entry a neighbor to replace.
+    static_assert(kCapacity >= 2);
     // magic 'V' 'N', version, count, then kCapacity x {ssidLen, passLen,
     // ssid[32], pass[64]}.
     static constexpr size_t kEntryBytes = 2 + kSsidMax + kPskHexLen;
     static constexpr size_t kBlobBytes = 4 + kCapacity * kEntryBytes;
 
-    enum class Error : uint8_t { full, no_such_slot, credentials };
+    enum class Error : uint8_t { full, no_such_slot, credentials, duplicate };
 
     struct Saved {
         size_t slot;
@@ -136,8 +138,21 @@ public:
         return find(ssid);
     }
 
+    // wifi_join's target (RFC-116 item 3): `slot`, else the entry with the
+    // same SSID, else nullopt (an append), else, on a full list, the last
+    // entry in list order that is not `live`. A join is never refused for
+    // room.
+    std::optional<size_t> joinTarget(std::optional<size_t> slot, std::string_view ssid,
+                                     std::optional<size_t> live) const {
+        if (slot || find(ssid)) return saveTarget(slot, ssid);
+        if (_count < kCapacity) return std::nullopt;
+        return live == _count - 1 ? _count - 2 : _count - 1;
+    }
+
     // `slot` names an entry to replace; nullopt replaces the entry with the
-    // same SSID, else appends. Either way the entry gets a new id.
+    // same SSID, else appends. Either way the entry gets a new id. SSIDs are
+    // unique: a slot whose replacement would repeat another entry's SSID is
+    // refused.
     struct SaveResult {
         bool ok;
         Saved saved;
@@ -148,6 +163,7 @@ public:
         size_t at = _count;
         if (slot) {
             if (*slot >= _count) return {false, {}, Error::no_such_slot};
+            if (const auto same = find(ssid); same && *same != *slot) return {false, {}, Error::duplicate};
             at = *slot;
         } else if (const auto same = find(ssid)) {
             at = *same;
