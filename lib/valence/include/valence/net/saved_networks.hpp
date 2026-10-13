@@ -288,9 +288,35 @@ private:
     uint8_t _lastId = 0;
 };
 
-// One BSSID a scan heard. `secured`: joining it takes a passphrase (an OWE
-// network does not). A station leaves out what a passphrase cannot join
-// (802.1X enterprise) before it gets here.
+// RFC 3629 UTF-8: no overlong forms, no surrogates, nothing past U+10FFFF.
+// A beacon SSID is any 32 bytes; only valid UTF-8 can be a CBOR tstr.
+inline bool validUtf8(std::string_view s) {
+    static constexpr uint32_t kMin[] = {0, 0x80, 0x800, 0x10000};
+    for (size_t i = 0; i < s.size();) {
+        const uint8_t c = uint8_t(s[i]);
+        size_t n = 0;
+        uint32_t cp = c;
+        if (c >= 0x80) {
+            if ((c & 0xE0) == 0xC0) n = 1, cp = c & 0x1Fu;
+            else if ((c & 0xF0) == 0xE0) n = 2, cp = c & 0x0Fu;
+            else if ((c & 0xF8) == 0xF0) n = 3, cp = c & 0x07u;
+            else return false;
+            if (s.size() - i <= n) return false;
+            for (size_t k = 1; k <= n; ++k) {
+                const uint8_t d = uint8_t(s[i + k]);
+                if ((d & 0xC0) != 0x80) return false;
+                cp = (cp << 6) | (d & 0x3Fu);
+            }
+            if (cp < kMin[n] || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return false;
+        }
+        i += n + 1;
+    }
+    return true;
+}
+
+// One BSSID a scan heard. `secured`: joining it takes a passphrase. A station
+// passes only what wifi_join can join (open, OWE, the PSK class: WPA, WPA2,
+// WPA3-SAE) and leaves out WEP, WAPI and 802.1X before it gets here.
 struct Sighting {
     std::string_view ssid;
     int8_t rssi;
@@ -334,7 +360,7 @@ inline size_t joinOrder(const SavedNetworks& list, std::span<const Sighting> hea
 }
 
 // The networks one scan heard, as RFC-118 publishes them: one row per SSID at
-// its strongest BSSID, hidden (empty) SSIDs left out, strongest first with ties
+// its strongest BSSID, hidden (empty) and non-UTF-8 SSIDs left out, strongest first with ties
 // by SSID bytes, at most kRows. Rows 0..6 are visible-networks (0x0019), rows
 // 7..13 visible-networks-more (0x001A).
 class VisibleNetworks {
@@ -352,7 +378,9 @@ public:
         wipeBytes(_r.data(), sizeof _r);
         _n = 0;
         for (const Sighting& s : heard) {
-            if (s.ssid.empty() || s.ssid.size() > kSsidMax || s.ssid.find('\0') != std::string_view::npos) continue;
+            if (s.ssid.empty() || s.ssid.size() > kSsidMax || s.ssid.find('\0') != std::string_view::npos ||
+                !validUtf8(s.ssid))
+                continue;
             const Row c = row(s);
             size_t at = _n;
             for (size_t i = 0; i < _n; ++i)

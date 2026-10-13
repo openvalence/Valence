@@ -192,3 +192,17 @@ TEST_CASE("SN-08 a short scan leaves the second channel empty; rows past count r
     for (int i = 0; i < 255; ++i) v.take({});
     CHECK(v.scan() == 1);
 }
+
+TEST_CASE("SN-09 SSIDs that are not valid UTF-8 are left out; valid multibyte ones stay") {
+    CHECK(validUtf8("caf\xC3\xA9"));
+    CHECK(validUtf8("\xF0\x9F\x93\xB6 wifi"));
+    CHECK_FALSE(validUtf8("\xC3"));                // truncated
+    CHECK_FALSE(validUtf8("\xC0\xAF"));            // overlong
+    CHECK_FALSE(validUtf8("\xED\xA0\x80"));        // surrogate
+    CHECK_FALSE(validUtf8("\xF4\x90\x80\x80"));    // past U+10FFFF
+    CHECK_FALSE(validUtf8("\xFF"));
+    VisibleNetworks v;
+    v.take(std::vector<Sighting>{{"caf\xC3\xA9", -50}, {"bad\xFF", -40}, {"\xC3", -30}});
+    REQUIRE(v.count() == 1);
+    CHECK(v.ssid(0) == "caf\xC3\xA9");
+}
