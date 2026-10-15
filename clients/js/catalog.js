@@ -550,16 +550,20 @@ export function schemaByKey(entry) {
 
 /**
  * The minimum role required to send `optionValue` on schema field `key` of
- * `entry`, or the field/channel floor when the catalog says nothing.
+ * `entry`: the entry's floor raised by the field's access and the option's,
+ * never lowered (RFC-119, Hub::requiredAccessFor). An option past the end
+ * takes the strictest declared.
  * @returns {number} an ACCESS level
  */
 export function optionAccessFor(entry, key, optionValue) {
   if (!entry) return 0;
   const f = schemaByKey(entry).get(key);
-  const floor = (f && f.access != null) ? f.access : entry.access;
-  if (!f || !f.optionAccess) return floor;
+  let need = entry.access | 0;
+  if (!f) return need;
+  if (f.access != null) need = Math.max(need, f.access);
+  if (!f.optionAccess || typeof optionValue !== 'number') return need;
   const a = f.optionAccess[optionValue];
-  return a == null ? floor : a;
+  return Math.max(need, a == null ? Math.max(...f.optionAccess) : a);
 }
 
 /**

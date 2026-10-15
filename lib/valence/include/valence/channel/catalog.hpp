@@ -305,7 +305,7 @@ struct SchemaField {
     std::string_view role{};            // key 13, incl. RFC-019 `action.<name>`
     float step = 0.0f;                  // key 14
     uint8_t flags = 0;                  // key 15
-    AccessLevel access = AccessLevel::watch;  // key 16: per-op role override
+    AccessLevel access = AccessLevel::watch;  // key 16: per-op minimum tier; raises the entry's floor, never lowers it
     bool hasAccess = false;
     bool hasStep = false;
     // key 17: per-OPTION minimum role, index-aligned with key 10. Stored in the
@@ -369,8 +369,8 @@ struct CatalogEntry {
     std::string_view name{};            // key 2, 1..32 bytes
     ChannelClass cls = ChannelClass::STATE;   // key 3
     Direction dir = Direction::h2c;     // key 4
-    AccessLevel access = AccessLevel::watch; // key 5 — the FLOOR; a schema-field's
-                                             // key 16 or 17 only raises it (RFC-119)
+    AccessLevel access = AccessLevel::watch; // key 5 — the FLOOR; schema-field keys
+                                             // 16 and 17 only raise it (RFC-119)
     float maxRateHz = 0.0f;             // key 6 (0.0 = on-change only)
     Priority defaultPriority = Priority::normal;  // key 7
 

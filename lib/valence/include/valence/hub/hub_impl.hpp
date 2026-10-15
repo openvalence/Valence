@@ -1770,6 +1770,8 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
         uint8_t(slot.session.role) < uint8_t(AccessLevel::control)) {
         NackMsg n;
         n.code = NackCode::NOT_CONTROLLER;
+        n.has_detail = true;
+        n.detail = "needs control";
         n.has_intent_id = true;
         n.intent_id = m.intent_id;
         sendNackTracked(slot, n, nowMs);

@@ -13047,9 +13047,10 @@ say exactly which, future-us will want the receipts.*
 ## RFC-119 -- Write tiers: configuration needs configure, control drives inside its limits, per-op access only raises
 
 - **Status:** DRAFT (2026-10-15). Molecule rfc-mol-ctj (rfc-lifecycle);
-  next: fresh-eyes review, then the operator's ruling. The code is
-  built as if accepted (operator rule "write the code like the RFC exists"):
-  the branches are named under Cost.
+  fresh-eyes review folded the same day (rfc-mol-8vo: 3 blockers, 9
+  should-fix, 4 nits, all taken but S9, owed at landing); next: the
+  operator's ruling. The code is built as if accepted (operator rule "write
+  the code like the RFC exists"): the branches are named under Cost.
 - **Origin.** Operator, 2026-10-15: "only configure can change machine
   settings; control can stream and drive generators etc, but limits etc no".
   A website audit found the reference hub declaring `config-set` (0x3000) and
@@ -13061,13 +13062,14 @@ say exactly which, future-us will want the receipts.*
     surface" and never says what configuration is. Every catalog author draws
     the line again; the reference hub drew it at "is it the trust surface",
     which left every machine limit at `control`.
-    2. Section 8.8's annotation table says schema-field `access` "overrides the
-    entry's `access` floor upward or downward". Section 8.1 calls the entry's
-    `access` the floor, the reference hub only ever raises it
-    (`Hub::requiredAccessFor`), and the library's own field comment repeats
-    "raise or lower". A hub that honored "downward" would let one key of a
-    `configure` channel be written at `control` or `watch`, and a generic
-    client reading the same text would offer it there.
+    2. Section 8.8's annotation table, and `spec/schema/catalog.cddl` (keys
+    16 and 17, which section 8.1 makes win over the prose), say schema-field
+    `access` "overrides the entry's `access` floor upward or downward".
+    Section 8.1 calls the entry's `access` the floor, the reference hub only
+    ever raises it (`Hub::requiredAccessFor`), and the library's field
+    comment said "override". A hub that honored "downward" would let one key
+    of a `configure` channel be written at `control` or `watch`, and a
+    generic client reading the same text would offer it there.
 - **Alternatives.** (1) Leave the spec alone and fix the reference catalog
   only: the next hub author meets the same silence. (2) A registry list of
   "configuration roles" (`limit.*`, `window.*` and so on) the hub must gate at
@@ -13078,57 +13080,79 @@ say exactly which, future-us will want the receipts.*
     the OTA bullet: "**Configuration is any write that changes a machine
     setting or limit:** the travel window and rail, speed, acceleration and
     jerk ceilings, planner tuning, homing parameters, drive and motor
-    parameters, network credentials, and trust and accessory administration,
-    whether or not the hub persists it. It needs `configure`. `control`
-    drives the machine inside those limits: motion streams, the jog, a homing
-    cycle, starting, stopping and choosing a generator and its parameters
-    expressed within the configured limits (a share of the window or of a
-    ceiling), and source ownership. A catalog declares the tier on the INTENT
-    entry, or per key with schema-field `access` (section 8.8)."
+    parameters, network credentials, and trust, accessory and relationship
+    administration, whether or not the hub persists it. It needs `configure`.
+    `control` drives the machine: motion streams, the jog, a homing cycle,
+    starting, stopping and choosing a generator and its parameters bounded
+    by the configured limits, settings-trial's commit and revert (each acts
+    only on the sender's own trial set, opened at the tier the setting
+    needs), and source ownership. Override (section 11.1) is the one
+    `control` act that lifts the window and soft limits: it is the operator's
+    hand taking the rail, not configuration. A catalog declares the tier on
+    the INTENT entry, or per key with schema-field `access` (section 8.8).
+    An accessory declaration follows the same line, and its host never
+    lowers a declared tier (section 17.1.1)."
     2. **Per-op access only raises.** Section 8.8's table, rows `access` and
     `option_access`: "per-op minimum tier; RAISES the entry's `access` floor,
     never lowers it" and "per-option minimum tier, index-aligned with
-    `options`; raises the floor, never lowers it". One sentence after the
-    table: "The tier an INTENT needs is the highest of its entry's `access`,
-    the `access` of every schema field its value map carries, and the
-    `option_access` of every option it invokes." The library comment on
-    `CatalogEntry::access` follows.
+    `options`; raises the floor, never lowers it"; `catalog.cddl` keys 16 and
+    17 say the same. One sentence after the table: "The tier an INTENT needs
+    is the highest of its entry's `access`, the `access` of every schema
+    field its value map carries, and the `option_access` of every option it
+    invokes; an option past the end of `option_access` takes the strictest
+    declared. The safety ops `pause` and `estop` need no tier whatever the
+    catalog declares (section 11.2): a hub MUST NOT refuse them on access."
+    The library comments on `CatalogEntry::access` and `SchemaField::access`
+    follow (done).
     3. **A refusal names the tier** (informative, no wire change). The
-    reference hub's access NACK carries `detail` "needs control" on
-    `NOT_CONTROLLER` and "needs configure" on `ACCESS_DENIED`, so a client
-    can say what the session lacks without re-deriving it.
+    reference hub's access NACKs, the catalog gate and the section 11.2
+    `control` floor, carry `detail` "needs control" on `NOT_CONTROLLER` and
+    "needs configure" on `ACCESS_DENIED`. `detail` stays diagnostic (section
+    16.1): a client keys on the code and the catalog, never on the string,
+    because `ACCESS_DENIED` also answers a provisioning binding refusal and
+    the pair_approve ceiling.
 - **Pros.** One line every hub author draws the same way; a generic client
   grays a setting a session cannot write (section 8.9, gray never hide) on
   every hub alike; no catalog can widen a write by lowering a field's tier.
-- **Cons.** A client holding only `control` (a /uitoken session, a bench
-  script) loses every settings write until it holds `configure`: RFC-114's
-  ask plus double press is the path at the machine, knock-and-approve from a
+- **Cons.** A client holding only `control` (a /uitoken session, the section
+  12.8 served page, a bench script) loses every settings write until it holds
+  `configure`, the axis hero's window band included: RFC-114's ask plus
+  double press is the path at the machine, knock-and-approve from a
   `configure` session the path away from it. A hub whose catalog lowered a
   per-op tier (none known) becomes non-conforming.
 - **Cost.** Valence feat/config-tier: SPEC 12.2 one bullet, 8.8 two table
-  cells and one sentence, the `CatalogEntry::access` comment, and the NACK
-  detail in `Hub::handleIntent` (built, safety suite asserts it). Nucleus
-  feat/config-tier: `config-set`, `modes-set`, `kinetic-set` and `drive-set`
-  at `configure`; `machine-admin` `save_config` and `servo_scan`, `home`
-  `force_home` and its `stroke` at `configure`; suites VD-TIER-MATRIX (every
-  writable entry classified), VD-TIER-LIVE (every writable key at watch,
-  control and configure) and VD-TIER-1..4; valencesim's double press
-  (`integral_pair_double_press`). Phosphor lane configtier: settings a
-  session cannot write gray with a tip naming the tier.
-- **Wire impact.** None: no frame, key, code or number. Catalog etags move on
-  any hub that re-tiers an entry (the reference hub's did). The NACK `detail`
-  strings are free text.
+  cells and two sentences, `catalog.cddl` keys 16 and 17; built: the library
+  comments, the NACK detail on both access refusals in `Hub::handleIntent`
+  (safety suite asserts it), the JS client's `optionAccessFor` raise-only.
+  Owed at landing: the hub's own pause/estop access exemption (today only
+  the catalog declares it) and a library test that a field access below the
+  floor does not lower it (review S9). Nucleus feat/config-tier: `config-set`,
+  `modes-set`, `kinetic-set` and `drive-set` at `configure`;
+  `machine-admin` `save_config` and `servo_scan`, `home` `force_home` and its
+  `stroke` at `configure`; suites VD-TIER-MATRIX (every writable entry
+  classified), VD-TIER-LIVE (every writable key at watch, control and
+  configure) and VD-TIER-1..4; valencesim's double press
+  (`integral_pair_double_press`, wasm check). Phosphor lane configtier:
+  settings a session cannot write gray with a tip naming the tier.
+- **Wire impact.** No frame, key, code or number. On a hub that re-tiers an
+  entry, a session that wrote it before now gets `ACCESS_DENIED` (or
+  `NOT_CONTROLLER`) where it got an ECHO, and the catalog etag moves (the
+  reference hub's did, valencesim's and its wasm check value with it). The
+  NACK `detail` strings are free text.
 - **Open questions.** Each has a pick, for the operator's ruling.
     1. Pattern presets (save, delete, rename on the hub's store): `control`
     (pick). A preset is a generator recipe inside the limits, not a limit.
     2. `source.background_run` (a generator keeps running when its session
     leaves): `control` (pick). It is source ownership and RAM-only; its
     persistence is a separate ruling (Nucleus val-wcm).
-    3. The jog's own speed and acceleration: `configure` (pick). They are the
-    hand's ceilings.
+    3. The jog's own speed and acceleration: `configure`, by the definition
+    (confirmation only). They are the hand's ceilings.
     4. A drive fault clear: `control` (pick), recovery like `release`; a drive
     register scan: `configure` (pick), drive commissioning.
     5. `force_home` (a bench op that asserts a stroke without measuring):
     `configure` (pick). Its stroke is a limit.
+    6. Noted, not this RFC: a SUBSCRIBE short of `control` answers
+    `ACCESS_DENIED`, not `NOT_CONTROLLER` (hub_impl.hpp, handleSubscribe),
+    against section 12.2's last sentence.
 
 ---
