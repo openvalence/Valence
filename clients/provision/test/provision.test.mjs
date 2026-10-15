@@ -121,10 +121,10 @@ console.log('provision: the setup walk on the recorded valencesim catalog');
   check('every step is a setup entry, in catalog order',
     steps.every((s, i) => cat.find((e) => e.id === s.id).category === UI_CATEGORY.setup &&
       (i === 0 || cat.findIndex((e) => e.id === steps[i - 1].id) < cat.findIndex((e) => e.id === s.id))));
-  check('every field is writable through its writer', steps.every((s) => s.fields.length > 0 &&
+  check('every settings field is writable through its writer', steps.filter((s) => s.kind === 'settings').every((s) => s.fields.length > 0 &&
     s.fields.every((f) => (cat.find((e) => e.id === s.writer).schema || []).some((x) => x.key === f.key))));
-  check('no network step: this catalog does not declare 0x000F yet (Nucleus val-9u0.21)',
-    !steps.some((s) => s.kind === 'network'));
+  check('the network step leads: this catalog declares 0x000F as a setup writer',
+    steps[0].kind === 'network' && steps[0].writer === CH_PROVISIONING);
 }
 
 // ---- a machine to talk to ------------------------------------------------------------

@@ -329,7 +329,9 @@ export function createLocalHub(o) {
     const plain = entry.schema.filter((f) => !f.role);
     const one = (t) => { const h = plain.filter((f) => f.type === t); return h.length === 1 ? h[0] : null; };
     const opF = entry.schema.find((f) => f.role === ROLE_STORE);
-    const slotF = one(CBOR_FIELD.uint_t), nameF = one(CBOR_FIELD.tstr_t), itemF = one(CBOR_FIELD.bstr_t);
+    const bound = (role, t) => entry.schema.find((f) => f.role === role) || one(t);
+    const slotF = bound(FIELD_ROLE.store_slot, CBOR_FIELD.uint_t), nameF = bound(FIELD_ROLE.store_name, CBOR_FIELD.tstr_t);
+    const itemF = bound(FIELD_ROLE.store_item, CBOR_FIELD.bstr_t);
     const { storeId: sid, capacity, kind, perItemMax, nameMax } = st.store;
     const slot = slotF ? vals.get(slotF.key) : undefined;
     if (!Number.isInteger(slot) || slot < 0 || slot >= capacity) return { code: NACK.INVALID_VALUE, detail: 'slot' };
@@ -341,7 +343,9 @@ export function createLocalHub(o) {
       [BLOB_K.kind, cbTstr(kind)], [BLOB_K.payload, cbBstr(payload)]]);
     switch (vals.get(opF.key)) {
       case STORE_OP.save: {
-        const payload = (itemF && vals.get(itemF.key)) || new Uint8Array(0);
+        // A store.item is a whole item document (RFC-089); a plain bstr field is the bare payload.
+        const raw = (itemF && vals.get(itemF.key)) || null;
+        const payload = raw && itemF.role ? cbDecodeFull(raw).get(BLOB_K.payload) || new Uint8Array(0) : raw || new Uint8Array(0);
         if (perItemMax && payload.length > perItemMax) return { code: NACK.INVALID_VALUE, detail: 'item too large' };
         items.set(k, item(payload));
         break;
