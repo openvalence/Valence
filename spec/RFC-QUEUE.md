@@ -719,7 +719,7 @@ own Status line as of that date; the entry wins on any disagreement.*
   with the real engine. A funscript axis using MFP's default **Makima**
   interpolation produced a handoff velocity of **1.816 norm/s into a span
   whose own mean velocity is 0.050 norm/s — 36×**. VMotion's legality scan
-  rejected the quintic, the Ruckig guard took it, and a "slow, simple" script
+  rejected the quintic, the planner's fallback took it, and a "slow, simple" script
   rendered as straight-line strokes with flat-topped velocity. The plugin was
   computing a *mathematically correct* spline tangent and shipping it to a
   machine that could not possibly honor it.
@@ -889,8 +889,7 @@ own Status line as of that date; the entry wins on any disagreement.*
   **Two honest limits of the landed guard**, recorded so nobody re-discovers
   them: (a) the TAIL CASE — a segment with no successor in the ring is accepted
   unchanged, deliberately, because guessing a chord we do not have would trim
-  well-behaved senders and the segment is already DUE; the legality scan +
-  Ruckig guard remain the backstop they always were. (b) COVERAGE is bounded by
+  well-behaved senders and the segment is already DUE; the legality scan remains the backstop it always was. (b) COVERAGE is bounded by
   how far ahead the client schedules: the successor must already be in the ring
   when its predecessor comes due, i.e. the current segment must be shorter than
   the client's scheduling lookahead (MFP: 120 ms; the wire's own `t_off` clamp
@@ -9217,8 +9216,7 @@ say exactly which, future-us will want the receipts.*
   `planner_options`, which the build decides.
 - **Anticipated workflow.** (Appended as the kernel is built; newest last.)
   - 2026-10-05: draft opened with the rulings of the day: one sample behind,
-    the three junction kinds, the oscillator yields, no Ruckig in firmware
-    (Kinetic 1 stays as the native test oracle), measured rate ceiling with
+    the three junction kinds, the oscillator yields, Kinetic 1 stays as the native test oracle, measured rate ceiling with
     the default at half.
   - 2026-10-05, kernel skeleton (kin-nb9): the one entry is a knot; the
     engine never sees a wire format, so segment, sample and stroke
@@ -9318,8 +9316,8 @@ say exactly which, future-us will want the receipts.*
     previous piece stays legal (the last ACCEPTED knot, never a dropped
     neighbor); (v) a knot whose successors were all dropped is the end of
     the timeline and is solved again at rest, so the hold never steps.
-    Oracle (Kinetic 1 with Ruckig, softeners off): the brake is exactly
-    Ruckig's time; the rest-to-rest quintic park is 1.20 to 1.23x the
+    Oracle (Kinetic 1, softeners off): the brake is exactly the
+    time-optimal brake's time; the rest-to-rest quintic park is 1.20 to 1.23x the
     time-optimal profile, which makes the park-profile option worth about
     20% on a jog and is the first candidate for the options list.
   - 2026-10-05, the corner option (kin-jub): built. (w) The author's
@@ -9454,7 +9452,7 @@ say exactly which, future-us will want the receipts.*
     clamped so jmax can shed the acceleration before the velocity reaches
     the ceiling, as the rail clamp does for position: any knot may turn out
     to be the last. (ss) Ruling 2026-10-06: Kinetic² is the hub's planner in
-    every build; the kernel switch, Kinetic 1 and Ruckig leave Nucleus, and
+    every build; the kernel switch, Kinetic 1 leaves Nucleus, and
     the bench A/B no longer gates it. The factory input jerk ceiling is
     5,000,000 mm/s^3 (2,000,000 was kinematically limiting; 5 to 10 million
     is the machine). Open: a sample stream at the velocity ceiling from far

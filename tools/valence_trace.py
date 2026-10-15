@@ -16,7 +16,7 @@ WHAT IT IS FOR
     durationUs) drawn as the commanded envelope around the trace inside it,
     the velocity plane, and the engine's anomaly EVENTs marked on the time
     axis. That is the whole diagnostic vocabulary for FEEL questions: quintic
-    shaping, Ruckig-guard fallbacks, chase lag, handoff bounding.
+    shaping, guard fallbacks, chase lag, handoff bounding.
 
 SAFETY GUARANTEE
     Valence Trace connects as a `watch`-tier session and SUBSCRIBES ONLY. It never

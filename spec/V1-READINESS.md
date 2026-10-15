@@ -167,7 +167,7 @@ not in any client.
   sent. Guessing a chord we do not have would trim well-behaved senders (a
   feel regression for every good client), and the segment is already DUE so
   deferring it would trade a shape problem for a deadline problem. The
-  quintic legality scan + Ruckig guard remain the backstop.
+  quintic legality scan remains the backstop.
 - **Coverage caveat:** the guard can only fire when the successor is already
   in the ring, i.e. when the current segment is shorter than the client's
   scheduling lookahead (MFP ships 120 ms; the hub clamps a wire `t_off`
@@ -181,7 +181,7 @@ not in any client.
 ### Diagnostic CLI — motion-input vs planner graphing
 Requirement: **graph the raw commanded input arriving over Valence,
 scaled into the stroke window, against what the motion planner actually
-did** — so planner behavior (quintic shaping, Ruckig guard fallbacks,
+did** — so planner behavior (quintic shaping, guard fallbacks,
 chase lag) is visually comparable to the sender's intent.
 
 Needs three things, two of which are AUTHOR-pile items — **prioritize

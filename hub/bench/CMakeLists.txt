@@ -16,7 +16,7 @@ include(FetchContent)
 # ---- IXWebSocket (WS server) ------------------------------------------------
 # The ONLY external dependency: Valence Bench is deliberately lean (task brief:
 # "mostly config parsing + a value store + the TUI") and needs no motion
-# engine (no Ruckig), no TUI framework (plain ANSI redraw, see tui/BenchTui),
+# engine, no TUI framework (plain ANSI redraw, see tui/BenchTui),
 # and no HTTP facade (WS-only per the task brief -- no page to serve).
 set(USE_TLS OFF CACHE BOOL "" FORCE)
 set(USE_ZLIB OFF CACHE BOOL "" FORCE)

@@ -1,5 +1,4 @@
 ---
-title: Valence
 description: >-
   Valence is an open device-shadow and capability-negotiation protocol for
   motion machines. A hub publishes a catalog of its channels, and a client

@@ -1,8 +1,7 @@
 # Vendored third-party assets
 
-This directory ships one third-party file. It is recorded here, in the same
-spirit as `lib/ruckig/VENDORED.md`: provenance, license, and the exact
-procedure for updating it.
+This directory ships one third-party file. It is recorded here: provenance,
+license, and the exact procedure for updating it.
 
 ## `docs/assets/javascripts/mermaid.min.js`
 

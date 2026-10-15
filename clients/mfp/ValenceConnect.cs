@@ -2521,7 +2521,7 @@ public class ValenceConnect : PluginBase
     // realize it as ONE quintic that covers the span's displacement in the span's
     // duration while ARRIVING at that velocity. When the tangent dwarfs the
     // span's mean velocity, no monotone quintic exists — VMotion's legality
-    // scan rejects it (WaveformFallback) and Ruckig re-shapes the segment into a
+    // scan rejects it (WaveformFallback) and the device re-shapes the segment into a
     // bang-cruise-bang profile, which is precisely a straight line in position
     // with a FLAT-TOPPED velocity trace. Worse, the device estimates the segment's
     // end ACCELERATION as a backward difference of consecutive end_vel values, so
