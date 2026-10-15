@@ -370,7 +370,7 @@ struct CatalogEntry {
     ChannelClass cls = ChannelClass::STATE;   // key 3
     Direction dir = Direction::h2c;     // key 4
     AccessLevel access = AccessLevel::watch; // key 5 — the FLOOR; a schema-field's
-                                             // key 16 may raise or lower it per op
+                                             // key 16 or 17 only raises it (RFC-119)
     float maxRateHz = 0.0f;             // key 6 (0.0 = on-change only)
     Priority defaultPriority = Priority::normal;  // key 7
 

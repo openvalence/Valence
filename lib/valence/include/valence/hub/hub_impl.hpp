@@ -1715,11 +1715,14 @@ inline void Hub::handleIntent(Slot& slot, std::span<const std::byte> payload, ui
     // 4) Access: the entry's floor RAISED by any per-field/per-option
     // annotation the value map actually invokes (RFC-025/010 — see
     // requiredAccessFor). control-level shortfall -> NOT_CONTROLLER; any other
-    // (configure-level) -> ACCESS_DENIED.
+    // (configure-level) -> ACCESS_DENIED. The detail names the tier, so a
+    // client can say what the session lacks without re-deriving it.
     const AccessLevel needAccess = requiredAccessFor(*entry, m);
     if (uint8_t(slot.session.role) < uint8_t(needAccess)) {
         NackMsg n;
         n.code = (needAccess == AccessLevel::control) ? NackCode::NOT_CONTROLLER : NackCode::ACCESS_DENIED;
+        n.has_detail = true;
+        n.detail = (needAccess == AccessLevel::control) ? "needs control" : "needs configure";
         n.has_channel_id = true;
         n.channel_id = m.channel_id;
         n.has_intent_id = true;

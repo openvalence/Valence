@@ -1236,6 +1236,7 @@ TEST_CASE("M4a/RFC-025b/RFC-085: a WATCH session may estop and pause, but nothin
             rig.step();
             REQUIRE(rig.del.nacks.size() == 1);
             CHECK(rig.del.nacks[0].code == NackCode::NOT_CONTROLLER);
+            CHECK(rig.del.nacks[0].detail == "needs control");
         }
         CHECK(rig.hub->safetyWord() == 0);
         CHECK(rig.hub->safetyModes() == 0);
