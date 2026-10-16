@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <defs><pattern id="g" width="128" height="128" patternUnits="userSpaceOnUse"><path d="M0 .5H128M.5 0V128" stroke="#FFFFFF" stroke-opacity=".16" stroke-width="2.5"/><path d="M0 32.5H128M0 64.5H128M0 96.5H128M32.5 0V128M64.5 0V128M96.5 0V128" stroke="#FFFFFF" stroke-opacity=".07" stroke-width="2"/></pattern><clipPath id="t"><rect width="1024" height="1024" rx="225"/></clipPath></defs>
-  <rect width="1024" height="1024" rx="225" fill="#0E4683"/>
+  <defs><pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="16" cy="16" r="2.2" fill="#33E1E8" fill-opacity=".22"/></pattern><clipPath id="t"><rect width="1024" height="1024" rx="225"/></clipPath></defs>
+  <rect width="1024" height="1024" rx="225" fill="#111318"/>
   <rect width="1024" height="1024" fill="url(#g)" clip-path="url(#t)"/>
   <g transform="translate(512 512) scale(1.17)" fill="none" stroke-linecap="round">
-    <g stroke="#9BC3E8" stroke-width="4">
+    <g stroke="#FF5CB3" stroke-width="4">
       <path d="M-410 0H410M0 -410V410" stroke-dasharray="64 14 8 14" stroke-dashoffset="32" stroke-linecap="butt"/>
       <circle r="200" stroke-dasharray="18 14" stroke-linecap="butt"/>
       <path d="M354 0L392 0M341.94 91.62L355.46 95.25M306.57 177L318.7 184M250.32 250.32L267.29 267.29M177 306.57L184 318.7M91.62 341.94L95.25 355.46M0 354L0 392M-91.62 341.94L-95.25 355.46M-177 306.57L-184 318.7M-250.32 250.32L-267.29 267.29M-306.57 177L-318.7 184M-341.94 91.62L-355.46 95.25M-354 0L-392 0M-341.94 -91.62L-355.46 -95.25M-306.57 -177L-318.7 -184M-250.32 -250.32L-267.29 -267.29M-177 -306.57L-184 -318.7M-91.62 -341.94L-95.25 -355.46M0 -354L0 -392M91.62 -341.94L95.25 -355.46M177 -306.57L184 -318.7M250.32 -250.32L267.29 -267.29M306.57 -177L318.7 -184M341.94 -91.62L355.46 -95.25" stroke-linecap="butt"/>
     </g>
-    <path d="M-297.99 34.71 A300 300 0 0 1 -118.94 -275.42" stroke="#FFFFFF" stroke-width="80"/><path d="M-297.99 34.71 A300 300 0 0 1 -118.94 -275.42" stroke="#0E4683" stroke-width="48"/>
-    <path d="M118.94 -275.42 A300 300 0 0 1 297.99 34.71" stroke="#FFFFFF" stroke-width="80"/><path d="M118.94 -275.42 A300 300 0 0 1 297.99 34.71" stroke="#0E4683" stroke-width="48"/>
-    <path d="M179.05 240.71 A300 300 0 0 1 -179.05 240.71" stroke="#FFFFFF" stroke-width="80"/><path d="M179.05 240.71 A300 300 0 0 1 -179.05 240.71" stroke="#0E4683" stroke-width="48"/>
-    <circle r="128" fill="#0E4683" stroke="#FFFFFF" stroke-width="16"/>
-    <path d="M-92 0H92M0 -92V92" stroke="#9BC3E8" stroke-width="4" stroke-dasharray="40 10 8 10" stroke-dashoffset="20" stroke-linecap="butt"/>
-    <circle r="12" fill="#9BC3E8"/>
-    <path d="M107.48 -107.48L168.29 -168.29" stroke="#9BC3E8" stroke-width="4" stroke-linecap="butt"/>
-    <path d="M182.43 -182.43L166.17 -150.61L150.61 -166.17Z" fill="#9BC3E8"/>
-    <circle cx="0" cy="-300" r="54" fill="#FF5CB3"/><circle cx="259.81" cy="150" r="54" fill="#FFFFFF"/><circle cx="-259.81" cy="150" r="54" fill="#FFFFFF"/>
+    <path d="M-297.99 34.71 A300 300 0 0 1 -118.94 -275.42" stroke="#A78BFA" stroke-width="80"/><path d="M-297.99 34.71 A300 300 0 0 1 -118.94 -275.42" stroke="#111318" stroke-width="48"/>
+    <path d="M118.94 -275.42 A300 300 0 0 1 297.99 34.71" stroke="#A78BFA" stroke-width="80"/><path d="M118.94 -275.42 A300 300 0 0 1 297.99 34.71" stroke="#111318" stroke-width="48"/>
+    <path d="M179.05 240.71 A300 300 0 0 1 -179.05 240.71" stroke="#A78BFA" stroke-width="80"/><path d="M179.05 240.71 A300 300 0 0 1 -179.05 240.71" stroke="#111318" stroke-width="48"/>
+    <circle r="128" fill="#111318" stroke="#4DA6FF" stroke-width="16"/>
+    <path d="M-92 0H92M0 -92V92" stroke="#FF5CB3" stroke-width="4" stroke-dasharray="40 10 8 10" stroke-dashoffset="20" stroke-linecap="butt"/>
+    <circle r="12" fill="#FF5CB3"/>
+    <path d="M107.48 -107.48L168.29 -168.29" stroke="#FF5CB3" stroke-width="4" stroke-linecap="butt"/>
+    <path d="M182.43 -182.43L166.17 -150.61L150.61 -166.17Z" fill="#FF5CB3"/>
+    <circle cx="0" cy="-300" r="54" fill="#FF5CB3"/><circle cx="259.81" cy="150" r="54" fill="#4DA6FF"/><circle cx="-259.81" cy="150" r="54" fill="#4DA6FF"/>
   </g>
 </svg>

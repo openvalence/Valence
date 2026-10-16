@@ -18,9 +18,9 @@ generated.
 | `icon-16.svg` | The same proportions on a 14 px pixel grid (2 px ring) | 16 px | ICO 16, site `favicon.svg` |
 | `icon-mono.svg` | Ring and core only, single color (black) on transparent, 16 px grid | Any | Status badges, the macOS menu bar template (tinted by the system), favicon masks |
 | `avatar.svg` | Ring and core only on a full square tile (the host crops the corners) | 512 | GitHub org avatar, uploaded by hand |
-| `neutrino-app.svg` | The Neutrino emulator's icon: the same geometry drawn as a cyanotype drawing. White outlined arcs and core on blueprint blue (#0E4683, the Blueprint theme's ground) under a faint grid, construction lines in #9BC3E8 (dash-dot center lines, a dashed pitch circle, degree ticks, a radius leader), white electron dots with the top one in the Neutrino pink (#FF5CB3) | 48 px and up | Neutrino app icon, the same ladder as Phosphor's |
-| `neutrino-small.svg` | No construction lines: white line arcs, an outlined core with a center point, the pink top dot, on a 30 px grid | 24, 32 px | Neutrino ICO 24/32, `32x32.png`, `Square30x30Logo.png` |
-| `neutrino-16.svg` | White line arcs, solid core and the pink top dot on a 14 px pixel grid | 16 px | Neutrino ICO 16 |
+| `neutrino-app.svg` | The Neutrino emulator's icon: the same geometry drawn as a CAD model space. Violet outlined arcs and a cyan outlined core on the chassis square (#111318) under a cyan dot grid (#33E1E8 at 22%), cyan electron dots, and a construction layer in the Neutrino pink (#FF5CB3): dash-dot center lines, a dashed pitch circle, degree ticks, a radius leader and the top electron | 48 px and up | Neutrino app icon, the same ladder as Phosphor's |
+| `neutrino-small.svg` | No grid, ticks or circle: violet line arcs, an outlined cyan core under a pink crosshair (crisp 1 px), a larger pink top dot, on a 30 px grid | 24, 32 px | Neutrino ICO 24/32, `32x32.png`, `Square30x30Logo.png` |
+| `neutrino-16.svg` | Violet line arcs, a hollow cyan core and a larger pink top dot on a 14 px pixel grid (the hollow core and pink tell it from Phosphor's solid core) | 16 px | Neutrino ICO 16 |
 
 The ring's outer edge reaches about 80% of the tile width at every size (2 px
 inside the tile edge at 16). The app variants sit on a rounded square (corner radius about 22% of the
