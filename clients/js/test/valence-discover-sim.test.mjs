@@ -102,7 +102,7 @@ try {
   assert('exactly one hub answers (the junk cost no slot)', hubs.length === 1, JSON.stringify(hubs));
   assert('hub_instance_id is the identity store\'s', h.hub_instance_id === IID, h.hub_instance_id);
   assert('ws_port is the listening WS port', h.ws_port === WS_PORT, String(h.ws_port));
-  assert('hub_name and the replying address', h.hub_name === 'valencesim' && h.ip === '127.0.0.1', h.hub_name + ' @ ' + h.ip);
+  assert('hub_name and the replying address', h.hub_name === 'Neutrino' && h.ip === '127.0.0.1', h.hub_name + ' @ ' + h.ip);
   assert('pairing_window_open follows the presence window', h.pairing_window_open === true);
 
   // The reply left within a tick of probedAt, so this lands inside its window.
