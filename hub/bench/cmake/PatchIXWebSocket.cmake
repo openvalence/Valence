@@ -2,12 +2,8 @@
 # fresh population (idempotent via the marker string). Upstream's server
 # handshake never echoes Sec-WebSocket-Protocol; RFC 6455 §4.2.2 requires it
 # when the client requested one, and strict clients (browsers) hard-fail the
-# connect without it. Valence Bench pins valence.v1, same as sim/valencesim.
-#
-# Vendored rather than pointed at sim/valencesim/cmake/PatchIXWebSocket.cmake:
-# Valence Bench's own FetchContent population is a separate source tree (each
-# sim has its own build/ directory), so sharing the file would only add a
-# cross-directory dependency for no benefit.
+# connect without it. Valence Bench pins valence.v1, same as Nucleus sim/neutrino, whose
+# CMakeLists runs this file too.
 set(F "ixwebsocket/IXWebSocketHandshake.cpp")
 file(READ ${F} C)
 if(NOT C MATCHES "bench-subprotocol-echo")

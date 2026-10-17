@@ -4,7 +4,7 @@
 // Valence Bench. Builds a live Catalog32 from a parsed HubConfig (config/
 // ConfigTypes.h), then implements the generic write plane entirely off that
 // catalog's own runtime bookkeeping: no channel id or field name is ever
-// hardcoded here (contrast sim/valencesim's MachineSim, which mirrors ONE real
+// hardcoded here (contrast Nucleus's device catalog, which mirrors ONE real
 // device's semantics on purpose — this file mirrors WHATEVER the config
 // says).
 // Constraints:
@@ -74,8 +74,7 @@ public:
     // Port-slot-indexed, deliberately NOT correlated with the hub's own
     // internal slot array: attachTransport() picks the hub's slot by its own
     // free/evictable-stale policy, which need not match this port's slot
-    // index (sim/valencesim's own TUI makes the same simplifying choice — see
-    // MachineSim::snapshot()). `sessionCount()` on the hub gives the total.
+    // index. `sessionCount()` on the hub gives the total.
     struct SessionRow {
         uint8_t slot = 0;
         bool inUse = false;
@@ -149,8 +148,8 @@ private:
     // reference at that exact moment. Catalog authoring therefore happens
     // INSIDE `_hub`'s own member-initializer expression (BenchHub.cpp's
     // buildCatalogInto(), called from the constructor's init list) so
-    // `_catalog` is fully populated before Hub ever reads it — same idiom
-    // sim/valencesim's MachineSim uses for the identical reason. A catalog
+    // `_catalog` is fully populated before Hub ever reads it — the idiom
+    // Nucleus's device catalog uses for the identical reason. A catalog
     // mutation from the constructor BODY (which runs after every member is
     // already initialized) would be silently invisible to the served bytes.
     valence::Catalog32 _catalog;

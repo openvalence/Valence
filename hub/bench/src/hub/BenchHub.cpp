@@ -192,7 +192,7 @@ private:
     }
 
     void addHandAuthoredSpecCore() {
-        // Verbatim shape of sim/valencesim's ValenceSimCatalog.h spec-core block: the
+        // Verbatim shape of the spec-core block in Nucleus flagship_p4/src/hub/ValenceCatalog.h: the
         // hub library hardcodes these exact layouts (safety word, control-owner
         // source/owner pairs, safety-intents ops, hub-status fields,
         // session-events fields) — see hub.hpp's own comments on each. Copied,

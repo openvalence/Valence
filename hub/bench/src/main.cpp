@@ -6,7 +6,7 @@
 //
 //   bench <config.bench> [--port 7000] [--headless] [--duration S]
 //
-// Verify against it with tools/valence_probe.py (same wire layer sim/valencesim
+// Verify against it with tools/valence_probe.py (same wire layer sim/neutrino
 // uses) or hub/bench/tools/smoke_test.py, which drives all three example
 // configs end to end.
 // Constraints:

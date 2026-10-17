@@ -7,7 +7,7 @@ between accepting a write and reflecting it in STATE.
 
 ## Division of labor (Nucleus's LEDGER.md, machine repo, "Morning ruling batch" item 3)
 
-- **Nucleus's `sim/valencesim`** is the 1:1 device twin: it embeds the real device catalog
+- **Nucleus's `sim/neutrino`** is the 1:1 device twin: it embeds the real device catalog
   (`--profile device`) and reproduces Nucleus's actual behavior,
   including the real `kinetic2::Engine`. Parity is one-way — the firmware
   is never edited to close a sim gap.
@@ -55,7 +55,7 @@ Cut for leanness (judgment calls, not gaps found by accident):
   never fires on its own.
 - Every session is granted `configure` regardless of token
   (`BenchHub::validateToken`). Valence Bench is a write-plane/catalog test
-  double, not an auth conformance harness — that is `valencesim`'s (and the
+  double, not an auth conformance harness — that is Neutrino's (and the
   real firmware's) job.
 - No per-field bit labels, no RFC-009 `group`/`desc`/`role`/`step`
   annotations beyond `default`, no priority knob (every device-range channel
@@ -159,7 +159,7 @@ headless or not).
 
 ## Build (Windows, WinLibs GCC + CMake + Ninja)
 
-Same toolchain as `sim/valencesim`:
+Same toolchain as `sim/neutrino`:
 
 ```bash
 export PATH="/c/Users/Atlan/AppData/Local/Microsoft/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe/mingw64/bin:$PATH"
@@ -169,7 +169,7 @@ cmake --build hub/bench/build
 ```
 
 The only external dependency is IXWebSocket (FetchContent-pinned, same
-version as `sim/valencesim`); the exe is `-static` linked.
+version as `sim/neutrino`); the exe is `-static` linked.
 
 ## Verify
 

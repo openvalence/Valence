@@ -3,11 +3,7 @@
 // SessionLog — bounded in-memory log ring feeding the TUI's log pane.
 // Constraints:
 //   - The hub thread is the main writer; IXWebSocket connection threads may
-//     log too — hence the one small mutex (mirrors sim/valencesim's own
-//     one-lock-per-shared-structure doctrine).
-// See: sim/valencesim/src/common/SessionLog.h (identical shape, copied rather
-// than shared because valencesim/bench are separate CMake targets with no
-// common host-only library between them yet).
+//     log too — hence the one small mutex.
 
 #include <cstdarg>
 #include <cstdio>

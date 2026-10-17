@@ -64,8 +64,8 @@ Date.now = () => now;
 const pump = () => new Promise((r) => setTimeout(r, 70)); // one real 50 ms pump interval
 const settle = (p) => p.then((v) => ({ v }), (e) => ({ e }));
 
-const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/valencesim-catalog.bin', import.meta.url)));
-const etag = fromHex(readFileSync(new URL('./fixtures/valencesim-catalog.etag', import.meta.url), 'utf8').trim());
+const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/neutrino-catalog.bin', import.meta.url)));
+const etag = fromHex(readFileSync(new URL('./fixtures/neutrino-catalog.etag', import.meta.url), 'utf8').trim());
 
 /** A LIVE session on the fixture catalog (store 1 trust ledger, store 2 presets). */
 function liveSession() {

@@ -114,7 +114,7 @@ python tools/valence_trace.py live --ip 127.0.0.1 --port 82 --seconds 18
 ```
 
 ```text
-Valence Trace live  ·  127.0.0.1:82  ·  fw valencesim-0.2.0  ·  watch tier, subscribe-only
+Valence Trace live  ·  127.0.0.1:82  ·  fw neutrino-sim-0.2.0  ·  watch tier, subscribe-only
 ------------------------------------------------------------------------------
 window   0.0 .. 500.0 mm  (span 500.0)   limits input.accel=8000 input.jerk=2e+06
          input.speed=550 user.accel=200 user.speed=50
@@ -197,7 +197,7 @@ driven by the probe.
 
 ```bash
 # terminal 1 — the machine
-valencesim machine --homed --headless --duration 150
+neutrino-sim machine --homed --headless --duration 150
 
 # terminal 2 — the recorder
 python tools/valence_trace.py record --ip 127.0.0.1 --port 82 --seconds 26 --out seg.jsonl

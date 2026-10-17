@@ -62,7 +62,7 @@ example configs.
 
 A specific hub implementation may also ship its own device-fidelity
 simulator, embedding that machine's real motion engine and real device
-catalog behind the same wire protocol. Nucleus's `sim/valencesim` is that
+catalog behind the same wire protocol. Nucleus's `sim/neutrino` is that
 project's own instrument (its own repository, not this one). Use it
 when you need to test against one exact machine's behavior rather than the
 protocol in general.

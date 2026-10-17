@@ -597,13 +597,13 @@ assert('EVENT body: unknown key kept, never dropped (§4.3)', body.key9 === 'unk
   assert('store item: non-map bytes are not judged', storeItemDigestOk(new Uint8Array([0x01])) === true);
 }
 
-// ---- Golden fixture: the REAL catalog fetched from valencesim ------------------
+// ---- Golden fixture: the REAL catalog fetched from neutrino-sim ------------------
 // Captured by Valence Drive's webui/test/valence-sim.mjs (machine repo, not
 // here) from its device-fidelity simulator. Hashing the real hub's real
 // catalog bytes and matching the etag IT declared is a cross-implementation
 // check of this file's SHA-256 against lib/valence's C++ Sha256.
-const FIXTURE = new URL('./fixtures/valencesim-catalog.bin', import.meta.url);
-const FIXTURE_ETAG = new URL('./fixtures/valencesim-catalog.etag', import.meta.url);
+const FIXTURE = new URL('./fixtures/neutrino-catalog.bin', import.meta.url);
+const FIXTURE_ETAG = new URL('./fixtures/neutrino-catalog.etag', import.meta.url);
 if (existsSync(FIXTURE) && existsSync(FIXTURE_ETAG)) {
   const catBytes = new Uint8Array(readFileSync(FIXTURE));
   const hubEtag = readFileSync(FIXTURE_ETAG, 'utf8').trim();
@@ -622,15 +622,9 @@ if (existsSync(FIXTURE) && existsSync(FIXTURE_ETAG)) {
     optionAccessFor(realSi, 1, SAFETY_OP.resume) === ACCESS.control);
 
   // ---- GAP CLOSED (Phosphor milestone 1, sim fidelity) -------------------
-  // Was an [SKIP-EXPECTED-GAP]: sim/valencesim's DEFAULT catalog used to be
-  // benchrig::buildDivergentCatalog() (a deliberately different third-party
-  // catalog, ValenceSimCatalog.h), which never had a channel shaped like the
-  // real device's motion telemetry (0x1100, RFC-047; was 0x0080). DESIGN.md's
-  // catalog-profiles ruling made benchrig `--profile alien` instead and
-  // restored `--profile device` (now the default) to literal device-catalog
-  // fidelity — buildValenceDriveCatalog() from include/comms/ValenceCatalog.h,
-  // the SAME definition the firmware ships — so this fixture (captured from
-  // the `device` profile) now always carries the real 0x1100 shape.
+  // The fixture is captured from neutrino-sim's device catalog, the SAME
+  // definition the firmware ships (Nucleus flagship_p4/src/hub/ValenceCatalog.h),
+  // so it carries the real 0x1100 motion telemetry shape (RFC-047).
   const motion = realMap.get(0x1100);
   assert('fixture: 0x1100 motion carries the raw_10um field (7 -> 9 B)',
     !!motion && motion.layout.some((f) => f.name === 'raw_10um'));

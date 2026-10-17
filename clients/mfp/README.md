@@ -347,28 +347,28 @@ old publish-only golden is kept as a regression guard alongside the new shapes.
 
 **Requires a running hub to connect to** — this is the one test in this repo
 that is not self-contained. `hub/bench/` (this repo) or Nucleus's
-`sim/valencesim` (machine repo, real device catalog) both work with no hardware;
+`sim/neutrino` (machine repo, real device catalog) both work with no hardware;
 against real hardware, see the safety gate note below.
 
 ```
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 82
 dotnet run --project clients/mfp/LiveWireTest.csproj -- 127.0.0.1 8802 --http 8809 --sim
 ```
-`--http N` is the target's HTTP port (valencesim's `--http`, for `/uitoken`); `--sim`
+`--http N` is the target's HTTP port (Neutrino's `--http`, for `/uitoken`); `--sim`
 declares a simulator that serves no `/api/capabilities`. Compiles `ValenceConnect.cs`
 itself (the plugin's real codec/client/catalog/discovery classes, no copies) into a
 console harness and runs the full session: UDP-probe discovery, HELLO→WELCOME publish
 grant, **BLOB_REQ catalog fetch + local SHA-256 verify + CATALOG_READY**, **RFC-006(b)
 role lookup and live role-value decode**, CLOCK sync, 5 s of STREAM @ 50 Hz, then a diff
 of the target's `/api/kinetic` ingress counters (skipped on a declared simulator, since
-valencesim serves none; missing on hardware is a failure). On a simulator it also writes the stroke window through the role-resolved
+Neutrino serves none; missing on hardware is a failure). On a simulator it also writes the stroke window through the role-resolved
 setting channel and restores it, checking both ECHOs and that the role-decoded window
 readback follows them, and sends Home on the `action.home` locator, checking that the
 hub answers with an ECHO or a named NACK.
 
 **Safety gate.** On real hardware it reads `/api/status` and **refuses to run if the
 machine is homed or e-stopped** (unhomed = every sample is dropped at the HOMED safety
-gate, so the wire is exercised with zero motion risk). valencesim has no `/api/status`; the
+gate, so the wire is exercised with zero motion risk). Neutrino has no `/api/status`; the
 `sim: true` flag in `/api/capabilities` (or `--sim`) is an explicit waiver, and a target
 that is neither readable nor a declared sim is an **abort**: "unknown machine state" never
 passes. The window write and the Home intent are gated on `sim`; on real hardware this

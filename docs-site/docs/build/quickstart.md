@@ -9,12 +9,12 @@ description: >-
 This page builds one connected client that reads live machine state and sends
 one intent.
 
-Develop against [Nucleus's `valencesim`](local-testing.md#a-real-devices-own-simulator).
+Develop against [Nucleus's `neutrino-sim`](local-testing.md#a-real-devices-own-simulator).
 It embeds that device's hub, motion engine and catalog behind the same wire
 protocol.
 
 ```bash
-valencesim machine --homed --headless --duration 120
+neutrino-sim machine --homed --headless --duration 120
 ```
 
 ## Session sequence

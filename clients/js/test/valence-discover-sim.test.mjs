@@ -1,12 +1,12 @@
 /**
- * valence-discover-sim.test.mjs -- SPEC §13.8 against a live valencesim: the
+ * valence-discover-sim.test.mjs -- SPEC §13.8 against a live neutrino-sim: the
  * board's own responder (Nucleus flagship_p4/src/hub/ValenceDiscovery.cpp)
  * answers a node probe on the loopback with the identity WELCOME serves, drops
  * a datagram that is not a probe, throttles a second probe from the same source
  * inside the window, and stays silent under --no-discovery.
  *
- * Needs a built valencesim (Nucleus/sim/valencesim/README.md); override the
- * path with VALENCESIM. Spare ports, never 82/80: WS 8583, /uitoken 8590,
+ * Needs a built neutrino-sim (Nucleus/sim/neutrino/README.md); override the
+ * path with NEUTRINO_SIM. Spare ports, never 82/80: WS 8583, /uitoken 8590,
  * discovery 22197 (the sim's --discovery-port, so a twin already holding the
  * registry port cannot answer for this one).
  *
@@ -22,8 +22,8 @@ import { createSession } from '../session.js';
 import { toHex } from '../sha256.js';
 import { discover, encodeDiscoverProbe, decodeDiscoverReply, DISCOVERY_REPLY_INTERVAL_MS } from '../discover.js';
 
-const SIM = process.env.VALENCESIM ||
-  new URL('../../../../Nucleus/sim/valencesim/build/valencesim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const SIM = process.env.NEUTRINO_SIM ||
+  new URL('../../../../Nucleus/sim/neutrino/build/neutrino-sim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const WS_PORT = 8583;
 const HTTP_PORT = 8590;
 const DISC_PORT = 22197;
@@ -81,14 +81,14 @@ async function welcomeOf() {
 }
 
 if (!existsSync(SIM)) {
-  console.log('valencesim not found at ' + SIM + ' (set VALENCESIM)');
+  console.log('neutrino-sim not found at ' + SIM + ' (set NEUTRINO_SIM)');
   process.exit(1);
 }
 const stateDir = mkdtempSync(join(tmpdir(), 'valence-discover-'));
 // PREFIX.iid is the twin's NVS hub_iid: 8 bytes, little-endian (sim README).
 writeFileSync(join(stateDir, 'sim.iid'), Buffer.from(IID, 'hex').reverse());
 
-console.log('valencesim discovery: probe and reply on 127.0.0.1:' + DISC_PORT + ' (WS :' + WS_PORT + ')');
+console.log('neutrino-sim discovery: probe and reply on 127.0.0.1:' + DISC_PORT + ' (WS :' + WS_PORT + ')');
 let sim = startSim(stateDir, ['--pairing-window']);
 try {
   assert('the twin listens', await untilListening());
@@ -127,7 +127,7 @@ try {
   await delay(300);
 }
 
-console.log('valencesim --no-discovery: the port stays quiet');
+console.log('neutrino-sim --no-discovery: the port stays quiet');
 sim = startSim(stateDir, ['--no-discovery']);
 try {
   assert('the twin listens', await untilListening());

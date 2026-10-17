@@ -3415,7 +3415,7 @@ def run_pairing(args):
                 ok("presence_window", "push-to-pair is advertised while its window is open")
             else:
                 bad("presence_window",
-                    "no push_to_pair bit -- start valencesim with --pairing-window "
+                    "no push_to_pair bit -- start neutrino-sim with --pairing-window "
                     "(or pass --pair-state to reuse an earlier admin token)")
                 print_summary()
                 return 1
@@ -3566,7 +3566,7 @@ def main():
                               "reconnect->revoke cycles back to back against one unrestarted hub "
                               "(the mandatory session-lifecycle regression pattern), plus the "
                               "RFC-029 version tripwire, a departed knocker, and a trust-ledger "
-                              "BLOB read. Against valencesim, start it with --pairing-window")
+                              "BLOB read. Against neutrino-sim, start it with --pairing-window")
     parser.add_argument("--pair-state", default=None,
                          help="JSON file holding the administrator's instance_id + token, so a "
                               "SECOND --pair run against the same live hub reconnects as admin "

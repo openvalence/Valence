@@ -1,12 +1,12 @@
 /**
  * valence-trial-sim.test.mjs -- RFC-099 trial writes (SPEC §9.3) against a
- * live valencesim: a trial is live and marked, a second session is refused
+ * live neutrino-sim: a trial is live and marked, a second session is refused
  * TRIAL_CONFLICT, revert and a session's end restore, commit stores, and a
  * trial never reaches the state file. Then the same walk against
  * createLocalHub over the catalog the sim served.
  *
- * Needs a built valencesim (Nucleus/sim/valencesim/README.md); override the
- * path with VALENCESIM. Spare ports, never 82/80: WS 8586, /uitoken 8593.
+ * Needs a built neutrino-sim (Nucleus/sim/neutrino/README.md); override the
+ * path with NEUTRINO_SIM. Spare ports, never 82/80: WS 8586, /uitoken 8593.
  * The sim runs on a private --state and is stopped before exit.
  *
  * Run:  node clients/js/test/valence-trial-sim.test.mjs   (exits 1 on any failure)
@@ -22,8 +22,8 @@ import { CH_SAFETY, CH_SETTINGS_TRIAL, NACK, PRIORITY, TRIAL_OP } from '../frame
 import { FIELD_ROLE } from '../generated/registry_vocab.js';
 import { fromHex } from '../sha256.js';
 
-const SIM = process.env.VALENCESIM ||
-  new URL('../../../../Nucleus/sim/valencesim/build/valencesim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const SIM = process.env.NEUTRINO_SIM ||
+  new URL('../../../../Nucleus/sim/neutrino/build/neutrino-sim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const WS_PORT = 8586;
 const HTTP_PORT = 8593;
 const CFG = 0x1000, CFG_SET = 0x3000, JOG_SPEED_KEY = 3;
@@ -37,7 +37,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const settle = (p) => p.then((v) => ({ v }), (e) => ({ e }));
 
 if (!existsSync(SIM)) {
-  console.log('valencesim not found at ' + SIM + ' (set VALENCESIM)');
+  console.log('neutrino-sim not found at ' + SIM + ' (set NEUTRINO_SIM)');
   process.exit(1);
 }
 const stateDir = mkdtempSync(join(tmpdir(), 'valence-trial-'));
@@ -85,7 +85,7 @@ async function open(control, local = null) {
 
 const cfgOf = (s) => s.states.at(-1) || {};
 
-console.log('valence-js trial writes against valencesim :' + WS_PORT);
+console.log('valence-js trial writes against neutrino-sim :' + WS_PORT);
 startSim();
 await delay(800);
 let a = null, b = null, served = null;

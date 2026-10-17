@@ -787,7 +787,7 @@ def build_header(sess, args, caps, etag_verified, digest):
         "firmware": {
             "fw_version": (caps or {}).get("fw_version"),
             "device": ((caps or {}).get("device") or (caps or {}).get("name")
-                       or ("valencesim (SIMULATED MACHINE)" if (caps or {}).get("sim") else None)
+                       or ("neutrino-sim (SIMULATED MACHINE)" if (caps or {}).get("sim") else None)
                        or (ident or {}).get("hub_name")),
             "motion_backend": ((caps or {}).get("features") or {}).get("motion_backend"),
             "simulated": bool((caps or {}).get("sim")),

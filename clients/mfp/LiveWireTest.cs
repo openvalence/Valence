@@ -51,7 +51,7 @@ internal static class LiveWireTest
         // --segments selects the 0x2101 timed-segment path (was 0x0085); positional args
         // (ip, port) are read ignoring any --flags.
         bool segments = Array.Exists(args, a => a == "--segments");
-        // --http N: HTTP port of the target (valencesim --http N; default 80).
+        // --http N: HTTP port of the target (Neutrino --http N; default 80).
         // --sim: declare the target a simulator when it serves no /api/capabilities.
         int httpPort = 80, hi = Array.IndexOf(args, "--http");
         if (hi >= 0 && hi + 1 < args.Length) httpPort = int.Parse(args[hi + 1]);
@@ -79,7 +79,7 @@ internal static class LiveWireTest
 
         // ---- SAFETY GATE ----------------------------------------------------
         // On real hardware: /api/status must say unhomed + not e-stopped, or we
-        // refuse to open a socket at all. On valencesim there is no /api/status
+        // refuse to open a socket at all. On Neutrino there is no /api/status
         // (its HTTP facade is capabilities + kinetic only) and nothing
         // physical to move, so `sim: true` in /api/capabilities is an explicit
         // waiver. An endpoint we cannot read on a machine that is NOT a
@@ -105,7 +105,7 @@ internal static class LiveWireTest
                 Console.WriteLine($"ABORT: no /api/status at {baseUrl} ({ex.Message}) and the target does not declare itself a simulator — refusing to stream at an unknown machine state.");
                 return 3;
             }
-            Console.WriteLine("[gate] no /api/status (valencesim) — proceeding on the declared-simulator waiver.");
+            Console.WriteLine("[gate] no /api/status (Neutrino) — proceeding on the declared-simulator waiver.");
         }
 
         if (status != null)
@@ -567,7 +567,7 @@ internal static class LiveWireTest
         Console.WriteLine();
 
         // ---- After counters + diff --------------------------------------------
-        // valencesim serves no /api/kinetic, so on a declared sim the four counter
+        // Neutrino serves no /api/kinetic, so on a declared sim the four counter
         // checks skip; on hardware a missing endpoint fails them.
         var afterCounters = await ReadSyncCounters(http, baseUrl);
         bool haveCounters = baseCounters.HasValue && afterCounters.HasValue;

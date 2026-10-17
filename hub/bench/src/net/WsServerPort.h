@@ -1,7 +1,7 @@
 #pragma once
 
 // ValenceBenchWsTransport / ValenceBenchWsPort -- the host WebSocket binding
-// for Valence Bench and Nucleus valencesim (both compile this file).
+// for Valence Bench and Nucleus Neutrino (both compile this file).
 // Constraints:
 //   - IXWebSocket runs ONE THREAD PER CONNECTION; the hub is strictly
 //     single-threaded (the owner's tick() pumps hub.update()). Connection

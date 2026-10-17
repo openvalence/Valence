@@ -1,16 +1,13 @@
 #pragma once
 
 // HostPlatform — desktop adapters for the Valence injected-dependency seams
-// (IClock/IRandom). Verbatim in spirit with sim/valencesim's own HostPlatform.h;
-// Valence Bench needs neither the 1 ms timer boost nor the precise-sleep spin
+// (IClock/IRandom). Valence Bench needs neither the 1 ms timer boost nor the precise-sleep spin
 // (there is no motion planner here — the hub tick and any TUI redraw run on
 // an ordinary coarse loop), so this file keeps only the clock/rng adapters.
 // Constraints:
 //   - SPEC §7.2: hub time is u32 microseconds since boot, WRAPPING every
 //     ~71.6 min BY SPEC — nowUs() truncates a 64-bit steady_clock reading,
 //     same as the firmware's EspClock truncating esp_timer_get_time().
-// See: sim/valencesim/src/common/HostPlatform.h (the fuller sibling this was
-// trimmed from).
 
 #include <chrono>
 #include <cstdint>

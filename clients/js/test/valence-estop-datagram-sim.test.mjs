@@ -1,6 +1,6 @@
 /**
  * valence-estop-datagram-sim.test.mjs -- RFC-053 end to end against a live
- * valencesim: a node sender's ESTOP datagram on the sim's §13.8 port latches
+ * neutrino-sim: a node sender's ESTOP datagram on the sim's §13.8 port latches
  * the hub exactly as a raw 0xE5 over WS does, and nothing else on the port
  * changes.
  *
@@ -10,9 +10,9 @@
  * do not re-latch and a fresh seq does; started with --no-estop-udp, a valid
  * datagram latches nothing and the reply clears bit1.
  *
- * Needs a valencesim whose §13.8 listener offers each datagram to the hub's
+ * Needs a neutrino-sim whose §13.8 listener offers each datagram to the hub's
  * ValenceEstopDatagram first (Nucleus bd val-yvt). Override the path with
- * VALENCESIM. Picks free ports; state lives in a temp dir.
+ * NEUTRINO_SIM. Picks free ports; state lives in a temp dir.
  *
  * Run:  node clients/js/test/valence-estop-datagram-sim.test.mjs   (exits 1 on any failure)
  */
@@ -29,8 +29,8 @@ import { CH_SAFETY, PRIORITY, SAFETY_OP, SAFETY_CAUSE, ACCESS } from '../frames.
 import { broadcastEstop, encodeEstopDatagram, nextEstopSeq } from '../estop-datagram.js';
 import { DISCOVER_REPLY_FLAG } from '../generated/registry_vocab.js';
 
-const SIM = process.env.VALENCESIM ||
-  new URL('../../../../Nucleus/sim/valencesim/build/valencesim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const SIM = process.env.NEUTRINO_SIM ||
+  new URL('../../../../Nucleus/sim/neutrino/build/neutrino-sim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 
 let failures = 0;
 function assert(name, cond, detail) {
@@ -56,7 +56,7 @@ const freeUdp = () => new Promise((res) => {
 });
 
 if (!existsSync(SIM)) {
-  console.log('valencesim not found at ' + SIM + ' (set VALENCESIM)');
+  console.log('neutrino-sim not found at ' + SIM + ' (set NEUTRINO_SIM)');
   process.exit(1);
 }
 
@@ -125,7 +125,7 @@ const sendTo = (port) => (bytes) => new Promise((res, rej) => sender.send(bytes,
 let sim = null;
 let session = null;
 try {
-  console.log('RFC-053 ESTOP datagram against valencesim:');
+  console.log('RFC-053 ESTOP datagram against neutrino-sim:');
   sim = await startSim();
   session = await connect(sim, true);
   const latched = () => !!(session.state.safety && session.state.safety.estopLatched);

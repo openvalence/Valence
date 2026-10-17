@@ -240,7 +240,7 @@ internal static class Program
         // correlation rule (header.seq == intent_id, because the hub stamps
         // NACK.intent_seq from the refused frame's HEADER seq).
         // ====================================================================
-        // The numbers are what valencesim's catalog resolves BY ROLE (LiveWireTest
+        // The numbers are what Neutrino's catalog resolves BY ROLE (LiveWireTest
         // prints the resolution): action.home on 0x3101 key 1, option "home" at
         // index 1; window.min/max through setting channel 0x3000, keys 1/2. The
         // plugin names none of them. Goldens from valence_probe.py's build_intent

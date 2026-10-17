@@ -156,8 +156,8 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 
 // ---- the sender, against the real device catalog fixture --------------------
 {
-  const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/valencesim-catalog.bin', import.meta.url)));
-  const etag = fromHex(readFileSync(new URL('./fixtures/valencesim-catalog.etag', import.meta.url), 'utf8').trim());
+  const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/neutrino-catalog.bin', import.meta.url)));
+  const etag = fromHex(readFileSync(new URL('./fixtures/neutrino-catalog.etag', import.meta.url), 'utf8').trim());
   const s = createSession({
     host: 't2', autoReconnect: false, deadmanWishMs: null,
     catalogStore: memStore({ etag, bytes: catBytes }), WebSocketImpl: FakeWS,

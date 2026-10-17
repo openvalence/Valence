@@ -1,14 +1,14 @@
 /**
  * valence-retained-sim.test.mjs -- WELCOME limits.retained_pending and the
- * SYNCING->LIVE gate, fresh vs RFC-042 reattach, against a live valencesim.
+ * SYNCING->LIVE gate, fresh vs RFC-042 reattach, against a live neutrino-sim.
  *
  * retained_pending counts WELCOME's own grants only (registry.yaml limits key
  * 3, SPEC §6.3). A fresh session's grants come from HELLO's wishes and a
  * reattach's from the retained session (§6.6 path B), so the two agree only
  * when the client carries its wishes in HELLO (bd val-fjx).
  *
- * Needs a built valencesim (Nucleus/sim/valencesim/README.md); override the
- * path with VALENCESIM. Uses ports 8482 (WS) and 8489 (/uitoken).
+ * Needs a built neutrino-sim (Nucleus/sim/neutrino/README.md); override the
+ * path with NEUTRINO_SIM. Uses ports 8482 (WS) and 8489 (/uitoken).
  *
  * Run:  node clients/js/test/valence-retained-sim.test.mjs   (exits 1 on any failure)
  */
@@ -20,8 +20,8 @@ import { join } from 'node:path';
 import { createSession } from '../session.js';
 import { CH_SAFETY, CH_CONTROL_OWNER, CH_HUB_STATUS, PRIORITY } from '../frames.js';
 
-const SIM = process.env.VALENCESIM ||
-  new URL('../../../../Nucleus/sim/valencesim/build/valencesim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+const SIM = process.env.NEUTRINO_SIM ||
+  new URL('../../../../Nucleus/sim/neutrino/build/neutrino-sim.exe', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const WS_PORT = 8482;
 const HTTP_PORT = 8489;
 const WISHES = [
@@ -44,7 +44,7 @@ function waitFor(s, ev, ms, what) {
 }
 
 if (!existsSync(SIM)) {
-  console.log('valencesim not found at ' + SIM + ' (set VALENCESIM)');
+  console.log('neutrino-sim not found at ' + SIM + ' (set NEUTRINO_SIM)');
   process.exit(1);
 }
 const stateDir = mkdtempSync(join(tmpdir(), 'valence-retained-'));
@@ -56,7 +56,7 @@ class TapWS extends WebSocket {
   constructor(url, protocols) { super(url, protocols); TapWS.last = this; }
 }
 
-console.log('valence-js retained_pending: fresh HELLO-with-wishes vs RFC-042 reattach (valencesim :' + WS_PORT + ')');
+console.log('valence-js retained_pending: fresh HELLO-with-wishes vs RFC-042 reattach (neutrino-sim :' + WS_PORT + ')');
 let s = null;
 try {
   for (let i = 0; i < 50; i++) { // the sim takes a moment to listen

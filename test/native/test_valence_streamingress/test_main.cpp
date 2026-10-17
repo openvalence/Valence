@@ -1548,7 +1548,7 @@ TEST_CASE("SI-24: setIdentity() serves product/fw_version/hub_name on WELCOME ke
     XorShift32 rng(244);
     StreamHubDelegate del;
     Hub hub(cat, clock, rng, del);
-    hub.setIdentity("valencesim-bench", "9.9.9", "test rig");
+    hub.setIdentity("neutrino-bench", "9.9.9", "test rig");
 
     InProcessLink link(clock, rng);
     REQUIRE(hub.attachTransport(link.endpointA()));
@@ -1560,7 +1560,7 @@ TEST_CASE("SI-24: setIdentity() serves product/fw_version/hub_name on WELCOME ke
     auto w = findWelcome(replies);
     REQUIRE(w.has_value());
     REQUIRE(w->has_identity);
-    CHECK(w->identity.product == "valencesim-bench");
+    CHECK(w->identity.product == "neutrino-bench");
     CHECK(w->identity.fw_version == "9.9.9");
     CHECK(w->identity.hub_name == "test rig");
 }

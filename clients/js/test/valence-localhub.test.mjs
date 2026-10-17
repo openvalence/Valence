@@ -1,6 +1,6 @@
 /**
  * valence-localhub.test.mjs -- a real createSession against createLocalHub
- * over the WebSocketImpl duck, on the recorded valencesim catalog.
+ * over the WebSocketImpl duck, on the recorded neutrino-sim catalog.
  *
  * Asserts: HELLO -> catalog transfer -> CATALOG_READY -> LIVE, then the etag
  * fast path on a second session; a setting write echoed clamped into the
@@ -36,7 +36,7 @@ function waitFor(s, ev, ms = 3000) {
 }
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
-const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/valencesim-catalog.bin', import.meta.url)));
+const catBytes = new Uint8Array(readFileSync(new URL('./fixtures/neutrino-catalog.bin', import.meta.url)));
 const entries = decodeCatalog(catBytes);
 const byId = (id) => entries.find((e) => e.id === id);
 const CFG = byId(0x1000), CFG_SET = 0x3000;

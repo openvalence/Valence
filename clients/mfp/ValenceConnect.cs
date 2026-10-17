@@ -1817,7 +1817,7 @@ public class ValenceConnect : PluginBase
     // POST /api/kinetic {"handoff_k": ...}, where 0 disables it.
     //
     // THIS FLAG IS THEREFORE NOW SAFE TO FLIP TO FALSE — that is milestone
-    // M5d's A/B: run a Makima axis against valencesim (or the machine) with
+    // M5d's A/B: run a Makima axis against Neutrino (or the machine) with
     // client limiter ON/hub k=0, client OFF/hub k=1.5, and both, and compare.
     // DELETION waits on that comparison, not on the guard existing. One caveat
     // worth knowing before you read the results: the hub can only bound a

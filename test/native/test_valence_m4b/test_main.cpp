@@ -1484,7 +1484,7 @@ TEST_CASE("M4B-34: re-approval restores the suspended role and records the new v
 }
 
 TEST_CASE("M4B-34b: REVOKING a suspended device also clears its pending re-approval") {
-    // FOUND BY THE LIVE PAIRING PROBE against valencesim, not by this suite: a
+    // FOUND BY THE LIVE PAIRING PROBE against Neutrino, not by this suite: a
     // device revoked while sitting in RECOGNIZED-PENDING left its re-approval
     // in the queue, so a later `pair_approve` would have RESURRECTED it —
     // minting a fresh token with no new ceremony, from a queue entry the

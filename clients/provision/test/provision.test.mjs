@@ -113,9 +113,9 @@ console.log('provision: the transcribed BLE identity matches registry.yaml');
 
 // ---- the walk on the recorded machine catalog ----------------------------------------
 
-console.log('provision: the setup walk on the recorded valencesim catalog');
+console.log('provision: the setup walk on the recorded neutrino-sim catalog');
 {
-  const cat = decodeCatalog(new Uint8Array(readFileSync(new URL('../../js/test/fixtures/valencesim-catalog.bin', import.meta.url))));
+  const cat = decodeCatalog(new Uint8Array(readFileSync(new URL('../../js/test/fixtures/neutrino-catalog.bin', import.meta.url))));
   const steps = setupSteps(cat);
   check('setup steps found', steps.length > 0, steps.map((s) => s.title).join(', '));
   check('every step is a setup entry, in catalog order',

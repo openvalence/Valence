@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 project(bench CXX)
 
 # Host build only -- never part of the PlatformIO firmware build. Windows-first
-# (WinLibs MinGW-w64 GCC), matching sim/valencesim's own toolchain so both sims
+# (WinLibs MinGW-w64 GCC), matching sim/neutrino's own toolchain so both sims
 # build with the same one-line PATH prepend.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)  # clangd
 set(CMAKE_CXX_STANDARD 23)
@@ -43,7 +43,7 @@ target_include_directories(bench PRIVATE
 target_compile_options(bench PRIVATE -Wall -Wextra)
 
 # Standalone exe: no libstdc++/libgcc/winpthread DLL hunting -- "just run it
-# from a terminal" is the product requirement, same as sim/valencesim.
+# from a terminal" is the product requirement, same as sim/neutrino.
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_options(bench PRIVATE -static)
 endif()
