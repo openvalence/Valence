@@ -2811,10 +2811,10 @@
 <h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Link to this section">#</a></h1>
 <p>This page builds one connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> that reads live machine state and sends
 one <abbr title="A channel class, and the only way a client changes anything.">intent</abbr>.</p>
-<p>Develop against <a href="../local-testing/#a-real-devices-own-simulator">Nucleus's <code>valencesim</code></a>.
+<p>Develop against <a href="../local-testing/#a-real-devices-own-simulator">Nucleus's <code>neutrino-sim</code></a>.
 It embeds that device's <abbr title="The single authoritative endpoint of one machine.">hub</abbr>, motion engine and <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> behind the same wire
 protocol.</p>
-<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>valencesim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">120</span>
+<div class="highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>neutrino-sim<span class="w"> </span>machine<span class="w"> </span>--homed<span class="w"> </span>--headless<span class="w"> </span>--duration<span class="w"> </span><span class="m">120</span>
 </span></code></pre></div>
 <h2 id="session-sequence"><abbr title="The stateful association between one client and the hub.">Session</abbr> sequence<a class="headerlink" href="#session-sequence" title="Link to this section">#</a></h2>
 <p>A Valence <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> performs these steps in this order.</p>
