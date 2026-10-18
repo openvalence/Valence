@@ -13049,12 +13049,16 @@ say exactly which, future-us will want the receipts.*
   should-fix, 4 nits, all taken but S9, owed at landing); next: the
   operator's ruling. The code is built as if accepted (operator rule "write
   the code like the RFC exists"): the branches are named under Cost.
+  Amended 2026-10-17 by operator ruling: the travel window and the axis
+  flip are `control` writes (Origin, Proposal 1).
 - **Origin.** Operator, 2026-10-15: "only configure can change machine
   settings; control can stream and drive generators etc, but limits etc no".
   A website audit found the reference hub declaring `config-set` (0x3000) and
   `kinetic-set` (0x3120) at `control`, so a control session could move the
   travel window, the rail length, the speed, acceleration and jerk ceilings
-  and the planner's tuning.
+  and the planner's tuning. Operator, 2026-10-17: "window controls are a
+  control level value", "flip too": the window and the flip are the user's
+  motion choices inside the machine's limits, like speed, not limits.
 - **Problem.** Two gaps let that drift happen without breaking a rule.
     1. Section 12.2 gives `configure` "configuration and the administration
     surface" and never says what configuration is. Every catalog author draws
@@ -13076,7 +13080,7 @@ say exactly which, future-us will want the receipts.*
 - **Proposal.**
     1. **Section 12.2 defines configuration.** A new composition bullet after
     the OTA bullet: "**Configuration is any write that changes a machine
-    setting or limit:** the travel window and rail, speed, acceleration and
+    setting or limit:** the rail length, speed, acceleration and
     jerk ceilings, planner tuning, homing parameters, drive and motor
     parameters, network credentials, and trust, accessory and relationship
     administration, whether or not the hub persists it. It needs `configure`.
@@ -13084,10 +13088,14 @@ say exactly which, future-us will want the receipts.*
     starting, stopping and choosing a generator and its parameters bounded
     by the configured limits, settings-trial's commit and revert (each acts
     only on the sender's own trial set, opened at the tier the setting
-    needs), and source ownership. Override (section 11.1) is the one
+    needs), source ownership, and the travel window and the axis flip
+    (section 9.6): the user's motion choices, which the hub holds inside
+    the configured rail. Override (section 11.1) is the one
     `control` act that lifts the window and soft limits: it is the operator's
     hand taking the rail, not configuration. A catalog declares the tier on
-    the INTENT entry, or per key with schema-field `access` (section 8.8).
+    the INTENT entry, or per key with schema-field `access` (section 8.8);
+    an entry carrying both kinds sits at `control` and raises each limit
+    key to `configure`.
     An accessory declaration follows the same line, and its host never
     lowers a declared tier (section 17.1.1)."
     2. **Per-op access only raises.** Section 8.8's table, rows `access` and
@@ -13113,8 +13121,8 @@ say exactly which, future-us will want the receipts.*
   grays a setting a session cannot write (section 8.9, gray never hide) on
   every hub alike; no catalog can widen a write by lowering a field's tier.
 - **Cons.** A client holding only `control` (a /uitoken session, the section
-  12.8 served page, a bench script) loses every settings write until it holds
-  `configure`, the axis hero's window band included: RFC-114's ask plus
+  12.8 served page, a bench script) loses every settings write but the
+  window and the flip until it holds `configure`: RFC-114's ask plus
   double press is the path at the machine, knock-and-approve from a
   `configure` session the path away from it. A hub whose catalog lowered a
   per-op tier (none known) becomes non-conforming.
@@ -13124,19 +13132,25 @@ say exactly which, future-us will want the receipts.*
   (safety suite asserts it), the JS client's `optionAccessFor` raise-only.
   Owed at landing: the hub's own pause/estop access exemption (today only
   the catalog declares it) and a library test that a field access below the
-  floor does not lower it (review S9). Nucleus feat/config-tier: `config-set`,
-  `modes-set`, `kinetic-set` and `drive-set` at `configure`;
+  floor does not lower it (review S9). Nucleus feat/config-tier:
+  `kinetic-set` and `drive-set` at `configure`; `config-set` and
+  `modes-set` at a `control` floor with every limit key raised to
+  `configure`, the window keys and the flip left at `control` (Nucleus
+  53b0264, fw 0.1.56, amendment 2026-10-17);
   `machine-admin` `save_config` and `servo_scan`, `home` `force_home` and its
   `stroke` at `configure`; suites VD-TIER-MATRIX (every writable entry
   classified), VD-TIER-LIVE (every writable key at watch, control and
-  configure) and VD-TIER-1..4; valencesim's double press
+  configure) and VD-TIER-1..4 with 1b (control moves the window and flips,
+  a write carrying a limit beside the window is refused whole); valencesim's double press
   (`integral_pair_double_press`, wasm check). Phosphor lane configtier:
   settings a session cannot write gray with a tip naming the tier.
 - **Wire impact.** No frame, key, code or number. On a hub that re-tiers an
   entry, a session that wrote it before now gets `ACCESS_DENIED` (or
   `NOT_CONTROLLER`) where it got an ECHO, and the catalog etag moves (the
   reference hub's did, valencesim's and its wasm check value with it). The
-  NACK `detail` strings are free text.
+  amendment moves it again: the reference hub's `config-set` and
+  `modes-set` advertise a `control` floor and schema-field `access`
+  `configure` on each limit key. The NACK `detail` strings are free text.
 - **Open questions.** Each has a pick, for the operator's ruling.
     1. Pattern presets (save, delete, rename on the hub's store): `control`
     (pick). A preset is a generator recipe inside the limits, not a limit.
