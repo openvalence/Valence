@@ -87,6 +87,7 @@ Each of the following is a normative limitation of `valence/1`. An implementatio
 | H11 | *(Struck by RFC-108. The number is kept so later clauses keep their citations.)* | |
 | H12 | Denial of service is out of scope. A LAN attacker can jam the radio regardless of anything this document says. | [§12.1](security.md#s12-1) |
 | H13 | The ESP-NOW accessory spoke is **unencrypted and unauthenticated** at every tier. Anyone in radio range with an ESP32 can read every spoke frame, forge a BEACON, ESTOP, GOODBYE, INTENT or STREAM bundle an accessory will act on, forge accessory telemetry to the host, keep an accessory alive after its hub died by forging beacons, or jam the channel (H12). The accessory deadman protects against a dead or departed hub, not against an attacker, and is not a substitute for the accessory's own hardware interlocks (H1 applies to accessories verbatim). | [§13.3](transports.md#s13-3).1 |
+| H16 | **Serial is root.** Whatever holds the hub's USB data lines holds `configure` with no token or window, including software on an attached computer and a data host posing as a charger where the USB port is the power input. | [§12.2](security.md#s12-2) |
 
 > DEMO-CANDIDATE: a single searchable page, one card per honesty clause,
 > linking each straight to its section — the thing a security reviewer
@@ -140,9 +141,10 @@ A client MUST NOT act on user input that requires hub state before reaching LIVE
 ```
                         ┌────────────────────────────┐
   browser UI ──WS──────►│                            │
+  remote ───ESP-NOW────►│                            │
   mobile app ──WS──────►│           HUB              │──── motion arbiter ──► motor driver
   desktop sim ─in-proc─►│  (device firmware /        │         ▲
-  BLE remote ──BLE─────►│   hub role of the library) │   (sole caller — no
+  phone, setup ─BLE────►│   hub role of the library) │   (sole caller — no
   TCode app ───legacy──►│                            │    Valence session
                         └──────────▲─────────────────┘    touches the driver)
                                    │ UART

@@ -251,7 +251,7 @@ export const K = {
   reboot_in_ms: 43,  // ECHO `applied` (19): this accepted intent commits by rebooting, in about this many ms (RFC-020).
   deadman_wish_ms: 44,  // HELLO: requested deadman window (RFC-038). The hub clamps into [deadman_min_ms, deadman_max_ms] 
   // 45 curve_family: RETIRED pre-tag by RFC-106 (operator 2026-10-08): the segment stream's family wish. A sender's d
-  ws_port: 46,  // WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding but load-
+  ws_port: 46,  // WELCOME: the hub's own WebSocket listening port (RFC-046 §3). Present on every binding: what the
   ipv4: 47,  // WELCOME: the hub's own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1
   // 48 requested_curve_family: RETIRED pre-tag by RFC-106 (operator 2026-10-08): the echo of the family wish (45). Never emitte
   schedule_latency_us: 49,  // granted_publishes ENTRY maps (RFC-059): the hub's declared fixed delay, in µs, between a sample'
@@ -337,6 +337,7 @@ export const IDENTITY_K = {
   info: 4,  // map: OPTIONAL device-defined extras (hardware rev, build date...). Keys are device-defined tstr;
   hub_instance_id: 5,  // uint (u64): RFC-048, operator veto of an RFC-046 decision. DURABLE hub identity: generated once 
   estop_cuts_power: 6,  // bool: RFC-085 (§11.2). Whether this hub's ESTOP cuts motor power (true: category 0, the machine 
+  config_mode: 7,  // bool: RFC-121 (§13.4.1, §6.3). True while the hub serves its provisioning catalog in config mode
 };
 
 // ---- blob_keys -----------------------------------------------------
@@ -1140,18 +1141,20 @@ export const PAIRING_MODE = {
   knock_approve: 1 << 0,  // PRIMARY and capability-agnostic: bare PAIR_REQ with no proof -> bounded pending list (pairing_pe
   pin_proof: 1 << 1,  // the HMAC-PIN flow, for keyboard-bearing joiners when no configure session exists. HONESTY CLAUSE
   push_to_pair: 1 << 2,  // PHYSICAL-PRESENCE proof opens a short SINGLE-GRANT window. The spec requires the PROOF, not a GP
+  cable: 1 << 3,  // RFC-121 (§12.2): a token granted at once to a PAIR_REQ on a serial or in-process binding, which 
 };
 export const PAIRING_MODE_NAME = {
   1: 'knock_approve',
   2: 'pin_proof',
   4: 'push_to_pair',
+  8: 'cable',
 };
 
 // ---- ble_adv_flags (bit flags) -------------------------------------
 export const BLE_ADV_FLAG = {
   pairing_window_open: 1 << 0,  // a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag,
-  ws_available: 1 << 1,  // the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-conn
-  config_mode: 1 << 2,  // RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB
+  ws_available: 1 << 1,  // the hub currently has a live IP and a listening WebSocket port, and the record carries its endpo
+  config_mode: 1 << 2,  // RFC-079, RFC-121 (§13.4.1): the hub is in config mode, entered by a deliberate physical gesture 
 };
 export const BLE_ADV_FLAG_NAME = {
   1: 'pairing_window_open',
@@ -1356,6 +1359,7 @@ export const LIMITS = {
   probe_max_duration_ms: 1500,
   catalog_max_entries: 256,
   catalog_max_entry_bytes: 4096,
+  catalog_max_bytes: 1048576,
   max_subscriptions_per_session: 64,
   max_subscriptions_per_frame: 16,
   max_frame_ws: 512,

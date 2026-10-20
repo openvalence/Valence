@@ -20,7 +20,7 @@ generated: true
 
 ## 15.1 Text-protocol edges as synthetic sessions *(normative)* {#s15-1}
 
-A hub MAY continue to accept legacy text-protocol ingest (TCode over serial, BLE-NUS, a raw-text socket, an outbound bridge client, a radio dongle chain). Where it does, **the hub MUST wrap each active legacy edge in a synthetic session**: an internal session object with its own `client_kind`, capability scoped to that edge's arbiter source only, ownership per [§11.4](safety.md#s11-4), and a deadman equal to the edge's stream-quiet timeout (hub-configurable within [§11.3](safety.md#s11-3)'s clamp).
+A hub MAY continue to accept legacy text-protocol ingest (TCode over serial, a raw-text socket, an outbound bridge client, a radio dongle chain); never over BLE (RFC-121). Where it does, **the hub MUST wrap each active legacy edge in a synthetic session**: an internal session object with its own `client_kind`, capability scoped to that edge's arbiter source only, ownership per [§11.4](safety.md#s11-4), and a deadman equal to the edge's stream-quiet timeout (hub-configurable within [§11.3](safety.md#s11-3)'s clamp).
 
 Effect: legacy clients appear in the session roster, their motion obeys the same deadman, ownership and safety rules as native sessions, and there is **no unmonitored path to motion**. They receive no Valence frames; the synthesis is entirely hub-side bookkeeping.
 

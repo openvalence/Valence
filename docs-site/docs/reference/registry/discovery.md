@@ -43,8 +43,8 @@ zero.
 | Mask | Bit | Name | Notes |
 |---|---|---|---|
 | `0x01` | `bit 0` | `pairing_window_open` | a §12.3 association window is open right now (same meaning as the 0x17 BEACON pairing-open flag, ESP-NOW's equivalent) |
-| `0x02` | `bit 1` | `ws_available` | the hub currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected client SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME `ws_port`/`ipv4` (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway. |
-| `0x04` | `bit 2` | `config_mode` | RFC-079 (§13.4.1): the hub booted with its pairing control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A client SHOULD mark the hub 'needs setup' and open on ui_categories 15 setup. |
+| `0x02` | `bit 1` | `ws_available` | the hub currently has a live IP and a listening WebSocket port, and the record carries its endpoint (RFC-121 tail, a hint: private and link-local addresses only, identity from WELCOME hub_instance_id). Clear outside config mode means offline, never needs setup. |
+| `0x04` | `bit 2` | `config_mode` | RFC-079, RFC-121 (§13.4.1): the hub is in config mode, entered by a deliberate physical gesture (device-defined) or by its own policy: BLE + USB serial sessions on the provisioning catalog (WELCOME identity key 7 true), no WebSocket, no softAP, left only by reboot; only the gesture entry grants configure to the first knock. A client SHOULD mark the hub 'needs setup' and open on ui_categories 15 setup. |
 
 ## ESP-NOW BEACON flags
 

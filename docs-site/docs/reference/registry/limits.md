@@ -32,7 +32,7 @@ registry's own rationale where it records one.
 | `segment_t_off_unit_us` | `100` | RFC-087: t_off unit on a c2h segments-kind bundle (a u16 spans 6.5535 s, covering the 1000 ms horizon ceiling at 0.1 ms resolution). samples-kind and h2c bundles keep 1 us units. |
 | `seq_width_bits` | `16` |  |
 | `seq_newer_window` | `32768` | serial arithmetic half-window |
-| `frag_reassembly_timeout_ms` | `5000` |  |
+| `frag_reassembly_timeout_ms` | `5000` | §5.6 fragments and §8.4 blob transfers, from the first chunk; RFC-121's catalog sizing duty (§8.1) is set against it. |
 | `frag_max_concurrent_per_session` | `2` |  |
 | `idempotency_ring_depth` | `32` |  |
 | `intent_ingress_default_per_s` | `50` |  |
@@ -64,8 +64,9 @@ registry's own rationale where it records one.
 | `clock_resync_interval_s` | `10` |  |
 | `probe_default_bytes` | `8192` |  |
 | `probe_max_duration_ms` | `1500` |  |
-| `catalog_max_entries` | `256` |  |
-| `catalog_max_entry_bytes` | `4096` | feasibility pass: a 50-field FULLY annotated entry (defaults + options + groups + descs) encodes to ~8–10 KB, which violates RFC-028's no-unbounded-allocation rule for a per-entry decode buffer. Oversize is a catalog-AUTHORING error caught by conformance tooling, not a runtime surprise: the entry splits across channels or trims its descs. |
+| `catalog_max_entries` | `256` | RFC-121 (§8.1): a hub cap as well as the client floor; rises only with a MAJOR change, with catalog_max_bytes. |
+| `catalog_max_entry_bytes` | `4096` | feasibility pass: a 50-field FULLY annotated entry (defaults + options + groups + descs) encodes to ~8–10 KB, which violates RFC-028's no-unbounded-allocation rule for a per-entry decode buffer. Oversize is a catalog-AUTHORING error caught by conformance tooling, not a runtime surprise: the entry splits across channels or trims its descs. RFC-121: 256 entries at this cap is 3 B over catalog_max_bytes. |
+| `catalog_max_bytes` | `1048576` | RFC-121 (§8.1): the largest encoded catalog (BLOB_CHUNK total_bytes, outer array header and user space included). Hubs MUST NOT exceed it; client-watch and above MUST accept within it. A MAJOR change to raise. A hub SHOULD size its catalog to what its slowest full-catalog binding delivers inside frag_reassembly_timeout_ms. |
 | `max_subscriptions_per_session` | `64` |  |
 | `max_subscriptions_per_frame` | `16` | RFC-033.3: wishes one SUBSCRIBE/HELLO frame may carry (= the reference decoder's kSubscribeMaxWishes, which was previously discoverable only by binary-searching a live hub). Advertised in WELCOME limits key 4; a hub MAY advertise less, never more than it decodes. Overflow answers SUBSCRIBE_REJECTED, never silence. |
 | `ws_subprotocol` | `valence.v1` |  |
@@ -83,7 +84,7 @@ registry's own rationale where it records one.
 
 | Name | Value | Notes |
 |---|---|---|
-| `catalog_ready_timeout_ms` | `15000` | RFC-015: a session that PINGs happily but never sends CATALOG_READY is GOODBYE'd READY_TIMEOUT. Liveness reaping alone NEVER fires on a pinging client, so without this a half-adopted session holds a slot forever with both planes gated shut. (READY itself is re-sent by the client at catalog_chunk_gap_timeout_ms until retained STATE arrives — idempotent, no handshake state machine.) |
+| `catalog_ready_timeout_ms` | `15000` | RFC-015: a session that PINGs happily but never sends CATALOG_READY is GOODBYE'd READY_TIMEOUT. Liveness reaping alone NEVER fires on a pinging client, so without this a half-adopted session holds a slot forever with both planes gated shut. (READY itself is re-sent by the client at catalog_chunk_gap_timeout_ms until retained STATE arrives — idempotent, no handshake state machine.) RFC-121 kept it flat; the §8.1 sizing duty covers slow bindings. |
 | `idle_reap_multiplier` | `3` | RFC-024: reap a non-owning session after this multiple of ping_interval_idle_ms of silence. §6.5 said "MAY"; it was never implemented, so a viewer that went dark held a slot forever. Two liveness regimes, deliberately different: source OWNERS get the deadman window + §11.3 loss policy; everyone else gets idle reaping with no motion consequence. |
 
 ## Streaming (RFC-013, RFC-014, RFC-049c)

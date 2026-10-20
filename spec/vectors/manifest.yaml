@@ -167,3 +167,16 @@ suites:
     - id: N-05  # hole: no vectors yet -- RFC-016(a) WELCOME `identity` (key 37)
                 #   codec: product/fw_version/hub_name, emit-only-when-set,
                 #   exact bytes; behavioral coverage: SI-24
+
+  config_mode_and_routes:                             # RFC-121, SPEC §6.3/§8.1/§12.2/§13.4/§13.4.1
+    - id: Q-01  # hole: no vectors yet -- WELCOME `identity` (37) carrying
+                #   `config_mode` (7) true, exact bytes
+    - id: Q-02  # hole: no vectors yet -- scan-response record with the
+                #   endpoint tail: AD 0x0A, FF, FF FF, flags, C0 A8 01 E5 50 00
+                #   (192.168.1.229:80); and AD 0x04 without it
+    - id: Q-03  # hole: no vectors yet -- provisioning catalog from the
+                #   fixture: entries byte-identical to the full catalog's, own etag
+    - id: Q-04  # hole: no vectors yet -- catalog total_bytes over
+                #   catalog_max_bytes -> GOODBYE BLOB_REFUSED; within -> accepted
+    - id: Q-05  # hole: no vectors yet -- PAIR_REQ on serial granted at once,
+                #   PAIR_GRANT, ledger pairing_mode 8 (cable)
