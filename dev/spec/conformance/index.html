@@ -2791,12 +2791,12 @@
 <tbody>
 <tr>
 <td><strong>hub</strong></td>
-<td>everything not explicitly optional; ≥ <code>conformance_min_clients</code> concurrent sessions; all five channel classes it declares; retained STATE; the readiness gate; grants and the <a href="../qos/#s10-4">§10.4</a> shedding table; <a href="../safety/#s11">§11</a> complete; <a href="../session/#s6-9">§6.9</a> teardown equivalence; at least one <a href="../security/#s12-3">§12.3</a> association mode; on radio-bearing silicon, BLE GATT is SHOULD and MUST where config mode is offered (<a href="../transports/#s13-1">§13.1</a>'s hardware-hub profile, RFC-043, RFC-056); conformance is over duties, never topology (<a href="../transports/#s13-0">§13.0</a>)</td>
+<td>everything not explicitly optional; ≥ <code>conformance_min_clients</code> concurrent sessions (a hub on the serial route meets it with its one serial session); all five channel classes it declares; retained STATE; the readiness gate; grants and the <a href="../qos/#s10-4">§10.4</a> shedding table; <a href="../safety/#s11">§11</a> complete; <a href="../session/#s6-9">§6.9</a> teardown equivalence; at least one <a href="../security/#s12-3">§12.3</a> association mode; a hardware hub on one of <a href="../transports/#s13-1">§13.1</a>'s two routes (WebSocket with radios, serial without; RFC-121), BLE GATT only in config mode and MUST where config mode is offered (RFC-043, RFC-056); a catalog within the <a href="../catalog/#s8-1">§8.1</a> bounds; conformance is over duties, never topology (<a href="../transports/#s13-0">§13.0</a>)</td>
 <td>probe; TLS; bindings its hardware lacks (a base-profile hub — sim, host, relay — needs only one); hub signing (<a href="../security/#s12-5">§12.5</a>); stores (<a href="../catalog/#s8-7">§8.7</a>) if it declares none</td>
 </tr>
 <tr>
 <td><strong>client-watch</strong></td>
-<td>HELLO/WELCOME, catalog possession (dynamic or static) and CATALOG_READY, STATE adoption, seq rules, SYNCING/READY/LIVE distinction, ESTOP <em>send</em></td>
+<td>HELLO/WELCOME, catalog possession (dynamic within the <a href="../catalog/#s8-1">§8.1</a> bounds, or static), the <a href="../catalog/#s8-6">§8.6</a> cache rules, and CATALOG_READY, STATE adoption, seq rules, SYNCING/READY/LIVE distinction, ESTOP <em>send</em></td>
 <td>intents, streams, probe, crypto</td>
 </tr>
 <tr>

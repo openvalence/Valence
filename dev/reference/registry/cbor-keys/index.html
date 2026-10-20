@@ -3173,13 +3173,13 @@ experimental and never appear in a tagged release.</p>
 <td><code>46</code></td>
 <td><code>ws_port</code></td>
 <td><code>uint</code></td>
-<td>WELCOME: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own WebSocket listening port (RFC-046 §3). Present on every binding but load-bearing over BLE: it is the in-band endpoint disclosure a BLE-connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> needs to hop to WS (RFC-043's auto-upgrade). Also closes the sim's <abbr title="The single authoritative endpoint of one machine.">hub</abbr>-identity gap for WS-side <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr>: the same key tells a WS <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> what the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> believes its own endpoint is. 0 = none (no WS listener right now).</td>
+<td>WELCOME: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own WebSocket listening port (RFC-046 §3). Present on every binding: what the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> believes its own endpoint is. A BLE <abbr title="The stateful association between one client and the hub.">session</abbr> exists only in config mode, where it is 0 (RFC-121); an online <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s endpoint reaches a BLE scanner in the scan-response record's tail (ble_identity.msd_company_id). 0 = none (no WS listener right now).</td>
 </tr>
 <tr>
 <td><code>47</code></td>
 <td><code>ipv4</code></td>
 <td><code>uint</code></td>
-<td>WELCOME: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1.229 = 0xC0A801E5): there is no bstr(4) here because a plain integer makes '0 = none' the same natural sentinel 0.0.0.0 already is. Read alongside <code>ws_port</code> for the BLE→WS upgrade hop. 0 = none.</td>
+<td>WELCOME: the <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own IPv4 address (RFC-046 §3), packed big-endian into one u32 (e.g. 192.168.1.229 = 0xC0A801E5): there is no bstr(4) here because a plain integer makes '0 = none' the same natural sentinel 0.0.0.0 already is. The scan-response record's endpoint tail carries the same address in network order (RFC-121). 0 = none.</td>
 </tr>
 <tr>
 <td><code>48</code></td>
@@ -3332,6 +3332,11 @@ number here has no meaning in the global space above.</p>
 <td><code>6</code></td>
 <td><code>estop_cuts_power</code></td>
 <td>bool: RFC-085 (§11.2). Whether this <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s <abbr title="Emergency stop, an immediate driver-level stop that latches and prohibits motion until explicitly cleared.">ESTOP</abbr> cuts motor power (true: category 0, the machine goes limp and the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is unhomed after release) or is a maximum-deceleration halt with power and home kept (false). REQUIRED of a hardware-profile <abbr title="The single authoritative endpoint of one machine.">hub</abbr> (the declaration, never the mechanism); absent reads as false. Drives the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> label: true renders E-Stop, false or absent renders Halt.</td>
+</tr>
+<tr>
+<td><code>7</code></td>
+<td><code>config_mode</code></td>
+<td>bool: RFC-121 (§13.4.1, §6.3). True while the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> serves its provisioning <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> in config mode; absent or false otherwise. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> in config mode MUST carry identity with it. Never changes within a <abbr title="The stateful association between one client and the hub.">session</abbr> (config mode ends only by reboot). A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> MUST NOT set a <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s machine <abbr title="The first eight bytes of a SHA-256 over the deterministically encoded catalog, naming exactly which catalog a hub exposes.">etag</abbr> from a <abbr title="The stateful association between one client and the hub.">session</abbr> that carried it true (§8.6).</td>
 </tr>
 </tbody>
 </table>

@@ -2954,7 +2954,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>frag_reassembly_timeout_ms</code></td>
 <td><code>5000</code></td>
-<td></td>
+<td>§5.6 fragments and §8.4 <abbr title="An opaque byte document the protocol transfers in chunks and never decodes.">blob</abbr> transfers, from the first chunk; RFC-121's <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> sizing duty (§8.1) is set against it.</td>
 </tr>
 <tr>
 <td><code>frag_max_concurrent_per_session</code></td>
@@ -3114,12 +3114,17 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>catalog_max_entries</code></td>
 <td><code>256</code></td>
-<td></td>
+<td>RFC-121 (§8.1): a <abbr title="The single authoritative endpoint of one machine.">hub</abbr> cap as well as the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> floor; rises only with a MAJOR change, with catalog_max_bytes.</td>
 </tr>
 <tr>
 <td><code>catalog_max_entry_bytes</code></td>
 <td><code>4096</code></td>
-<td>feasibility pass: a 50-field FULLY annotated entry (defaults + options + groups + descs) encodes to ~8–10 KB, which violates RFC-028's no-unbounded-allocation rule for a per-entry decode buffer. Oversize is a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>-AUTHORING error caught by conformance tooling, not a runtime surprise: the entry splits across <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> or trims its descs.</td>
+<td>feasibility pass: a 50-field FULLY annotated entry (defaults + options + groups + descs) encodes to ~8–10 KB, which violates RFC-028's no-unbounded-allocation rule for a per-entry decode buffer. Oversize is a <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr>-AUTHORING error caught by conformance tooling, not a runtime surprise: the entry splits across <abbr title="A named, numbered, typed data flow declared in the catalog.">channels</abbr> or trims its descs. RFC-121: 256 entries at this cap is 3 B over catalog_max_bytes.</td>
+</tr>
+<tr>
+<td><code>catalog_max_bytes</code></td>
+<td><code>1048576</code></td>
+<td>RFC-121 (§8.1): the largest encoded <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> (BLOB_CHUNK total_bytes, outer array header and user space included). Hubs MUST NOT exceed it; <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>-watch and above MUST accept within it. A MAJOR change to raise. A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> SHOULD size its <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> to what its slowest full-<abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> binding delivers inside frag_reassembly_timeout_ms.</td>
 </tr>
 <tr>
 <td><code>max_subscriptions_per_session</code></td>
@@ -3183,7 +3188,7 @@ defaults a <abbr title="The single authoritative endpoint of one machine.">hub</
 <tr>
 <td><code>catalog_ready_timeout_ms</code></td>
 <td><code>15000</code></td>
-<td>RFC-015: a <abbr title="The stateful association between one client and the hub.">session</abbr> that PINGs happily but never sends <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">CATALOG_READY</abbr> is GOODBYE'd READY_TIMEOUT. Liveness reaping alone NEVER fires on a pinging <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, so without this a half-adopted <abbr title="The stateful association between one client and the hub.">session</abbr> holds a slot forever with both planes gated shut. (READY itself is re-sent by the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> at catalog_chunk_gap_timeout_ms until <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> arrives — idempotent, no handshake state machine.)</td>
+<td>RFC-015: a <abbr title="The stateful association between one client and the hub.">session</abbr> that PINGs happily but never sends <abbr title="The rule that a session's frames are refused until it confirms which catalog it has adopted.">CATALOG_READY</abbr> is GOODBYE'd READY_TIMEOUT. Liveness reaping alone NEVER fires on a pinging <abbr title="Any endpoint that establishes a session with the hub.">client</abbr>, so without this a half-adopted <abbr title="The stateful association between one client and the hub.">session</abbr> holds a slot forever with both planes gated shut. (READY itself is re-sent by the <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> at catalog_chunk_gap_timeout_ms until <abbr title="The latest value of a STATE channel, which the hub keeps and pushes immediately on grant.">retained</abbr> <abbr title="A channel class carrying idempotent full snapshots of a coherent group of fields.">STATE</abbr> arrives — idempotent, no handshake state machine.) RFC-121 kept it flat; the §8.1 sizing duty covers slow bindings.</td>
 </tr>
 <tr>
 <td><code>idle_reap_multiplier</code></td>

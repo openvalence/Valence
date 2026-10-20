@@ -2795,6 +2795,12 @@ PIN, never one secret per tier.</p>
 <td><code>push_to_pair</code></td>
 <td>PHYSICAL-PRESENCE proof opens a short SINGLE-GRANT window. The spec requires the PROOF, not a GPIO; minimum hardware is NONE, because the power cord is the button: factory-fresh (zero configure tokens) boots claimable and the first knock gets <code>configure</code> (possession is root); later, N=3 consecutive boots with uptime &lt;10 s opens the window (NVS counter only; cannot collide with a <abbr title="The stateful association between one client and the hub.">session</abbr>, since any power loss already stops motion and forces re-home). A <abbr title="The single authoritative endpoint of one machine.">hub</abbr> with a real button MAY bind it: a UX upgrade, never required. FACTORY RESET MUST BE A HARDER GESTURE than opening <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr>.</td>
 </tr>
+<tr>
+<td><code>0x08</code></td>
+<td><code>bit 3</code></td>
+<td><code>cable</code></td>
+<td>RFC-121 (§12.2): a token granted at once to a PAIR_REQ on a serial or <abbr title="The transport binding that connects a hub and a client inside one process, with injected faults and a deterministic mode.">in-process binding</abbr>, which is configure without exception (H16). Recorded so the owner sees which tokens were minted over a cable.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="administration-operations">Administration operations<a class="headerlink" href="#administration-operations" title="Link to this section">#</a></h2>

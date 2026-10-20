@@ -2860,13 +2860,13 @@ zero.</p>
 <td><code>0x02</code></td>
 <td><code>bit 1</code></td>
 <td><code>ws_available</code></td>
-<td>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> currently has a live IP and a listening WebSocket port: RFC-043's signal that a BLE-connected <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD auto-upgrade to WS. The endpoint itself rides WELCOME <code>ws_port</code>/<code>ipv4</code> (cbor_keys 46/47), not this byte: a single bit cannot carry a port and an address, and the upgrade hop happens post-HELLO anyway.</td>
+<td>the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> currently has a live IP and a listening WebSocket port, and the record carries its endpoint (RFC-121 tail, a hint: private and link-local addresses only, identity from WELCOME hub_instance_id). Clear outside config mode means offline, never needs setup.</td>
 </tr>
 <tr>
 <td><code>0x04</code></td>
 <td><code>bit 2</code></td>
 <td><code>config_mode</code></td>
-<td>RFC-079 (§13.4.1): the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> booted with its <abbr title="The ceremony that proves a client should be trusted, ending in a token and a role.">pairing</abbr> control held and is in config mode: BLE + USB serial provisioning, no WiFi association, no WebSocket, no softAP, first knock granted configure. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD mark the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> 'needs setup' and open on ui_categories 15 setup.</td>
+<td>RFC-079, RFC-121 (§13.4.1): the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> is in config mode, entered by a deliberate physical gesture (device-defined) or by its own policy: BLE + USB serial <abbr title="The stateful association between one client and the hub.">sessions</abbr> on the provisioning <abbr title="The hub's machine-readable description of every channel it exposes.">catalog</abbr> (WELCOME identity key 7 true), no WebSocket, no softAP, left only by reboot; only the gesture entry <abbr title="The hub's applied answer to a subscription request, which channel, at what rate, at what priority.">grants</abbr> configure to the first knock. A <abbr title="Any endpoint that establishes a session with the hub.">client</abbr> SHOULD mark the <abbr title="The single authoritative endpoint of one machine.">hub</abbr> 'needs setup' and open on ui_categories 15 setup.</td>
 </tr>
 </tbody>
 </table>

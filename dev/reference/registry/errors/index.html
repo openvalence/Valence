@@ -2925,7 +2925,7 @@ unknown code is ambiguous.</p>
 <tr>
 <td><code>0x0109</code></td>
 <td><code>REBOOTING</code></td>
-<td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> is committing a change by rebooting and is closing every <abbr title="The stateful association between one client and the hub.">session</abbr> first (RFC-020/022.2, GOODBYE code). Preceded by an <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> carrying reboot_in_ms; on return the changed <abbr title="A random 32-bit number the hub generates at every boot, naming which incarnation of the hub you are talking to.">boot_id</abbr> tells <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> what happened.</td>
+<td><abbr title="The single authoritative endpoint of one machine.">hub</abbr> is committing a change by rebooting and is closing every <abbr title="The stateful association between one client and the hub.">session</abbr> first (RFC-020/022.2, GOODBYE code). Preceded by an <abbr title="The hub's mandatory, truthful reply to an intent, carrying the values actually in effect after clamping.">ECHO</abbr> carrying reboot_in_ms, or by nothing for a <abbr title="The single authoritative endpoint of one machine.">hub</abbr>'s own policy reboot (RFC-121, §13.4.1: never while a motion source runs); on return the changed <abbr title="A random 32-bit number the hub generates at every boot, naming which incarnation of the hub you are talking to.">boot_id</abbr> tells <abbr title="Any endpoint that establishes a session with the hub.">clients</abbr> what happened.</td>
 </tr>
 <tr>
 <td><code>0x010A</code></td>
