@@ -1369,6 +1369,8 @@ export function createSession(opts = {}) {
         hub_instance_id_u64: hubInstanceId,
         // RFC-085 (§11.2): true renders E-Stop, false or absent renders Halt.
         estop_cuts_power: idm.get(IDENTITY_K.estop_cuts_power) === true,
+        // RFC-121 (§13.4.1): true while the hub serves its provisioning catalog.
+        config_mode: idm.get(IDENTITY_K.config_mode) === true,
       };
     }
 

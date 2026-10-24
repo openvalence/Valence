@@ -158,22 +158,12 @@ export function sameBlobTarget(a, b) {
  * catalog transfer and a store fetch cannot corrupt each other.
  */
 export class BlobReassembler {
-  // 64 chunks (12,288 B) -> 341 chunks (65,472 B), M5c.
-  //
-  // THIS CAP SILENTLY BROKE THE CLIENT. The device catalog was 11,659 B, i.e.
-  // 629 bytes under the old ceiling, and nothing anywhere was watching that
-  // margin. Adding the kinetic tuning cards took it to 15,817 B, the
-  // reassembler refused the transfer header, and the session then went LIVE
-  // WITH NO CATALOG -- so every STATE frame arrived undecodable and the UI
-  // simply showed nothing. No error, no NACK, no dropped-frame warning: a
-  // refused blob header just stops.
-  //
-  // The cap is a DoS guard (a peer declares total_bytes and we allocate it),
-  // NOT a statement about how big a legitimate catalog is -- RFC-009's own
-  // sizing note projects 15-25 KB for a fully annotated one, which the old
-  // value was already below. Sized generously now because a browser can
-  // trivially afford 64 KB and being stingy here costs a silent outage.
-  constructor(maxTotalBytes = 341 * BLOB_CHUNK_PAYLOAD) {
+  // The default budget is limits::catalog_max_bytes (RFC-121, §8.1): a client
+  // at client-watch or above MUST accept a catalog up to it. Do not size it to
+  // today's catalog; a catalog over the budget is refused (BLOB_REFUSED).
+  // It bounds one allocation of the declared total_bytes, made once per
+  // transfer and dropped on reset().
+  constructor(maxTotalBytes = LIMITS.catalog_max_bytes) {
     this.maxTotalBytes = maxTotalBytes;
     this.reset();
   }

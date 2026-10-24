@@ -169,7 +169,7 @@ const safetyPush = steps.get('welcome').h2c.find((f) => f[0] === FRAME.STATE && 
   play('hello');
   play('welcome');
   play('join-announce');
-  const total = 70000; // over the 65472-byte default cap
+  const total = LIMITS.catalog_max_bytes + 1; // one byte over the default budget
   const head = new Uint8Array(14 + LIMITS.catalog_chunk_payload);
   const dv = new DataView(head.buffer);
   dv.setUint16(6, 0, true);
