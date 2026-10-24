@@ -8,7 +8,8 @@
 // docs/valence/SPEC.md.
 //
 // Suite ids: S-xx = session lifecycle, I-xx = intent/echo/nack, E-04 = ESTOP
-// repeat-until-latched under loss, W-01 = Client timers across the u32 µs wrap.
+// repeat-until-latched under loss, W-01 = Client timers across the u32 µs wrap,
+// B-xx = the Client's out-of-line catalog reassembly block (RFC-121).
 // Each maps to one behavioral requirement in the M4 milestone brief.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -25,8 +26,11 @@
 #include "valence/wire/frame_header.hpp"
 #include "valence/wire/messages/goodbye.hpp"
 
+#include <pthread.h>
+
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -978,4 +982,177 @@ TEST_CASE("W-01 (rfc-ei6): a client up past the microsecond wrap paces ESTOP rep
         CHECK(pings >= 2);
         CHECK(pings <= 3);
     }
+}
+
+// ---- B-xx: the catalog reassembly block (RFC-121, §8.1, §8.4) ---------------
+
+namespace {
+
+// Counts traffic; fails every allocation once `failFrom` calls have been made.
+class CountingAllocator final : public IAllocator {
+public:
+    int failFrom = -1;  // -1 = never fail
+    int allocCalls = 0;
+    int live = 0;
+    size_t largest = 0;
+
+    void* allocate(size_t bytes) override {
+        const int call = allocCalls++;
+        if (failFrom >= 0 && call >= failFrom) return nullptr;
+        largest = std::max(largest, bytes);
+        ++live;
+        return std::malloc(bytes);
+    }
+    void deallocate(void* p, size_t) override {
+        --live;
+        std::free(p);
+    }
+};
+
+// Records the GOODBYE codes the client writes.
+class GoodbyeTap final : public ITransport {
+public:
+    explicit GoodbyeTap(ITransport& inner) : _inner(inner) {}
+    bool open() override { return _inner.open(); }
+    void close() override { _inner.close(); }
+    bool write(std::span<const std::byte> frame) override {
+        const auto h = decodeFrameHeader(frame);
+        if (h && h->type == uint8_t(FrameType::GOODBYE) && frame.size() >= kHeaderBytes) {
+            auto gb = decodeGoodbye(frame.subspan(kHeaderBytes));
+            if (gb) goodbyes.push_back(gb.value().code);
+        }
+        return _inner.write(frame);
+    }
+    std::optional<FrameBuffer> read() override { return _inner.read(); }
+    TransportProperties properties() const override { return _inner.properties(); }
+
+    std::vector<NackCode> goodbyes;
+
+private:
+    ITransport& _inner;
+};
+
+// Runs `fn` on a thread whose whole stack is `stackBytes`.
+template <class Fn>
+bool runOnSmallStack(size_t stackBytes, Fn& fn) {
+    pthread_attr_t attr;
+    if (pthread_attr_init(&attr) != 0) return false;
+    if (pthread_attr_setstacksize(&attr, stackBytes) != 0) return false;
+    pthread_t t;
+    auto trampoline = [](void* p) -> void* {
+        (*static_cast<Fn*>(p))();
+        return nullptr;
+    };
+    const bool started = pthread_create(&t, &attr, trampoline, &fn) == 0;
+    pthread_attr_destroy(&attr);
+    return started && pthread_join(t, nullptr) == 0;
+}
+
+constexpr size_t kSmallStackBytes = 256 * 1024;  // a quarter of the 1 MiB budget
+
+}  // namespace
+
+TEST_CASE("B-01: the default budget covers catalog_max_bytes and the Client stays small") {
+    CHECK(Client::kCatalogBudgetBytes >= limits::catalog_max_bytes);
+    static_assert(sizeof(Client) < 16 * 1024, "the reassembly block lives out of line");
+}
+
+TEST_CASE("B-02: a 1 MiB catalog reassembles with the Client's reassembler on a small stack") {
+    std::vector<std::byte> blob(limits::catalog_max_bytes);
+    for (size_t i = 0; i < blob.size(); ++i) blob[i] = std::byte(i * 31u + (i >> 9));
+    CountingAllocator alloc;
+    struct Out {
+        bool complete = false;
+        bool same = false;
+        size_t inserted = 0;
+    } out;
+    auto body = [&] {
+        Client::CatalogReassembler r(alloc);
+        const BlobId id{};
+        const size_t cc = chunkCount(blob.size());
+        r.begin(id, uint16_t(cc), blob.size(), 0);
+        std::array<std::byte, kBlobChunkHeaderBytes + limits::catalog_chunk_payload> chunk{};
+        for (size_t i = cc; i-- > 0;) {  // reverse order: reassembly is by index
+            const size_t n = fillBlobChunk(id, blob, uint16_t(i), chunk);
+            if (n != 0 && r.insert(std::span<const std::byte>(chunk.data(), n), 1)) ++out.inserted;
+        }
+        out.complete = r.complete();
+        const auto a = r.assembled();
+        out.same = a.size() == blob.size() && std::equal(a.begin(), a.end(), blob.begin());
+    };
+    REQUIRE(runOnSmallStack(kSmallStackBytes, body));
+    CHECK(out.inserted == chunkCount(blob.size()));
+    CHECK(out.complete);
+    CHECK(out.same);
+    CHECK(alloc.allocCalls == 1);
+    CHECK(alloc.largest >= limits::catalog_max_bytes);
+    CHECK(alloc.live == 0);  // returned on destruction
+}
+
+TEST_CASE("B-03: a Client on a small stack fetches, verifies and adopts a catalog") {
+    auto catalog = std::make_unique<Catalog32>();
+    conformance::buildMiniCatalog(*catalog);
+    ManualClock clock;
+    XorShift32 hubRng(1401);
+    TestHubDelegate hubDelegate;
+    auto hub = std::make_unique<Hub>(*catalog, clock, hubRng, hubDelegate);
+    hubDelegate.hub = hub.get();
+    InProcessLink link(clock, hubRng);
+    REQUIRE(hub->attachTransport(link.endpointA()));
+    CountingAllocator alloc;
+    struct Out {
+        ClientSessionState state = ClientSessionState::CLOSED;
+        size_t reqs = 0;
+        bool etagMatches = false;
+        int blocksWhileLive = -1;
+    } out;
+    auto body = [&] {
+        XorShift32 clientRng(2402);
+        TestClientDelegate clientDelegate;
+        Client client(makeIdentity(40, false), link.endpointB(), clock, clientRng, clientDelegate, defaultCrypto(),
+                      alloc);
+        if (!client.connect()) return;
+        pump(*hub, clock, {&client}, 8);
+        out.state = client.state();
+        out.reqs = client.catalogReqCount();
+        const auto real = miniCatalogEtag();
+        out.etagMatches = bytesEqual(client.hubEtag(), std::span<const std::byte>(real));
+        out.blocksWhileLive = alloc.live;
+    };
+    REQUIRE(runOnSmallStack(kSmallStackBytes, body));
+    CHECK(out.state == ClientSessionState::LIVE);
+    CHECK(out.reqs == 1);
+    CHECK(out.etagMatches);
+    CHECK(alloc.allocCalls == 1);
+    CHECK(alloc.largest < 8 * 1024);  // sized to the transfer, not to the budget
+    CHECK(out.blocksWhileLive == 0);  // returned once onCatalog has run
+}
+
+TEST_CASE("B-04: an allocation that fails while SYNCING ends the session with GOODBYE BLOB_REFUSED") {
+    Catalog32 catalog;
+    conformance::buildMiniCatalog(catalog);
+    ManualClock clock;
+    XorShift32 hubRng(1501);
+    TestHubDelegate hubDelegate;
+    Hub hub(catalog, clock, hubRng, hubDelegate);
+    hubDelegate.hub = &hub;
+    InProcessLink link(clock, hubRng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    GoodbyeTap tap(link.endpointB());
+    CountingAllocator alloc;
+    alloc.failFrom = 0;
+    XorShift32 clientRng(2502);
+    TestClientDelegate clientDelegate;
+    Client client(makeIdentity(41, false), tap, clock, clientRng, clientDelegate, defaultCrypto(), alloc);
+
+    REQUIRE(client.connect());
+    pump(hub, clock, {&client}, 8);
+
+    CHECK(alloc.allocCalls == 1);
+    CHECK(client.state() == ClientSessionState::CLOSED);
+    REQUIRE(tap.goodbyes.size() == 1);
+    CHECK(tap.goodbyes[0] == NackCode::BLOB_REFUSED);
+    CHECK(std::find(clientDelegate.stateHistory.begin(), clientDelegate.stateHistory.end(),
+                    ClientSessionState::LIVE) == clientDelegate.stateHistory.end());
+    CHECK(hubDelegate.sessionsLeft == 1);
 }
