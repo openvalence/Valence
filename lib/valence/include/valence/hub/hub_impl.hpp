@@ -483,7 +483,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     std::optional<AccessLevel> derived;
     if (Slot* dup = findSlotByInstance(instanceSpan, &slot)) {
         if (dup->session.state == HubSessionState::STALE) {
-            derived = tokenRole(instanceSpan, h);
+            derived = tierOf(slot, tokenRole(instanceSpan, h));
             // A resumption keeps the grants its role negotiated, so it is only
             // a resumption at the SAME role. A token that now proves another one
             // (granted while parked, revoked, re-approved) would keep the old
@@ -554,7 +554,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     } while (slot.session.session_id == 0);
     std::memcpy(slot.session.instance_id.data(), h.instance_id.data(), slot.session.instance_id.size());
     // §12.2: the role the token proves (tokenRole(): the pairing store first).
-    AccessLevel role = derived ? *derived : tokenRole(instanceSpan, h);
+    AccessLevel role = derived ? *derived : tierOf(slot, tokenRole(instanceSpan, h));
 
     // ---- M4b: remember WHO this is, in hub-owned bytes ----------------------
     // HELLO's strings are views into the frame buffer and die with this
@@ -599,7 +599,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
         slot.session.role = role;  // applyTrustObservation reads the pre-observation role
         role = applyTrustObservation(slot, nowMs);
     }
-    slot.session.role = role;
+    slot.session.role = tierOf(slot, role);
     slot.session.helloSeenCfgGen = _cfgGen;
     slot.session.clientEtagMatched =
         h.has_catalog_etag && std::equal(h.catalog_etag.begin(), h.catalog_etag.end(), _etag.begin());
@@ -706,26 +706,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
     w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
     w.limits_info.osc_max_hz = _delegate.oscMaxHz();
-    // RFC-016(a): identity travels when the application declared one.
-    if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
-        w.has_identity = true;
-        w.identity.product = _idProduct;
-        w.identity.fw_version = _idFwVersion;
-        w.identity.hub_name = _idHubName;
-    }
-    // RFC-048: durable identity rides the SAME identity map, independently of
-    // product/fw_version/hub_name above — a hub with a durable id but no other
-    // identity strings still gets the map (IdentityInfo::any() covers it).
-    if (_hubInstanceId != 0) {
-        w.has_identity = true;
-        w.identity.has_hub_instance_id = true;
-        w.identity.hub_instance_id = _hubInstanceId;
-    }
-    if (_estopCutsPowerDeclared) {
-        w.has_identity = true;
-        w.identity.has_estop_cuts_power = true;
-        w.identity.estop_cuts_power = _estopCutsPower;
-    }
+    fillIdentity(w);
     // RFC-046: the hub's own WS endpoint, 0/0 = absent (omitted on the wire).
     w.ws_port = _wsPort;
     w.ipv4 = _ipv4;
@@ -738,7 +719,7 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     // advertised exactly while it is open, so a client connecting during one
     // can see it without an out-of-band hint. Omitted entirely when the hub
     // offers nothing, keeping the byte-for-byte potato WELCOME intact.
-    const uint8_t offered = _pairing.offeredModes(nowMs);
+    const uint8_t offered = uint8_t(_pairing.offeredModes(nowMs) | (onCable(slot) ? pairing_modes::cable : 0u));
     if (offered != 0) {
         w.has_trust = true;
         w.trust_map.has_pairing_modes = true;
@@ -782,6 +763,31 @@ inline void Hub::handleHello(Slot& slot, std::span<const std::byte> payload, uin
     // note) — no separate immediate-push code path is needed here.
     slot.session.state = HubSessionState::LIVE;  // hub-side bookkeeping only, §2.2
     _delegate.onSessionJoined(slot.session.session_id);
+}
+
+inline bool Hub::onCable(const Slot& slot) const {
+    if (slot.transport == nullptr) return false;
+    const BindingKind b = slot.transport->properties().binding;
+    return b == BindingKind::serial || b == BindingKind::in_process;
+}
+
+inline AccessLevel Hub::tierOf(const Slot& slot, AccessLevel role) const {
+    return onCable(slot) ? AccessLevel::configure : role;
+}
+
+// Each key travels only when the application declared it (empty views, 0 ids
+// and an undeclared stop category are omitted), so a hub that sets nothing
+// keeps a WELCOME with no identity map.
+inline void Hub::fillIdentity(WelcomeMsg& w) const {
+    w.identity.product = _idProduct;
+    w.identity.fw_version = _idFwVersion;
+    w.identity.hub_name = _idHubName;
+    w.identity.has_hub_instance_id = _hubInstanceId != 0;
+    w.identity.hub_instance_id = _hubInstanceId;
+    w.identity.has_estop_cuts_power = _estopCutsPowerDeclared;
+    w.identity.estop_cuts_power = _estopCutsPower;
+    w.identity.config_mode = _configMode;
+    w.has_identity = w.identity.any();
 }
 
 // §12.2: the hub's own pairing store is consulted FIRST (instance_id + token ->
@@ -873,7 +879,7 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, Acce
         slot.session.role = role;  // applyTrustObservation reads the pre-observation role
         role = applyTrustObservation(slot, nowMs);
     }
-    slot.session.role = role;
+    slot.session.role = tierOf(slot, role);
     slot.session.helloSeenCfgGen = _cfgGen;
     slot.session.clientEtagMatched =
         h.has_catalog_etag && std::equal(h.catalog_etag.begin(), h.catalog_etag.end(), _etag.begin());
@@ -953,29 +959,13 @@ inline void Hub::handleReattach(Slot& slot, Slot& stale, const HelloMsg& h, Acce
     w.limits_info.max_sessions = uint32_t(kHubMaxSessions);
     w.limits_info.sessions_in_use = uint32_t(occupiedCount(&slot) + 1);
     w.limits_info.osc_max_hz = _delegate.oscMaxHz();
-    if (!_idProduct.empty() || !_idFwVersion.empty() || !_idHubName.empty()) {
-        w.has_identity = true;
-        w.identity.product = _idProduct;
-        w.identity.fw_version = _idFwVersion;
-        w.identity.hub_name = _idHubName;
-    }
-    // RFC-048/RFC-046 — see the identical block in handleHello's WELCOME build.
-    if (_hubInstanceId != 0) {
-        w.has_identity = true;
-        w.identity.has_hub_instance_id = true;
-        w.identity.hub_instance_id = _hubInstanceId;
-    }
-    if (_estopCutsPowerDeclared) {
-        w.has_identity = true;
-        w.identity.has_estop_cuts_power = true;
-        w.identity.estop_cuts_power = _estopCutsPower;
-    }
+    fillIdentity(w);
     w.ws_port = _wsPort;
     w.ipv4 = _ipv4;
     _rng.fill(std::span<std::byte>(w.nonce));
     slot.nonce = w.nonce;
 
-    const uint8_t offered = _pairing.offeredModes(nowMs);
+    const uint8_t offered = uint8_t(_pairing.offeredModes(nowMs) | (onCable(slot) ? pairing_modes::cable : 0u));
     if (offered != 0) {
         w.has_trust = true;
         w.trust_map.has_pairing_modes = true;
@@ -1108,7 +1098,7 @@ inline void Hub::handleAuth(Slot& slot, std::span<const std::byte> payload, uint
     slot.session.role = proved;
     // The tripwire runs HERE for proof-mode clients — same function, same
     // policy, same re-approval queue as the bearer path in handleHello.
-    slot.session.role = applyTrustObservation(slot, nowMs);
+    slot.session.role = tierOf(slot, applyTrustObservation(slot, nowMs));
 
     // The answer: a GRANT carrying `roles` (23). No new answer frame was needed
     // — GRANT already means "your access to things was re-evaluated", and
@@ -3025,7 +3015,7 @@ inline void Hub::handlePairReq(Slot& slot, std::span<const std::byte> payload, u
     // PAIR_REQ is a KNOCK, and routing it here is what lets a device with one
     // button and no display pair at all. Only a request that DOES carry a proof
     // takes the §12.2 PIN path below.
-    if (!m.has_pin_proof) {
+    if (!m.has_pin_proof || onCable(slot)) {
         handleKnock(slot, m, nowMs);
         return;
     }
@@ -3390,7 +3380,7 @@ inline bool Hub::issuePairGrant(Slot& slot, std::span<const std::byte> instance_
     // step on exactly the device class (one button, no display) this mode
     // exists to serve. Nothing is invented: the role is the one the ledger now
     // holds, and the next HELLO resolves to the same value.
-    slot.session.role = role;
+    slot.session.role = tierOf(slot, role);
 
     _pairing.pending().remove(instance_id);
     emitPairingEvent(pairing_events::granted, instance_id, slot.session.clientName.view(), mode, role,
@@ -3424,6 +3414,18 @@ inline void Hub::handleKnock(Slot& slot, const PairReqMsg& m, uint32_t nowMs) {
         return;
     }
     const AccessLevel asked = m.has_roles ? AccessLevel(m.roles) : AccessLevel::watch;
+
+    // §12.2 (RFC-121): on the cable a PAIR_REQ is granted at once, never
+    // queued; asking nothing gets the cable's own tier.
+    if (onCable(slot)) {
+        const AccessLevel role = asked != AccessLevel::watch ? asked : AccessLevel::configure;
+        if (!issuePairGrant(slot, inst, role, pairing_modes::cable, nowMs)) {
+            NackMsg n;
+            n.code = NackCode::PAIRING_DENIED;  // ledger full: honest refusal
+            sendNackTracked(slot, n, nowMs);
+        }
+        return;
+    }
 
     // (c) PUSH-TO-PAIR first: a presence window is a stronger claim than a
     // queued approval, and it is SINGLE-GRANT — consuming it here is what makes

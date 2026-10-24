@@ -1978,3 +1978,188 @@ TEST_CASE("M4B-43 (RFC-114): a presence approval on a full ledger frees the leas
     CHECK(hub.pairing().findByInstance(instanceOf(0x40)) == nullptr);   // the oldest went
     CHECK(hub.pairing().findByInstance(instanceOf(0x41)) != nullptr);
 }
+
+// ---- RFC-121: serial and in-process are configure without exception ---------
+
+namespace {
+
+void writeAuth(ITransport& ep, std::byte fill) {
+    AuthMsg m{};
+    m.trust_map.has_token_proof = true;
+    m.trust_map.token_proof.fill(fill);
+    std::array<std::byte, 64> buf{};
+    const size_t n = encodeAuth(m, std::span<std::byte>(buf));
+    REQUIRE(n > 0);
+    writeFrame(ep, FrameType::AUTH, 0, std::span<const std::byte>(buf.data(), n));
+}
+
+bool containsBytes(const std::vector<std::byte>& hay, std::initializer_list<uint8_t> needle) {
+    std::vector<std::byte> n;
+    for (uint8_t b : needle) n.push_back(std::byte{b});
+    return std::search(hay.begin(), hay.end(), n.begin(), n.end()) != hay.end();
+}
+
+uint8_t offeredModes(const WelcomeMsg& w) {
+    return (w.has_trust && w.trust_map.has_pairing_modes) ? w.trust_map.pairing_modes_mask : 0;
+}
+
+}  // namespace
+
+TEST_CASE("M4B-44 (RFC-121): WELCOME identity carries config_mode (7) true only when the hub declares it") {
+    for (bool on : {false, true}) {
+        CAPTURE(on);
+        Catalog32 cat;
+        makeM4bCatalog(cat);
+        ManualClock clock;
+        XorShift32 rng(4044);
+        M4bDelegate del;
+        Hub hub(cat, clock, rng, del);
+        hub.setConfigMode(on);
+        InProcessLink link(clock, rng);
+        REQUIRE(hub.attachTransport(link.endpointA()));
+        REQUIRE(link.endpointB().open());
+
+        writeHello(link.endpointB(), 1, 0, {});
+        const auto replies = tickAndDrain(hub, clock, link.endpointB());
+        const DecodedReply* wr = nullptr;
+        for (const auto& r : replies) {
+            if (r.type == FrameType::WELCOME) wr = &r;
+        }
+        REQUIRE(wr != nullptr);
+        auto w = decodeWelcome(std::span<const std::byte>(wr->payload));
+        REQUIRE(w);
+        CHECK(w.value().has_identity == on);
+        CHECK(w.value().identity.config_mode == on);
+        // identity (37) = {7: true}, the only identity this hub declares.
+        CHECK(containsBytes(wr->payload, {0x18, 0x25, 0xA1, 0x07, 0xF5}) == on);
+    }
+}
+
+TEST_CASE("M4B-45 (RFC-121): a serial or in-process session is configure with no token or a bad one") {
+    for (BindingKind b : {BindingKind::serial, BindingKind::in_process}) {
+        for (uint8_t tokenTag : {uint8_t(0), uint8_t(0x22)}) {
+            CAPTURE(int(b));
+            CAPTURE(int(tokenTag));
+            Catalog32 cat;
+            makeM4bCatalog(cat);
+            ManualClock clock;
+            XorShift32 rng(4045);
+            M4bDelegate del;
+            Hub hub(cat, clock, rng, del);
+            InProcessLink link(clock, rng);
+            link.profileA().binding = b;
+            REQUIRE(hub.attachTransport(link.endpointA()));
+            REQUIRE(link.endpointB().open());
+
+            const auto w = connectSession(hub, clock, link.endpointB(), 1, tokenTag, {});
+            CHECK(w.roles == uint8_t(AccessLevel::configure));
+            CHECK((offeredModes(w) & pairing_modes::cable) != 0);
+            REQUIRE(hub.sessionBySlot(0) != nullptr);
+            CHECK(hub.sessionBySlot(0)->role == AccessLevel::configure);
+        }
+    }
+}
+
+TEST_CASE("M4B-46 (RFC-121): a failed AUTH on the cable is UNAUTHORIZED and never lowers the tier") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4046);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    link.profileA().binding = BindingKind::serial;
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+    connectSession(hub, clock, link.endpointB(), 1, 0, {});
+
+    writeAuth(link.endpointB(), std::byte{0x5A});
+    const auto replies = tickAndDrain(hub, clock, link.endpointB());
+    CHECK(countNacks(replies, NackCode::UNAUTHORIZED) == 1);
+    REQUIRE(hub.sessionBySlot(0) != nullptr);
+    CHECK(hub.sessionBySlot(0)->role == AccessLevel::configure);
+}
+
+TEST_CASE("M4B-47 (RFC-121): a PAIR_REQ on the cable is granted at once, recorded as cable, never queued") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4047);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink bare(clock, rng), ask(clock, rng);
+    bare.profileA().binding = BindingKind::serial;
+    ask.profileA().binding = BindingKind::in_process;
+    REQUIRE(hub.attachTransport(bare.endpointA()));
+    REQUIRE(hub.attachTransport(ask.endpointA()));
+    REQUIRE(bare.endpointB().open());
+    REQUIRE(ask.endpointB().open());
+    connectSession(hub, clock, bare.endpointB(), 1, 0, {});
+    connectSession(hub, clock, ask.endpointB(), 2, 0, {});
+
+    // A bare knock asks nothing and gets the cable's own tier.
+    writeKnock(bare.endpointB(), 1);
+    auto g = findPairGrant(tickAndDrain(hub, clock, bare.endpointB()));
+    REQUIRE(g.has_value());
+    CHECK(g->roles == uint8_t(AccessLevel::configure));
+    const auto* e = hub.pairing().findByInstance(instanceOf(1));
+    REQUIRE(e != nullptr);
+    CHECK(e->pairingMode == pairing_modes::cable);
+    CHECK(e->role == AccessLevel::configure);
+
+    // An ask gets its asked role; the session stays configure.
+    writeAsk(ask.endpointB(), 2, AccessLevel::control);
+    g = findPairGrant(tickAndDrain(hub, clock, ask.endpointB()));
+    REQUIRE(g.has_value());
+    CHECK(g->roles == uint8_t(AccessLevel::control));
+    e = hub.pairing().findByInstance(instanceOf(2));
+    REQUIRE(e != nullptr);
+    CHECK(e->pairingMode == pairing_modes::cable);
+    CHECK(hub.sessionBySlot(1)->role == AccessLevel::configure);
+
+    CHECK(hub.pairing().pending().count() == 0);
+    CHECK_FALSE(hub.presenceWindowOpen());
+}
+
+TEST_CASE("M4B-48 (RFC-121): a WebSocket session still tiers by token and its knock still queues") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4048);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink link(clock, rng);
+    link.profileA().binding = BindingKind::websocket;
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    REQUIRE(link.endpointB().open());
+
+    const auto w = connectSession(hub, clock, link.endpointB(), 1, 0x22, {});
+    CHECK(w.roles == uint8_t(AccessLevel::watch));
+    CHECK((offeredModes(w) & pairing_modes::cable) == 0);
+
+    writeKnock(link.endpointB(), 1);
+    CHECK_FALSE(findPairGrant(tickAndDrain(hub, clock, link.endpointB())).has_value());
+    CHECK(hub.pairing().pending().count() == 1);
+}
+
+TEST_CASE("M4B-49 (RFC-121): another binding claiming a parked cable session's identity gains no tier") {
+    Catalog32 cat;
+    makeM4bCatalog(cat);
+    ManualClock clock;
+    XorShift32 rng(4049);
+    M4bDelegate del;
+    Hub hub(cat, clock, rng, del);
+    InProcessLink cable(clock, rng), relay(clock, rng);
+    cable.profileA().binding = BindingKind::serial;
+    relay.profileA().binding = BindingKind::espnow;
+    REQUIRE(hub.attachTransport(cable.endpointA()));
+    REQUIRE(cable.endpointB().open());
+    CHECK(connectSession(hub, clock, cable.endpointB(), 1, 0, {}).roles == uint8_t(AccessLevel::configure));
+
+    hub.detachTransport(cable.endpointA());  // parked STALE, still holding configure
+    REQUIRE(hub.attachTransport(relay.endpointA()));
+    REQUIRE(relay.endpointB().open());
+    const auto w = connectSession(hub, clock, relay.endpointB(), 1, 0, {});
+    CHECK(w.roles == uint8_t(AccessLevel::watch));
+    CHECK((offeredModes(w) & pairing_modes::cable) == 0);
+}

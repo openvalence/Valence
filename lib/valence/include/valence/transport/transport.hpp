@@ -22,11 +22,26 @@ enum class CongestionSignal : uint8_t {
     Simulated,         // in-process binding: injected
 };
 
+// The §13.1 binding a client reached. serial and in_process are `configure`
+// without exception (§12.2, H16): declare them only on the hub's own
+// client-facing binding carrying the one client whose host is on the cable,
+// never on an internal link (§13.0) or a transport carrying a relay's or a
+// proxy's sessions (§14.1). unspecified tiers by token, like a network binding.
+enum class BindingKind : uint8_t {
+    unspecified,
+    websocket,
+    espnow,
+    ble_gatt,
+    serial,
+    in_process,
+};
+
 struct TransportProperties {
     uint16_t mtu = uint16_t(limits::min_transport_payload) + kHeaderBytes;  // whole-frame bytes
     bool ordered = false;      // §13.1 matrix; STREAM/STATE rules assume the weakest
     bool reliable = false;
     CongestionSignal congestion = CongestionSignal::Simulated;
+    BindingKind binding = BindingKind::unspecified;
 };
 
 // One endpoint of a point-to-point frame pipe. No threads: read() is a

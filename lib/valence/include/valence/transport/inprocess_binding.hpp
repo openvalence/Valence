@@ -44,6 +44,10 @@ struct FaultProfile {
     uint8_t reorder_pct = 0;     // 0..100: probability this frame swaps delivery order with the previous one
     uint32_t latency_us = 0;     // base one-way delay added at write time
     uint32_t jitter_us = 0;      // ± uniform spread added to latency_us
+    // The binding this direction's sender declares. unspecified by default so
+    // the link stands in for any network binding; in_process or serial makes
+    // the hub's endpoint `configure` without exception (§12.2).
+    BindingKind binding = BindingKind::unspecified;
 };
 
 namespace detail {
@@ -182,6 +186,7 @@ public:
         p.ordered = !(_profile.reorder_pct > 0 || _profile.jitter_us > 0);
         p.reliable = (_profile.loss_pct == 0 && _profile.dup_pct == 0);
         p.congestion = CongestionSignal::Simulated;
+        p.binding = _profile.binding;
         return p;
     }
 

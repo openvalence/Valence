@@ -462,6 +462,12 @@ public:
     void setEstopCutsPower(bool cuts) { _estopCutsPowerDeclared = true; _estopCutsPower = cuts; }
     bool estopCutsPower() const { return _estopCutsPower; }
 
+    // ---- RFC-121: config mode, WELCOME identity key 7 -----------------------
+    // Set once at composition, before sessions: config mode is a boot mode and
+    // never changes within a session (§13.4.1). false = the key is omitted.
+    void setConfigMode(bool on) { _configMode = on; }
+    bool configMode() const { return _configMode; }
+
     // ---- RFC-046: the hub's own reachable WS endpoint, WELCOME keys 46/47 --
     // 0/0 (the default) keeps WELCOME byte-identical to a pre-RFC-046 hub's —
     // both keys are OMITTED from the wire when zero, not encoded as a literal
@@ -1059,6 +1065,7 @@ private:
     // RFC-085: the declared stop category (identity key 6).
     bool _estopCutsPowerDeclared = false;
     bool _estopCutsPower = false;
+    bool _configMode = false;
 
     // ---- M5: pairing (§12.2) + source ownership (§11.4) ---------------------
     PairingManager _pairing;
@@ -1137,6 +1144,12 @@ private:
     // §12.2: the role a HELLO's token proves, the pairing store first, then the
     // delegate. At most once per HELLO: validateToken() may consume a credential.
     AccessLevel tokenRole(std::span<const std::byte> instanceSpan, const HelloMsg& h);
+    // §12.2 (RFC-121): whether the slot's transport declares serial or
+    // in-process, and the tier that follows: configure there, `role` elsewhere.
+    bool onCable(const Slot& slot) const;
+    AccessLevel tierOf(const Slot& slot, AccessLevel role) const;
+    // WELCOME `identity` (37), shared by handleHello() and handleReattach().
+    void fillIdentity(WelcomeMsg& w) const;
     // M4c (RFC-029 item 1) / RFC-042: arms or performs the optional WELCOME
     // hub-authenticity signature, shared verbatim by handleHello() and
     // handleReattach(). Returns true iff the caller must arm slot.signPending
