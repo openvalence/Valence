@@ -174,9 +174,11 @@ struct IdentityInfo {
     // RFC-085 (identity_keys 6): the declared stop category. Absent reads as false.
     bool has_estop_cuts_power = false;
     bool estop_cuts_power = false;
+    // RFC-121 (identity_keys 7): emitted only when true; absent reads as false.
+    bool config_mode = false;
     bool any() const {
         return !product.empty() || !fw_version.empty() || !hub_name.empty() || has_hub_instance_id ||
-               has_estop_cuts_power;
+               has_estop_cuts_power || config_mode;
     }
 };
 
@@ -309,6 +311,7 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
         if (!m.identity.hub_name.empty()) ++idKeys;
         if (m.identity.has_hub_instance_id) ++idKeys;
         if (m.identity.has_estop_cuts_power) ++idKeys;
+        if (m.identity.config_mode) ++idKeys;
         w.key(CborKey::identity).mapHeader(idKeys);
         if (!m.identity.product.empty())
             w.key(uint64_t(identity_subkeys::product)).tstrVal(m.identity.product);
@@ -321,6 +324,7 @@ inline size_t encodeWelcome(const WelcomeMsg& m, std::span<std::byte> out) {
             w.key(uint64_t(identity_subkeys::hub_instance_id)).uintVal(m.identity.hub_instance_id);
         if (m.identity.has_estop_cuts_power)
             w.key(uint64_t(identity_subkeys::estop_cuts_power)).boolVal(m.identity.estop_cuts_power);
+        if (m.identity.config_mode) w.key(uint64_t(identity_subkeys::config_mode)).boolVal(true);
     }
     if (hasTrust) encodeTrustMap(w, m.trust_map);  // key 39
     // ws_port(46) / ipv4(47) sort after trust(39): §5.3 ascending order intact.
@@ -573,6 +577,12 @@ inline Result<WelcomeMsg, DecodeError> decodeWelcome(std::span<const std::byte> 
                             if (!vv) return Ret::err(vv.error());
                             m.identity.estop_cuts_power = vv.value();
                             m.identity.has_estop_cuts_power = true;
+                            break;
+                        }
+                        case identity_subkeys::config_mode: {
+                            auto vv = r.readBool();
+                            if (!vv) return Ret::err(vv.error());
+                            m.identity.config_mode = vv.value();
                             break;
                         }
                         default: {

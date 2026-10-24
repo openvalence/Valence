@@ -285,6 +285,60 @@ TEST_CASE("C-03: WELCOME with grants/limits/nonce — exact bytes + round-trip")
     CHECK(d.grants[0].priority == 2);
 }
 
+// ---- Q-01 (RFC-121) ---------------------------------------------------------
+// C-03's WELCOME plus identity (37) = {config_mode (7): true}: exact bytes.
+TEST_CASE("Q-01: WELCOME identity config_mode true, exact bytes + round-trip") {
+    WelcomeMsg m{};
+    m.proto_ver = 1;
+    m.session_id = kSessionId;
+    m.boot_id = kBootId;
+    m.catalog_etag = kPlaceholderEtag;
+    m.cfg_gen = 5;
+    m.limits_info = WelcomeLimits{/*max_frame=*/242, /*max_subscriptions=*/8, /*retained_pending=*/3};
+    m.roles = 1;
+    m.deadman_ms = 600;
+    m.deadman_policy = 0;
+    m.nonce = kNonce;
+    m.grants_count = 1;
+    m.grants[0] = Grant{/*channel_id=*/80, /*granted_rate_hz=*/240.0f, /*priority=*/2};
+    m.has_identity = true;
+    m.identity.config_mode = true;
+
+    std::array<std::byte, 128> buf{};
+    size_t n = encodeWelcome(m, buf);
+
+    static constexpr std::byte kExpected[] = {
+        B(0xAC),  // map(12 pairs)
+        B(0x01), B(0x01),
+        B(0x06), B(0x1A), B(0x5E), B(0x55), B(0x1D), B(0x01),
+        B(0x07), B(0x1A), B(0xB0), B(0x07), B(0xCA), B(0xFE),
+        B(0x08), B(0x48), B(0x11), B(0x22), B(0x33), B(0x44), B(0x55), B(0x66), B(0x77), B(0x88),
+        B(0x09), B(0x05),
+        B(0x16), B(0xA3), B(0x01), B(0x18), B(0xF2), B(0x02), B(0x08), B(0x03), B(0x03),
+        B(0x17), B(0x01),
+        B(0x18), B(0x18), B(0x19), B(0x02), B(0x58),
+        B(0x18), B(0x19), B(0x00),
+        B(0x18), B(0x1D), B(0x48),
+        B(0xA1), B(0xA2), B(0xA3), B(0xA4), B(0xA5), B(0xA6), B(0xA7), B(0xA8),
+        B(0x18), B(0x23), B(0x81),
+        B(0xA3), B(0x0D), B(0x02), B(0x0E), B(0xFA), B(0x43), B(0x70), B(0x00), B(0x00), B(0x0F), B(0x18), B(0x50),
+        B(0x18), B(0x25), B(0xA1),  // identity: key 37 (1-byte follow), map(1)
+        B(0x07), B(0xF5),           // config_mode (7): true
+    };
+    static_assert(sizeof(kExpected) == 77, "C-03's 72 bytes plus the 5-byte identity pair");
+
+    REQUIRE(n == sizeof(kExpected));
+    CHECK(bytesEqual(std::span<const std::byte>(buf.data(), n), kExpected));
+
+    auto dec = decodeWelcome(std::span<const std::byte>(buf.data(), n));
+    REQUIRE(dec.isOk());
+    CHECK(dec.value().has_identity);
+    CHECK(dec.value().identity.config_mode);
+
+    m.identity.config_mode = false;  // nothing else declared: the identity map is omitted
+    CHECK(encodeWelcome(m, buf) == 72);
+}
+
 // ---- C-04 -------------------------------------------------------------------
 // profile violations rejected (decode direction). Each hand-crafted
 // fragment is fed directly to CborReader (not a full HELLO/WELCOME) — these
