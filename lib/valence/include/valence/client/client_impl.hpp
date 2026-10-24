@@ -44,8 +44,9 @@ inline bool isAllZero(std::span<const std::byte> b) {
 // ---- Construction / identity / wishes ---------------------------------------
 
 inline Client::Client(const ClientIdentity& id, ITransport& transport, IClock& clock, IRandom& rng,
-                       ClientDelegate& delegate, ICrypto& crypto)
-    : _id(id), _t(transport), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto) {
+                       ClientDelegate& delegate, ICrypto& crypto, IAllocator& alloc)
+    : _id(id), _t(transport), _clock(clock), _rng(rng), _delegate(delegate), _crypto(crypto),
+      _chunkReassembler(alloc) {
     // Seeded here, not by the first update(): an application may connect() or
     // initiateEstop() before it ever ticks.
     _lastUpdateMs = _monoMs.advance(_clock.nowUs());
@@ -671,6 +672,7 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
     if (!h.id.isCatalog()) return;
     if (h.chunk_count == 0 || h.chunk_index >= h.chunk_count) return;
     if (_transferRefused) return;  // the rest of a transfer this client already refused
+    if (_catalogReady && !_refetching) return;  // no transfer in flight: a late duplicate
 
     if (!_chunkReassembler.active() || _catalogChunkCount != h.chunk_count) {
         // total_bytes rides the header now (RFC-021/028: know the size before
@@ -715,6 +717,7 @@ inline void Client::handleBlobChunk(std::span<const std::byte> payload, uint32_t
         _catalogReady = true;
         _refetching = false;
         _delegate.onCatalog(bytes, match);
+        _chunkReassembler.reset();  // `bytes` is dead from here: the block goes back now
 
         // §8.4/RFC-015: the hash IS the acknowledgment — declare which
         // catalog this client now operates against so the hub opens its data

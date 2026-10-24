@@ -35,12 +35,15 @@
 // clock interface just to read one value each call).
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <utility>
 
+#include "valence/core/allocator.hpp"
 #include "valence/generated/registry_constants.hpp"
 #include "valence/util/byte_io.hpp"
 #include "valence/util/serial_arithmetic.hpp"
@@ -127,26 +130,93 @@ inline size_t fillBlobChunk(const BlobId& id, std::span<const std::byte> encoded
     return total;
 }
 
-// Fixed-capacity receiver-side reassembler. MaxChunks bounds both the bitmap
-// and the backing buffer (MaxChunks * catalog_chunk_payload bytes); callers
-// with larger blobs pick a bigger MaxChunks. No heap either way.
+// Reassembler storage, inline: MaxChunks chunks held in the object. No heap.
+template <size_t MaxChunks>
+class InlineChunkStorage {
+public:
+    static constexpr size_t kMaxChunks = MaxChunks;
+    bool acquire(size_t, size_t) { return true; }
+    void release() {}
+    std::span<std::byte> bytes() { return _buf; }
+    std::span<const std::byte> bytes() const { return _buf; }
+    std::byte* received() { return _received.data(); }
+    const std::byte* received() const { return _received.data(); }
+
+private:
+    std::array<std::byte, MaxChunks * limits::catalog_chunk_payload> _buf{};
+    std::array<std::byte, MaxChunks> _received{};
+};
+
+// Reassembler storage, out of line: one block per transfer from an IAllocator,
+// sized to the declared transfer (never to MaxChunks), freed by release().
+// Constraint: not copyable or movable; the block belongs to this object.
+template <size_t MaxChunks>
+class AllocatedChunkStorage {
+public:
+    static constexpr size_t kMaxChunks = MaxChunks;
+    explicit AllocatedChunkStorage(IAllocator& alloc) : _alloc(&alloc) {}
+    AllocatedChunkStorage(const AllocatedChunkStorage&) = delete;
+    AllocatedChunkStorage& operator=(const AllocatedChunkStorage&) = delete;
+    ~AllocatedChunkStorage() { release(); }
+
+    // Caller bounds chunkCount and totalBytes first. False when the allocator
+    // has no block of that size.
+    bool acquire(size_t chunkCount, size_t totalBytes) {
+        const size_t data = std::max<size_t>(chunkCount * limits::catalog_chunk_payload, totalBytes);
+        const size_t need = data + chunkCount;
+        if (need > _blockBytes) {
+            release();
+            _block = static_cast<std::byte*>(_alloc->allocate(need));
+            if (_block == nullptr) return false;
+            _blockBytes = need;
+        }
+        _dataBytes = data;
+        return true;
+    }
+    void release() {
+        if (_block != nullptr) _alloc->deallocate(_block, _blockBytes);
+        _block = nullptr;
+        _blockBytes = 0;
+        _dataBytes = 0;
+    }
+    std::span<std::byte> bytes() { return {_block, _dataBytes}; }
+    std::span<const std::byte> bytes() const { return {_block, _dataBytes}; }
+    std::byte* received() { return _block + _dataBytes; }
+    const std::byte* received() const { return _block + _dataBytes; }
+
+private:
+    IAllocator* _alloc;
+    std::byte* _block = nullptr;
+    size_t _blockBytes = 0;
+    size_t _dataBytes = 0;
+};
+
+// Receiver-side reassembler over a storage (above). MaxChunks bounds the chunk
+// count and the total (MaxChunks * catalog_chunk_payload bytes); callers with
+// larger blobs pick a bigger MaxChunks.
 //
 // Namespace-agnostic by construction: it assembles whatever identity it was
 // begun for and REJECTS chunks belonging to a different one, which is what
 // lets a client have a catalog transfer and a preset fetch in flight without
 // either corrupting the other (one reassembler each).
-template <size_t MaxChunks = 64>
-class ChunkReassembler {
+template <class Storage>
+class BasicChunkReassembler {
 public:
-    static constexpr size_t kMaxTotalBytes = MaxChunks * limits::catalog_chunk_payload;
+    static constexpr size_t kMaxChunks = Storage::kMaxChunks;
+    static constexpr size_t kMaxTotalBytes = kMaxChunks * limits::catalog_chunk_payload;
+
+    BasicChunkReassembler() = default;
+    explicit BasicChunkReassembler(IAllocator& alloc) : _store(alloc) {}
 
     // Starts (or restarts) a reassembly of `id` spanning `chunkCount` chunks
     // totaling `totalBytes`. A transfer whose declared total exceeds this
     // instance's capacity is refused up front (active() stays false) rather
     // than overflowing later — RFC-028's know-the-size-before-you-allocate
-    // rule, which is exactly what `total_bytes` rides the header for.
+    // rule, which is exactly what `total_bytes` rides the header for. A
+    // storage that cannot supply the block refuses the same way.
     void begin(const BlobId& id, uint16_t chunkCount, size_t totalBytes, uint32_t nowMs) {
-        _active = (chunkCount > 0) && (chunkCount <= MaxChunks) && (totalBytes <= kMaxTotalBytes);
+        _active = (chunkCount > 0) && (chunkCount <= kMaxChunks) && (totalBytes <= kMaxTotalBytes) &&
+                  _store.acquire(chunkCount, totalBytes);
         _id = id;
         // RFC-028 (found by test/fuzz/fuzz_blob): a REFUSED transfer must not
         // leave its attacker-chosen sizes behind. This used to store
@@ -159,7 +229,7 @@ public:
         _chunkCount = _active ? chunkCount : 0;
         _totalBytes = _active ? totalBytes : 0;
         _receivedCount = 0;
-        _received.fill(false);
+        if (_active) std::fill_n(_store.received(), _chunkCount, std::byte{0});
         _startMs = nowMs;
         _lastProgressMs = nowMs;
     }
@@ -170,10 +240,11 @@ public:
         begin(h.id, h.chunk_count, h.total_bytes, nowMs);
     }
 
-    // Abandons whatever was in flight, so the next chunk begins a new transfer.
-    // In place: assigning a fresh ChunkReassembler puts its whole buffer on
-    // the caller's stack.
+    // Abandons whatever was in flight, so the next chunk begins a new transfer,
+    // and returns an allocated storage's block. In place: assigning a fresh
+    // inline ChunkReassembler puts its whole buffer on the caller's stack.
     void reset() {
+        _store.release();
         _active = false;
         _chunkCount = 0;
         _totalBytes = 0;
@@ -197,11 +268,13 @@ public:
 
         size_t payloadLen = chunkPayload.size() - kBlobChunkHeaderBytes;
         size_t offset = size_t(h.chunk_index) * limits::catalog_chunk_payload;
-        if (offset + payloadLen > _buf.size()) return false;
+        const std::span<std::byte> buf = _store.bytes();
+        if (offset + payloadLen > buf.size()) return false;
 
-        std::memcpy(_buf.data() + offset, chunkPayload.data() + kBlobChunkHeaderBytes, payloadLen);
-        if (!_received[h.chunk_index]) {
-            _received[h.chunk_index] = true;
+        std::memcpy(buf.data() + offset, chunkPayload.data() + kBlobChunkHeaderBytes, payloadLen);
+        std::byte& seen = _store.received()[h.chunk_index];
+        if (seen == std::byte{0}) {
+            seen = std::byte{1};
             ++_receivedCount;
         }
         _lastProgressMs = nowMs;
@@ -216,8 +289,9 @@ public:
     size_t missingIndices(std::span<uint16_t> out) const {
         if (!_active) return 0;  // nothing in flight: nothing is missing
         size_t n = 0;
-        for (uint16_t i = 0; i < _chunkCount && i < MaxChunks && n < out.size(); ++i) {
-            if (!_received[i]) out[n++] = i;
+        const std::byte* received = _store.received();
+        for (uint16_t i = 0; i < _chunkCount && i < kMaxChunks && n < out.size(); ++i) {
+            if (received[i] == std::byte{0}) out[n++] = i;
         }
         return n;
     }
@@ -238,18 +312,18 @@ public:
     }
 
     // Valid once complete(); the reassembled bytes are exactly `totalBytes`
-    // from begin(), regardless of MaxChunks' larger backing capacity.
+    // from begin(), regardless of the storage's larger backing capacity.
     std::span<const std::byte> assembled() const {
         // Belt-and-braces with begin()'s refusal clamp: _totalBytes can only
         // be non-zero while active, and never above capacity — say so here
         // too, so a future change to begin() cannot resurrect an OOB span.
-        if (!_active || _totalBytes > _buf.size()) return {};
-        return std::span<const std::byte>(_buf.data(), _totalBytes);
+        const std::span<const std::byte> buf = std::as_const(_store).bytes();
+        if (!_active || _totalBytes > buf.size()) return {};
+        return buf.first(_totalBytes);
     }
 
 private:
-    std::array<std::byte, kMaxTotalBytes> _buf{};
-    std::array<bool, MaxChunks> _received{};
+    Storage _store;
     BlobId _id{};
     uint16_t _chunkCount = 0;
     uint32_t _receivedCount = 0;
@@ -258,5 +332,8 @@ private:
     uint32_t _lastProgressMs = 0;
     bool _active = false;
 };
+
+template <size_t MaxChunks = 64>
+using ChunkReassembler = BasicChunkReassembler<InlineChunkStorage<MaxChunks>>;
 
 }  // namespace valence

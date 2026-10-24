@@ -16,6 +16,7 @@
 
 #include "valence/channel/catalog_channel.hpp"
 #include "valence/channel/state_apply.hpp"
+#include "valence/core/allocator.hpp"
 #include "valence/core/clock.hpp"
 #include "valence/core/crypto.hpp"
 #include "valence/core/result.hpp"
@@ -37,14 +38,14 @@
 #include "valence/wire/raw/probe.hpp"
 
 // The Client's catalog reassembly budget in BLOB_CHUNK payloads (§8.4):
-// VALENCE_CLIENT_CATALOG_CHUNKS * limits::catalog_chunk_payload bytes, held
-// INLINE in every Client. 192 chunks is 36,864 B; the Nucleus 0.1.44 catalog
-// measured 28,611 B (Neutrino, 2026-10-11). Set it as a build flag identically for every translation unit
-// (a per-file #define gives two TUs two Client layouts: ODR).
-// Constraint: on an MCU allocate the Client from heap (PSRAM is fine; nothing
-// here is DMA), never on a task stack.
+// VALENCE_CLIENT_CATALOG_CHUNKS * limits::catalog_chunk_payload bytes. The
+// default, 5,462 chunks, covers limits::catalog_max_bytes (§8.1, RFC-121).
+// The budget only caps a transfer: each transfer takes one block of its
+// declared size from the Client's IAllocator, so the Client's own size does
+// not depend on it. Set it as a build flag identically for every translation
+// unit (a per-file #define gives two TUs two Client types: ODR).
 #ifndef VALENCE_CLIENT_CATALOG_CHUNKS
-#define VALENCE_CLIENT_CATALOG_CHUNKS 192
+#define VALENCE_CLIENT_CATALOG_CHUNKS 5462
 #endif
 
 namespace valence {
@@ -135,7 +136,8 @@ public:
 class Client {
 public:
     static constexpr size_t kMaxWishes = 16;
-    static constexpr size_t kCatalogBudgetBytes = ChunkReassembler<VALENCE_CLIENT_CATALOG_CHUNKS>::kMaxTotalBytes;
+    using CatalogReassembler = BasicChunkReassembler<AllocatedChunkStorage<VALENCE_CLIENT_CATALOG_CHUNKS>>;
+    static constexpr size_t kCatalogBudgetBytes = CatalogReassembler::kMaxTotalBytes;
 
     // `crypto` (M4c addition, additive with a default) is the seam RFC-029's
     // verification rides: the library is std-headers-only and will never
@@ -143,8 +145,13 @@ public:
     // ICrypto whose verifyP256 is WebCrypto / System.Security / mbedtls. The
     // default null object answers "unsupported", which is exactly right for
     // every client that never asks to be signed to.
+    // `alloc` supplies the catalog reassembly block, one per transfer, freed
+    // once onCatalog returns (or the transfer is abandoned, or on connect()
+    // and destruction); it must outlive the Client. A nullptr from it refuses the transfer (§8.4
+    // BLOB_REFUSED while SYNCING, §8.5(a) degraded while LIVE).
     Client(const ClientIdentity& id, ITransport& transport, IClock& clock,
-           IRandom& rng, ClientDelegate& delegate, ICrypto& crypto = defaultCrypto());
+           IRandom& rng, ClientDelegate& delegate, ICrypto& crypto = defaultCrypto(),
+           IAllocator& alloc = defaultAllocator());
 
     // Standing wish-list (§6.2): applies to the next connect() and every
     // reconnect. Returns false when kMaxWishes exceeded.
@@ -388,7 +395,7 @@ private:
     bool _catalogReady = true;
 
     // Catalog transfer (§8.4).
-    ChunkReassembler<VALENCE_CLIENT_CATALOG_CHUNKS> _chunkReassembler;
+    CatalogReassembler _chunkReassembler;
     uint16_t _catalogChunkCount = 0;
     size_t _catalogReqSentCount = 0;
 

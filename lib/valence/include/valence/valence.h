@@ -9,6 +9,7 @@
 #include "valence/core/clock.hpp"
 #include "valence/core/rng.hpp"
 #include "valence/core/crypto.hpp"
+#include "valence/core/allocator.hpp"
 #include "valence/util/bounded_string.hpp"
 #include "valence/util/byte_io.hpp"
 #include "valence/util/serial_arithmetic.hpp"

@@ -11,7 +11,7 @@
 // XorShift32, raw hand-built frames where the exact wire matters, the library
 // Client where the client half is under test.
 //
-// Suite ids: GR-xx.
+// Suite ids: GR-xx (GR-12: the reassembly allocator refusing a refetch).
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 // GR-08 needs a catalog over the Client's 24 KB budget: two bulky accessories,
@@ -48,6 +48,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <optional>
 #include <utility>
@@ -1136,4 +1137,51 @@ TEST_CASE("CL-06: subscribe() works mid-session, during HELLO_SENT, and updates 
     CHECK(client.grantedRateHz(sliceId(0, 2)).has_value());
     CHECK(cd.nackLog.empty());
     CHECK(cd.liveThroughout());
+}
+
+// ---- GR-12 ------------------------------------------------------------------
+// §8.4/§8.6: a refetch whose reassembly block cannot be allocated is a refusal
+// like an over-budget one: the client stays LIVE on its old etag, degraded,
+// says so with BLOB_DONE aborted, and does not ask for that etag again.
+TEST_CASE("GR-12: a LIVE client whose allocator fails on a refetch stays LIVE, degraded") {
+    class FailAfterFirst final : public IAllocator {
+    public:
+        int calls = 0;
+        void* allocate(size_t bytes) override { return calls++ == 0 ? std::malloc(bytes) : nullptr; }
+        void deallocate(void* p, size_t) override { std::free(p); }
+    } alloc;
+
+    Catalog32 cat;
+    buildFixed(cat);
+    addAccessory(cat, 0);
+    ManualClock clock;
+    XorShift32 rng(7712);
+    GrowthHubDelegate del;
+    Hub hub(cat, clock, rng, del);
+
+    InProcessLink link(clock, rng);
+    REQUIRE(hub.attachTransport(link.endpointA()));
+    XorShift32 crng(8812);
+    GrowthClientDelegate cd;
+    Client client(clientId(12), link.endpointB(), clock, crng, cd, defaultCrypto(), alloc);
+    REQUIRE(client.addSubscriptionWish(kSafetyCh, 0.0f, Priority::critical));
+    REQUIRE(client.connect());
+    pump(hub, clock, {&client}, 20);
+    REQUIRE(client.state() == ClientSessionState::LIVE);
+    REQUIRE(alloc.calls == 1);
+    const Etag e0 = toEtag(hub.catalogEtag());
+
+    addAccessory(cat, 1);
+    REQUIRE(hub.catalogChanged() == Hub::CatalogChange::UserSpace);
+    REQUIRE(hub.catalogEncodedBytes() <= Client::kCatalogBudgetBytes);
+    const Etag e1 = toEtag(hub.catalogEtag());
+    pump(hub, clock, {&client}, 120);
+
+    CHECK(alloc.calls == 2);
+    CHECK(cd.liveThroughout());
+    CHECK(cd.catalogs.size() == 1);
+    CHECK(client.catalogReqCount() == 2);
+    CHECK(sameEtag(client.hubEtag(), e1));
+    CHECK(sameEtag(client.readyEtag(), e0));
+    CHECK(del.blobDoneAborted == 1);
 }
