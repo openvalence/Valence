@@ -9,6 +9,9 @@ paths:
 
 # Wire format constraints (SPEC §5; citations are the law, this is the pointer)
 
+Wire numbers come only from `spec/registry/registry.yaml`. Never invent one;
+when unsure, read it.
+
 ## CBOR profile (control plane, §5.3)
 
 - Deterministic RFC 8949 subset: definite-length only, shortest-form integers,
