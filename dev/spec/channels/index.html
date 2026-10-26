@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -33,10 +33,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2887,7 +2887,7 @@
 <li><strong>Refusals.</strong> A trial write on a channel or key the hub cannot restore unconditionally (a verb, a motion command, a value whose write the hub gates on live machine state) is refused <code>UNSUPPORTED_OP</code>. Revert itself is never refused: where a constraint between values no longer admits a pre-trial value, the hub restores the nearest legal one and publishes it.</li>
 <li><strong>Persistence.</strong> A hub that persists settings MUST NOT persist a trial value before its commit; through every other persist, a trialed key's stored value stays its pre-trial value. Settings STATE layouts SHOULD carry <code>meta.trial_pending</code> (<a href="../catalog/#s8-8">§8.8</a>) so every client sees which values are on trial.</li>
 <li><strong>Streams are not intents.</strong> High-rate motion <em>input</em> rides STREAM and is never echoed per-sample. Its observable truth is the position telemetry the hub publishes — you see what the machine actually did, which is the only truth that matters. Only discrete state changes ride INTENT.</li>
-<li><strong>Actions.</strong> A schema field whose <code>role</code> is <code>action.&lt;name&gt;</code> is a <strong>verb</strong>, not a value: <code>action.home</code>, <code>action.reset_stats</code>. ECHO echoes the op. Two rules make an action observable rather than private to its sender:</li>
+<li><strong>Actions.</strong> An INTENT schema field whose <code>role</code> is <code>action.&lt;name&gt;</code> is a <strong>verb</strong>, not a value: <code>action.home</code>, <code>action.reset_stats</code>. ECHO echoes the op. Two rules make an action observable rather than private to its sender:</li>
 <li>a resettable counter group's twin STATE channel carries a field tagged <code>meta.reset_gen</code>, incremented on every applied reset, so <strong>all</strong> subscribers observe the reset;</li>
 <li><strong>classification:</strong> an action that restores <em>configuration</em> values bumps <code>cfg_gen</code> <strong>and</strong> <code>reset_gen</code>; an action that only clears <em>counters</em> bumps <code>reset_gen</code> alone.</li>
 <li><strong>Procedures.</strong> A long-running guarded operation — a multi-step device programming sequence, a verified write-then-readback — cannot be expressed by intent-and-echo alone, because its real result arrives later. It is not a new frame type; it is a <strong>documented catalog pattern</strong>:</li>
@@ -2900,6 +2900,7 @@
 <h2 id="s9-4">9.4 EVENT — edges, not levels<a class="headerlink" href="#s9-4" title="Link to this section">#</a></h2>
 <p>EVENT channels carry discrete occurrences. CBOR: <code>event_kind</code> (33), <code>timestamp</code> (21), optional <code>seq_of_state</code> (34), and <code>body</code> (40) — a sub-map whose integer keys come from <strong>the channel's own catalog <code>schema</code></strong>, exactly as INTENT's <code>value</code> does.</p>
 <p>The <code>body</code> sub-map is what makes device-authored EVENT channels possible at all. With kind-specific fields at the top level, every device wanting an event channel would have needed a registry PR to name its own fields — the precise coupling the self-describing catalog exists to prevent. <code>event_kind</code> and <code>seq_of_state</code> stay at the top level because they are protocol framing, not payload.</p>
+<p>A body field MAY carry a field <code>role</code> (<a href="../catalog/#s8-8">§8.8</a>, RFC-122): it describes the field within its entry and is never resolved catalog-wide. A client never writes, invokes or binds a widget's value to an EVENT body field, whatever its role; it MAY draw one as an annotation on the widget bound to that role (events are UX, states are truth). A body field carrying <code>telemetry.position</code> or <code>telemetry.target</code> MUST be sent in mm (<code>unit_id</code> mm), in the frame position telemetry reads in when the event is emitted (<a href="#s9-6">§9.6</a> <code>axis.flipped</code>), never normalized against the window: an event is read after the state it describes has moved on. An event read across a later flip or re-home keeps the frame it was emitted in.</p>
 <ul>
 <li><strong>Best-effort.</strong> Events are conflated and bounded like everything else and are <strong>NOT replayed on reconnect</strong> — <em>except</em> where a channel's catalog entry declares a <code>replay_depth</code>, in which case the hub MAY replay up to that many entries from its ring tail when the channel is granted. The log channel (<a href="../errors/#s16-2">§16.2</a>) is the sanctioned use; the exception exists so "what went wrong just before I connected" is answerable without making every grant a burst.</li>
 <li><strong>The event/state duality rule (safety-critical).</strong> Any event a client could not afford to have missed MUST have a <strong>latched STATE twin</strong>: the event says "this just happened", the state says "this is (still) true". E-stop is the canonical pair — the safety-events channel for the edge, the <code>safety</code> channel for the latch. A reconnecting client adopts the latch and needs no history. <strong>No safety behavior may depend on EVENT delivery.</strong> Events are UX (toasts, logs, timelines); states are truth.</li>
@@ -3291,10 +3292,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.tooltips"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.footer", "navigation.indexes", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.tooltips"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
         <script src="../../assets/javascripts/mermaid.min.js"></script>
       
