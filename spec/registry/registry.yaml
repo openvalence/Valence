@@ -780,6 +780,9 @@ field_roles:
   # ---- input.* (RFC-071): the §9.6 motion-input vocabulary on the layout
   # fields of a c2h STREAM entry. A motion-accepting entry MUST tag
   # input.target; it is how a client finds the motion input without a name.
+  # The roles bind within their c2h STREAM entry, selected per §9.6; never
+  # bound across entries (SPEC §8.8, RFC-123). An accessory declaration
+  # carrying any input.* role is refused (SPEC §8.10).
   "input.target":        { note: "RFC-071: the commanded position of a motion-input sample or segment, in the field's own unit and scale. REQUIRED on a c2h STREAM entry that accepts motion." }
   "input.velocity":      { note: "RFC-071: a samples-kind point's instantaneous velocity hint. Optional; a client that does not understand it leaves the field at its unspecified sentinel (§5.4)." }
   "input.duration":      { note: "RFC-071: a segments-kind sample's commanded time extent" }

@@ -562,7 +562,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [120](#rfc-120) | Physical-time polynomial renderer: knot states as the unknowns, the ceilings as control-polygon bounds, one banded solve per window | Rejected | closed |
 | [121](#rfc-121) | Catalog ceiling and setup over BLE: a 1 MiB catalog, two routes to a hub (WebSocket with radios, serial without), BLE sessions in config mode only, a provisioning catalog | Landed | closed |
 | [122](#rfc-122) | Roles on an EVENT body schema bind within their own entry | Landed | closed |
-| [123](#rfc-123) | Motion-input roles bind within their c2h STREAM entry | Accepted | open |
+| [123](#rfc-123) | Motion-input roles bind within their c2h STREAM entry | Landed | open |
 
 
 <a id="rfc-001"></a>
@@ -13350,7 +13350,7 @@ say exactly which, future-us will want the receipts.*
 <a id="rfc-123"></a>
 ## RFC-123 -- Motion-input roles bind within their c2h STREAM entry
 
-- **Status:** ACCEPTED (operator, 2026-10-25; principles: safe first, accessories are optional and never drive motion). Open question 1 answered with both sides, written into the Proposal: (b) the host refuses `input.*` roles in an accessory declaration (§8.10 validation, defense at the source) and (a) a client never treats a user-space entry as the motion input (defense at the reader). Molecule rfc-mol-olo (rfc-lifecycle); two fresh-eyes reviews folded 2026-10-25 (notes on this bead). Builds on RFC-122 (landed 3a4eef9).
+- **Status:** LANDED (2026-10-25). Landed in SPEC §8.8 (after the `store.*` sentence, before RFC-122's EVENT sentence) and §8.10 (Validation); AUTHORING.md §5; registry `input.*` comment (text only); docs-site catalog page regenerated. ACCEPTED (operator, 2026-10-25; principles: safe first, accessories are optional and never drive motion). Open question 1 answered with both sides, written into the Proposal: (b) the host refuses `input.*` roles in an accessory declaration (§8.10 validation, defense at the source) and (a) a client never treats a user-space entry as the motion input (defense at the reader). Molecule rfc-mol-olo (rfc-lifecycle); two fresh-eyes reviews folded 2026-10-25 (notes on this bead). Builds on RFC-122 (landed 3a4eef9).
 - **Origin.** RFC-122's fresh-eyes review, 2026-10-25. The reference catalog (Nucleus `flagship_p4/src/hub/ValenceCatalog.h`) tags `input.target` on both its motion-accepting c2h STREAM entries, `motion-input` 0x2100 (`samples`, with `input.velocity`) and `motion-segment` 0x2101 (`segments`, with `input.duration` and `input.end_velocity`), as §9.6 requires. Its third c2h STREAM, `osc-drive` 0x2140 (channel role `osc.drive`), carries no field roles.
 - **Problem.**
   1. **The exemption is only implicit.** §9.6 (RFC-071) REQUIRES `input.target` on every c2h STREAM entry that accepts motion and selects the entry by `stream_kind`, so a hub offering both kinds carries `input.target` twice. §8.8's general clause ("The SHOULD governs catalog-wide discovery, never the binding path of a role found through its own entry") covers that only by inference; the named list (`mod.*`, `store.*`, EVENT bodies, the per-group families) omits it, and the tiebreak read literally hands every `input.target` lookup the first entry in catalog order.
