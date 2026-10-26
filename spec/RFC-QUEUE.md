@@ -562,6 +562,7 @@ own Status line as of that date; the entry wins on any disagreement.*
 | [120](#rfc-120) | Physical-time polynomial renderer: knot states as the unknowns, the ceilings as control-polygon bounds, one banded solve per window | Rejected | closed |
 | [121](#rfc-121) | Catalog ceiling and setup over BLE: a 1 MiB catalog, two routes to a hub (WebSocket with radios, serial without), BLE sessions in config mode only, a provisioning catalog | Landed | closed |
 | [122](#rfc-122) | Roles on an EVENT body schema bind within their own entry | Accepted | open |
+| [123](#rfc-123) | Motion-input roles bind within their c2h STREAM entry | Draft | open |
 
 
 <a id="rfc-001"></a>
@@ -13343,5 +13344,21 @@ say exactly which, future-us will want the receipts.*
   2. No hub-side SHOULD NOT on write or verb roles in event bodies: the reader rule in Proposal 3 is enough.
   3. The RENDERING `event-stream` MAY stays.
   4. The c2h STREAM `input.*` repetition is RFC-123, a separate one-sentence amendment.
+
+---
+
+<a id="rfc-123"></a>
+## RFC-123 -- Motion-input roles bind within their c2h STREAM entry
+
+- **Status:** DRAFT (2026-10-25). Molecule rfc-mol-olo (rfc-lifecycle); next: the fresh-eyes review, then the operator's ruling. Split from RFC-122 at its ruling (open question 4).
+- **Origin.** RFC-122's fresh-eyes review, 2026-10-25. The reference catalog (Nucleus `flagship_p4/src/hub/ValenceCatalog.h`) tags `input.target` on both its c2h STREAM entries, `motion-input` 0x2100 (`samples`) and `motion-segment` 0x2101 (`segments`), as §9.6 requires of every c2h STREAM entry that accepts motion.
+- **Problem.** §9.6 (RFC-071) REQUIRES `input.target` on every c2h STREAM entry that accepts motion and selects the entry by `stream_kind`, so a hub offering both kinds carries the role twice. §8.8's role cardinality SHOULD ("at most one field per catalog") has no exemption for it, so every hub that does what §9.6 requires departs from §8.8, and a client that applies the first-in-catalog-order tiebreak to `input.target` finds only the `samples` stream.
+- **Alternatives.** (1) Leave it: two normative paragraphs that disagree on every two-kind hub. (2) One `input.*` role set per `stream_kind` (`input.samples.target` and kin): doubles the vocabulary for one quantity. (3) This RFC: the `input.*` roles bind within their entry, like `mod.*` and `store.*`.
+- **Proposal.** One sentence in SPEC §8.8, Role cardinality, after the `store.*` sentence: "The `input.*` roles (§9.6, RFC-071) bind the same way: one set per c2h STREAM entry, which a client selects by `stream_kind` (§9.6), never resolved catalog-wide." With RFC-122's saved-layout rule (a role that binds within its entry is keyed on channel id plus field name), a placement on an `input.*` field keys on its uid.
+- **Pros.** §8.8 and §9.6 agree; the reference catalog follows the SHOULD as it stands; no client behavior changes (Phosphor `src/model/motion.js` `motionStream` already selects the entry by class, direction and `stream_kind` before reading its `input.*` fields).
+- **Cons.** One more named exemption in the paragraph.
+- **Cost.** Spec: the one sentence; the generated docs-site catalog page regenerates. Registry: none (the `input.*` notes already say "a c2h STREAM entry"). Consumers: none beyond RFC-122's controlKey bead (Phosphor), which covers within-entry roles generally.
+- **Wire impact.** None: no frame, key, registry number, etag or vector changes.
+- **Open questions.** None.
 
 ---
