@@ -750,7 +750,7 @@ field_roles:
   "window.min":          { note: "stroke window lower bound. Limits normalized against the window are window-relative and therefore MOVE when it does: which is exactly why this is a STATE field and not a one-shot WELCOME value." }
   "window.max":          { note: "stroke window upper bound" }
   "telemetry.position":  { note: "live actuator position" }
-  "telemetry.target":    { note: "RFC-032: the position the machine is currently COMMANDED to, as opposed to telemetry.position which is where it measurably is. Lag is deliberately NOT a role: it is target - position, computed client-side: registering a third field for a subtraction would invite two sources of truth for one number." }
+  "telemetry.target":    { note: "RFC-032: the position the machine is currently COMMANDED to, as opposed to telemetry.position which is where it measurably is. Lag is deliberately NOT a role: it is target - position, computed client-side: registering a third field for a subtraction would invite two sources of truth for one number. On an EVENT body field (SPEC §8.8, §9.4, RFC-122) it is the target as commanded at emit time, in mm, bound within that entry." }
   "telemetry.velocity":  { note: "live actuator velocity" }
   "telemetry.current":   { note: "motor/drive current" }
   "telemetry.power.bus": { note: "DC bus voltage or power" }

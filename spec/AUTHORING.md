@@ -89,7 +89,7 @@ common rows, first match wins:
 | Grayed out when machine state forbids it | a `meta.enabled_mask` bitfield in the same STATE layout | SPEC §8.8 "Dynamic enablement" |
 | A peak marker on a live gauge | a companion field, same role/unit, `aspect: peak` | RENDERING §5.1, §5.4 |
 | A reset button beside the totals it clears | an intent declaring reset linkage (`meta.reset_gen` is the worked example) | RENDERING §5.4 |
-| A client to *find* your field on any hub | a registered `role` (one per catalog; first-in-order wins on duplicates) | SPEC §8.8 "Field roles" |
+| A client to *find* your field on any hub | a registered `role` (one per catalog; first-in-order wins on duplicates; EVENT body roles, `mod.*`, `store.*` and the per-group families are exempt, SPEC §8.8) | SPEC §8.8 "Field roles" |
 
 ---
 
