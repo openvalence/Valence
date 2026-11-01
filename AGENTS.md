@@ -5,6 +5,7 @@ This file is documentation, not policy: the Canon and the repo's rules files rul
 | What | Where |
 |---|---|
 | The Canon (C-1..C-12, the Canon Flag, the amendment ritual) | `../Nucleus/.claude/rules/governance.md`, its one home; this repo has no copy |
+| User-visible strings (log lines, catalog text, refusals, UI, site copy) | `../Nucleus/.claude/rules/strings.md`, the standard and the string pass (workspace skill `string-pass`); this repo has no copy |
 | `.claude/rules/spec-editing.md` | the RFC lifecycle: `spec/SPEC.md` and `spec/registry/registry.yaml` change only through an accepted RFC (the RFC-gate hook enforces it); generated views are regenerated, never hand-edited |
 | `.claude/rules/wire-format.md` | wire format constraints, each a pointer into SPEC §5 |
 | Lint (zero findings is the bar) | `python tools/valence_lint.py` |
