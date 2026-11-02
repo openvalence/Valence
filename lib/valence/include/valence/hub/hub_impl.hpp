@@ -4321,7 +4321,7 @@ inline void Hub::handleTrialOpIntent(Slot& slot, const IntentMsg& m, uint32_t no
         if (m.value[i].key == trial_value::op && m.value[i].value.kind == IntentValue::Kind::U64)
             op = m.value[i].value.u64_val;
     if (op != trial_ops::commit && op != trial_ops::revert) {
-        refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "op is commit or revert", nowMs);
+        refuseIntent(slot, m, NackCode::UNSUPPORTED_OP, "use commit or revert", nowMs);
         return;
     }
     endSessionTrials(slot.session.session_id, op == trial_ops::commit);

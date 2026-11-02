@@ -491,7 +491,7 @@ export function createLocalHub(o) {
     let r;
     if (trialsOn && ch === CH_SETTINGS_TRIAL) {
       const op = vals.get(1);
-      if (op !== TRIAL_OP.commit && op !== TRIAL_OP.revert) return refuse(NACK.UNSUPPORTED_OP, 'op is commit or revert');
+      if (op !== TRIAL_OP.commit && op !== TRIAL_OP.revert) return refuse(NACK.UNSUPPORTED_OP, 'use commit or revert');
       r = { config: endTrials(me, op === TRIAL_OP.commit, changed) };
     } else {
       r = opKey != null ? (safetyOp(vals.get(opKey)) || {}) : applyIntent(entry, vals, changed);
